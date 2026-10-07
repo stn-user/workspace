@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="description" content="Des outils simples pour diagnostiquer, optimiser et réussir vos impressions 3D.">
+    <title>3D Soft — Outils pour l’impression 3D</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner container">
+        <a class="wordmark" href="#accueil" aria-label="3D Soft, accueil">
+          <span class="wordmark__name">3D Soft</span>
+          <span class="wordmark__tagline">Diagnostic · Optimise · Imprime</span>
+        </a>
+
+        <nav class="site-nav desktop-nav" aria-label="Navigation principale">
+          <a class="site-nav__link" href="#accueil" aria-current="page">Accueil</a>
+          <a class="site-nav__link" href="#outils">Outils</a>
+        </nav>
+
+        <details class="mobile-menu">
+          <summary class="mobile-menu__summary">Menu</summary>
+          <nav class="site-nav" aria-label="Navigation mobile">
+            <a class="site-nav__link" href="#accueil" aria-current="page">Accueil</a>
+            <a class="site-nav__link" href="#outils">Outils</a>
+          </nav>
+        </details>
+
+        <a class="button button--primary site-header__cta" href="#outils">Découvrir les outils</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="accueil" aria-labelledby="welcome-title">
+        <div class="hero__visual" aria-hidden="true">
+          <img src="assets/hero-impression-3d.png" alt="">
+        </div>
+        <div class="hero__inner container">
+          <div class="hero__copy">
+            <p class="eyebrow">Votre assistant impression 3D</p>
+            <h1 id="welcome-title">Des impressions réussies, à chaque fois.</h1>
+            <p class="hero__description">
+              Diagnostiquez vos problèmes, optimisez vos réglages, calculez vos coûts et bien plus encore.
+              3D Soft vous accompagne dans tous vos projets d’impression 3D.
+            </p>
+            <div class="hero__actions">
+              <a class="button button--primary" href="#outils">
+                Accéder aux outils <span aria-hidden="true">→</span>
+              </a>
+              <a class="button button--secondary" href="#outils">
+                Voir les outils <span aria-hidden="true">↗</span>
+              </a>
+            </div>
+            <ul class="trust-list" aria-label="Les atouts de 3D Soft">
+              <li class="trust-list__item">
+                <span class="trust-list__icon" aria-hidden="true">ϟ</span>
+                <span><strong>Rapide</strong><small>et simple</small></span>
+              </li>
+              <li class="trust-list__item">
+                <span class="trust-list__icon" aria-hidden="true">✳</span>
+                <span><strong>Des conseils</strong><small>clairs et pratiques</small></span>
+              </li>
+              <li class="trust-list__item">
+                <span class="trust-list__icon" aria-hidden="true">⬡</span>
+                <span><strong>Pour vos outils</strong><small>d’impression 3D</small></span>
+              </li>
+            </ul>
+          </div>
+
+          <aside class="diagnostic-preview" aria-label="Aperçu du diagnostic d’impression">
+            <div class="diagnostic-preview__heading">
+              <span class="diagnostic-preview__symbol" aria-hidden="true">⌕</span>
+              <div>
+                <strong>Diagnostic d’impression</strong>
+                <small>Un parcours guidé pour trouver la cause</small>
+              </div>
+            </div>
+            <ol class="diagnostic-preview__steps">
+              <li>Choisissez le défaut observé</li>
+              <li>Précisez imprimante et matière</li>
+              <li>Essayez les solutions proposées</li>
+            </ol>
+            <a class="diagnostic-preview__link" href="../tools/3d-diag/index.html">
+              Découvrir 3D Diag <span aria-hidden="true">→</span>
+            </a>
+          </aside>
+        </div>
+      </section>
+
+      <section class="tools-section" id="outils" aria-labelledby="tools-title">
+        <div class="container">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Nos outils</p>
+              <h2 id="tools-title">Des outils pensés pour les makers</h2>
+              <p class="section-heading__description">
+                Des solutions simples pour résoudre vos problèmes, optimiser vos réglages
+                et mieux maîtriser vos impressions.
+              </p>
+            </div>
+          </div>
+
+          <div class="tool-grid">
+            <article class="tool-card">
+              <div class="tool-card__top">
+                <span class="tool-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" fill="none">
+                    <path d="M10 30.5 22.5 18a9 9 0 0 0 11.8-11.8l-5.7 5.7-5.5-1.5-1.5-5.5 5.7-5.7A9 9 0 0 0 15.5 11L3 23.5a5.3 5.3 0 0 0 7 7Z" transform="translate(4 6)" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="31.5" cy="32.5" r="7.5" stroke="currentColor" stroke-width="2.2"/>
+                    <path d="M31.5 28.5v8m-4-4h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="tool-status tool-status--available">Disponible</span>
+              </div>
+              <h3>Diagnostic d’impression</h3>
+              <p>Identifiez les causes probables d’un défaut et découvrez quoi essayer, étape par étape.</p>
+              <a class="button button--primary tool-card__action" href="../tools/3d-diag/index.html">
+                Commencer <span aria-hidden="true">→</span>
+              </a>
+            </article>
+
+            <article class="tool-card">
+              <div class="tool-card__top">
+                <span class="tool-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" fill="none">
+                    <path d="M10 15c0-3 6.3-5.5 14-5.5S38 12 38 15s-6.3 5.5-14 5.5S10 18 10 15Z" stroke="currentColor" stroke-width="2.2"/>
+                    <path d="M10 15v18c0 3 6.3 5.5 14 5.5S38 36 38 33V15M10 24c0 3 6.3 5.5 14 5.5S38 27 38 24" stroke="currentColor" stroke-width="2.2"/>
+                    <path d="M17 14.5c3.8-1.5 10.2-1.5 14 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="tool-status">Bientôt</span>
+              </div>
+              <h3>Réglages du filament</h3>
+              <p>Retrouvez des réglages de départ adaptés à votre matière et à votre imprimante.</p>
+              <span class="tool-card__coming">En préparation</span>
+            </article>
+
+            <article class="tool-card">
+              <div class="tool-card__top">
+                <span class="tool-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" fill="none">
+                    <rect x="8" y="5.5" width="32" height="37" rx="5" stroke="currentColor" stroke-width="2.2"/>
+                    <rect x="13" y="10.5" width="22" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+                    <path d="M15 24h3m6 0h3m6 0h1m-19 7h3m6 0h3m6 0h1m-19 7h3m6 0h3m6 0h1" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="tool-status tool-status--available">Disponible</span>
+              </div>
+              <h3>Calculateur de coût</h3>
+              <p>Estimez le coût de revient de vos pièces et définissez un prix de vente indicatif.</p>
+              <a class="button button--primary tool-card__action" href="../tools/calculateur-3d/index.html">
+                Calculer <span aria-hidden="true">→</span>
+              </a>
+            </article>
+
+            <article class="tool-card">
+              <div class="tool-card__top">
+                <span class="tool-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" fill="none">
+                    <path d="M9 17 24 9l15 8v18l-15 8-15-8V17Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <path d="m9 17 15 8 15-8M24 25v18m-8-31 15 8" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <circle cx="24" cy="25" r="4" fill="white" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                </span>
+                <span class="tool-status">Bientôt</span>
+              </div>
+              <h3>Choix de l’imprimante</h3>
+              <p>Comparez les caractéristiques pour trouver une imprimante adaptée à vos besoins.</p>
+              <span class="tool-card__coming">En préparation</span>
+            </article>
+
+            <article class="tool-card">
+              <div class="tool-card__top">
+                <span class="tool-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" fill="none">
+                    <path d="m24 6 15 8.5v19L24 42l-15-8.5v-19L24 6Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <path d="m9 14.5 15 9 15-9M24 23.5V42m-7.5-31.8 15 9" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <path d="M32 5v8m-4-4h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="tool-status">Bientôt</span>
+              </div>
+              <h3>Générateur de pièces</h3>
+              <p>Décrivez votre besoin et préparez un modèle 3D simple à imprimer.</p>
+              <span class="tool-card__coming">En préparation</span>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
