@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Diag – Diagnostic de problèmes d'impression 3D</title>
+<style>
+:root{--g:#007a3d;--g2:#00a651;--b:#1473e6;--bd:#0d5cc4;--txt:#222;--mut:#666;--bg:#f7f8fa;--line:#e5e7eb}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5}
+.nav{background:#fff;border-bottom:1px solid var(--line);height:60px;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+.brand{font-weight:700;font-size:20px;color:var(--g)}
+.pill{border:1px solid #bbb;border-radius:999px;padding:8px 18px;font-size:14px;font-weight:600;color:var(--txt);text-decoration:none}
+.pill:hover{background:#f0f0f0}
+.hero{background:linear-gradient(180deg,var(--g2) 0,#7fd6a3 60%,var(--bg) 100%);padding:36px 16px 16px}
+.panel{max-width:900px;margin:auto;background:#fff;border:3px dashed #8a8a8a;border-radius:24px;padding:36px 44px}
+h1{font-size:34px;line-height:1.15;margin:0 0 10px}
+.lead{margin:0 0 22px;color:#444;max-width:60ch}
+.step{margin-top:22px}
+.step h2{font-size:17px;margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.step h2 b{display:inline-flex;width:28px;height:28px;border-radius:50%;background:var(--b);color:#fff;align-items:center;justify-content:center;font-size:14px}
+.opt{font-weight:400;color:var(--mut);font-size:13px}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--b);color:#fff;font-weight:600;font-size:16px;padding:12px 24px;border:0;border-radius:8px;cursor:pointer}
+.btn:hover{background:var(--bd)}
+.btn.alt{background:#fff;color:var(--b);border:2px solid var(--b);padding:9px 16px;font-size:14px}
+.btn.alt:hover{background:#eaf3ff}
+:focus-visible{outline:3px solid var(--b);outline-offset:2px}
+select{width:100%;max-width:380px;padding:11px;font-size:16px;border:1px solid #c9ccd1;border-radius:8px;background:#fff}
+#vignette{display:none;max-height:140px;max-width:100%;border-radius:10px;margin-top:10px}
+.note{font-size:13px;color:var(--mut);margin:8px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chips label{cursor:pointer}
+.chips input{position:absolute;opacity:0}
+.chips span{display:block;border:2px solid var(--line);border-radius:12px;padding:10px 14px;font-size:15px;background:#fff}
+.chips label:hover span{border-color:#9bbdf0}
+.chips input:checked+span{border-color:var(--b);background:#eaf3ff;font-weight:600}
+.chips input:focus-visible+span{outline:3px solid var(--b);outline-offset:2px}
+#err{color:#b42318;font-size:14px;margin-top:10px;min-height:20px}
+.cta{margin-top:24px}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#444;margin-bottom:14px;max-width:60ch}
+.consent input{margin-top:3px}
+#ia{margin-left:10px}
+.safe{max-width:900px;margin:12px auto 0;padding:0 16px;font-size:12px;color:#444;text-align:center}
+#resultat{max-width:900px;margin:24px auto;padding:0 16px}
+.hidden{display:none!important}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:16px}
+.card h3{margin:0 0 10px;font-size:19px}
+.titre{font-size:26px;margin:0 0 4px}
+.rowp{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.rowp img{max-width:220px;border-radius:10px}
+.printer{background:#e6f6ec;border-left:4px solid var(--g2);padding:10px 14px;border-radius:8px;margin-top:12px;font-size:14px}
+ul,ol{margin:6px 0 0;padding-left:22px}
+li{margin:6px 0}
+.test{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+.test:last-child{border:0}
+.test p{margin:2px 0 0;font-size:13px;color:var(--mut);max-width:52ch}
+a.btn{text-decoration:none}
+.soon{font-size:14px;color:var(--mut)}
+.legal{max-width:868px;margin:10px auto;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;text-align:left;font-size:13px;color:#555}
+.legal p{margin:10px 0 0}
+footer{text-align:center;color:#888;font-size:12px;padding:10px 16px 30px}
+@media(max-width:700px){.panel{padding:22px}h1{font-size:26px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="brand">🩺 3D Diag</div>
+  <a class="pill" href="../calculateur-3d/index.html">Calculateur de prix</a>
+</header>
+
+<section class="hero">
+  <div class="panel">
+    <h1>Trouve pourquoi ton impression 3D a raté</h1>
+    <p class="lead">Dis-nous quelle imprimante tu utilises et ce que tu observes : tu obtiens les causes probables, les réglages à essayer dans l'ordre, et un fichier STL de test à imprimer pour vérifier.</p>
+
+    <div class="step">
+      <h2><b>1</b>Ta photo <span class="opt">(facultatif)</span></h2>
+      <label class="btn alt" for="photo">📷 Ajouter une photo</label>
+      <input type="file" id="photo" accept="image/*" hidden>
+      <div><img id="vignette" alt="Aperçu de ta pièce"></div>
+      <p class="note">La photo reste sur ton appareil. Elle n'est envoyée que si tu demandes l'analyse par IA et que tu l'autorises, juste avant.</p>
+    </div>
+
+    <div class="step">
+      <h2><b>2</b>Ton imprimante</h2>
+      <select id="imp" aria-label="Ton imprimante">
+        <option value="">— Choisis ton imprimante —</option>
+        <option value="a1">Bambu Lab A1</option>
+        <option value="a1mini">Bambu Lab A1 mini</option>
+        <option value="p1s">Bambu Lab P1S</option>
+        <option value="x1c">Bambu Lab X1C</option>
+        <option value="autre">Autre imprimante</option>
+      </select>
+    </div>
+
+    <div class="step">
+      <h2><b>3</b>Ta matière <span class="opt">(facultatif)</span></h2>
+      <select id="mat" aria-label="Ta matière">
+        <option value="">— Je ne sais pas / autre —</option>
+        <option value="PLA">PLA</option>
+        <option value="PETG">PETG</option>
+        <option value="TPU">TPU</option>
+        <option value="ABS">ABS / ASA</option>
+      </select>
+    </div>
+
+    <div class="step">
+      <h2><b>4</b>Ce que tu observes</h2>
+      <div class="chips" id="chips" role="radiogroup" aria-label="Problème observé"></div>
+    </div>
+
+    <div class="cta">
+      <label class="consent hidden" id="consentBox">
+        <input type="checkbox" id="consent">
+        <span>J'autorise l'envoi de ma photo (réduite, sans données de localisation) à un service d'IA (Anthropic, via Cloudflare) pour l'analyser. Ce site ne la conserve pas.</span>
+      </label>
+      <button class="btn" id="go">Voir le diagnostic</button>
+      <button class="btn alt hidden" id="ia">✨ Analyser ma photo avec l'IA</button>
+      <div id="err" role="alert"></div>
+    </div>
+  </div>
+</section>
+<p class="safe">Les conseils sont des pistes générales : essaie un réglage à la fois et refais un test.</p>
+
+<main id="resultat" class="hidden">
+  <div class="card hidden" id="rIA">
+    <h3>✨ Analyse de ta photo par l'IA</h3>
+    <p id="iaResume"></p>
+    <ul id="iaConstats"></ul>
+    <p class="note" id="iaNote"></p>
+  </div>
+  <div class="card">
+    <h2 class="titre" id="rTitre"></h2>
+    <div class="rowp">
+      <img id="rPhoto" class="hidden" alt="Ta photo">
+      <div style="flex:1;min-width:240px">
+        <h3>Causes probables</h3>
+        <ul id="rCauses"></ul>
+        <div class="printer hidden" id="rImp"></div>
+        <div class="printer hidden" id="rMat"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>À essayer, dans cet ordre</h3>
+    <ol id="rFixes"></ol>
+  </div>
+  <div class="card">
+    <h3>Fichiers STL de test</h3>
+    <div id="rTests"></div>
+    <p class="note">Ces modèles sont générés par l'outil, en millimètres. Importe-les dans Bambu Studio avec ton profil habituel.</p>
+  </div>
+  <div class="card hidden" id="rMatos">
+    <h3>Matériel utile</h3>
+    <div id="matosListe"></div>
+    <p class="note">Liens affiliés : si tu achètes via ces liens, une commission est reversée à l'éditeur, sans surcoût pour toi.</p>
+  </div>
+</main>
+<footer>
+  <details class="legal">
+    <summary>Mentions légales et confidentialité</summary>
+    <p><strong>Éditeur :</strong> site édité à titre non professionnel par une personne physique ayant choisi de rester anonyme (article 6-III-2 de la loi n° 2004-575 du 21 juin 2004). Les éléments d'identification ont été communiqués à l'hébergeur. <strong>Contact :</strong> [ton adresse mail dédiée]. <strong>Hébergeur :</strong> [à compléter selon l'hébergement choisi].</p>
+    <p><strong>Sans IA :</strong> le diagnostic fonctionne entièrement dans ton navigateur, rien n'est envoyé.</p>
+    <p><strong>Analyse par IA (facultative) :</strong> si tu l'autorises, ta photo est réduite et ré-encodée dans ton navigateur (les données de localisation sont supprimées), envoyée à un serveur intermédiaire hébergé par Cloudflare, puis transmise à Anthropic pour analyse. Ce site ne conserve pas la photo. Pour limiter le nombre d'analyses par jour, une empreinte chiffrée de ton adresse IP est conservée environ 25 heures. Consulte les politiques de confidentialité d'Anthropic et de Cloudflare pour le traitement de leur côté.</p>
+    <p><strong>Estimations :</strong> les diagnostics sont indicatifs et sans garantie de résultat. L'IA peut se tromper.</p>
+    <p id="legAffil" class="hidden"><strong>Liens affiliés :</strong> certains liens de la rubrique « Matériel utile » sont des liens affiliés : si tu achètes via ces liens, l'éditeur perçoit une commission, sans surcoût pour toi. Les conseils de diagnostic restent rédigés indépendamment de ces liens.</p>
+  </details>
+  <p>3D Diag – outil indicatif, sans garantie de résultat.</p>
+</footer>
+
+<script>
+// Adresse de ton Worker Cloudflare (laisse vide tant qu'il n'est pas créé : l'IA reste masquée)
+const WORKER_URL="";
+
+// Boutiques affiliées. Mets actif:true UNIQUEMENT quand ton compte partenaire est validé
+// et que tu as remplacé l'identifiant. Vérifie le format exact des liens dans ton espace partenaire.
+// Attention : devenir affilié met fin à l'anonymat de l'éditeur (voir les mentions légales).
+const BOUTIQUES=[
+  {nom:"Amazon", actif:false, url:q=>"https://www.amazon.fr/s?k="+encodeURIComponent(q)+"&tag=TON-IDENTIFIANT"}
+];
+const $=id=>document.getElementById(id);
+const NOMS={a1:"Bambu Lab A1",a1mini:"Bambu Lab A1 mini",p1s:"Bambu Lab P1S",x1c:"Bambu Lab X1C"};
+const OUVERTES=["a1","a1mini"], FERMEES=["p1s","x1c"];
+
+const TESTS={
+  cube:{nom:"Cube de calibration 20 mm",desc:"Vérifie les dimensions, la netteté des angles et la régularité des parois.",file:"cube-20mm.stl"},
+  retraction:{nom:"Test de rétractation (2 tours)",desc:"Deux tours espacées : les fils entre elles révèlent le stringing.",file:"test-retractation.stl"},
+  plaque:{nom:"Plaque de première couche",desc:"Une seule couche fine sur 80 × 80 mm : observe l'accroche et l'uniformité.",file:"plaque-premiere-couche.stl"},
+  surplomb:{nom:"Test de surplombs (20° à 60°)",desc:"Cinq rampes d'inclinaison croissante : repère l'angle où la qualité chute.",file:"test-surplombs.stl"},
+  pont:{nom:"Test de pont (30 mm)",desc:"Une travée entre deux piliers : regarde si le dessous s'affaisse.",file:"test-pont.stl"}
+};
+
+const PROBS=[
+ {id:"stringing",nom:"Fils entre les parties (stringing)",
+  causes:["Filament humide","Température d'impression trop haute","Rétractation trop faible"],
+  fixes:["Sèche le filament (étuve ou sèche-filament) : c'est la cause la plus fréquente.","Baisse la température de 5 °C et refais un test.","Augmente la rétractation dans le profil de ton filament.","Imprime le test de rétractation pour comparer avant et après."],
+  tests:["retraction"],
+  ouv:"Garde la bobine à l'abri de l'humidité pendant l'impression.",
+  fer:"Si le caisson devient très chaud avec du PLA, le filament peut baver : entrouvre la porte."},
+ {id:"warping",nom:"Coins qui se relèvent ou se décollent",
+  causes:["Plateau sale ou gras","Température du plateau inadaptée à la matière","Courants d'air ou refroidissement brutal"],
+  fixes:["Nettoie le plateau (eau chaude et savon, sans toucher la surface ensuite).","Vérifie que la plaque et la température de plateau correspondent à ta matière.","Ajoute une bordure (brim) autour de la pièce.","Écarte les courants d'air et évite de poser l'imprimante près d'une fenêtre."],
+  tests:["plaque"],
+  ouv:"L'ABS et l'ASA se déforment vite sans caisson : préfère PLA ou PETG, ou protège l'imprimante de l'air.",
+  fer:"Pour ABS/ASA, garde porte et couvercle fermés ; pour le PLA, ouvre-les."},
+ {id:"premiere",nom:"La première couche n'accroche pas",
+  causes:["Plateau sale","Buse trop éloignée du plateau","Étalonnage automatique raté","Vitesse de première couche trop élevée"],
+  fixes:["Nettoie le plateau.","Relance les étalonnages automatiques de l'imprimante.","Vérifie la plaque sélectionnée dans le profil.","Réduis la vitesse de la première couche.","Imprime la plaque de test et observe les lignes : trop espacées, ou écrasées ?"],
+  tests:["plaque"]},
+ {id:"sousext",nom:"Trous, couches fines ou surfaces rugueuses",
+  causes:["Buse partiellement bouchée","Filament humide","Température trop basse ou débit mal réglé"],
+  fixes:["Sèche le filament.","Vérifie que le filament sort régulièrement, sans claquement ni à-coups.","Nettoie ou remplace la buse.","Lance la calibration du débit dans l'onglet Calibration de Bambu Studio.","Imprime le cube et compare la régularité des parois."],
+  tests:["cube"]},
+ {id:"decalage",nom:"Décalage de couches",
+  causes:["Courroie desserrée ou poulie mal serrée","Vitesse ou accélérations trop élevées","Une partie de la pièce relevée heurte la buse"],
+  fixes:["Vérifie la tension des courroies et le serrage des poulies selon le manuel.","Baisse la vitesse et les accélérations.","Regarde si la tête heurte une partie relevée ou un support.","Pose l'imprimante sur une surface rigide et stable.","Imprime le cube : un décalage se voit sur ses côtés."],
+  tests:["cube"],
+  ouv:"Le plateau se déplace d'avant en arrière : une pièce haute et étroite accentue les décalages.",
+  fer:"Vérifie que rien ne gêne les mouvements à l'intérieur du caisson."},
+ {id:"ringing",nom:"Ondulations derrière les angles (ringing)",
+  causes:["Vibrations","Accélérations trop élevées","Imprimante posée sur une surface instable"],
+  fixes:["Pose l'imprimante sur une surface lourde et stable, sans objet qui touche le meuble.","Baisse la vitesse des parois extérieures.","Lance la calibration de compensation des vibrations de l'imprimante.","Vérifie que la bobine et ses câbles ne frottent pas."],
+  tests:["cube"],
+  ouv:"Le plateau mobile amplifie les vibrations sur les grandes pièces : réduis la vitesse des parois.",
+  fer:"Un meuble léger amplifie les vibrations : pose l'imprimante sur une base lourde."},
+ {id:"delam",nom:"Couches qui se séparent (délaminage)",
+  causes:["Température trop basse","Refroidissement trop fort","Filament humide"],
+  fixes:["Monte la température de 5 °C.","Réduis le ventilateur de refroidissement (surtout PETG, ABS, ASA).","Sèche le filament.","Évite l'air froid autour de l'imprimante.","Imprime le cube et essaie de le casser : la rupture entre couches confirme le défaut."],
+  tests:["cube"],
+  ouv:"Les courants d'air refroidissent la pièce trop vite : protège l'imprimante.",
+  fer:"Pour PETG, ABS et ASA, garde le caisson fermé."},
+ {id:"surplomb",nom:"Surplombs et ponts qui s'affaissent",
+  causes:["Refroidissement insuffisant","Température trop haute","Vitesse de pont trop élevée","Filament humide"],
+  fixes:["Augmente le refroidissement sur les surplombs et les ponts.","Baisse la température de 5 °C.","Réduis la vitesse des ponts.","Sèche le filament.","Au-delà d'environ 60° d'inclinaison, ajoute des supports.","Imprime les deux tests pour repérer l'angle et la longueur limites."],
+  tests:["surplomb","pont"]},
+ {id:"surext",nom:"Bavures, boutons ou surface granuleuse",
+  causes:["Débit trop élevé (surextrusion)","Température trop haute","Couture mal placée ou rétractation trop faible"],
+  fixes:["Lance la calibration du débit dans l'onglet Calibration de Bambu Studio.","Baisse la température de 5 °C.","Déplace ou aligne la couture sur un angle peu visible.","Sèche le filament.","Imprime le cube et compare l'état de ses parois."],
+  tests:["cube"]},
+ {id:"patte",nom:"Base évasée (patte d'éléphant)",
+  causes:["Première couche trop écrasée","Plateau trop chaud","Étalonnage de la hauteur imprécis"],
+  fixes:["Active la compensation de patte d'éléphant dans les réglages de la pièce.","Baisse la température du plateau de 5 °C.","Relance l'étalonnage de la première couche.","Mesure la base du cube : de combien dépasse-t-elle les 20 mm ?"],
+  tests:["cube"]},
+ {id:"spaghetti",nom:"L'impression part en spaghettis en cours de route",
+  causes:["La pièce s'est décollée du plateau","Bobine emmêlée ou filament bloqué","Buse bouchée en cours d'impression","Pièce haute ou instable"],
+  fixes:["Vérifie la propreté du plateau et l'accroche de la première couche : la plupart des échecs viennent de là.","Contrôle que la bobine se déroule librement, sans nœud.","Ajoute une bordure (brim) ou élargis la base de la pièce.","Surveille les 10 premières minutes avant de laisser tourner.","Imprime la plaque de test pour valider l'accroche."],
+  tests:["plaque"]},
+ {id:"pillow",nom:"Dessus troué ou irrégulier",
+  causes:["Pas assez de couches pleines au-dessus du remplissage","Refroidissement insuffisant","Remplissage trop espacé"],
+  fixes:["Augmente le nombre de couches du dessus.","Augmente le refroidissement.","Passe à un remplissage plus dense sous les grandes surfaces plates.","Baisse la température de 5 °C.","Imprime le cube et regarde sa face supérieure."],
+  tests:["cube"]},
+ {id:"supports",nom:"Supports difficiles à retirer ou surface abîmée",
+  causes:["Distance entre support et pièce trop faible","Interface trop dense","Température trop haute"],
+  fixes:["Augmente la distance verticale de l'interface des supports.","Essaie les supports en arbre.","Réduis la densité de l'interface.","Baisse la température de 5 °C.","Imprime le test de surplombs avec supports pour comparer."],
+  tests:["surplomb"]},
+ {id:"bouchage",nom:"L'extrudeur claque ou n'extrude plus",
+  causes:["Buse bouchée","Filament humide, cassant ou coincé","Vitesse trop élevée pour la matière","Température trop basse"],
+  fixes:["Vérifie que la bobine se déroule librement et que le filament n'est pas pincé.","Fais une purge à chaud pour dégager la buse.","Remplace la buse si elle est usée ou si le problème revient.","Baisse la vitesse ou monte la température de 5 °C.","Sèche le filament s'il est cassant."],
+  tests:["cube"]}
+];
+
+// Conseils propres à la matière, par problème
+const MATNOTES={
+ PETG:{
+  stringing:"Le PETG bave facilement : le séchage et une température un peu plus basse comptent encore plus qu'avec le PLA.",
+  warping:"Sur une plaque lisse, le PETG peut coller trop fort : un voile de colle en bâton sert de séparateur.",
+  premiere:"Sur une plaque lisse, le PETG peut coller trop fort : un voile de colle en bâton sert de séparateur.",
+  delam:"Le PETG demande peu de refroidissement : un ventilateur trop fort favorise la séparation des couches.",
+  surplomb:"Le PETG réussit moins bien les ponts que le PLA : réduis la vitesse et teste une température plus basse."},
+ TPU:{
+  stringing:"Le TPU est souple et bave : imprime lentement et garde-le bien sec.",
+  sousext:"Le TPU se comprime dans l'extrudeur : réduis fortement la vitesse et vérifie que le filament n'est pas pincé sur son trajet.",
+  bouchage:"Le TPU se comprime dans l'extrudeur : réduis fortement la vitesse et vérifie que le filament n'est pas pincé sur son trajet.",
+  surplomb:"Le TPU fait difficilement des ponts : prévois des supports et une vitesse réduite."},
+ ABS:{
+  warping:"L'ABS et l'ASA ont un fort retrait : caisson fermé, bordure large et pas de ventilateur de pièce.",
+  delam:"L'ABS et l'ASA exigent un caisson chaud et fermé ; coupe ou réduis fortement le ventilateur de pièce.",
+  premiere:"L'ABS et l'ASA demandent un plateau bien chaud et propre."},
+ PLA:{
+  surplomb:"Le PLA supporte un refroidissement fort : c'est un bon levier pour les ponts et les surplombs.",
+  stringing:"Le PLA bave surtout s'il est humide ou trop chaud."}
+};
+
+// ---------- Création de fichiers STL (binaire) ----------
+function creerSTL(tris){
+  const buf=new ArrayBuffer(84+50*tris.length), dv=new DataView(buf);
+  dv.setUint32(80,tris.length,true);
+  tris.forEach((t,i)=>{
+    const o=84+50*i, [a,b,c]=t;
+    const u=[b[0]-a[0],b[1]-a[1],b[2]-a[2]], w=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];
+    let n=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];
+    const l=Math.hypot(n[0],n[1],n[2])||1; n=n.map(x=>x/l);
+    [n,a,b,c].forEach((p,j)=>p.forEach((x,k)=>dv.setFloat32(o+12*j+4*k,x,true)));
+  });
+  return buf;
+}
+const quad=(a,b,c,d)=>[[a,b,c],[a,c,d]];
+function boite(x,y,z,w,d,h){
+  const p=[[x,y,z],[x+w,y,z],[x+w,y+d,z],[x,y+d,z],[x,y,z+h],[x+w,y,z+h],[x+w,y+d,z+h],[x,y+d,z+h]];
+  return [[0,3,2,1],[4,5,6,7],[0,1,5,4],[2,3,7,6],[3,0,4,7],[1,2,6,5]].flatMap(f=>quad(p[f[0]],p[f[1]],p[f[2]],p[f[3]]));
+}
+function cylindre(cx,cy,z,r,h,n=32){
+  const t=[];
+  for(let i=0;i<n;i++){
+    const a=2*Math.PI*i/n, b=2*Math.PI*(i+1)/n;
+    const a0=[cx+r*Math.cos(a),cy+r*Math.sin(a),z], b0=[cx+r*Math.cos(b),cy+r*Math.sin(b),z];
+    const a1=[a0[0],a0[1],z+h], b1=[b0[0],b0[1],z+h];
+    t.push([a0,b0,b1],[a0,b1,a1],[[cx,cy,z+h],a1,b1],[[cx,cy,z],b0,a0]);
+  }
+  return t;
+}
+// Prisme dont la section (x,z) est un polygone convexe orienté dans le sens trigonométrique
+function prisme(pts,y0,prof,z0){
+  const y1=y0+prof, P=(i,y)=>[pts[i][0],y,pts[i][1]+z0], t=[];
+  for(let i=1;i<pts.length-1;i++){
+    t.push([P(0,y0),P(i,y0),P(i+1,y0)],[P(0,y1),P(i+1,y1),P(i,y1)]);
+  }
+  for(let i=0;i<pts.length;i++){
+    const j=(i+1)%pts.length;
+    t.push(...quad(P(i,y0),P(i,y1),P(j,y1),P(j,y0)));
+  }
+  return t;
+}
+const MODELES={
+  cube:()=>boite(0,0,0,20,20,20),
+  plaque:()=>boite(0,0,0,80,80,0.2),
+  retraction:()=>[...boite(0,0,0,60,20,1.2),...cylindre(10,10,1,4,40),...cylindre(50,10,1,4,40)],
+  pont:()=>[...boite(0,-3,0,56,16,1.5),...boite(3,0,1,10,10,20.5),...boite(43,0,1,10,10,20.5),...boite(3,0,21,50,10,2)],
+  surplomb:()=>{
+    const H=12, W=15, t=[]; let x=0;
+    [20,30,40,50,60].forEach(deg=>{
+      const dx=H*Math.tan(deg*Math.PI/180);
+      t.push(...prisme([[x,0],[x+W,0],[x+W+dx,H],[x,H]],0,10,1.5));
+      x+=W+dx+5;
+    });
+    return [...boite(-3,-3,0,x+1,16,1.5),...t];
+  }
+};
+function telecharger(cle){
+  const blob=new Blob([creerSTL(MODELES[cle]())],{type:"model/stl"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=TESTS[cle].file;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+// ---------- Interface ----------
+PROBS.forEach(p=>{
+  const l=document.createElement("label");
+  l.innerHTML='<input type="radio" name="prob" value="'+p.id+'"><span>'+p.nom+'</span>';
+  $("chips").appendChild(l);
+});
+
+let urlPhoto=null, photoB64="";
+function majIA(){
+  const on=!!(WORKER_URL&&photoB64);
+  $("ia").classList.toggle("hidden",!on);
+  $("consentBox").classList.toggle("hidden",!on);
+}
+$("photo").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(urlPhoto) URL.revokeObjectURL(urlPhoto);
+  urlPhoto=URL.createObjectURL(f);
+  $("vignette").src=urlPhoto; $("vignette").style.display="block";
+  photoB64=""; majIA();
+  // Réduction à 1280 px et ré-encodage JPEG : allège l'envoi et efface les métadonnées (GPS inclus)
+  const im=new Image();
+  im.onload=()=>{
+    const k=Math.min(1,1280/Math.max(im.width,im.height));
+    const c=document.createElement("canvas");
+    c.width=Math.round(im.width*k); c.height=Math.round(im.height*k);
+    c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+    photoB64=c.toDataURL("image/jpeg",0.8); majIA();
+  };
+  im.src=urlPhoto;
+});
+
+function liste(el,items){
+  el.innerHTML="";
+  items.forEach(t=>{const li=document.createElement("li"); li.textContent=t; el.appendChild(li);});
+}
+
+// ---------- Matériel utile (liens affiliés) ----------
+const SECHE={nom:"Sèche-filament",pourquoi:"Un filament humide est l'une des causes les plus fréquentes de défauts.",q:"sèche-filament imprimante 3D"};
+const PLAQUE={nom:"Plaque d'impression de rechange",pourquoi:"Une plaque usée ou grasse nuit à l'accroche.",q:"plaque d'impression",perso:true};
+const BUSE={nom:"Buses de rechange",pourquoi:"Une buse usée ou bouchée dégrade l'extrusion.",q:"buse",perso:true};
+const CAISSON={nom:"Caisson pour imprimante ouverte",pourquoi:"Il protège des courants d'air et garde la chaleur, utile pour l'ABS et l'ASA.",q:"enclosure caisson",perso:true,ouv:true};
+const PIED={nom:"Pied à coulisse numérique",pourquoi:"Pour mesurer tes pièces et vérifier tes réglages.",q:"pied à coulisse numérique"};
+const MATOS={
+  stringing:[SECHE],
+  warping:[PLAQUE,CAISSON],
+  premiere:[PLAQUE],
+  sousext:[BUSE,SECHE],
+  decalage:[{nom:"Kit d'outils d'entretien",pourquoi:"Pour contrôler la tension des courroies et le serrage des poulies.",q:"kit clés Allen entretien imprimante 3D"}],
+  ringing:[{nom:"Pieds anti-vibration",pourquoi:"Ils réduisent les vibrations transmises au meuble.",q:"pieds anti-vibration imprimante 3D"}],
+  delam:[SECHE,CAISSON],
+  surext:[PIED],
+  patte:[PIED],
+  spaghetti:[PLAQUE,{nom:"Spatule de décollage",pourquoi:"Pour retirer les pièces sans abîmer la plaque.",q:"spatule décollage impression 3D"}],
+  supports:[{nom:"Pinces et outils de finition",pourquoi:"Pour retirer les supports proprement.",q:"pince coupante kit finition impression 3D"}],
+  bouchage:[BUSE,{nom:"Kit de nettoyage de buse",pourquoi:"Pour dégager une buse partiellement bouchée.",q:"aiguilles nettoyage buse imprimante 3D"},SECHE]
+};
+if(BOUTIQUES.some(b=>b.actif)) $("legAffil").classList.remove("hidden");
+
+function afficherMatos(id,imp){
+  const boutiques=BOUTIQUES.filter(b=>b.actif), carte=$("rMatos"), zone=$("matosListe");
+  zone.innerHTML="";
+  const ouverte=OUVERTES.includes(imp);
+  const items=(MATOS[id]||[]).filter(m=>!m.ouv||ouverte);
+  if(!boutiques.length||!items.length){ carte.classList.add("hidden"); return; }
+  items.forEach(m=>{
+    const q=(m.perso&&NOMS[imp]?NOMS[imp]+" ":"")+m.q;
+    const d=document.createElement("div"); d.className="test";
+    const g=document.createElement("div");
+    const s=document.createElement("strong"); s.textContent=m.nom;
+    const p=document.createElement("p"); p.textContent=m.pourquoi;
+    g.append(s,p); d.appendChild(g);
+    const l=document.createElement("div");
+    boutiques.forEach(b=>{
+      const a=document.createElement("a"); a.className="btn alt"; a.textContent="Voir sur "+b.nom;
+      a.href=b.url(q); a.target="_blank"; a.rel="sponsored noopener nofollow";
+      l.appendChild(a);
+    });
+    d.appendChild(l); zone.appendChild(d);
+  });
+  carte.classList.remove("hidden");
+}
+
+function afficher(probId,ia){
+  const p=PROBS.find(x=>x.id===probId), imp=$("imp").value;
+  const choisi=document.querySelector('input[name="prob"]:checked');
+
+  // Carte d'analyse IA (masquée pour un diagnostic sans IA)
+  const carte=$("rIA");
+  if(ia){
+    $("iaResume").textContent=ia.resume||"";
+    liste($("iaConstats"),ia.constats||[]);
+    const conf={faible:"faible",moyenne:"moyenne",elevee:"élevée"}[ia.confiance]||"faible";
+    let n="Confiance de l'IA : "+conf+". L'IA peut se tromper : compare avec ta pièce et fie-toi à ton propre constat.";
+    if(choisi&&choisi.value!==probId) n+=" Elle propose un autre problème que celui que tu as choisi.";
+    $("iaNote").textContent=n;
+    carte.classList.remove("hidden");
+  }else carte.classList.add("hidden");
+
+  $("rTitre").textContent=p.nom;
+  liste($("rCauses"),p.causes);
+  liste($("rFixes"),p.fixes);
+
+  const note=OUVERTES.includes(imp)?p.ouv:FERMEES.includes(imp)?p.fer:"";
+  const bloc=$("rImp");
+  if(note){ bloc.textContent=NOMS[imp]+" : "+note; bloc.classList.remove("hidden"); }
+  else bloc.classList.add("hidden");
+
+  const mt=MATNOTES[$("mat").value], tm=mt&&mt[p.id], bm=$("rMat");
+  if(tm){ bm.textContent=$("mat").selectedOptions[0].text+" : "+tm; bm.classList.remove("hidden"); }
+  else bm.classList.add("hidden");
+
+  const ph=$("rPhoto");
+  if(urlPhoto){ ph.src=urlPhoto; ph.classList.remove("hidden"); } else ph.classList.add("hidden");
+
+  const zone=$("rTests"); zone.innerHTML="";
+  p.tests.forEach(c=>{
+    const d=document.createElement("div"); d.className="test";
+    const g=document.createElement("div");
+    const s=document.createElement("strong"); s.textContent=TESTS[c].nom;
+    const q=document.createElement("p"); q.textContent=TESTS[c].desc;
+    g.append(s,q);
+    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Télécharger le STL";
+    b.addEventListener("click",()=>telecharger(c));
+    d.append(g,b); zone.appendChild(d);
+  });
+
+  afficherMatos(p.id,imp);
+  $("resultat").classList.remove("hidden");
+  $("resultat").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+$("go").addEventListener("click",()=>{
+  const sel=document.querySelector('input[name="prob"]:checked');
+  if(!sel){ $("err").textContent="Choisis d'abord le problème que tu observes (étape 4)."; return; }
+  $("err").textContent="";
+  afficher(sel.value,null);
+});
+
+async function analyserIA(){
+  const sel=document.querySelector('input[name="prob"]:checked');
+  $("err").textContent="";
+  if(!photoB64){ $("err").textContent="Ajoute d'abord une photo (étape 1)."; return; }
+  if(!$("consent").checked){ $("err").textContent="Coche l'autorisation d'envoi de ta photo pour lancer l'analyse."; return; }
+  const b=$("ia"); b.disabled=true; b.textContent="Analyse en cours…";
+  try{
+    const r=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({image:photoB64,printer:$("imp").value,material:$("mat").value,problem:sel?sel.value:""})});
+    const d=await r.json();
+    if(!r.ok||d.erreur) throw new Error(d.erreur||"Erreur du service.");
+    if(!d.photo_ok){ $("err").textContent="La photo ne montre pas clairement une pièce imprimée. Reprends-la de plus près, bien éclairée."; return; }
+    const id=d.probleme_id||(sel?sel.value:"");
+    if(!id){ $("err").textContent="L'IA n'a pas pu identifier le défaut avec certitude. Choisis le problème à l'étape 4 puis clique sur « Voir le diagnostic »."; return; }
+    afficher(id,d);
+  }catch(e){
+    $("err").textContent=(e.message||"Erreur")+" Tu peux utiliser le diagnostic sans IA.";
+  }finally{
+    b.disabled=false; b.textContent="✨ Analyser ma photo avec l'IA";
+  }
+}
+$("ia").addEventListener("click",analyserIA);
+</script>
+</body>
+</html>

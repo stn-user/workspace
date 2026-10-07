@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculateur de coût d'impression 3D</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="brand">🖨️ Calculateur 3D</div>
+  <a class="pill" href="#projets" id="lnkProjets">Mes projets</a>
+</header>
+
+<section class="hero">
+  <div class="hero-card" id="drop">
+    <div class="hero-text">
+      <div class="brand">🖨️ Calculateur 3D</div>
+      <h1>Calcule le prix de vente de tes impressions 3D</h1>
+      <p class="lead">Choisis ton imprimante, dépose ton fichier .3mf : coûts et prix conseillé s'affichent en quelques secondes.</p>
+
+      <label class="lbl">1. Ton imprimante
+        <select id="preset">
+          <option value="">— Choisis ton imprimante —</option>
+          <option value="a1">Bambu Lab A1</option>
+          <option value="a1mini">Bambu Lab A1 mini</option>
+          <option value="p1s">Bambu Lab P1S</option>
+          <option value="x1c">Bambu Lab X1C</option>
+          <option value="perso">Autre / personnalisé</option>
+        </select>
+      </label>
+      <div id="resumeImp"></div>
+
+      <label class="btn-main" for="fichier">📂 2. Sélectionner un fichier</label>
+      <input type="file" id="fichier" accept=".3mf" hidden>
+      <span class="hint">ou glisse-le dans ce cadre</span>
+      <div id="msg">Exporte la plaque découpée depuis Bambu Studio (.gcode.3mf).</div>
+    </div>
+    <div class="hero-art">
+      <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
+        <path d="M50 20h70l35 35v110a10 10 0 0 1-10 10H50a10 10 0 0 1-10-10V30a10 10 0 0 1 10-10z" fill="#e6f0fd" stroke="#1473e6" stroke-width="6" stroke-linejoin="round"/>
+        <path d="M120 20v35h35" fill="none" stroke="#1473e6" stroke-width="6" stroke-linejoin="round"/>
+        <path d="M100 70l28 15v30l-28 15-28-15V85z" fill="#fff" stroke="#1473e6" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M72 85l28 15 28-15M100 100v30" fill="none" stroke="#1473e6" stroke-width="5" stroke-linejoin="round"/>
+        <circle cx="45" cy="160" r="30" fill="#1473e6" stroke="#fff" stroke-width="6"/>
+        <path d="M32 160h26m-10-10l10 10-10 10" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<p class="safe">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007a3d" stroke-width="2" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+  Ton fichier est lu directement dans ton navigateur : il n'est envoyé nulle part.
+</p>
+
+<!-- Résultats : cachés tant qu'aucun fichier n'a été analysé -->
+<section id="resultats" class="wrap hidden">
+  <div class="grid">
+
+    <div class="card">
+      <h2>Résultat</h2>
+      <div id="chips"></div>
+      <div class="total-box">
+        <div class="prix" id="rPrix">-</div>
+        <div class="sub">Prix de vente conseillé par pièce (hors frais d'envoi)</div>
+        <div class="sub" id="rTotal"></div>
+        <div class="sub" id="rClient"></div>
+      </div>
+
+      <div class="ligne"><span>Matière</span><span id="rMat">-</span></div>
+      <div class="ligne"><span>Électricité</span><span id="rElec">-</span></div>
+      <div class="ligne"><span>Usure et maintenance machine</span><span id="rMach">-</span></div>
+      <div class="ligne"><span>Main d'œuvre</span><span id="rMain">-</span></div>
+      <div class="ligne"><span>Provision échecs</span><span id="rEch">-</span></div>
+      <div class="ligne"><strong>Coût de revient</strong><strong id="rCout">-</strong></div>
+      <div class="ligne"><span>Bénéfice</span><span id="rBen">-</span></div>
+
+      <div class="row" style="margin-top:14px">
+        <label>Marge (%)<input type="number" id="marge" value="30"></label>
+        <label>Quantité<input type="number" id="quantite" value="1" min="1"></label>
+        <label>Frais d'envoi (€)<input type="number" id="envoi" value="0" min="0" step="0.5"></label>
+      </div>
+      <p class="note">Les frais d'envoi (transport + emballage) sont comptés une seule fois par commande, en plus du prix des pièces.</p>
+      <label>Nom du projet<input type="text" id="nomProjet" placeholder="Ex : Support de casque"></label>
+      <button class="btn" id="btnSauver">💾 Sauvegarder le projet</button>
+
+      <details>
+        <summary>Détails de la pièce (remplis automatiquement)</summary>
+        <div class="row">
+          <label>Poids (g)<input type="number" id="poids" value="50"></label>
+          <label>Durée (h)<input type="number" id="duree" value="3" step="0.01"></label>
+          <label>Manuel (min)<input type="number" id="tempsManuel" value="10"></label>
+        </div>
+      </details>
+
+      <details>
+        <summary>Réglages avancés (préremplis selon l'imprimante)</summary>
+        <div class="row">
+          <label>Puissance (W)<input type="number" id="puissance" value="95"></label>
+          <label>Prix machine (€)<input type="number" id="prixMachine" value="449"></label>
+          <label>Durée de vie (h)<input type="number" id="vieMachine" value="3000"></label>
+        </div>
+        <div class="row">
+          <label>Maintenance (€/h)<input type="number" id="maintenance" value="0.04" step="0.01"></label>
+          <label>Préchauffage (Wh)<input type="number" id="demarrage" value="30"></label>
+          <label>Échecs (%)<input type="number" id="echec" value="5"></label>
+        </div>
+        <div class="row">
+          <label>PLA (€/kg)<input type="number" id="prixPLA" value="20"></label>
+          <label>PETG (€/kg)<input type="number" id="prixPETG" value="22"></label>
+          <label>TPU (€/kg)<input type="number" id="prixTPU" value="30"></label>
+          <label>ABS/ASA (€/kg)<input type="number" id="prixABS" value="22"></label>
+        </div>
+        <div class="row">
+          <label>Électricité (€/kWh)<input type="number" id="prixKwh" value="0.25" step="0.01"></label>
+          <label>Main d'œuvre (€/h)<input type="number" id="tauxHoraire" value="10"></label>
+        </div>
+        <p class="note">Valeurs indicatives, à affiner avec ton usage réel.</p>
+      </details>
+
+      <details>
+        <summary>Devis client</summary>
+        <label>Ton nom / entreprise<input type="text" id="vendeur" placeholder="Jean Dupont - Atelier 3D"></label>
+        <label>Nom du client<input type="text" id="client"></label>
+        <label>Mention TVA
+          <select id="tva">
+            <option value="non">TVA non applicable (art. 293 B du CGI)</option>
+            <option value="aucune">Aucune mention</option>
+          </select></label>
+        <button class="btn alt" id="btnDevis">📄 Générer le devis (PDF)</button>
+      </details>
+    </div>
+
+    <div class="card" id="projets">
+      <h2>Mes projets</h2>
+      <div id="liste"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Comment ça marche -->
+<section class="wrap">
+  <div class="steps">
+    <div class="step"><b>1</b><strong>Choisis ton imprimante</strong><p>Puissance, usure et maintenance se règlent toutes seules.</p></div>
+    <div class="step"><b>2</b><strong>Dépose ton fichier</strong><p>Poids, durée et filaments sont lus automatiquement.</p></div>
+    <div class="step"><b>3</b><strong>Fixe ton prix</strong><p>Ajuste ta marge, ajoute l'envoi, sauvegarde et génère un devis en PDF.</p></div>
+  </div>
+</section>
+
+<footer>
+  <details class="legal" id="legal">
+    <summary>Mentions légales et confidentialité</summary>
+    <p><strong>Éditeur du site :</strong> [Prénom NOM ou raison sociale], [adresse ou moyen de contact], [adresse e-mail]. [SIRET si applicable]</p>
+    <p><strong>Hébergeur :</strong> GitHub, Inc. (GitHub Pages), 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis.</p>
+    <p><strong>Confidentialité :</strong> les fichiers .3mf sont lus localement dans ton navigateur et ne sont envoyés à aucun serveur. Les réglages et projets sauvegardés sont enregistrés uniquement dans le stockage de ton navigateur, sur ton appareil. Ce site n'utilise pas de cookies de suivi ni de statistiques de visite.</p>
+    <p><strong>Estimations :</strong> les résultats sont donnés à titre indicatif et ne constituent pas un engagement. Les valeurs par défaut sont des estimations à adapter à ton usage réel. Les frais d'envoi sont à saisir manuellement.</p>
+  </details>
+  <p>© Calculateur 3D</p>
+</footer>
+
+<div id="devis">
+  <h2>DEVIS</h2>
+  <div>N° <span id="dNum"></span> — <span id="dDate"></span></div>
+  <p><strong>De :</strong> <span id="dVendeur"></span></p>
+  <p><strong>Pour :</strong> <span id="dClient"></span></p>
+  <table>
+    <tr><th>Désignation</th><th class="d">Qté</th><th class="d">Prix unitaire</th><th class="d">Total</th></tr>
+    <tr><td id="dDes"></td><td class="d" id="dQte"></td><td class="d" id="dUnit"></td><td class="d" id="dLig"></td></tr>
+    <tr id="dEnvRow" style="display:none"><td>Frais d'envoi</td><td class="d">—</td><td class="d">—</td><td class="d" id="dEnv"></td></tr>
+  </table>
+  <p class="d"><strong>Total à payer : <span id="dTot"></span></strong></p>
+  <p id="dTva" style="font-size:12px"></p>
+  <p style="font-size:12px">Devis valable 30 jours.</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
