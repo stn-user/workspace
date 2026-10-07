@@ -17,15 +17,17 @@
         </a>
 
         <nav class="site-nav desktop-nav" aria-label="Navigation principale">
-          <a class="site-nav__link" href="#accueil" aria-current="page">Accueil</a>
+          <a class="site-nav__link" href="#accueil">Accueil</a>
           <a class="site-nav__link" href="#outils">Outils</a>
+          <a class="site-nav__link" href="#presentation">Présentation</a>
         </nav>
 
         <details class="mobile-menu">
           <summary class="mobile-menu__summary">Menu</summary>
           <nav class="site-nav" aria-label="Navigation mobile">
-            <a class="site-nav__link" href="#accueil" aria-current="page">Accueil</a>
+            <a class="site-nav__link" href="#accueil">Accueil</a>
             <a class="site-nav__link" href="#outils">Outils</a>
+            <a class="site-nav__link" href="#presentation">Présentation</a>
           </nav>
         </details>
 
@@ -36,7 +38,7 @@
     <main>
       <section class="hero" id="accueil" aria-labelledby="welcome-title">
         <div class="hero__visual" aria-hidden="true">
-          <img src="assets/hero-impression-3d.png" alt="">
+          <img src="assets/hero-impression-3d.jpg" alt="" width="1365" height="768" fetchpriority="high">
         </div>
         <div class="hero__inner container">
           <div class="hero__copy">
@@ -190,6 +192,130 @@
           </div>
         </div>
       </section>
+
+      <section class="benefits-section" id="presentation" aria-labelledby="benefits-title">
+        <div class="benefits-layout container">
+          <div class="benefits-copy">
+            <p class="eyebrow">Du fichier au prix juste</p>
+            <h2 id="benefits-title">Mieux comprendre vos impressions, simplement.</h2>
+            <p class="benefits-intro">
+              3D Soft rassemble des outils pratiques pour vous aider à prendre de meilleures
+              décisions, sans vous perdre dans des réglages compliqués.
+            </p>
+
+            <ul class="benefit-list">
+              <li>
+                <span class="benefit-list__marker" aria-hidden="true">✓</span>
+                <span><strong>Un coût détaillé</strong><small>Matière, électricité, machine, temps de travail et marge.</small></span>
+              </li>
+              <li>
+                <span class="benefit-list__marker" aria-hidden="true">✓</span>
+                <span><strong>Des paramètres ajustables</strong><small>Adaptez le calcul à votre imprimante et à vos frais.</small></span>
+              </li>
+              <li>
+                <span class="benefit-list__marker" aria-hidden="true">✓</span>
+                <span><strong>Vos fichiers restent privés</strong><small>Le fichier .3mf est analysé directement dans votre navigateur.</small></span>
+              </li>
+            </ul>
+
+            <a class="button button--primary benefits-action" href="../tools/calculateur-3d/index.html">
+              Essayer le calculateur <span aria-hidden="true">→</span>
+            </a>
+          </div>
+
+          <div class="benefits-visual">
+            <div class="calculator-preview" aria-label="Aperçu illustratif du calculateur de coût">
+              <div class="calculator-preview__top">
+                <span class="calculator-preview__icon" aria-hidden="true">€</span>
+                <div>
+                  <p class="calculator-preview__eyebrow">Calculateur de coût</p>
+                  <h3>Une estimation claire</h3>
+                </div>
+                <span class="calculator-preview__badge">Exemple</span>
+              </div>
+
+              <div class="calculator-preview__project">
+                <span class="calculator-preview__project-icon" aria-hidden="true">⬡</span>
+                <span><strong>Votre pièce imprimée</strong><small>Coûts calculés à partir de votre fichier</small></span>
+              </div>
+
+              <ul class="calculator-preview__costs" aria-hidden="true">
+                <li><span>Matière &amp; énergie</span><span>pris en compte</span></li>
+                <li><span>Machine &amp; main d’œuvre</span><span>pris en compte</span></li>
+                <li><span>Marge &amp; quantité</span><span>à ajuster</span></li>
+              </ul>
+
+              <div class="calculator-preview__result">
+                <span>Prix de vente conseillé</span>
+                <strong>Selon vos réglages</strong>
+              </div>
+              <p class="calculator-preview__note">Aperçu illustratif — le résultat dépend de votre fichier et de vos paramètres.</p>
+            </div>
+            <span class="benefits-visual__caption">Un calcul que vous pouvez adapter à votre activité.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="final-cta" aria-labelledby="final-cta-title">
+        <div class="final-cta__inner container">
+          <div>
+            <p class="eyebrow">À vous de jouer</p>
+            <h2 id="final-cta-title">Prêt à lancer votre prochain projet 3D ?</h2>
+            <p>Choisissez un outil et avancez dès maintenant sur votre prochaine impression.</p>
+          </div>
+          <div class="final-cta__actions">
+            <a class="button button--light" href="#outils">Découvrir les outils <span aria-hidden="true">→</span></a>
+            <a class="final-cta__link" href="../tools/calculateur-3d/index.html">Calculer le coût d’une pièce</a>
+          </div>
+        </div>
+      </section>
     </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__main container">
+        <div class="site-footer__brand">
+          <a class="wordmark" href="#accueil" aria-label="3D Soft, retour à l’accueil">
+            <span class="wordmark__name">3D Soft</span>
+            <span class="wordmark__tagline">Diagnostic · Optimise · Imprime</span>
+          </a>
+          <p>Des outils pratiques pour mieux comprendre et réussir vos impressions 3D.</p>
+        </div>
+
+        <nav class="site-footer__nav" aria-label="Navigation de pied de page">
+          <h2>Explorer</h2>
+          <a href="#accueil">Accueil</a>
+          <a href="#outils">Tous les outils</a>
+          <a href="#presentation">À propos de 3D Soft</a>
+        </nav>
+
+        <nav class="site-footer__nav" aria-label="Outils disponibles">
+          <h2>Outils disponibles</h2>
+          <a href="../tools/3d-diag/index.html">3D Diag</a>
+          <a href="../tools/calculateur-3d/index.html">Calculateur de coût</a>
+        </nav>
+      </div>
+
+      <div class="site-footer__bottom">
+        <div class="container site-footer__bottom-inner">
+          <span>© 3D Soft</span>
+          <details class="site-legal" id="mentions-legales">
+            <summary>Mentions légales</summary>
+            <div class="site-legal__content">
+              <p><strong>Informations à compléter avant la mise en ligne publique :</strong> identité de l’éditeur, statut ou raison sociale, adresse et moyen de contact.</p>
+              <p><strong>Hébergement :</strong> à renseigner selon la solution d’hébergement retenue.</p>
+            </div>
+          </details>
+          <p class="site-footer__note">Les estimations des outils sont indicatives et dépendent des paramètres saisis.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      document.querySelectorAll(".mobile-menu .site-nav__link").forEach((link) => {
+        link.addEventListener("click", () => {
+          link.closest(".mobile-menu").open = false;
+        });
+      });
+    </script>
   </body>
 </html>
