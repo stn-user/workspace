@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f8ff">
+  <meta name="description" content="Prototype Famili-IA : posez une question et retrouvez une information dans des documents fictifs.">
+  <title>Recherche | Famili-IA</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Famili-IA, accueil">
+        <span class="brand-mark" aria-hidden="true">F</span>
+        <span>Famili-IA</span>
+      </a>
+      <div class="demo-status"><span class="status-dot"></span> Prototype — données fictives</div>
+      <button class="avatar" type="button" aria-label="Profil de démonstration">S</button>
+    </header>
+
+    <main class="search-page">
+      <nav class="breadcrumbs" aria-label="Fil d’Ariane">
+        <span>Accueil</span><span aria-hidden="true">/</span><strong>Recherche</strong>
+      </nav>
+
+      <section class="intro" aria-labelledby="page-title">
+        <div class="sparkle" aria-hidden="true">✦</div>
+        <p class="eyebrow">VOTRE ESPACE NUMÉRIQUE, ENFIN RETROUVÉ</p>
+        <h1 id="page-title">Que cherchez-vous&nbsp;?</h1>
+        <p class="intro-copy">Posez votre question simplement. Famili-IA retrouve l’information et vous indique dans quel document la vérifier.</p>
+      </section>
+
+      <form class="search-form" id="search-form" role="search">
+        <label class="visually-hidden" for="question">Votre question</label>
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="question" name="question" type="search" autocomplete="off" placeholder="Ex. : combien ai-je payé pour ma piscine ?" aria-describedby="privacy-note">
+        <button class="submit-button" type="submit"><span>Rechercher</span><span aria-hidden="true">→</span></button>
+      </form>
+      <p class="privacy-note" id="privacy-note"><span aria-hidden="true">♧</span> Démonstration locale par mots-clés : aucune connexion Google, aucune IA, rien n’est transmis ni enregistré.</p>
+
+      <section class="local-files" aria-labelledby="local-files-title">
+        <div class="local-files-copy">
+          <h2 id="local-files-title">Tester avec un fichier fictif</h2>
+          <p>Choisissez un fichier TXT ou Markdown. Son contenu reste dans cette page et disparaît quand vous la fermez.</p>
+          <div class="sample-links">
+            <a href="samples/facture-piscine.txt" download>Télécharger une facture fictive</a>
+            <a href="samples/garantie-pompe.txt" download>Télécharger une garantie fictive</a>
+          </div>
+        </div>
+        <div class="file-actions">
+          <input class="visually-hidden" id="local-files-input" type="file" accept=".txt,.md,text/plain,text/markdown" multiple>
+          <label class="file-picker" for="local-files-input">Choisir un fichier</label>
+          <button class="clear-files" id="clear-files" type="button" hidden>Retirer mes fichiers</button>
+        </div>
+        <p class="file-status" id="file-status" role="status" aria-live="polite">Jusqu’à 5 fichiers TXT ou MD, 1 Mo maximum chacun. N’utilisez pas de vrais documents personnels.</p>
+      </section>
+
+      <section class="suggestions" aria-labelledby="suggestions-title">
+        <div class="section-heading">
+          <h2 id="suggestions-title">Essayez une question</h2>
+          <span>Exemples de démonstration</span>
+        </div>
+        <div class="suggestion-list">
+          <button class="suggestion" type="button" data-question="Combien ai-je payé pour ma piscine ?"><span class="suggestion-icon">€</span>Combien ai-je payé pour ma piscine ?<span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+          <button class="suggestion" type="button" data-question="Jusqu’à quand la pompe de la piscine est-elle garantie ?"><span class="suggestion-icon">⌕</span>Jusqu’à quand la pompe de la piscine est-elle garantie ?<span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+          <button class="suggestion" type="button" data-question="Quel est le numéro de facture de la Bambu Lab A1 ?"><span class="suggestion-icon">▤</span>Quel est le numéro de facture de la Bambu Lab A1 ?<span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+          <button class="suggestion" type="button" data-question="Quand se termine mon contrat habitation ?"><span class="suggestion-icon">⌂</span>Quand se termine mon contrat habitation ?<span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+        </div>
+      </section>
+
+      <section class="results" id="results" aria-live="polite" aria-atomic="true" hidden>
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow">RÉSULTATS DE DÉMONSTRATION</p>
+            <h2 id="answer-title">Voici ce que j’ai trouvé</h2>
+          </div>
+          <span class="result-count" id="result-count"></span>
+        </div>
+        <article class="answer-card" id="answer-card">
+          <div class="answer-icon" aria-hidden="true">✦</div>
+          <div>
+            <p class="answer-label" id="answer-label">RÉPONSE SIMULÉE À PARTIR DES DOCUMENTS FICTIFS</p>
+            <p class="answer-text" id="answer-text"></p>
+          </div>
+        </article>
+        <div class="source-heading">
+          <h3>Documents sources</h3>
+          <span>Vérifiez l’information dans son contexte</span>
+        </div>
+        <div class="document-list" id="document-list"></div>
+      </section>
+      <p class="no-results" id="no-results" role="status" hidden>Aucun document correspondant. Essayez une question suggérée ou reformulez avec un mot-clé du document recherché.</p>
+
+      <footer class="page-footer">
+        <span class="footer-shield" aria-hidden="true">◇</span>
+        <span>Recherche locale de démonstration : aucun fichier n’est envoyé ni conservé après fermeture de la page.</span>
+      </footer>
+    </main>
+  </div>
+
+  <dialog class="source-dialog" id="source-dialog" aria-labelledby="dialog-title">
+    <div class="dialog-header">
+      <div>
+        <p class="eyebrow">DOCUMENT DE DÉMONSTRATION</p>
+        <h2 id="dialog-title"></h2>
+      </div>
+      <button class="close-button" id="close-dialog" type="button" aria-label="Fermer">×</button>
+    </div>
+    <p class="dialog-meta" id="dialog-meta"></p>
+    <p class="dialog-content" id="dialog-content"></p>
+    <div class="dialog-notice"><span aria-hidden="true">ⓘ</span> Ceci est un contenu d’exemple inventé pour le prototype. Aucun document Google Drive n’est connecté.</div>
+  </dialog>
+</body>
+</html>

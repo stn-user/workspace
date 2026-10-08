@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Famili-IA</string>
+    <string name="title_activity_main">Famili-IA</string>
+    <string name="package_name">fr.familiia.app</string>
+    <string name="custom_url_scheme">fr.familiia.app</string>
+</resources>
