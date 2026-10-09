@@ -8,7 +8,7 @@ const intentTerms = {
 
 const stopWords = new Set([
   "a", "ai", "au", "aux", "avec", "ce", "combien", "comment", "dans", "de", "des", "du", "elle",
-  "en", "est", "et", "la", "le", "les", "ma", "mes", "mon", "ou", "par", "pour", "que", "quel",
+  "en", "est", "et", "je", "la", "le", "les", "ma", "mes", "mon", "ou", "par", "pour", "que", "quel",
   "quelle", "quand", "qui", "quoi", "se", "son", "sur", "un", "une", "vos", "votre", "y", "a-t-il"
 ]);
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { detectQuestionIntent, extractExactFact, getQuestionTerms, getSearchMatch } from "./search-utils.js";
+import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch } from "./search-utils.js";
 
 const invoice = await readFile(new URL("./samples/facture-piscine.txt", import.meta.url), "utf8");
 const warranty = await readFile(new URL("./samples/garantie-pompe.txt", import.meta.url), "utf8");
@@ -29,6 +29,19 @@ test("requires a specific subject match instead of returning every invoice", () 
   assert.equal(getSearchMatch("montant facture électricité", invoice).score, 0);
   assert.equal(getSearchMatch("montant facture électricité", warranty).score, 0);
   assert.equal(getSearchMatch("montant facture électricité", maintenance).score, 0);
+});
+
+test("matches the suggested pool-invoice question against an imported synthetic invoice", () => {
+  const question = "Combien ai-je payé pour ma piscine ?";
+  const factKeywords = getIntentKeywords(detectQuestionIntent(question)).join(" ");
+  assert.deepEqual(
+    getSearchMatch(question, `${invoice} ${factKeywords}`).matchedTerms,
+    ["paye", "piscine"]
+  );
+  assert.equal(
+    extractExactFact(question, invoiceLines),
+    "Montant total : 8 900 euros TTC"
+  );
 });
 
 test("keeps typo tolerance for specific search terms", () => {
