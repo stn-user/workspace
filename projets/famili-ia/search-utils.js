@@ -12,6 +12,11 @@ const stopWords = new Set([
   "quelle", "quand", "qui", "quoi", "se", "son", "sur", "un", "une", "vos", "votre", "y", "a-t-il"
 ]);
 
+const genericSearchTerms = new Set([
+  "achat", "achats", "cout", "coute", "document", "documents", "facture", "factures", "fichier", "fichiers",
+  "montant", "payer", "paiement", "pdf", "prix", "total"
+]);
+
 const factLabels = {
   amount: ["montant total", "total a payer", "montant", "prix", "cout", "tarif", "somme", "total"],
   date: ["fin de garantie", "date de fin", "date d echeance", "echeance", "date d achat", "date d effet", "date de debut", "date", "expiration"],
@@ -43,6 +48,45 @@ export function getQuestionTerms(question) {
   return [...new Set(normalizeText(question).split(/\s+/).filter((term) => (
     term.length > 1 && !stopWords.has(term)
   )))];
+}
+
+function isCloseTermMatch(queryTerm, documentTerms) {
+  if (documentTerms.some((term) => term === queryTerm || term.startsWith(queryTerm) || queryTerm.startsWith(term))) {
+    return true;
+  }
+
+  if (queryTerm.length < 6) return false;
+  const maxDistance = queryTerm.length >= 9 ? 2 : 1;
+
+  return documentTerms.some((term) => {
+    if (Math.abs(term.length - queryTerm.length) > maxDistance) return false;
+
+    let previousRow = Array.from({ length: term.length + 1 }, (_, index) => index);
+    for (let queryIndex = 1; queryIndex <= queryTerm.length; queryIndex += 1) {
+      const currentRow = [queryIndex];
+      for (let termIndex = 1; termIndex <= term.length; termIndex += 1) {
+        currentRow[termIndex] = Math.min(
+          currentRow[termIndex - 1] + 1,
+          previousRow[termIndex] + 1,
+          previousRow[termIndex - 1] + Number(queryTerm[queryIndex - 1] !== term[termIndex - 1])
+        );
+      }
+      previousRow = currentRow;
+    }
+    return previousRow[term.length] <= maxDistance;
+  });
+}
+
+export function getSearchMatch(question, searchableText) {
+  const terms = getQuestionTerms(question);
+  if (terms.length === 0) return { matchedTerms: [], score: 0 };
+
+  const documentTerms = [...new Set(normalizeText(searchableText).split(/\s+/))];
+  const matchedTerms = terms.filter((term) => isCloseTermMatch(term, documentTerms));
+  const specificTerms = terms.filter((term) => !genericSearchTerms.has(term));
+  if (specificTerms.some((term) => !matchedTerms.includes(term))) return { matchedTerms: [], score: 0 };
+
+  return { matchedTerms, score: matchedTerms.length / terms.length };
 }
 
 export function getIntentKeywords(intent) {

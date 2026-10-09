@@ -136,15 +136,24 @@ h1 { margin-bottom: 10px; font-size: clamp(27px, 5vw, 36px); letter-spacing: -.0
 .sample-links a { color: #3969d7; font-size: 10px; text-decoration: none; }
 .sample-links a:hover { text-decoration: underline; }
 .file-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 7px; }
-.file-picker, .clear-files { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 8px 11px; color: #fff; background: #426ff0; border: 0; border-radius: 9px; cursor: pointer; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.file-picker, .drive-connect-button, .drive-picker-button, .clear-files { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 8px 11px; color: #fff; background: #426ff0; border: 0; border-radius: 9px; cursor: pointer; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .file-picker:hover { background: var(--blue-dark); }
+.file-picker:disabled { opacity: .55; cursor: not-allowed; }
+.drive-connect-button { color: #fff; background: #287558; }
+.drive-connect-button:hover:not(:disabled) { background: #1f6048; }
+.drive-connect-button:disabled { opacity: .55; cursor: not-allowed; }
+.drive-picker-button { color: #3564db; background: #edf3ff; }
+.drive-picker-button:hover { background: #e1ebff; }
 .clear-files { color: #596b8b; background: #edf1f8; }
 .clear-files:hover { background: #e2e8f2; }
-.file-picker:focus-within, .clear-files:focus-visible, .sample-links a:focus-visible { outline: 3px solid #9bb5ff; outline-offset: 3px; }
+.file-picker:focus-within, .drive-connect-button:focus-visible, .drive-picker-button:focus-visible, .clear-files:focus-visible, .sample-links a:focus-visible { outline: 3px solid #9bb5ff; outline-offset: 3px; }
 #local-files-input:focus-visible + .file-picker { outline: 3px solid #9bb5ff; outline-offset: 3px; }
 .file-status { grid-column: 1 / -1; margin: 0; color: #8390a5; font-size: 10px; line-height: 1.5; }
 .file-status[data-state="error"] { color: #b44444; }
 .file-status[data-state="success"] { color: #327b61; }
+.drive-connection-status { grid-column: 1 / -1; margin: -5px 0 0; color: #6e7d96; font-size: 10px; line-height: 1.5; }
+.drive-connection-status[data-state="error"] { color: #b44444; }
+.drive-connection-status[data-state="success"] { color: #327b61; }
 
 .suggestions { margin-top: 42px; }
 .section-heading, .source-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -202,7 +211,20 @@ h1 { margin-bottom: 10px; font-size: clamp(27px, 5vw, 36px); letter-spacing: -.0
 .dialog-meta { margin: 14px 0; color: #8290a5; font-size: 11px; }
 .dialog-content { padding: 16px; color: #435575; background: #f7f9fd; border: 1px solid #ebeff6; border-radius: 12px; font-size: 13px; line-height: 1.75; white-space: pre-line; }
 .dialog-notice { display: flex; gap: 8px; align-items: flex-start; margin-top: 14px; color: #6e7d96; font-size: 10px; line-height: 1.5; }
-.dialog-notice span { color: var(--blue); }
+.dialog-notice > span:first-child { color: var(--blue); }
+.drive-picker-dialog { max-height: min(680px, calc(100% - 32px)); overflow: auto; }
+.drive-picker-warning { padding: 11px; background: #f5f8ff; border-radius: 10px; }
+.drive-picker-list { display: grid; gap: 8px; margin-top: 16px; }
+.drive-picker-option { display: flex; align-items: center; gap: 11px; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 11px; cursor: pointer; }
+.drive-picker-option:has(input:checked) { border-color: #9db7ff; background: #f6f8ff; }
+.drive-picker-option input { accent-color: var(--blue); }
+.drive-picker-copy { display: grid; gap: 4px; }
+.drive-picker-copy strong { color: #2c3e60; font-size: 11px; }
+.drive-picker-copy small { color: #8a96aa; font-size: 10px; }
+.drive-picker-status { min-height: 1.5em; margin-top: 10px; }
+.drive-picker-status[data-state="error"] { color: #b44444; }
+.drive-picker-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.drive-picker-actions .clear-files { min-height: 34px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); border: 0; }
 [hidden] { display: none !important; }
 

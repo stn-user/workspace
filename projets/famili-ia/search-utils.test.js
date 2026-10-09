@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { detectQuestionIntent, extractExactFact, getQuestionTerms } from "./search-utils.js";
+import { detectQuestionIntent, extractExactFact, getQuestionTerms, getSearchMatch } from "./search-utils.js";
 
 const invoice = await readFile(new URL("./samples/facture-piscine.txt", import.meta.url), "utf8");
 const warranty = await readFile(new URL("./samples/garantie-pompe.txt", import.meta.url), "utf8");
@@ -21,6 +21,21 @@ test("detects factual question intents without a remote AI", () => {
 
 test("normalizes accented search terms for deterministic matching", () => {
   assert.deepEqual(getQuestionTerms("Combien a coûté la piscine ?"), ["coute", "piscine"]);
+});
+
+test("requires a specific subject match instead of returning every invoice", () => {
+  const poolInvoice = getSearchMatch("montant facture piscine", invoice);
+  assert.deepEqual(poolInvoice.matchedTerms, ["montant", "facture", "piscine"]);
+  assert.equal(getSearchMatch("montant facture électricité", invoice).score, 0);
+  assert.equal(getSearchMatch("montant facture électricité", warranty).score, 0);
+  assert.equal(getSearchMatch("montant facture électricité", maintenance).score, 0);
+});
+
+test("keeps typo tolerance for specific search terms", () => {
+  assert.deepEqual(
+    getSearchMatch("garentie pompe", warranty).matchedTerms,
+    ["garentie", "pompe"]
+  );
 });
 
 test("extracts and quotes the amount line from the selected text file", () => {

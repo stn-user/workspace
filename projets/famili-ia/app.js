@@ -1,4 +1,14 @@
-import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, normalizeText } from "./search-utils.js";
+import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch, normalizeText } from "./search-utils.js";
+import { GoogleDriveClient } from "./google-drive.js";
+import { Capacitor } from "@capacitor/core";
+
+const googleDriveConfig = {
+  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+  apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+  appId: import.meta.env.VITE_GOOGLE_APP_ID
+};
+const hasGoogleDriveConfig = Object.values(googleDriveConfig).every((value) => typeof value === "string" && value.trim());
+const isNativePlatform = Capacitor.isNativePlatform();
 
 const documents = [
   {
@@ -48,9 +58,12 @@ const documents = [
   }
 ];
 
+const driveDemoDocuments = documents.slice(0, 3);
 const uploadedDocuments = [];
 const maxFiles = 5;
-const maxFileSize = 1024 * 1024;
+const maxTextFileSize = 1024 * 1024;
+const maxPdfFileSize = 10 * 1024 * 1024;
+const maxPdfPages = 20;
 const form = document.querySelector("#search-form");
 const input = document.querySelector("#question");
 const results = document.querySelector("#results");
@@ -63,9 +76,40 @@ const sourceDialog = document.querySelector("#source-dialog");
 const dialogTitle = document.querySelector("#dialog-title");
 const dialogMeta = document.querySelector("#dialog-meta");
 const dialogContent = document.querySelector("#dialog-content");
+const dialogEyebrow = document.querySelector("#dialog-eyebrow");
+const dialogNoticeText = document.querySelector("#dialog-notice-text");
 const localFilesInput = document.querySelector("#local-files-input");
 const clearFilesButton = document.querySelector("#clear-files");
 const fileStatus = document.querySelector("#file-status");
+const drivePickerDialog = document.querySelector("#drive-picker-dialog");
+const drivePickerList = document.querySelector("#drive-picker-list");
+const drivePickerStatus = document.querySelector("#drive-picker-status");
+const confirmDrivePickerButton = document.querySelector("#confirm-drive-picker");
+const connectGoogleDriveButton = document.querySelector("#connect-google-drive");
+const disconnectGoogleDriveButton = document.querySelector("#disconnect-google-drive");
+const driveConnectionStatus = document.querySelector("#drive-connection-status");
+const googleDriveClient = hasGoogleDriveConfig && !isNativePlatform ? new GoogleDriveClient(googleDriveConfig) : null;
+let googleDriveReady = false;
+const demoStatusLabel = document.querySelector("#demo-status-label");
+const sidebarModeCopy = document.querySelector("#sidebar-mode-copy");
+
+function updateModeBanner() {
+  const hasDriveFiles = uploadedDocuments.some((file) => file.driveSource);
+  const hasLocalFiles = uploadedDocuments.some((file) => file.isLocal && !file.driveDemo && !file.driveSource);
+  if (hasDriveFiles) {
+    demoStatusLabel.textContent = "Drive de test — contenu en mémoire locale";
+    sidebarModeCopy.textContent = "Fichiers choisis manuellement ; aucune IA ni serveur Famili-IA.";
+  } else if (hasLocalFiles) {
+    demoStatusLabel.textContent = "Prototype — fichiers locaux";
+    sidebarModeCopy.textContent = "Fichiers choisis depuis cet appareil et traités localement.";
+  } else if (googleDriveReady) {
+    demoStatusLabel.textContent = "Prototype — Drive facultatif";
+    sidebarModeCopy.textContent = "Aucun fichier Drive n’est lu sans votre sélection explicite.";
+  } else {
+    demoStatusLabel.textContent = "Prototype — données fictives";
+    sidebarModeCopy.textContent = "Exemples inventés, sans connexion à vos services.";
+  }
+}
 
 function getQueryTerms(question) {
   return getQuestionTerms(question);
@@ -79,11 +123,11 @@ function findDocuments(question) {
   return searchableDocuments
     .map((document) => {
       const searchable = normalizeText(`${document.name} ${document.type} ${document.keywords} ${document.content}`);
-      const matchedTerms = terms.filter((term) => searchable.includes(term));
       const lines = document.content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
       const exactFact = document.isLocal ? extractExactFact(question, lines) : null;
       const factKeywords = exactFact ? getIntentKeywords(detectQuestionIntent(question)).join(" ") : "";
       const searchableWithIntent = `${searchable} ${factKeywords}`;
+      const match = getSearchMatch(question, searchableWithIntent);
       const excerpt = lines
         .map((line) => ({ line, matches: terms.filter((term) => normalizeText(line).includes(term)).length }))
         .filter((line) => line.matches > 0)
@@ -91,8 +135,7 @@ function findDocuments(question) {
         .slice(0, 3)
         .map(({ line }) => line.length > 280 ? `${line.slice(0, 277)}...` : line)
         .join(" … ");
-      const allMatchedTerms = terms.filter((term) => searchableWithIntent.includes(term));
-      return { document, score: allMatchedTerms.length / terms.length, matchedTerms: allMatchedTerms.length, excerpt, exactFact };
+      return { document, score: match.score, matchedTerms: match.matchedTerms.length, excerpt, exactFact };
     })
     .filter((result) => result.matchedTerms > 0 && result.score >= 0.6)
     .sort((a, b) => b.score - a.score || b.matchedTerms - a.matchedTerms)
@@ -119,7 +162,11 @@ function renderDocuments(matches) {
     const info = document.createElement("div");
     info.className = "document-info";
     addTextElement(info, "p", "document-name", sourceDocument.name);
-    const origin = sourceDocument.isLocal ? "Fichier local · non transmis" : "Exemple fictif";
+    const origin = sourceDocument.driveSource
+      ? "Google Drive · copie temporaire locale"
+      : sourceDocument.driveDemo
+        ? "Sélection Google Drive simulée · fichier fictif"
+        : sourceDocument.isLocal ? "Fichier local · non transmis" : "Exemple fictif";
     addTextElement(info, "p", "document-meta", `${sourceDocument.type} · ${sourceDocument.date} · ${origin}`);
     card.append(info);
 
@@ -131,10 +178,24 @@ function renderDocuments(matches) {
 }
 
 function openSource(document) {
+  dialogEyebrow.textContent = document.driveSource
+    ? "FICHIER CHOISI DANS GOOGLE DRIVE"
+    : document.isLocal ? "FICHIER DE CETTE SESSION" : "DOCUMENT DE DÉMONSTRATION";
   dialogTitle.textContent = document.name;
   dialogMeta.textContent = document.isLocal
-    ? `${document.type} · chargé localement pour cette session`
+    ? document.driveSource
+      ? `${document.type} · téléchargé directement depuis Google et conservé en mémoire locale${document.date ? ` · modifié le ${document.date}` : ""}`
+      : document.driveDemo
+        ? `${document.type} · exemple fictif copié dans cette session`
+        : `${document.type} · chargé localement pour cette session`
     : `${document.type} · ${document.date} · Source de démonstration`;
+  dialogNoticeText.textContent = document.driveSource
+    ? "Fichier explicitement choisi dans Google Picker. Le contenu est conservé en mémoire dans ce navigateur et n’est envoyé ni à un serveur Famili-IA ni à une IA."
+    : document.driveDemo
+      ? "Ceci est un contenu fictif. Aucun compte Google n’est connecté et aucun fichier Drive réel n’a été consulté."
+      : document.isLocal
+        ? "Fichier choisi depuis cet appareil. Le contenu est traité localement et n’est pas transmis."
+        : "Ceci est un contenu d’exemple inventé pour le prototype.";
   dialogContent.textContent = document.content;
   sourceDialog.showModal();
 }
@@ -173,6 +234,20 @@ function setFileStatus(message, state) {
   else delete fileStatus.dataset.state;
 }
 
+function setDriveConnectionStatus(message, state) {
+  driveConnectionStatus.textContent = message;
+  if (state) driveConnectionStatus.dataset.state = state;
+  else delete driveConnectionStatus.dataset.state;
+}
+
+function updateDriveConnectionActions() {
+  disconnectGoogleDriveButton.hidden = !googleDriveClient?.hasAccessToken;
+}
+
+function updateGoogleDriveButton() {
+  connectGoogleDriveButton.disabled = !googleDriveReady || uploadedDocuments.length >= maxFiles;
+}
+
 async function loadLocalFiles(files) {
   const selectedFiles = [...files];
   if (selectedFiles.length === 0) return;
@@ -184,9 +259,14 @@ async function loadLocalFiles(files) {
     return;
   }
 
-  const oversizedFile = selectedFiles.find((file) => file.size > maxFileSize);
+  const oversizedFile = selectedFiles.find((file) => {
+    const maxFileSize = file.name.toLocaleLowerCase("fr").endsWith(".pdf") ? maxPdfFileSize : maxTextFileSize;
+    return file.size > maxFileSize;
+  });
   if (oversizedFile) {
-    setFileStatus(`« ${oversizedFile.name} » dépasse la limite de 1 Mo. Aucun fichier de cette sélection n’a été ajouté.`, "error");
+    const isPdf = oversizedFile.name.toLocaleLowerCase("fr").endsWith(".pdf");
+    const limit = isPdf ? "10 Mo" : "1 Mo";
+    setFileStatus(`« ${oversizedFile.name} » dépasse la limite de ${limit}. Aucun fichier de cette sélection n’a été ajouté.`, "error");
     localFilesInput.value = "";
     return;
   }
@@ -215,6 +295,8 @@ async function loadLocalFiles(files) {
 
     uploadedDocuments.push(...loaded);
     clearFilesButton.hidden = false;
+    updateGoogleDriveButton();
+    updateModeBanner();
     const count = uploadedDocuments.length;
     setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session ; rien n’est envoyé ni conservé après fermeture.`, "success");
   } catch (error) {
@@ -224,6 +306,142 @@ async function loadLocalFiles(files) {
     localFilesInput.value = "";
   }
 }
+
+function renderDrivePickerOptions() {
+  drivePickerList.replaceChildren();
+  drivePickerStatus.textContent = "";
+  const selectedDemoIds = new Set(uploadedDocuments.filter((document) => document.driveDemo).map((document) => document.driveDemoId));
+
+  driveDemoDocuments.forEach((sampleDocument) => {
+    const label = document.createElement("label");
+    label.className = "drive-picker-option";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.name = "drive-demo-file";
+    checkbox.value = sampleDocument.id;
+    checkbox.disabled = selectedDemoIds.has(sampleDocument.id);
+    checkbox.checked = checkbox.disabled;
+
+    const copy = document.createElement("span");
+    copy.className = "drive-picker-copy";
+    addTextElement(copy, "strong", "", sampleDocument.name);
+    addTextElement(copy, "small", "", `${sampleDocument.type} · ${sampleDocument.date}${checkbox.disabled ? " · déjà ajouté" : ""}`);
+    label.append(checkbox, copy);
+    drivePickerList.append(label);
+  });
+
+  updateDrivePickerCount();
+}
+
+function updateDrivePickerCount() {
+  const selectedCount = drivePickerList.querySelectorAll('input[name="drive-demo-file"]:checked:not(:disabled)').length;
+  const remainingCount = maxFiles - uploadedDocuments.length;
+  drivePickerStatus.textContent = `${selectedCount} sélectionné${selectedCount === 1 ? "" : "s"} · ${remainingCount} emplacement${remainingCount === 1 ? "" : "s"} disponible${remainingCount === 1 ? "" : "s"} dans cette session.`;
+  confirmDrivePickerButton.disabled = remainingCount === 0 || selectedCount === 0;
+}
+
+if (googleDriveClient) {
+  setDriveConnectionStatus("Chargement des bibliothèques Google. Aucun accès aux fichiers n’est demandé avant votre action.", "success");
+  googleDriveClient.initialize().then(() => {
+    googleDriveReady = true;
+    updateGoogleDriveButton();
+    updateModeBanner();
+    setDriveConnectionStatus("Prêt. « Connecter Google Drive » demandera uniquement l’accès drive.file et ouvrira le sélecteur officiel.", "success");
+  }).catch((error) => {
+    setDriveConnectionStatus(`Connexion Google indisponible : ${error.message}`, "error");
+  });
+} else {
+  connectGoogleDriveButton.disabled = true;
+  if (isNativePlatform) {
+    setDriveConnectionStatus("Le flux OAuth/Picker configuré ici est réservé au navigateur web ; il ne doit pas être lancé dans la WebView mobile.", "error");
+  }
+}
+
+connectGoogleDriveButton.addEventListener("click", async () => {
+  const remainingCount = maxFiles - uploadedDocuments.length;
+  if (!googleDriveClient || remainingCount < 1) {
+    setDriveConnectionStatus("La limite de cinq fichiers par session est atteinte. Retirez des fichiers avant d’en choisir d’autres.", "error");
+    return;
+  }
+
+  connectGoogleDriveButton.disabled = true;
+  setDriveConnectionStatus("Ouverture de l’autorisation Google. Vous pouvez annuler avant de choisir des fichiers.", "success");
+  try {
+    const loadedFiles = await googleDriveClient.pickFiles(remainingCount);
+    if (loadedFiles.length === 0) {
+      setDriveConnectionStatus("Sélection annulée. Aucun fichier n’a été lu.", "success");
+      return;
+    }
+
+    const existingDriveIds = new Set(uploadedDocuments.filter((document) => document.driveSource).map((document) => document.id));
+    const newFiles = loadedFiles.filter((file) => !existingDriveIds.has(file.id));
+    if (newFiles.length === 0) {
+      setDriveConnectionStatus("Ces fichiers Drive sont déjà présents dans cette session.", "success");
+      return;
+    }
+
+    uploadedDocuments.push(...newFiles);
+    clearFilesButton.hidden = false;
+    updateGoogleDriveButton();
+    updateModeBanner();
+    setFileStatus(
+      `${newFiles.length} fichier${newFiles.length === 1 ? "" : "s"} Drive chargé${newFiles.length === 1 ? "" : "s"} en mémoire locale. Aucun serveur Famili-IA ni IA n’a reçu leur contenu.`,
+      "success"
+    );
+    setDriveConnectionStatus("Fichiers choisis et chargés en mémoire pour cette session. « Retirer mes fichiers » effacera le contenu et révoquera l’autorisation.", "success");
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Erreur Google non détaillée.";
+    setDriveConnectionStatus(`La sélection Drive a échoué : ${reason}`, "error");
+  } finally {
+    updateGoogleDriveButton();
+    updateDriveConnectionActions();
+  }
+});
+
+document.querySelector("#open-drive-picker").addEventListener("click", () => {
+  renderDrivePickerOptions();
+  drivePickerDialog.showModal();
+});
+
+drivePickerList.addEventListener("change", updateDrivePickerCount);
+document.querySelector("#close-drive-picker").addEventListener("click", () => drivePickerDialog.close());
+document.querySelector("#cancel-drive-picker").addEventListener("click", () => drivePickerDialog.close());
+drivePickerDialog.addEventListener("click", (event) => {
+  if (event.target === drivePickerDialog) drivePickerDialog.close();
+});
+confirmDrivePickerButton.addEventListener("click", () => {
+  const selectedIds = new Set(
+    [...drivePickerList.querySelectorAll('input[name="drive-demo-file"]:checked:not(:disabled)')].map((checkbox) => checkbox.value)
+  );
+  if (selectedIds.size === 0) {
+    drivePickerStatus.textContent = "Sélectionnez au moins un fichier fictif.";
+    return;
+  }
+
+  if (uploadedDocuments.length + selectedIds.size > maxFiles) {
+    drivePickerStatus.textContent = `La limite de ${maxFiles} fichiers par session serait dépassée.`;
+    return;
+  }
+
+  const selectedDocuments = driveDemoDocuments
+    .filter((document) => selectedIds.has(document.id))
+    .map((document) => ({
+      ...document,
+      id: `drive-demo-${document.id}`,
+      driveDemo: true,
+      driveDemoId: document.id,
+      isLocal: true
+    }));
+  uploadedDocuments.push(...selectedDocuments);
+  clearFilesButton.hidden = false;
+  updateGoogleDriveButton();
+  updateModeBanner();
+  setFileStatus(
+    `${selectedDocuments.length} fichier${selectedDocuments.length === 1 ? "" : "s"} fictif${selectedDocuments.length === 1 ? "" : "s"} ajouté${selectedDocuments.length === 1 ? "" : "s"} à la session. Aucun compte Google n’est connecté et aucun fichier Drive n’a été consulté.`,
+    "success"
+  );
+  drivePickerDialog.close();
+});
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -242,14 +460,38 @@ localFilesInput.addEventListener("change", () => {
   loadLocalFiles(localFilesInput.files);
 });
 
-clearFilesButton.addEventListener("click", () => {
+async function clearSessionFiles() {
+  const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
   uploadedDocuments.length = 0;
+  if (sourceDialog.open) sourceDialog.close();
+  dialogTitle.textContent = "";
+  dialogMeta.textContent = "";
+  dialogContent.textContent = "";
   clearFilesButton.hidden = true;
   documentList.replaceChildren();
+  answerText.textContent = "";
+  resultCount.textContent = "";
   results.hidden = true;
   noResults.hidden = true;
   setFileStatus("Fichiers locaux retirés de cette page.", "success");
-});
+  if (localFilesInput) localFilesInput.value = "";
+  updateGoogleDriveButton();
+  updateModeBanner();
+  if (shouldRevokeGoogleAccess) {
+    try {
+      await googleDriveClient.revoke();
+      setDriveConnectionStatus("Fichiers retirés de la mémoire locale et autorisation Google révoquée.", "success");
+    } catch (error) {
+      setDriveConnectionStatus(`Fichiers retirés localement, mais révocation Google non confirmée : ${error.message}`, "error");
+    }
+  } else {
+    setDriveConnectionStatus("Fichiers retirés de la mémoire locale. Aucun jeton Google n’était actif.", "success");
+  }
+  updateDriveConnectionActions();
+}
+
+clearFilesButton.addEventListener("click", clearSessionFiles);
+disconnectGoogleDriveButton.addEventListener("click", clearSessionFiles);
 
 document.querySelector("#close-dialog").addEventListener("click", () => sourceDialog.close());
 sourceDialog.addEventListener("click", (event) => {
@@ -267,9 +509,14 @@ const pageTitles = {
 };
 const toast = document.querySelector("#toast-message");
 let toastTimeout;
+let activeView = "accueil";
 
-function showView(name) {
+function showView(name, { addHistory = true } = {}) {
   if (!Object.hasOwn(pageTitles, name)) return;
+  if (addHistory && activeView !== name) {
+    window.history.pushState({ view: name }, "", `#${name}`);
+  }
+  activeView = name;
 
   views.forEach((view) => {
     view.hidden = view.dataset.view !== name;
@@ -283,6 +530,11 @@ function showView(name) {
   document.title = `${pageTitles[name]} | Famili-IA`;
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+window.addEventListener("popstate", (event) => {
+  const view = event.state?.view ?? window.location.hash.slice(1);
+  showView(Object.hasOwn(pageTitles, view) ? view : "accueil", { addHistory: false });
+});
 
 function showDemoNotice(message = "Cette fonction est illustrée par des données fictives ; aucun compte réel n’est connecté.") {
   toast.textContent = message;
@@ -298,7 +550,10 @@ navigationButtons.forEach((button) => {
 });
 
 document.querySelectorAll("[data-open-view]").forEach((button) => {
-  button.addEventListener("click", () => showView(button.dataset.openView));
+  button.addEventListener("click", (event) => {
+    if (button instanceof HTMLAnchorElement) event.preventDefault();
+    showView(button.dataset.openView);
+  });
 });
 
 document.querySelectorAll("[data-demo-action]").forEach((button) => {
@@ -347,4 +602,6 @@ document.querySelector("#mark-alerts-read").addEventListener("click", (event) =>
   event.currentTarget.disabled = true;
 });
 
-showView("accueil");
+const initialView = window.location.hash.slice(1);
+showView(Object.hasOwn(pageTitles, initialView) ? initialView : "accueil", { addHistory: false });
+window.history.replaceState({ view: activeView }, "", `#${activeView}`);

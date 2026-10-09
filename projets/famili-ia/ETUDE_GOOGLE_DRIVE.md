@@ -1,6 +1,6 @@
 # Étude préliminaire — Google Drive
 
-**Vérifiée le : 8 octobre 2026**  
+**Vérifiée le : 9 octobre 2026**
 **Objet :** faisabilité du parcours « poser une question et retrouver l’information dans Google Drive », avec un principe de permissions minimales.
 
 Cette note est un cadrage technique fondé sur la documentation Google, pas un avis juridique ni une confirmation préalable de l’éligibilité de Famili-IA à une portée OAuth donnée. Google peut modifier ses règles, seuils et processus ; ils devront être revérifiés avant une intégration et avant le lancement.
@@ -26,7 +26,7 @@ Cette note est un cadrage technique fondé sur la documentation Google, pas un a
 
 **Décision produit à prendre avant l’intégration :** est-ce acceptable de demander à l’utilisateur de choisir les fichiers à interroger, ou la promesse nécessite-t-elle de chercher immédiatement dans l’ensemble de son Drive ? La seconde option implique un accès beaucoup plus large et un parcours de vérification plus lourd.
 
-**Orientation retenue pour le MVP (8 octobre 2026) :** commencer avec Google Picker et l’accès limité aux fichiers choisis (`drive.file`), sans recherche automatique dans tout le Drive. Cette décision reste conditionnée à la validation des méthodes API, formats et exigences OAuth exacts avant toute connexion réelle.
+**Orientation retenue pour le MVP (8 octobre 2026) :** commencer avec Google Picker et l’accès limité aux fichiers choisis (`drive.file`), sans recherche automatique dans tout le Drive. Les méthodes API, formats et exigences OAuth doivent être validés avant tout pilote ou traitement de données personnelles ; une preuve de développement peut uniquement tester le flux web avec des fichiers synthétiques explicitement sélectionnés et le scope minimal.
 
 La comparaison avec Google Photos, OneDrive, Dropbox et iCloud est documentée dans [ETUDE_FAISABILITE_CLOUDS.md](./ETUDE_FAISABILITE_CLOUDS.md).
 
@@ -84,3 +84,34 @@ Cette estimation ne couvre pas l’hébergement, la base de données, les servic
 - [Vérification des portées OAuth restreintes et évaluation de sécurité](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification)
 - [Politique relative aux données utilisateur des API Google](https://developers.google.com/terms/api-services-user-data-policy)
 - [Quotas et seuils de l’API Drive](https://developers.google.com/workspace/drive/api/guides/limits)
+
+## Parcours local de démonstration — 9 octobre 2026
+
+Le bouton « Drive (démo) » présente trois documents synthétiques. Les exemples sélectionnés sont ajoutés à l’index mémoire local pour tester le parcours de sélection et de recherche. L’interface avertit qu’aucun compte n’est connecté et qu’aucun fichier Drive réel n’est consulté ou téléchargé.
+
+Ce parcours fictif reste distinct du flux web réel décrit ci-dessous : il n’utilise pas le SDK Google Picker, OAuth, une portée `drive.file`, ni des requêtes réseau. Il ne prouve pas l’éligibilité des scopes, la compatibilité des méthodes d’API ou la conformité du parcours réel.
+
+## Première connexion réelle depuis le navigateur — préparation locale
+
+Un parcours web réel est maintenant implémenté derrière le bouton « Connecter Google Drive », distinct de la démo fictive. Il demande uniquement `https://www.googleapis.com/auth/drive.file`, déclenche OAuth à la suite du clic, puis ouvre le Google Picker officiel. L’application ne demande pas `drive.readonly`, ne parcourt pas le Drive et ne traite que les identifiants remis par le Picker. Les types sont limités aux PDF, TXT, Markdown et Google Docs (exportés en texte brut). Le contenu est récupéré directement par le navigateur depuis l’API Google, puis gardé en mémoire pour la session ; aucun backend Famili-IA, journal de contenu ou service d’IA n’est utilisé. La limite existante s’applique : 10 Mo/20 pages pour PDF, 1 Mo pour les textes. Les PDF scannés restent non pris en charge en web sans OCR natif. Ce flux est réservé au navigateur web : il est bloqué dans la WebView Capacitor ; l’intégration mobile native devra utiliser le parcours OAuth système approprié plutôt que d’embarquer le Picker web.
+
+Le jeton d’accès reste en mémoire JavaScript uniquement ; il n’est pas écrit dans `localStorage`, un cookie ou un fichier. « Retirer mes fichiers » efface les données de session et demande à Google de révoquer l’autorisation ; si Google ne confirme pas cette révocation, l’interface le signale. La révocation reste aussi disponible depuis les paramètres de sécurité du compte Google.
+
+### Configuration préalable dans Google Cloud
+
+1. Créer ou choisir un projet Google Cloud dédié au prototype et activer Google Drive API et Google Picker API.
+2. Configurer l’écran de consentement OAuth en mode test et ajouter le compte Google qui servira au test comme utilisateur de test. N’utiliser que des fichiers synthétiques sélectionnés spécifiquement ; ne pas choisir « tout le Drive » ni des documents personnels.
+3. Créer un identifiant OAuth de type **Application Web** avec origine JavaScript autorisée `http://localhost:5173`. Le client secret n’est pas nécessaire et ne doit jamais être placé dans l’application web.
+4. Créer une clé API, restreindre son référent HTTP à `http://localhost:5173/*` et limiter les API autorisées à Google Picker API lorsque cette restriction est disponible.
+5. Relever le numéro du projet Google Cloud, requis par Picker comme `appId`.
+6. Copier `.env.example` vers `.env.local` et renseigner `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` et `VITE_GOOGLE_APP_ID`. Ces valeurs de navigateur ne sont pas des secrets ; conserver quand même la clé API restreinte. `.env.local` est ignoré par Git. Ne jamais ajouter de client secret ou jeton OAuth.
+7. Redémarrer Vite, puis ouvrir `http://localhost:5173/#recherche` sur le même ordinateur. Les origines `localhost` sont prévues pour le développement web local ; ne pas utiliser l’adresse IP HTTP du réseau local pour l’autorisation OAuth.
+8. Cliquer explicitement sur « Connecter Google Drive », vérifier le nom de la portée `drive.file`, puis sélectionner un unique PDF/TXT/Markdown synthétique ou Google Doc fabriqué pour le test. Vérifier l’extraction, la provenance et le retrait/révocation.
+
+**Test depuis un iPhone sur le réseau local :** `localhost` désigne l’appareil qui ouvre l’URL. Sur l’iPhone, l’application utilise donc l’origine de l’ordinateur, par exemple `http://192.168.0.24:5173`, qui ne correspond pas à `http://localhost:5173` et provoque l’erreur Google `400: origin_mismatch`. Ne pas ajouter cette origine HTTP LAN pour contourner l’erreur. Pour tester sur iPhone, servir l’application depuis une origine HTTPS accessible au téléphone (hébergement HTTPS de test ou tunnel HTTPS temporaire), puis ajouter cette origine exacte aux origines JavaScript autorisées du client OAuth et son référent HTTPS à la restriction de la clé API. Révoquer ou retirer ces autorisations de test et fermer l’accès temporaire après l’essai. N’utiliser que des fichiers synthétiques ; ne pas exposer le serveur de développement à Internet sans protection.
+
+Lorsque la configuration est présente, les bibliothèques publiques Google sont chargées au démarrage de la page ; aucun consentement ni accès aux fichiers ne survient avant le clic explicite. Si une autorisation est refusée ou si un identifiant manque, l’interface affiche l’erreur et ne retombe pas silencieusement sur des données fictives. Tant que les identifiants ne sont pas renseignés, le vrai bouton reste désactivé ; le sélecteur de démonstration fictif reste distinct.
+
+### Limites et critères de cette preuve
+
+Ce test démontre uniquement qu’une application web locale peut obtenir, après consentement, un accès `drive.file` à un fichier choisi et en lire certains formats. Il ne valide pas l’accès à toute la bibliothèque, la viabilité commerciale, la publication OAuth, la conformité juridique, la version iOS/Android native, ni l’OCR des scans. Le contenu choisi est transmis directement par le navigateur à Google pour OAuth/Picker/lecture ; il n’est pas transmis à Famili-IA ou à un fournisseur d’IA. Google traite nécessairement les opérations de compte/API selon ses propres règles.
