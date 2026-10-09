@@ -255,3 +255,96 @@ document.querySelector("#close-dialog").addEventListener("click", () => sourceDi
 sourceDialog.addEventListener("click", (event) => {
   if (event.target === sourceDialog) sourceDialog.close();
 });
+
+const views = [...document.querySelectorAll("[data-view]")];
+const navigationButtons = [...document.querySelectorAll("[data-nav]")];
+const pageTitles = {
+  accueil: "Accueil",
+  recherche: "Recherche",
+  maison: "Maison",
+  famille: "Famille",
+  alertes: "Alertes"
+};
+const toast = document.querySelector("#toast-message");
+let toastTimeout;
+
+function showView(name) {
+  if (!Object.hasOwn(pageTitles, name)) return;
+
+  views.forEach((view) => {
+    view.hidden = view.dataset.view !== name;
+  });
+  navigationButtons.forEach((button) => {
+    const isActive = button.dataset.nav === name;
+    button.classList.toggle("is-active", isActive);
+    if (isActive) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+  document.title = `${pageTitles[name]} | Famili-IA`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showDemoNotice(message = "Cette fonction est illustrée par des données fictives ; aucun compte réel n’est connecté.") {
+  toast.textContent = message;
+  toast.hidden = false;
+  window.clearTimeout(toastTimeout);
+  toastTimeout = window.setTimeout(() => {
+    toast.hidden = true;
+  }, 3500);
+}
+
+navigationButtons.forEach((button) => {
+  button.addEventListener("click", () => showView(button.dataset.nav));
+});
+
+document.querySelectorAll("[data-open-view]").forEach((button) => {
+  button.addEventListener("click", () => showView(button.dataset.openView));
+});
+
+document.querySelectorAll("[data-demo-action]").forEach((button) => {
+  button.addEventListener("click", () => showDemoNotice());
+});
+
+document.querySelector("#quick-search-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const question = document.querySelector("#quick-question").value.trim();
+  showView("recherche");
+  input.value = question;
+  input.focus();
+  if (question) search(question);
+});
+
+document.querySelectorAll("[data-house-category]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const category = button.dataset.houseCategory;
+    document.querySelectorAll("[data-house-category]").forEach((tab) => {
+      const isSelected = tab === button;
+      tab.classList.toggle("is-selected", isSelected);
+      tab.setAttribute("aria-pressed", String(isSelected));
+    });
+
+    let visibleCount = 0;
+    document.querySelectorAll("[data-equipment]").forEach((row) => {
+      const isVisible = category === "tout" || row.dataset.equipment === category;
+      row.hidden = !isVisible;
+      if (isVisible) visibleCount += 1;
+    });
+    document.querySelector("#equipment-empty").hidden = visibleCount !== 0;
+    document.querySelector(".pool-illustration").hidden = category !== "tout" && category !== "piscine";
+  });
+  button.setAttribute("aria-pressed", String(button.classList.contains("is-selected")));
+});
+
+document.querySelectorAll("[data-alert-card]").forEach((card) => {
+  card.addEventListener("click", () => {
+    card.classList.toggle("is-read");
+  });
+});
+
+document.querySelector("#mark-alerts-read").addEventListener("click", (event) => {
+  document.querySelectorAll("[data-alert-card]").forEach((card) => card.classList.add("is-read"));
+  event.currentTarget.textContent = "Toutes les alertes sont lues";
+  event.currentTarget.disabled = true;
+});
+
+showView("accueil");

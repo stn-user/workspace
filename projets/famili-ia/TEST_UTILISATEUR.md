@@ -9,7 +9,7 @@ Ce test évalue le parcours, pas la qualité d’une IA ni une intégration Goog
 ## Participants et durée
 
 - 3 à 5 personnes qui utilisent régulièrement un espace de stockage de documents.
-- Environ 15 minutes par personne.
+- Environ 20 minutes par personne pour parcourir les cinq vues.
 - Faire tester le prototype sur ordinateur ou téléphone, sans aide pendant les tâches si possible.
 
 ## Préparation et confidentialité
@@ -26,12 +26,14 @@ Ce test évalue le parcours, pas la qualité d’une IA ni une intégration Goog
 
 ## Tâches
 
-1. « Vous cherchez combien a coûté l’installation de la piscine. Montrez-moi comment vous procéderiez. »
+1. « Depuis l’accueil, où iriez-vous pour retrouver le prix de l’installation de la piscine ? »
 2. « Où vérifieriez-vous que le montant affiché vient bien d’un document ? »
 3. « Téléchargez l’exemple de facture fictive, ajoutez-le à la démo et demandez quel est le montant total. Où voyez-vous la preuve ? »
-4. « Posez une question dont la réponse n’est pas dans les exemples. Que comprenez-vous du résultat ? »
-5. « D’après cette page, l’application est-elle connectée à votre Drive ? Quelles données pensez-vous qu’elle utilise et que devient le fichier ajouté ? »
-6. « Qu’est-ce qui vous manquerait pour avoir confiance avant de connecter un compte réel ? »
+4. « Dans la section Maison, retrouvez les informations sur la piscine et sa garantie. Que pensez-vous que ces éléments représentent ? »
+5. « Regardez les sections Famille et Alertes. Quelles actions pensez-vous pouvoir effectuer, et lesquelles semblent seulement illustratives ? »
+6. « Posez une question dont la réponse n’est pas dans les exemples. Que comprenez-vous du résultat ? »
+7. « D’après cette démonstration, l’application est-elle connectée à votre Drive ? Quelles données utilise-t-elle et que devient le fichier ajouté ? »
+8. « Qu’est-ce qui vous manquerait pour avoir confiance avant de connecter un compte réel ? »
 
 Ne pas guider les participants vers les boutons ou suggérer la réponse pendant la tâche. Après chaque tâche, demander : « Qu’est-ce qui vous a paru facile ou difficile ? »
 
@@ -63,10 +65,13 @@ Avec moins de cinq participants, ces observations servent à améliorer le parco
 
 Renseigner les nombres agrégés, les formulations qui reviennent et les trois problèmes les plus importants. Ne pas y copier de documents, de questions personnelles ou d’identifiants de participants.
 
-- Participants :
-- Réussites autonomes :
-- Ouvertures de source :
-- Compréhension de la simulation et de la connexion :
-- Questions ou inquiétudes récurrentes :
+- Participants : nombre et profils non communiqués.
+- Réussites autonomes : selon le retour qualitatif communiqué le 9 octobre 2026, les recherches ont généralement abouti, y compris avec des fautes d’orthographe. Un fichier TXT fictif a été importé et le bon document a été retrouvé. Aucun décompte par tâche n’a été fourni.
+- Ouvertures de source : non renseigné.
+- Compréhension de la simulation et de la connexion : non renseignée ; à vérifier explicitement lors d’un prochain test.
+- Questions ou inquiétudes récurrentes : le document pertinent est retrouvé, mais la recherche simulée ne fournit pas toujours directement l’information précise attendue. Cette limite est comprise comme une conséquence de l’absence d’IA ; le prototype ne doit toutefois pas laisser croire qu’une IA est déjà utilisée.
 - Trois améliorations prioritaires :
-- Décision : retester / ajuster le prototype / poursuivre l’étude technique.
+  1. Mieux extraire ou mettre en évidence une valeur exacte dans les fichiers TXT/MD fictifs, en citant le passage correspondant et sans présenter cette amélioration comme une fonction d’IA.
+  2. Vérifier la tolérance aux fautes avec quelques requêtes fictives préparées et noter séparément la découverte du document et l’extraction de l’information.
+  3. Au prochain test, relever le nombre de participants, les réussites autonomes, l’ouverture de la source et la compréhension du traitement local sans Google ni IA.
+- Décision : ajuster le prototype et retester sur des données fictives avant de poursuivre l’intégration technique. Les seuils de réussite ne peuvent pas encore être évalués faute de mesures chiffrées.

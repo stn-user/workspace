@@ -71,18 +71,20 @@ Ce retour renforce l’intérêt de la proposition, mais ne confirme pas encore 
 
 **Objectif :** choisir un cas d’usage unique et établir ce que la première version ne fera pas.
 
-À valider avant de coder :
+À préciser avant de coder l’intégration réelle :
 
 - première cible : particulier seul ou foyer ;
 - premier scénario : poser une question en langage naturel pour retrouver une information dans les documents textuels de Google Drive ; les formats pris en charge restent à définir et les photos sont hors périmètre initial ;
-- attente utilisateur rapportée : pouvoir connecter l’ensemble des clouds, plutôt que sélectionner seulement quelques fichiers ; tester cette attente contre les permissions réellement accessibles et expliquer les éventuelles limites par fournisseur ;
-- mode d’accès Google Drive : démarrer les essais avec Google Picker et `drive.file`, mais ne pas considérer la sélection de fichiers comme la réponse produit définitive tant que l’attente d’accès plus large n’a pas été vérifiée ;
+- périmètre du premier MVP : un seul fournisseur, Google Drive comme candidat retenu, et uniquement les fichiers explicitement choisis par l’utilisateur ; valider les permissions et méthodes API exactes avant toute connexion réelle ;
+- traitement du MVP : sur un seul téléphone, sans synchronisation multi-appareils, sans IA distante et sans historique persistant des questions ;
+- accès à l’espace cloud complet et connexions à plusieurs fournisseurs : hors périmètre du premier MVP, à réexaminer dans une phase ultérieure après validation de l’usage et des permissions ;
+- index local : décider s’il persiste entre les sessions, quelles données il contient, comment il est protégé et combien de temps il est conservé ;
 - fournisseur envisagé : Google Drive, sous réserve de confirmer les permissions officielles, les quotas et les conditions de validation applicables ;
 - profondeur de recherche : métadonnées seules ou contenu textuel, à décider après évaluation du besoin et des flux de données ;
 - réponses consultables uniquement, sans déplacement ni modification des fichiers ;
 - fonctionnement web responsive/PWA d’abord, ou besoin confirmé d’une application mobile native dès le départ.
 
-**Hors périmètre initial :** connexions multiples, Gmail et messageries, recherche de photos complexes, gestion de succession, rappels administratifs, partage entre proches, classement automatique en écriture, nettoyage ou suppression, coffre de stockage propriétaire.
+**Hors périmètre initial :** accès à l’espace cloud complet, connexions à plusieurs fournisseurs, synchronisation multi-appareils, IA distante, historique persistant des questions, Gmail et messageries, recherche de photos complexes, gestion de succession, rappels administratifs, partage entre proches, classement automatique en écriture, nettoyage ou suppression, coffre de stockage propriétaire.
 
 **Critère de passage :** un parcours principal, un fournisseur et une définition mesurable d’une recherche réussie sont validés.
 
@@ -183,21 +185,19 @@ L’étude préliminaire des six cibles est consignée dans [ETUDE_FAISABILITE_C
 
 - Quelle personne de la famille est le premier utilisateur cible ?
 - Quels formats de documents textuels Google Drive prendre en charge en premier, et lesquels exclure du prototype ?
-- Les exigences OAuth, méthodes API et formats autorisés pour l’accès par fichiers sélectionnés via Picker (`drive.file`) sont-elles confirmées pour le parcours exact du MVP ?
-- Quels clouds les personnes interrogées utilisent-elles réellement, et l’accès complet à chacun est-il une exigence de lancement ou une cible à atteindre progressivement ?
+- Les exigences OAuth, méthodes API et formats autorisés pour l’accès aux fichiers explicitement choisis via Picker (`drive.file`) sont-elles confirmées pour le parcours exact du MVP ?
+- Quel périmètre de recherche dans l’espace cloud complet et quels autres fournisseurs seront prioritaires dans une phase ultérieure ?
 - Combien de personnes ont été consultées, quels profils représentent-elles et comprennent-elles la différence entre accès complet, indexation persistante et analyse à la demande ?
 - L’index local doit-il contenir du texte extrait ou seulement des métadonnées, quelle durée retenir et comment le supprimer ?
 - Pour viser iOS et Android en parallèle, le modèle retenu est un code partagé avec modules natifs spécifiques ; Capacitor est le premier candidat à tester, sans décision finale. Il faut vérifier son adéquation et déterminer comment construire/tester iOS depuis l’environnement Windows.
-- Comment gérer un foyer qui utilise des appareils différents sans synchroniser le contenu sur un serveur Famili-IA ?
-- Le contenu nécessaire à une réponse peut-il être traité temporairement par un service d’IA, et selon quelles garanties et conditions ?
 - Quel niveau de partage familial est nécessaire, et quelles données doivent rester privées à chaque membre ?
 - Quel nom public, quel modèle économique et quelles régions de lancement ?
 
 ## État actuel
 
-- **Projet :** prototype web local disponible avec exemples fictifs et recherche par mots-clés sur des fichiers TXT/MD locaux temporaires ; aucune connexion Google ni IA. La coquille Capacitor Android a été générée, l’environnement Android installé et l’APK de démonstration compilé. L’émulateur ne démarre pas encore car WHPX demande un redémarrage Windows ; aucun lancement sur émulateur n’a encore été vérifié. Détails et configuration : [ANALYSE_FLUX_ET_MENACES.md](./ANALYSE_FLUX_ET_MENACES.md). Orientation future retenue : app native iOS/Android, code partagé avec modules natifs, index local, sans envoi des documents à un serveur Famili-IA.
-- **Validation utilisateur :** premiers retours qualitatifs communiqués le 9 octobre : les personnes consultées souhaitent connecter leurs clouds et se disent à l’aise avec un accès complet ; échantillon et portée exacte restent à documenter. Déroulé de test dans [TEST_UTILISATEUR.md](./TEST_UTILISATEUR.md).
+- **Projet :** prototype web local étendu aux cinq vues de la maquette — Accueil, Recherche, Maison, Famille et Alertes — avec navigation responsive et données fictives. La recherche repose sur des mots-clés et des exemples ; aucune connexion Google ni IA. Les actions qui ne sont pas implémentées sont signalées comme démonstratives. La coquille Capacitor Android a été générée et l’APK de démonstration a été compilé, installé et lancé dans l’AVD. L’AVD a depuis été supprimé car trop lent pour des tests réalistes ; le SDK Android est conservé. Détails : [ANALYSE_FLUX_ET_MENACES.md](./ANALYSE_FLUX_ET_MENACES.md). Périmètre MVP décidé : un fournisseur et des fichiers choisis, traitement sur un seul téléphone, sans IA distante ni historique persistant des questions ; l’accès à l’espace cloud complet sera étudié dans une phase ultérieure.
+- **Validation utilisateur :** premiers retours qualitatifs communiqués le 9 octobre : les personnes consultées souhaitent connecter leurs clouds et se disent à l’aise avec un accès complet ; échantillon et portée exacte restent à documenter. Après essai du prototype, le parcours retrouve les fichiers TXT fictifs même lorsque la recherche contient des fautes, mais l’extraction de l’information précise reste insuffisante. Le nombre de participants, les réussites par tâche, l’ouverture des sources et la compréhension de la simulation ne sont pas encore consignés. Synthèse et priorités dans [TEST_UTILISATEUR.md](./TEST_UTILISATEUR.md).
 - **Étude Google Drive :** contraintes de portées, vérification, sécurité et quotas résumées dans [ETUDE_GOOGLE_DRIVE.md](./ETUDE_GOOGLE_DRIVE.md). Orientation retenue : l’utilisateur sélectionne les fichiers via Picker (`drive.file`), sous réserve de validation technique détaillée.
 - **Étude multi-cloud :** comparaison Google Drive, Google Photos, OneDrive, Dropbox, iCloud Drive et Photos iCloud dans [ETUDE_FAISABILITE_CLOUDS.md](./ETUDE_FAISABILITE_CLOUDS.md) ; couverture complète et uniforme impossible à garantir à ce stade. Le retour positif sur l’accès complet ne remplace pas l’accord des plateformes.
-- **Dépôt :** Git local initialisé dans ce dossier ; aucun dépôt distant n’est encore configuré.
-- **Prochaine séquence retenue :** redémarrer Windows pour activer l’accélération WHPX, puis lancer l’APK `Famili-IA` dans l’AVD `FamiliIA_API36` avec les seules données fictives. Ensuite, vérifier le stockage local protégé et la suppression de l’index ; planifier un Mac/Xcode pour les builds iOS ; obtenir les confirmations Google nécessaires ; et, lorsque les applications développeur seront disponibles, tester les consentements OAuth OneDrive/Dropbox sans appeler les API de fichiers. Les consoles Entra/Dropbox ne sont pas encore disponibles ; les tests OAuth sont donc **différés, pas supprimés**. Aucun secret ne doit être transmis dans le chat ou commité. Aucun compte familial ni contenu réel ne sera connecté avant validation des permissions, examens et flux de données.
+- **Dépôt :** dépôt unique `workspace`, avec les projets sous `projets/`.
+- **Prochaine séquence retenue :** améliorer l’extraction déterministe des valeurs précises dans les fichiers fictifs TXT/MD, sans introduire ni suggérer l’usage d’une IA, puis tester les cinq vues et relever les mesures manquantes. Après validation du parcours, préciser les formats pris en charge et décider si l’index reste en mémoire ou persiste localement. Évaluer ensuite, sur un compte développeur et des fichiers synthétiques, le parcours Google Picker/`drive.file`, les protections du stockage local et la suppression à la déconnexion. Aucun compte personnel ni contenu réel ne sera connecté avant validation des permissions, flux de données, suppression et contrôles applicables. L’accès cloud complet restera une étude ultérieure, sans engagement de faisabilité ni de calendrier.

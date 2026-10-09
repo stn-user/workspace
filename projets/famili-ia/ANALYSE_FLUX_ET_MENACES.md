@@ -9,9 +9,13 @@
 Le porteur du projet privilégie une application native avec traitement et index local, sans envoi du contenu à un serveur Famili-IA. C’est une orientation de conception pour les prochains essais, pas encore une architecture validée ni une autorisation fournisseur.
 
 - Les deux plateformes mobiles, iOS et Android, sont ciblées dès le départ.
+- Le périmètre fonctionnel décidé pour le premier MVP est un seul fournisseur (Google Drive comme candidat), des fichiers explicitement choisis par l’utilisateur, un seul téléphone et aucun transfert de contenu à un serveur Famili-IA.
+- L’accès à l’espace cloud complet et la connexion de plusieurs fournisseurs seront étudiés dans une phase ultérieure ; ils ne font pas partie du premier MVP.
+- Aucune IA distante ni aucun historique persistant des questions ne sont prévus dans le premier MVP.
 - Le contenu téléchargé depuis le cloud, les extraits et l’index restent sur l’appareil.
 - Aucun fournisseur d’IA distant ne reçoit de contenu par défaut ; une telle transmission nécessiterait une décision distincte, une information claire et une analyse de ses conditions.
 - Les jetons doivent rester sur l’appareil dans le stockage sécurisé adapté au système ; l’index et les caches doivent être protégés et supprimés lors de la déconnexion.
+- La persistance de l’index entre les sessions, son contenu exact et sa durée de conservation restent à décider ; ne pas la déduire de la seule décision de traitement local.
 - Le traitement local ne supprime ni l’examen des scopes, ni le consentement OAuth, ni les politiques d’usage des fournisseurs. Pour Google Drive restreint, la nécessité d’une vérification reste à confirmer ; seule l’évaluation de sécurité propre à l’accès depuis/à travers un serveur pourrait ne pas s’appliquer si le contenu n’est effectivement accessible par aucun serveur.
 - Aucun document personnel ne sera utilisé pour un prototype d’architecture : commencer par des fichiers synthétiques et des comptes développeur dédiés quand disponibles.
 
@@ -31,7 +35,7 @@ La préférence exprimée est un code partagé iOS/Android avec des modules nati
 
 ## 1. Situation actuelle
 
-Le prototype est une page web sans connexion Google, sans backend Famili-IA et sans fournisseur d’IA. Il contient des exemples fictifs ; l’utilisateur peut également charger des fichiers TXT/MD qui sont lus par la page pour la session. La recherche et l’affichage des extraits sont réalisés dans le navigateur. Le prototype ne doit pas être utilisé avec des documents personnels réels.
+Le prototype web présente cinq vues — Accueil, Recherche, Maison, Famille et Alertes — avec navigation responsive et données fictives. Il ne comporte ni connexion Google, ni backend Famili-IA, ni fournisseur d’IA. Depuis la vue Recherche, l’utilisateur peut charger des fichiers TXT/MD fictifs, lus uniquement pour la session ; la recherche et l’affichage des extraits sont réalisés dans le navigateur. Plusieurs commandes des vues Maison, Famille et Alertes sont de simples interactions de démonstration, sans effet sur des comptes ou des données réels. Le prototype ne doit pas être utilisé avec des documents personnels réels.
 
 Les risques principaux du MVP ne sont pas encore ceux d’un service en production : ils dépendent du choix entre traitement local, traitement serveur ou architecture hybride, et du connecteur autorisé. Aucun jeton OAuth ou contenu cloud réel n’est actuellement traité.
 
@@ -41,9 +45,9 @@ Les risques principaux du MVP ne sont pas encore ceux d’un service en producti
 - Le projet Android natif a été généré. Le manifeste fusionné désactive les sauvegardes Android et ne contient actuellement aucune permission réseau ou accès fichiers/photos. Ces choix devront être réexaminés et expliqués avant d’ajouter une connexion cloud.
 - La démo web a été vérifiée via le serveur Vite : recherche fictive, chargement d’un fichier TXT fictif, extraction d’un passage, suppression du fichier et accès HTTP aux exemples.
 - `npm audit` ne signale aucune vulnérabilité connue après correction d’une dépendance transitive du CLI.
-- Android Studio, les outils Android 36, l’émulateur et une image x86_64 ont été installés ; un AVD `FamiliIA_API36` est configuré. Microsoft OpenJDK 21 est nécessaire car le JDK 25 fourni avec Android Studio est trop récent pour le Gradle généré.
+- Android Studio et les outils Android 36 ont été installés. Microsoft OpenJDK 21 est nécessaire car le JDK 25 fourni avec Android Studio est trop récent pour le Gradle généré.
 - Le build `assembleDebug` réussit et produit un APK de démonstration. `JAVA_HOME` (OpenJDK 21) et `ANDROID_HOME` (SDK utilisateur) sont configurés au niveau du compte Windows ; les nouveaux terminaux les prendront en compte après redémarrage de la session.
-- WHPX a été activé. Le contrôle de l’émulateur ne détecte pas encore l’accélération matérielle ; Windows peut nécessiter un redémarrage. **L’APK n’a donc pas encore été démarré dans l’émulateur.**
+- L’APK a été installé et lancé avec succès dans l’AVD `FamiliIA_API36`. Cet AVD a ensuite été supprimé parce qu’il était trop lent pour des tests réalistes ; le SDK et les outils restent disponibles pour tester sur un appareil physique.
 - Les fonctions de stockage sécurisé, index local persistant, PhotoKit et OAuth ne sont pas implémentées.
 - Commandes préparées : `npm run build`, `npm run cap:sync` et `npm run android:run`.
 
@@ -111,12 +115,12 @@ Une source peut être traitée localement et une autre via serveur. Chaque passa
 
 ## 6. Décisions de conception restant bloquantes
 
-1. Comment synchroniser l’état ou les index entre appareils sans transférer le contenu à un serveur Famili-IA, et est-ce nécessaire au premier MVP ?
+1. L’index doit-il rester en mémoire pour la session ou persister sur l’appareil entre les sessions ? Quels éléments contient-il, comment est-il protégé, pendant combien de temps et comment sa suppression est-elle vérifiée ?
 2. Capacitor convient-il aux fonctions natives requises, ou faut-il retenir React Native/Flutter malgré la réécriture de l’interface ?
 3. Quel type de compte est ciblé au départ : une personne seule, ou un foyer avec des espaces privés et partagés distincts ?
 4. Quelles catégories de documents et quels formats seront effectivement pris en charge en premier ?
-5. Quelle quantité d’information locale peut être indexée, pour quelle durée, et comment l’utilisateur vérifie-t-il sa suppression ?
-6. L’IA distante demeure hors périmètre par défaut ; quelles fonctions de recherche locale suffisent au MVP ?
+5. Le fournisseur confirme-t-il les scopes et méthodes API exacts nécessaires au parcours de sélection de fichiers Google Drive ?
+6. L’accès à l’espace cloud complet et la recherche multi-fournisseurs pourront être réévalués ultérieurement, après validation du premier MVP ; aucun périmètre ni calendrier n’est encore engagé.
 
 ## 7. Seuils avant toute donnée réelle
 
