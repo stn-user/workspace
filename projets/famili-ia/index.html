@@ -37,14 +37,28 @@
       </aside>
 
       <main class="main-content">
-        <section class="view dashboard-view" id="view-accueil" data-view="accueil" aria-labelledby="dashboard-title">
+        <section class="view dashboard-view" id="view-accueil" data-view="accueil" aria-labelledby="welcome-title">
+          <section class="welcome-panel" id="welcome-panel" aria-labelledby="welcome-title" hidden>
+            <div class="welcome-mark" aria-hidden="true">✦</div>
+            <p class="eyebrow">FAMILI-IA</p>
+            <h1 id="welcome-title">Vos documents, enfin faciles à retrouver.</h1>
+            <p class="welcome-copy">Ajoutez des documents depuis votre appareil ou choisissez une source disponible. Vous gardez le contrôle de chaque fichier.</p>
+            <button class="welcome-primary" type="button" data-open-source-dialog>Ajouter des documents <span aria-hidden="true">→</span></button>
+            <button class="welcome-secondary" id="explore-demo" type="button">Explorer la démo</button>
+            <p class="welcome-privacy"><span aria-hidden="true">◇</span> Les fichiers choisis sont traités sur cet appareil et restent en mémoire pour cette session.</p>
+          </section>
+
+          <div id="dashboard-content">
           <div class="view-heading dashboard-greeting">
             <div>
               <p class="eyebrow">VOTRE ESPACE FAMILIAL</p>
               <h1 id="dashboard-title">Bonjour Steve <span aria-hidden="true">👋</span></h1>
               <p>Votre vie numérique, enfin retrouvée.</p>
             </div>
-            <span class="demo-chip"><span class="status-dot"></span> Données fictives</span>
+            <div class="dashboard-actions">
+              <button class="dashboard-add-documents" type="button" data-open-source-dialog>Ajouter des documents <span aria-hidden="true">+</span></button>
+              <span class="demo-chip"><span class="status-dot"></span> Données fictives</span>
+            </div>
           </div>
 
           <form class="quick-search" id="quick-search-form" role="search">
@@ -73,6 +87,7 @@
             <button class="verify-row" type="button" data-open-view="alertes"><span class="row-icon amber">▤</span><span class="row-copy"><strong>247 doublons détectés</strong><small>À vérifier</small></span><span class="stat-arrow">›</span></button>
           </section>
           <p class="demo-disclaimer">Tous les éléments de cet écran sont fictifs et servent uniquement à illustrer la maquette.</p>
+          </div>
         </section>
 
         <section class="view search-view" id="view-recherche" data-view="recherche" aria-labelledby="page-title" hidden>
@@ -90,12 +105,12 @@
             <input id="question" name="question" type="search" autocomplete="off" placeholder="Ex. : combien ai-je payé pour ma piscine ?" aria-describedby="privacy-note">
             <button class="submit-button" type="submit"><span>Rechercher</span><span aria-hidden="true">→</span></button>
           </form>
-          <p class="privacy-note" id="privacy-note"><span aria-hidden="true">♧</span> Les fichiers locaux restent dans cette session. La connexion Google est facultative et ne commence qu’après votre action et votre consentement ; aucune IA ni backend.</p>
+          <p class="privacy-note" id="privacy-note"><span aria-hidden="true">♧</span> Les fichiers choisis restent dans cette session. La connexion Google est facultative et ne commence qu’après votre action et votre consentement ; aucune IA ni backend.</p>
 
           <section class="local-files" aria-labelledby="local-files-title">
             <div class="local-files-copy">
-              <h2 id="local-files-title">Fichiers de la session</h2>
-              <p>Choisissez un fichier TXT, Markdown ou PDF. Le texte des PDF est lu localement ; l’OCR des PDF scannés est expérimental et en cours de validation dans l’application mobile.</p>
+              <h2 id="local-files-title">Mes sources</h2>
+              <p>Ajoutez des documents depuis cet appareil ou Google Drive. Les photos ne sont pas encore prises en charge.</p>
               <div class="sample-links">
                 <a href="samples/facture-piscine.txt" download>Télécharger une facture fictive</a>
                 <a href="samples/garantie-pompe.txt" download>Télécharger une garantie fictive</a>
@@ -104,10 +119,8 @@
             </div>
             <div class="file-actions">
               <input class="visually-hidden" id="local-files-input" type="file" accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf" multiple>
-              <label class="file-picker" for="local-files-input">Choisir un fichier</label>
-              <button class="drive-connect-button" id="connect-google-drive" type="button" disabled>Connecter Google Drive</button>
+              <button class="file-picker add-documents-button" type="button" data-open-source-dialog>Ajouter des documents</button>
               <button class="clear-files" id="disconnect-google-drive" type="button" hidden>Déconnecter Drive</button>
-              <button class="drive-picker-button" id="open-drive-picker" type="button">Drive (démo)</button>
               <button class="clear-files" id="clear-files" type="button" hidden>Retirer mes fichiers</button>
             </div>
             <p class="file-status" id="file-status" role="status" aria-live="polite">Jusqu’à 5 fichiers en mémoire. Limites : TXT/MD 1 Mo, PDF 10 Mo et 20 pages. Drive (démo) utilise uniquement des exemples fictifs. Pour le test réel, ne choisissez que des fichiers synthétiques que vous avez sélectionnés dans Picker.</p>
@@ -228,13 +241,39 @@
     <div class="dialog-notice"><span aria-hidden="true">ⓘ</span><span id="dialog-notice-text">Ceci est un contenu d’exemple inventé pour le prototype.</span></div>
   </dialog>
 
+  <dialog class="source-dialog source-choice-dialog" id="source-choice-dialog" aria-labelledby="source-choice-title">
+    <div class="dialog-header">
+      <div><p class="eyebrow">CHOIX DES SOURCES</p><h2 id="source-choice-title">Où se trouvent vos documents ?</h2></div>
+      <button class="close-button" id="close-source-choice" type="button" aria-label="Fermer">×</button>
+    </div>
+    <p class="source-choice-intro">Choisissez uniquement les fichiers que vous souhaitez rechercher.</p>
+    <div class="source-choice-list">
+      <button class="source-choice" id="choose-local-files" type="button">
+        <span class="source-choice-icon" aria-hidden="true">▤</span>
+        <span><strong>Sur cet appareil</strong><small>Choisir des fichiers TXT, Markdown ou PDF. Les photos ne sont pas encore prises en charge.</small></span>
+        <span class="source-choice-arrow" aria-hidden="true">›</span>
+      </button>
+      <button class="source-choice" id="connect-google-drive" type="button" disabled>
+        <span class="source-choice-icon google-source-icon" aria-hidden="true">G</span>
+        <span><strong>Google Drive</strong><small id="google-drive-choice-description">Disponible dans la version web de test, si elle est configurée.</small></span>
+        <span class="source-choice-arrow" aria-hidden="true">›</span>
+      </button>
+      <button class="source-choice" id="open-drive-picker" type="button">
+        <span class="source-choice-icon demo-source-icon" aria-hidden="true">✦</span>
+        <span><strong>Exemples de démonstration</strong><small>Essayer avec des documents fictifs, sans connecter de compte.</small></span>
+        <span class="source-choice-arrow" aria-hidden="true">›</span>
+      </button>
+    </div>
+    <p class="source-choice-footnote">Google Drive ne donne accès qu’aux fichiers que vous sélectionnez. Aucun autre service cloud n’est encore connecté.</p>
+  </dialog>
+
   <dialog class="source-dialog drive-picker-dialog" id="drive-picker-dialog" aria-labelledby="drive-picker-title">
     <div class="dialog-header">
-      <div><p class="eyebrow">PARCOURS SIMULÉ</p><h2 id="drive-picker-title">Choisir dans Google Drive</h2></div>
+      <div><p class="eyebrow">DÉMO FICTIVE</p><h2 id="drive-picker-title">Sélectionner des exemples</h2></div>
       <button class="close-button" id="close-drive-picker" type="button" aria-label="Fermer">×</button>
     </div>
-    <p class="dialog-meta">Sélectionnez des exemples fictifs pour les ajouter à la recherche de cette session.</p>
-    <p class="dialog-notice drive-picker-warning"><span aria-hidden="true">ⓘ</span> Aucun compte Google n’est connecté. Ce sélecteur est une simulation ; aucun fichier Drive n’est consulté ni téléchargé.</p>
+    <p class="dialog-meta">Choisissez des documents inventés pour essayer la recherche de cette session.</p>
+    <p class="dialog-notice drive-picker-warning"><span aria-hidden="true">ⓘ</span> Aucun compte n’est connecté. Cette sélection est une simulation ; aucun fichier Drive n’est consulté ni téléchargé.</p>
     <div class="drive-picker-list" id="drive-picker-list"></div>
     <p class="file-status drive-picker-status" id="drive-picker-status" role="status" aria-live="polite"></p>
     <div class="drive-picker-actions">

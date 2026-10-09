@@ -89,6 +89,9 @@ const connectGoogleDriveButton = document.querySelector("#connect-google-drive")
 const disconnectGoogleDriveButton = document.querySelector("#disconnect-google-drive");
 const driveConnectionStatus = document.querySelector("#drive-connection-status");
 const googleDriveClient = hasGoogleDriveConfig && !isNativePlatform ? new GoogleDriveClient(googleDriveConfig) : null;
+const sourceChoiceDialog = document.querySelector("#source-choice-dialog");
+const googleDriveChoiceDescription = document.querySelector("#google-drive-choice-description");
+const onboardingCompleteKey = "famili-ia-source-choice-complete";
 let googleDriveReady = false;
 const demoStatusLabel = document.querySelector("#demo-status-label");
 const sidebarModeCopy = document.querySelector("#sidebar-mode-copy");
@@ -246,6 +249,28 @@ function updateDriveConnectionActions() {
 
 function updateGoogleDriveButton() {
   connectGoogleDriveButton.disabled = !googleDriveReady || uploadedDocuments.length >= maxFiles;
+  if (isNativePlatform) {
+    googleDriveChoiceDescription.textContent = "La connexion Google native n’est pas encore disponible dans l’application mobile.";
+  } else if (!hasGoogleDriveConfig) {
+    googleDriveChoiceDescription.textContent = "La connexion n’est pas configurée dans cette version web.";
+  } else if (!googleDriveReady) {
+    googleDriveChoiceDescription.textContent = "Connexion en cours de préparation…";
+  } else if (uploadedDocuments.length >= maxFiles) {
+    googleDriveChoiceDescription.textContent = "Limite de fichiers atteinte. Retirez-en pour en ajouter d’autres.";
+  } else {
+    googleDriveChoiceDescription.textContent = "Connecter votre compte puis choisir les fichiers à consulter.";
+  }
+}
+
+function completeOnboarding() {
+  localStorage.setItem(onboardingCompleteKey, "true");
+  document.querySelector("#welcome-panel").hidden = true;
+  document.querySelector("#dashboard-content").hidden = false;
+  document.querySelector("#view-accueil").setAttribute("aria-labelledby", "dashboard-title");
+}
+
+function openSourceChoices() {
+  sourceChoiceDialog.showModal();
 }
 
 async function loadLocalFiles(files) {
@@ -297,8 +322,11 @@ async function loadLocalFiles(files) {
     clearFilesButton.hidden = false;
     updateGoogleDriveButton();
     updateModeBanner();
+    completeOnboarding();
     const count = uploadedDocuments.length;
     setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session ; rien n’est envoyé ni conservé après fermeture.`, "success");
+    sourceChoiceDialog.close();
+    showView("recherche");
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Erreur de lecture non détaillée.";
     setFileStatus(`La sélection n’a pas pu être lue : ${reason} Aucun fichier de cette sélection n’a été ajouté.`, "error");
@@ -346,7 +374,7 @@ if (googleDriveClient) {
     googleDriveReady = true;
     updateGoogleDriveButton();
     updateModeBanner();
-    setDriveConnectionStatus("Prêt. « Connecter Google Drive » demandera uniquement l’accès drive.file et ouvrira le sélecteur officiel.", "success");
+    setDriveConnectionStatus("Prêt. Choisissez Google Drive pour demander l’accès drive.file et sélectionner vos fichiers dans le sélecteur officiel.", "success");
   }).catch((error) => {
     setDriveConnectionStatus(`Connexion Google indisponible : ${error.message}`, "error");
   });
@@ -356,8 +384,26 @@ if (googleDriveClient) {
     setDriveConnectionStatus("Le flux OAuth/Picker configuré ici est réservé au navigateur web ; il ne doit pas être lancé dans la WebView mobile.", "error");
   }
 }
+updateGoogleDriveButton();
+
+document.querySelectorAll("[data-open-source-dialog]").forEach((button) => {
+  button.addEventListener("click", openSourceChoices);
+});
+document.querySelector("#close-source-choice").addEventListener("click", () => sourceChoiceDialog.close());
+sourceChoiceDialog.addEventListener("click", (event) => {
+  if (event.target === sourceChoiceDialog) sourceChoiceDialog.close();
+});
+document.querySelector("#choose-local-files").addEventListener("click", () => {
+  sourceChoiceDialog.close();
+  localFilesInput.click();
+});
+document.querySelector("#explore-demo").addEventListener("click", () => {
+  completeOnboarding();
+  showView("recherche");
+});
 
 connectGoogleDriveButton.addEventListener("click", async () => {
+  sourceChoiceDialog.close();
   const remainingCount = maxFiles - uploadedDocuments.length;
   if (!googleDriveClient || remainingCount < 1) {
     setDriveConnectionStatus("La limite de cinq fichiers par session est atteinte. Retirez des fichiers avant d’en choisir d’autres.", "error");
@@ -384,6 +430,9 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     clearFilesButton.hidden = false;
     updateGoogleDriveButton();
     updateModeBanner();
+    completeOnboarding();
+    sourceChoiceDialog.close();
+    showView("recherche");
     setFileStatus(
       `${newFiles.length} fichier${newFiles.length === 1 ? "" : "s"} Drive chargé${newFiles.length === 1 ? "" : "s"} en mémoire locale. Aucun serveur Famili-IA ni IA n’a reçu leur contenu.`,
       "success"
@@ -399,6 +448,7 @@ connectGoogleDriveButton.addEventListener("click", async () => {
 });
 
 document.querySelector("#open-drive-picker").addEventListener("click", () => {
+  sourceChoiceDialog.close();
   renderDrivePickerOptions();
   drivePickerDialog.showModal();
 });
@@ -436,11 +486,13 @@ confirmDrivePickerButton.addEventListener("click", () => {
   clearFilesButton.hidden = false;
   updateGoogleDriveButton();
   updateModeBanner();
+  completeOnboarding();
   setFileStatus(
     `${selectedDocuments.length} fichier${selectedDocuments.length === 1 ? "" : "s"} fictif${selectedDocuments.length === 1 ? "" : "s"} ajouté${selectedDocuments.length === 1 ? "" : "s"} à la session. Aucun compte Google n’est connecté et aucun fichier Drive n’a été consulté.`,
     "success"
   );
   drivePickerDialog.close();
+  showView("recherche");
 });
 
 form.addEventListener("submit", (event) => {
@@ -603,5 +655,9 @@ document.querySelector("#mark-alerts-read").addEventListener("click", (event) =>
 });
 
 const initialView = window.location.hash.slice(1);
+const firstRun = localStorage.getItem(onboardingCompleteKey) !== "true";
+document.querySelector("#welcome-panel").hidden = !firstRun;
+document.querySelector("#dashboard-content").hidden = firstRun;
+document.querySelector("#view-accueil").setAttribute("aria-labelledby", firstRun ? "welcome-title" : "dashboard-title");
 showView(Object.hasOwn(pageTitles, initialView) ? initialView : "accueil", { addHistory: false });
 window.history.replaceState({ view: activeView }, "", `#${activeView}`);
