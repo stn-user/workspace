@@ -1,8 +1,8 @@
 FACTURE FICTIVE — AQUA JARDIN
-Numero : FICT-2025-041
-Date : 12 juin 2025
+Numero : AJ-2023-0318
+Date : 4 mars 2023
 Objet : Installation d'une piscine familiale
-Montant total : 7 250 euros TTC
+Montant total : 8 900 euros TTC
 Statut : reglee
 
 Document invente pour tester la recherche locale de Famili-IA.

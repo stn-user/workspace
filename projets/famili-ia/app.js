@@ -1,3 +1,5 @@
+import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, normalizeText } from "./search-utils.js";
+
 const documents = [
   {
     id: "piscine-facture",
@@ -46,12 +48,6 @@ const documents = [
   }
 ];
 
-const stopWords = new Set([
-  "a", "ai", "au", "aux", "avec", "ce", "combien", "comment", "dans", "de", "des", "du", "elle",
-  "en", "est", "et", "la", "le", "les", "ma", "mes", "mon", "ou", "par", "pour", "que", "quel",
-  "quelle", "quand", "qui", "quoi", "se", "son", "sur", "un", "une", "vos", "votre", "y", "a-t-il"
-]);
-
 const uploadedDocuments = [];
 const maxFiles = 5;
 const maxFileSize = 1024 * 1024;
@@ -71,17 +67,8 @@ const localFilesInput = document.querySelector("#local-files-input");
 const clearFilesButton = document.querySelector("#clear-files");
 const fileStatus = document.querySelector("#file-status");
 
-function normalize(value) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("fr")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 function getQueryTerms(question) {
-  return [...new Set(normalize(question).split(/\s+/).filter((term) => term.length > 1 && !stopWords.has(term)))];
+  return getQuestionTerms(question);
 }
 
 function findDocuments(question) {
@@ -91,17 +78,21 @@ function findDocuments(question) {
   const searchableDocuments = uploadedDocuments.length > 0 ? uploadedDocuments : documents;
   return searchableDocuments
     .map((document) => {
-      const searchable = normalize(`${document.name} ${document.type} ${document.keywords} ${document.content}`);
+      const searchable = normalizeText(`${document.name} ${document.type} ${document.keywords} ${document.content}`);
       const matchedTerms = terms.filter((term) => searchable.includes(term));
       const lines = document.content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const exactFact = document.isLocal ? extractExactFact(question, lines) : null;
+      const factKeywords = exactFact ? getIntentKeywords(detectQuestionIntent(question)).join(" ") : "";
+      const searchableWithIntent = `${searchable} ${factKeywords}`;
       const excerpt = lines
-        .map((line) => ({ line, matches: terms.filter((term) => normalize(line).includes(term)).length }))
+        .map((line) => ({ line, matches: terms.filter((term) => normalizeText(line).includes(term)).length }))
         .filter((line) => line.matches > 0)
         .sort((a, b) => b.matches - a.matches || a.line.length - b.line.length)
         .slice(0, 3)
         .map(({ line }) => line.length > 280 ? `${line.slice(0, 277)}...` : line)
         .join(" … ");
-      return { document, score: matchedTerms.length / terms.length, matchedTerms: matchedTerms.length, excerpt };
+      const allMatchedTerms = terms.filter((term) => searchableWithIntent.includes(term));
+      return { document, score: allMatchedTerms.length / terms.length, matchedTerms: allMatchedTerms.length, excerpt, exactFact };
     })
     .filter((result) => result.matchedTerms > 0 && result.score >= 0.6)
     .sort((a, b) => b.score - a.score || b.matchedTerms - a.matchedTerms)
@@ -162,10 +153,14 @@ function search(question) {
 
   const bestMatch = matches[0];
   answerLabel.textContent = bestMatch.document.isLocal
-    ? "EXTRAIT CORRESPONDANT AU MOT-CLÉ — SANS IA"
+    ? bestMatch.exactFact
+      ? "INFORMATION EXTRAITE DU FICHIER — SANS IA"
+      : "EXTRAIT CORRESPONDANT AU MOT-CLÉ — SANS IA"
     : "RÉPONSE SIMULÉE À PARTIR DES DOCUMENTS FICTIFS";
   answerText.textContent = bestMatch.document.isLocal
-    ? `Extrait du fichier « ${bestMatch.document.name} » : « ${bestMatch.excerpt} »`
+    ? bestMatch.exactFact
+      ? `Dans « ${bestMatch.document.name} », ${bestMatch.exactFact}`
+      : `Extrait du fichier « ${bestMatch.document.name} » : « ${bestMatch.excerpt} »`
     : bestMatch.document.summary;
   resultCount.textContent = `${matches.length} ${matches.length === 1 ? "document trouvé" : "documents trouvés"}`;
   renderDocuments(matches);
@@ -182,9 +177,9 @@ async function loadLocalFiles(files) {
   const selectedFiles = [...files];
   if (selectedFiles.length === 0) return;
 
-  const invalidFile = selectedFiles.find((file) => !/\.(txt|md)$/i.test(file.name));
+  const invalidFile = selectedFiles.find((file) => !/\.(txt|md|pdf)$/i.test(file.name));
   if (invalidFile) {
-    setFileStatus(`« ${invalidFile.name} » n’est pas un fichier TXT ou MD. Aucun fichier de cette sélection n’a été ajouté.`, "error");
+    setFileStatus(`« ${invalidFile.name} » n’est pas un fichier TXT, MD ou PDF. Aucun fichier de cette sélection n’a été ajouté.`, "error");
     localFilesInput.value = "";
     return;
   }
@@ -206,11 +201,15 @@ async function loadLocalFiles(files) {
     const loaded = await Promise.all(selectedFiles.map(async (file) => ({
       id: `local-${Date.now()}-${file.name}`,
       name: file.name,
-      type: file.name.toLocaleLowerCase("fr").endsWith(".md") ? "Markdown" : "Texte",
+      type: file.name.toLocaleLowerCase("fr").endsWith(".pdf")
+        ? "PDF"
+        : file.name.toLocaleLowerCase("fr").endsWith(".md") ? "Markdown" : "Texte",
       date: "Session locale",
       keywords: "",
       summary: "",
-      content: await file.text(),
+      content: file.name.toLocaleLowerCase("fr").endsWith(".pdf")
+        ? await (await import("./document-reader.js")).readPdfFile(file)
+        : await file.text(),
       isLocal: true
     })));
 
@@ -218,8 +217,9 @@ async function loadLocalFiles(files) {
     clearFilesButton.hidden = false;
     const count = uploadedDocuments.length;
     setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session ; rien n’est envoyé ni conservé après fermeture.`, "success");
-  } catch {
-    setFileStatus("La lecture d’un fichier a échoué. Vérifiez le fichier, puis réessayez ; aucun fichier de cette sélection n’a été ajouté.", "error");
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Erreur de lecture non détaillée.";
+    setFileStatus(`La sélection n’a pas pu être lue : ${reason} Aucun fichier de cette sélection n’a été ajouté.`, "error");
   } finally {
     localFilesInput.value = "";
   }

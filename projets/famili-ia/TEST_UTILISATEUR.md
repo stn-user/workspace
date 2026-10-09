@@ -66,12 +66,23 @@ Avec moins de cinq participants, ces observations servent à améliorer le parco
 Renseigner les nombres agrégés, les formulations qui reviennent et les trois problèmes les plus importants. Ne pas y copier de documents, de questions personnelles ou d’identifiants de participants.
 
 - Participants : nombre et profils non communiqués.
-- Réussites autonomes : selon le retour qualitatif communiqué le 9 octobre 2026, les recherches ont généralement abouti, y compris avec des fautes d’orthographe. Un fichier TXT fictif a été importé et le bon document a été retrouvé. Aucun décompte par tâche n’a été fourni.
-- Ouvertures de source : non renseigné.
+- Réussites autonomes : selon les retours qualitatifs communiqués le 9 octobre 2026, les recherches ont généralement abouti, y compris avec des fautes d’orthographe. Après l’ajout de l’extraction locale, le texte source fait ressortir davantage de précisions et la réponse à la question paraît plus concluante. Un fichier TXT fictif a été importé et le bon document a été retrouvé. Aucun décompte par tâche ni détail par type de question n’a été fourni.
+- Vérification technique du prototype (9 octobre 2026) : avec les fichiers d’exemple TXT, la recherche affiche la ligne de montant de la facture et la date de fin de garantie ; l’ouverture de la source permet de consulter le contenu complet. Une question portant sur une information absente affiche l’état sans résultat. Cette vérification manuelle et les tests automatisés ne sont pas des tests participants.
+- Ouvertures de source par les participants : non renseigné.
 - Compréhension de la simulation et de la connexion : non renseignée ; à vérifier explicitement lors d’un prochain test.
-- Questions ou inquiétudes récurrentes : le document pertinent est retrouvé, mais la recherche simulée ne fournit pas toujours directement l’information précise attendue. Cette limite est comprise comme une conséquence de l’absence d’IA ; le prototype ne doit toutefois pas laisser croire qu’une IA est déjà utilisée.
+- Questions ou inquiétudes récurrentes : le premier retour signalait que le document était retrouvé, mais que l’information exacte n’était pas toujours mise en évidence. Le retour après l’itération d’extraction est plus positif : le texte fait ressortir davantage de précisions liées à la question. La qualité sur plusieurs participants, catégories de faits et formulations reste à mesurer. Le prototype ne doit pas laisser croire qu’une IA est utilisée.
 - Trois améliorations prioritaires :
-  1. Mieux extraire ou mettre en évidence une valeur exacte dans les fichiers TXT/MD fictifs, en citant le passage correspondant et sans présenter cette amélioration comme une fonction d’IA.
-  2. Vérifier la tolérance aux fautes avec quelques requêtes fictives préparées et noter séparément la découverte du document et l’extraction de l’information.
-  3. Au prochain test, relever le nombre de participants, les réussites autonomes, l’ouverture de la source et la compréhension du traitement local sans Google ni IA.
+  1. Quantifier les résultats sur plusieurs questions et catégories (montants, dates, numéros, durées et fréquences), y compris des formulations avec fautes ; distinguer découverte du document et extraction de l’information.
+  2. Relever les réussites autonomes, le temps, l’ouverture de la source et la compréhension du traitement local sans Google ni IA.
+  3. Prototyper l’OCR local sur des PDF scannés synthétiques ; noter les erreurs de reconnaissance, le temps de traitement et les limites de volume avant d’intégrer cette fonction au MVP.
 - Décision : ajuster le prototype et retester sur des données fictives avant de poursuivre l’intégration technique. Les seuils de réussite ne peuvent pas encore être évalués faute de mesures chiffrées.
+
+### Itération — extraction locale sans IA
+
+Une extraction déterministe a été ajoutée pour les questions reconnues comme portant sur un montant, une date, un numéro, une durée ou une fréquence. Elle cite la ligne correspondante du fichier TXT/MD, sans reformuler ni générer de valeur. Les formats et formulations non reconnus retombent sur l’extrait textuel ou l’état sans résultat. Le 9 octobre 2026, les deux exemples de facture et de garantie ont été vérifiés dans le navigateur ; les exemples affichés et les fichiers téléchargeables ont été harmonisés. Des tests automatisés couvrent les cinq types d’information et plusieurs formulations. Cela ne valide ni la tolérance aux fautes par les participants, ni l’utilité générale de l’extraction ; un nouveau test utilisateur reste nécessaire.
+
+**Retour après essai — 9 octobre 2026 :** le porteur du projet indique que les tests sont plus concluants : le texte fait ressortir davantage de précisions et la réponse à la question demandée est mieux étayée. Retour qualitatif, sans nombre de participants, mesures par tâche ni catégories détaillées ; il ne suffit pas à valider les seuils de réussite.
+
+**Décision de périmètre — 9 octobre 2026 :** les formats visés pour le MVP sont TXT, Markdown et PDF, y compris les PDF scannés avec OCR exécuté sur l’appareil. La démo lit les PDF numériques ; l’OCR des scans fait l’objet d’une preuve technique sur des fichiers synthétiques. L’index restera en mémoire et sera supprimé à la fermeture ; aucun résultat ne sera conservé entre les sessions.
+
+**État du prototype PDF — 9 octobre 2026 :** le texte des PDF numériques est extrait localement dans le navigateur. Un branchement OCR natif expérimental pour les scans est intégré et compile sur Android, mais n’a pas été vérifié sur téléphone ; iOS reste à construire et tester sur Mac/Xcode. Ne pas compter l’OCR comme une fonction validée tant que l’extraction n’a pas été comparée au texte source sur des PDF synthétiques réels, sur les deux plateformes.

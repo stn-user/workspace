@@ -7,7 +7,7 @@
   <meta name="description" content="Prototype Famili-IA : retrouvez vos informations dans une démonstration à données fictives.">
   <title>Accueil | Famili-IA</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="app.js" defer></script>
+  <script type="module" src="app.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -95,18 +95,19 @@
           <section class="local-files" aria-labelledby="local-files-title">
             <div class="local-files-copy">
               <h2 id="local-files-title">Tester avec un fichier fictif</h2>
-              <p>Choisissez un fichier TXT ou Markdown. Son contenu reste dans cette page et disparaît quand vous la fermez.</p>
+              <p>Choisissez un fichier TXT, Markdown ou PDF. Le texte des PDF est lu localement ; l’OCR des PDF scannés est expérimental et en cours de validation dans l’application mobile.</p>
               <div class="sample-links">
                 <a href="samples/facture-piscine.txt" download>Télécharger une facture fictive</a>
                 <a href="samples/garantie-pompe.txt" download>Télécharger une garantie fictive</a>
+                <a href="samples/notice-filtre.txt" download>Télécharger une notice fictive</a>
               </div>
             </div>
             <div class="file-actions">
-              <input class="visually-hidden" id="local-files-input" type="file" accept=".txt,.md,text/plain,text/markdown" multiple>
+              <input class="visually-hidden" id="local-files-input" type="file" accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf" multiple>
               <label class="file-picker" for="local-files-input">Choisir un fichier</label>
               <button class="clear-files" id="clear-files" type="button" hidden>Retirer mes fichiers</button>
             </div>
-            <p class="file-status" id="file-status" role="status" aria-live="polite">Jusqu’à 5 fichiers TXT ou MD, 1 Mo maximum chacun. N’utilisez pas de vrais documents personnels.</p>
+            <p class="file-status" id="file-status" role="status" aria-live="polite">Jusqu’à 5 fichiers TXT, MD ou PDF de 1 Mo maximum et 20 pages par PDF. OCR local des scans expérimental dans l’application mobile. N’utilisez pas de vrais documents personnels.</p>
           </section>
 
           <section class="suggestions" aria-labelledby="suggestions-title">

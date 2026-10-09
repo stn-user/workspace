@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "node --test",
     "preview": "vite preview",
     "cap:sync": "npm run build && cap sync",
     "android:add": "cap add android",
@@ -13,8 +14,10 @@
     "android:run": "npm run cap:sync && cap run android"
   },
   "dependencies": {
+    "@jcesarmobile/capacitor-ocr": "^0.3.0",
     "@capacitor/android": "^8.5.3",
-    "@capacitor/core": "^8.5.3"
+    "@capacitor/core": "^8.5.3",
+    "pdfjs-dist": "^6.4.299"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.3",
