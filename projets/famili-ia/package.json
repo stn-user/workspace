@@ -14,9 +14,10 @@
     "android:run": "npm run cap:sync && cap run android"
   },
   "dependencies": {
-    "@jcesarmobile/capacitor-ocr": "^0.3.0",
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.4",
+    "@jcesarmobile/capacitor-ocr": "^0.3.0",
     "pdfjs-dist": "^6.4.299"
   },
   "devDependencies": {

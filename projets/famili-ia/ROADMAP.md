@@ -4,7 +4,7 @@
 
 Aider une personne ou une famille à retrouver, comprendre et organiser ses informations numériques, même lorsqu’elles sont dispersées entre plusieurs services.
 
-Famili-IA est une couche de recherche et de compréhension au-dessus des espaces numériques que les utilisateurs possèdent déjà. Le produit ne cherche pas à remplacer iCloud, Google Drive, OneDrive ou Dropbox, ni à devenir un nouveau service de stockage généraliste.
+Famili-IA est une couche de recherche et de compréhension au-dessus des espaces numériques que les utilisateurs possèdent déjà, qu'ils soient cloud ou locaux. Le produit ne cherche pas à remplacer iCloud, Google Drive, OneDrive ou Dropbox, ni à devenir un nouveau service de stockage généraliste, mais à créer un pont sécurisé entre ces silos existants.
 
 ## Principes de conception
 
@@ -21,6 +21,7 @@ Famili-IA est une couche de recherche et de compréhension au-dessus des espaces
 Ces exigences s’appliquent au prototype, au MVP et à toute extension. La sécurité et la confidentialité sont des critères de livraison, pas des améliorations à reporter après le lancement.
 
 - **Minimisation par défaut** : les documents restent chez leur fournisseur. Ne récupérer leur contenu que si le cas d’usage le justifie ; privilégier un traitement temporaire et ne conserver ni document ni texte extrait par défaut.
+- **Accès local circonscrit** : limiter par défaut l'accès aux dossiers non-systèmes (ex: `Documents`, `Images`, `Téléchargements`), jamais à la racine du disque ou aux dossiers d'application.
 - **Transparence des flux** : documenter les données collectées, leur finalité, leur durée de conservation et chaque destinataire, y compris fournisseurs d’IA, journaux, sauvegardes et outils de support. Informer l’utilisateur avant toute transmission à un service tiers.
 - **Contrôle utilisateur effectif** : permettre de consulter les sources connectées, de révoquer leur accès et de demander la suppression des données de l’application ; vérifier que suppression et déconnexion couvrent aussi les index, caches et sauvegardes selon les délais annoncés.
 - **Isolation stricte** : vérifier côté serveur les droits sur chaque ressource et isoler les comptes et foyers. Aucun identifiant fourni par le client ne suffit à autoriser l’accès à une donnée.
@@ -74,8 +75,8 @@ Ce retour renforce l’intérêt de la proposition, mais ne confirme pas encore 
 À préciser avant de coder l’intégration réelle :
 
 - première cible : particulier seul ou foyer ;
-- premier scénario : poser une question en langage naturel pour retrouver une information dans les documents de Google Drive explicitement choisis ; formats visés : TXT, Markdown et PDF, y compris les PDF numérisés via OCR exécuté sur l’appareil. Photos hors périmètre initial ;
-- périmètre du premier MVP : un seul fournisseur, Google Drive comme candidat retenu, et uniquement les fichiers explicitement choisis par l’utilisateur ; valider les permissions et méthodes API exactes avant tout pilote ou traitement de données personnelles ; une preuve de développement peut utiliser uniquement des fichiers synthétiques sélectionnés avec le scope minimal ;
+- premier scénario : poser une question en langage naturel pour retrouver une information **dans les documents de Google Drive explicitement choisis OU dans les dossiers locaux autorisés** (ex: `Documents`, `Téléchargements`) ; formats visés : TXT, Markdown et PDF, y compris les PDF numérisés via OCR exécuté sur l’appareil. Photos hors périmètre initial ;
+- périmètre du premier MVP : un seul fournisseur cloud, Google Drive comme candidat retenu, **et accès limité à des dossiers locaux prédéfinis** ; valider les permissions et méthodes API exactes (Drive API + accès système fichiers) avant tout pilote ou traitement de données personnelles ; une preuve de développement peut utiliser uniquement des fichiers synthétiques sélectionnés avec le scope minimal ;
 - traitement du MVP : sur un seul téléphone, sans synchronisation multi-appareils, sans IA distante et sans historique persistant des questions ;
 - accès à l’espace cloud complet et connexions à plusieurs fournisseurs : hors périmètre du premier MVP, à réexaminer dans une phase ultérieure après validation de l’usage et des permissions ;
 - index local : session seulement, conservé en mémoire sur l’appareil et supprimé à la fermeture de l’application ; pas de persistance entre sessions dans le MVP initial ;
@@ -166,6 +167,7 @@ Extensions possibles, à prioriser après le pilote :
 4. métadonnées structurées et rappels de garantie, toujours révisables ;
 5. espace familial avec rôles et consentements explicites ;
 6. applications mobiles natives si la PWA ne répond pas aux besoins hors ligne, notifications ou intégrations appareil. Une app iOS native pourrait aussi étudier une recherche locale dans la photothèque autorisée via PhotoKit ; cela ne fournit pas un accès serveur à Photos iCloud ni à iCloud Drive.
+7. **Recherche unifiée cloud+local** : présenter les résultats provenant de Google Drive et des dossiers locaux autorisés dans une même liste, avec indicateur clair de la provenance (☁️ pour cloud, 💾 pour local).
 
 Chaque fournisseur et chaque catégorie de données passent par une revue distincte des permissions, flux, coûts, rétention et risques.
 
@@ -205,3 +207,13 @@ L’étude préliminaire des six cibles est consignée dans [ETUDE_FAISABILITE_C
 - **Étude multi-cloud :** comparaison Google Drive, Google Photos, OneDrive, Dropbox, iCloud Drive et Photos iCloud dans [ETUDE_FAISABILITE_CLOUDS.md](./ETUDE_FAISABILITE_CLOUDS.md) ; couverture complète et uniforme impossible à garantir à ce stade. Le retour positif sur l’accès complet ne remplace pas l’accord des plateformes.
 - **Dépôt :** dépôt unique `workspace`, avec les projets sous `projets/`.
 - **Prochaine séquence retenue :** compléter la preuve web Drive en vérifiant les limites et cas d’erreur avec des fichiers synthétiques (PDF supérieur à 10 Mo, plus de 20 pages, format non pris en charge), sans envoyer de document personnel. Le TXT et le PDF numérique synthétiques d’une page ont déjà validé sur ordinateur OAuth/Picker, lecture, recherche, provenance, retrait et révocation. Ensuite, préparer séparément un test mobile via une origine HTTPS autorisée ; ne pas réutiliser l’URL HTTP locale et ne pas élargir les scopes. Ces essais ne valident pas l’accès au Drive entier, le statut OAuth de production, l’OCR scanné ou les autres intégrations natives. La campagne bêta regroupera les tests sur appareils iOS/Android (dont OCR scanné et Retour iPhone), les mesures d’usage avec participants et les vérifications de performances. Aucun accès global, document personnel, backend ou IA ne sera ajouté à ce stade. L’accès cloud complet reste une étude ultérieure, sans engagement de faisabilité ni de calendrier.
+
+### État actuel — Extension recherche locale
+
+- **Prototype local :** Le moteur de recherche basé sur mots-clés (déjà validé pour les fichiers Drive) fonctionne identiquement sur des fichiers locaux chargés via l'interface web (sélection manuelle) ou accès natif (Capacitor Filesystem). 
+- **Implémentation mobile :** Sur Android/iOS, le plugin `@capacitor/filesystem` permet de lister et lire les contenus des dossiers `Documents` et `Download` après autorisation explicite. Sur web, l'accès reste limité à la sélection de fichiers par l'utilisateur (via `<input type=file webkitdirectory>` pour dossiers complets).
+- **Traitement conservé :** Identique au flux Drive : extraction texte en mémoire (PDF.js + OCR expérimental), aucune persistance par défaut, résultats avec provenance claire (`source: "local"` ou `source: "drive"`).
+- **Limites actuelles :** 
+  - Web : navigation dans l'arborescence locale non possible sans serveur (contraintes de sécurité navigateur).
+  - Mobile : nécessite autorisation système (`READ_EXTERNAL_STORAGE` sur Android, accès aux dossiers spécifiques sur iOS).
+- **Prochaine séquence :** Valider l'expérience de sélection de dossier local sur mobile (Android Studio/Xcode) et web, puis harmoniser l'interface de résultats entre sources cloud et locales.

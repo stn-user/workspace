@@ -175,7 +175,7 @@ async function requestPermissions() {
 /**
  * Get accessible directories (Documents, Downloads)
  */
-async getAccessibleDirectories() {
+async function getAccessibleDirectories() {
   if (!Capacitor.isNativePlatform()) {
     return [];
   }

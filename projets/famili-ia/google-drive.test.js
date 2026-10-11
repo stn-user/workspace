@@ -87,6 +87,176 @@ test("reads only the file returned by Picker and keeps its text in the session r
     else globalThis.window = previousWindow;
     globalThis.fetch = previousFetch;
   });
+});
+
+test("rejects PDF larger than 10MB", async (t) => {
+  const previousWindow = globalThis.window;
+  const previousFetch = globalThis.fetch;
+  const requests = [];
+  const oversizedPdf = {
+    id: "oversized-pdf-id",
+    name: "oversized.pdf",
+    mimeType: "application/pdf",
+    size: "11000000", // 11 MB > 10 MB limit
+    modifiedTime: "2026-10-09T12:00:00.000Z"
+  };
+
+  class MockPickerBuilder {
+    setAppId() { return this; }
+    setDeveloperKey() { return this; }
+    setOAuthToken() { return this; }
+    setOrigin() { return this; }
+    setMaxItems() { return this; }
+    enableFeature() { return this; }
+    addView() { return this; }
+    setCallback(callback) {
+      this.callback = callback;
+      return this;
+    }
+    build() {
+      return {
+        setVisible: () => queueMicrotask(() => this.callback({
+          action: "picked",
+          docs: [{ id: oversizedPdf.id, name: oversizedPdf.name }]
+        }))
+      };
+    }
+  }
+
+  globalThis.window = {
+    location: { origin: "http://localhost:5173" },
+    google: {
+      accounts: {
+        oauth2: {
+          hasGrantedAllScopes: () => true,
+          revoke: (_token, callback) => callback({ successful: true })
+        }
+      },
+      picker: {
+        DocsView: class {
+          setIncludeFolders() { return this; }
+          setMimeTypes() { return this; }
+        },
+        PickerBuilder: MockPickerBuilder,
+        ViewId: { DOCS: "docs" },
+        Feature: { MULTISELECT_ENABLED: "multi" },
+        Action: { PICKED: "picked", CANCEL: "cancel", ERROR: "error" }
+      }
+    }
+  };
+  globalThis.fetch = async (url, options) => {
+    const requestUrl = new URL(url);
+    requests.push({ url: requestUrl, authorization: options.headers.Authorization });
+    if (requestUrl.pathname === `/drive/v3/files/${oversizedPdf.id}` &&
+        requestUrl.searchParams.get("fields") === "id,name,mimeType,size,modifiedTime") {
+      return Response.json(oversizedPdf);
+    }
+    // If it tries to download the content, we should not reach here because the size check should throw first.
+    return new Response("Should not be called", { status: 500 });
+  };
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    globalThis.fetch = previousFetch;
+  });
+
+  const client = new GoogleDriveClient({ apiKey: "test-api-key", appId: "123456", clientId: "test-client-id" });
+  client.tokenClient = {
+    callback: null,
+    requestAccessToken() {
+      this.callback({ access_token: "memory-only-token", scope: googleDriveScope });
+    }
+  };
+
+  await t.rejects(
+    client.pickFiles(1),
+    { message: /dépasse la limite de 10 Mo/ }
+  );
+});
+
+test("rejects unsupported file type", async (t) => {
+  const previousWindow = globalThis.window;
+  const previousFetch = globalThis.fetch;
+  const requests = [];
+  const unsupportedFile = {
+    id: "unsupported-id",
+    name: "image.jpg",
+    mimeType: "image/jpeg",
+    size: "1000",
+    modifiedTime: "2026-10-09T12:00:00.000Z"
+  };
+
+  class MockPickerBuilder {
+    setAppId() { return this; }
+    setDeveloperKey() { return this; }
+    setOAuthToken() { return this; }
+    setOrigin() { return this; }
+    setMaxItems() { return this; }
+    enableFeature() { return this; }
+    addView() { return this; }
+    setCallback(callback) {
+      this.callback = callback;
+      return this;
+    }
+    build() {
+      return {
+        setVisible: () => queueMicrotask(() => this.callback({
+          action: "picked",
+          docs: [{ id: unsupportedFile.id, name: unsupportedFile.name }]
+        }))
+      };
+    }
+  }
+
+  globalThis.window = {
+    location: { origin: "http://localhost:5173" },
+    google: {
+      accounts: {
+        oauth2: {
+          hasGrantedAllScopes: () => true,
+          revoke: (_token, callback) => callback({ successful: true })
+        }
+      },
+      picker: {
+        DocsView: class {
+          setIncludeFolders() { return this; }
+          setMimeTypes() { return this; }
+        },
+        PickerBuilder: MockPickerBuilder,
+        ViewId: { DOCS: "docs" },
+        Feature: { MULTISELECT_ENABLED: "multi" },
+        Action: { PICKED: "picked", CANCEL: "cancel", ERROR: "error" }
+      }
+    }
+  };
+  globalThis.fetch = async (url, options) => {
+    const requestUrl = new URL(url);
+    requests.push({ url: requestUrl, authorization: options.headers.Authorization });
+    if (requestUrl.pathname === `/drive/v3/files/${unsupportedFile.id}` &&
+        requestUrl.searchParams.get("fields") === "id,name,mimeType,size,modifiedTime") {
+      return Response.json(unsupportedFile);
+    }
+    return new Response("Should not be called", { status: 500 });
+  };
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    globalThis.fetch = previousFetch;
+  });
+
+  const client = new GoogleDriveClient({ apiKey: "test-api-key", appId: "123456", clientId: "test-client-id" });
+  client.tokenClient = {
+    callback: null,
+    requestAccessToken() {
+      this.callback({ access_token: "memory-only-token", scope: googleDriveScope });
+    }
+  };
+
+  await t.rejects(
+    client.pickFiles(1),
+    { message: /Le format de « image.jpg » n’est pas pris en charge/ }
+  );
+});
 
   const client = new GoogleDriveClient({ apiKey: "test-api-key", appId: "123456", clientId: "test-client-id" });
   client.tokenClient = {
