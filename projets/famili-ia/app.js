@@ -1,6 +1,8 @@
 import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch, normalizeText } from "./search-utils.js";
 import { GoogleDriveClient } from "./google-drive.js";
 import { Capacitor } from "@capacitor/core";
+import { Filesystem } from '@capacitor/filesystem';
+import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
 
 const googleDriveConfig = {
   clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
@@ -166,10 +168,14 @@ function renderDocuments(matches) {
     info.className = "document-info";
     addTextElement(info, "p", "document-name", sourceDocument.name);
     const origin = sourceDocument.driveSource
-      ? "Google Drive · copie temporaire locale"
+      ? "☁️ Google Drive · copie temporaire locale"
       : sourceDocument.driveDemo
         ? "Sélection Google Drive simulée · fichier fictif"
-        : sourceDocument.isLocal ? "Fichier local · non transmis" : "Exemple fictif";
+        : sourceDocument.isLocal
+          ? sourceDocument.sourceDir && Capacitor.isNativePlatform()
+            ? "💾 Stockage local · non transmis"
+            : "💾 Fichier local · non transmis"
+          : "Exemple fictif";
     addTextElement(info, "p", "document-meta", `${sourceDocument.type} · ${sourceDocument.date} · ${origin}`);
     card.append(info);
 
@@ -183,21 +189,29 @@ function renderDocuments(matches) {
 function openSource(document) {
   dialogEyebrow.textContent = document.driveSource
     ? "FICHIER CHOISI DANS GOOGLE DRIVE"
-    : document.isLocal ? "FICHIER DE CETTE SESSION" : "DOCUMENT DE DÉMONSTRATION";
+    : document.isLocal
+      ? document.sourceDir && Capacitor.isNativePlatform()
+        ? "💾 FICHIER STOCKAGE LOCAL"
+        : "FICHIER DE CETTE SESSION"
+      : "DOCUMENT DE DÉMONSTRATION";
   dialogTitle.textContent = document.name;
   dialogMeta.textContent = document.isLocal
     ? document.driveSource
       ? `${document.type} · téléchargé directement depuis Google et conservé en mémoire locale${document.date ? ` · modifié le ${document.date}` : ""}`
       : document.driveDemo
         ? `${document.type} · exemple fictif copié dans cette session`
-        : `${document.type} · chargé localement pour cette session`
+        : document.sourceDir && Capacitor.isNativePlatform()
+          ? `${document.type} · ${document.sourceDir} · chargé depuis le stockage local natif`
+          : `${document.type} · chargé localement pour cette session`
     : `${document.type} · ${document.date} · Source de démonstration`;
   dialogNoticeText.textContent = document.driveSource
     ? "Fichier explicitement choisi dans Google Picker. Le contenu est conservé en mémoire dans ce navigateur et n’est envoyé ni à un serveur Famili-IA ni à une IA."
     : document.driveDemo
       ? "Ceci est un contenu fictif. Aucun compte Google n’est connecté et aucun fichier Drive réel n’a été consulté."
       : document.isLocal
-        ? "Fichier choisi depuis cet appareil. Le contenu est traité localement et n’est pas transmis."
+        ? document.sourceDir && Capacitor.isNativePlatform()
+          ? "Fichier scanné depuis votre stockage local (Documents/Téléchargements). Le contenu est traité en mémoire et n'est pas transmis à un serveur."
+          : "Fichier choisi depuis cet appareil. Le contenu est traité localement et n’est pas transmis."
         : "Ceci est un contenu d’exemple inventé pour le prototype.";
   dialogContent.textContent = document.content;
   sourceDialog.showModal();
@@ -279,7 +293,7 @@ async function loadLocalFiles(files) {
 
   const invalidFile = selectedFiles.find((file) => !/\.(txt|md|pdf)$/i.test(file.name));
   if (invalidFile) {
-    setFileStatus(`« ${invalidFile.name} » n’est pas un fichier TXT, MD ou PDF. Aucun fichier de cette sélection n’a été ajouté.`, "error");
+    setFileStatus(`« ${invalidFile.name} » n'est pas un fichier TXT, MD ou PDF. Aucun fichier de cette sélection n'a été ajouté.`, "error");
     localFilesInput.value = "";
     return;
   }
@@ -291,7 +305,7 @@ async function loadLocalFiles(files) {
   if (oversizedFile) {
     const isPdf = oversizedFile.name.toLocaleLowerCase("fr").endsWith(".pdf");
     const limit = isPdf ? "10 Mo" : "1 Mo";
-    setFileStatus(`« ${oversizedFile.name} » dépasse la limite de ${limit}. Aucun fichier de cette sélection n’a été ajouté.`, "error");
+    setFileStatus(`« ${oversizedFile.name} » dépasse la limite de ${limit}. Aucun fichier de cette sélection n'a été ajouté.`, "error");
     localFilesInput.value = "";
     return;
   }
@@ -324,14 +338,106 @@ async function loadLocalFiles(files) {
     updateModeBanner();
     completeOnboarding();
     const count = uploadedDocuments.length;
-    setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session ; rien n’est envoyé ni conservé après fermeture.`, "success");
+    setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session ; rien n'est envoyé ni conservé après fermeture.`, "success");
     sourceChoiceDialog.close();
     showView("recherche");
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Erreur de lecture non détaillée.";
-    setFileStatus(`La sélection n’a pas pu être lue : ${reason} Aucun fichier de cette sélection n’a été ajouté.`, "error");
+    setFileStatus(`La sélection n'a pas pu être lue : ${reason} Aucun fichier de cette sélection n'a été ajouté.`, "error");
   } finally {
     localFilesInput.value = "";
+  }
+}
+
+/**
+ * Load local files from native filesystem (Capacitor) - for mobile
+ */
+async function loadLocalFilesNative() {
+  if (!Capacitor.isNativePlatform()) {
+    setFileStatus("Cette fonctionnalité n'est disponible que sur l'application mobile native.", "error");
+    return;
+  }
+
+  try {
+    // Request permissions first
+    const permResult = await requestPermissions();
+    if (!permResult.granted) {
+      setFileStatus("Permission refusée pour accéder aux fichiers locaux.", "error");
+      return;
+    }
+
+    setFileStatus("Recherche des fichiers locaux...", "success");
+
+    // Get accessible directories
+    const { getAccessibleDirectories } = await import("./local-files.js");
+    const directories = await getAccessibleDirectories();
+
+    if (directories.length === 0) {
+      setFileStatus("Aucun dossier accessible trouvé (Documents, Téléchargements).", "error");
+      return;
+    }
+
+    let allFiles = [];
+    for (const dir of directories) {
+      try {
+        const files = await listLocalFiles(dir);
+        allFiles.push(...files.map(f => ({ ...f, sourceDir: dir })));
+      } catch (error) {
+        console.warn(`Could not read directory ${dir}:`, error);
+      }
+    }
+
+    if (allFiles.length === 0) {
+      setFileStatus("Aucun fichier TXT, MD ou PDF trouvé dans les dossiers accessibles.", "error");
+      return;
+    }
+
+    // Limit to maxFiles
+    if (allFiles.length > maxFiles) {
+      allFiles = allFiles.slice(0, maxFiles);
+      setFileStatus(`Plus de ${maxFiles} fichiers trouvés. Seuls les ${maxFiles} premiers seront chargés.`, "warning");
+    }
+
+    // Process files
+    const loaded = await Promise.all(allFiles.map(async (file) => {
+      try {
+        const content = await readFileContent(file.blob, file.name);
+        return {
+          id: `local-native-${Date.now()}-${file.name}`,
+          name: file.name,
+          type: file.extension === "pdf" ? "PDF" : file.extension === "md" ? "Markdown" : "Texte",
+          date: "Session locale",
+          keywords: "",
+          summary: "",
+          content,
+          isLocal: true,
+          sourceDir: file.sourceDir
+        };
+      } catch (error) {
+        console.warn(`Failed to process ${file.name}:`, error);
+        return null;
+      }
+    }));
+
+    const validFiles = loaded.filter(f => f !== null);
+
+    if (validFiles.length === 0) {
+      setFileStatus("Aucun fichier n'a pu être lu correctement.", "error");
+      return;
+    }
+
+    uploadedDocuments.push(...validFiles);
+    clearFilesButton.hidden = false;
+    updateGoogleDriveButton();
+    updateModeBanner();
+    completeOnboarding();
+    const count = uploadedDocuments.length;
+    setFileStatus(`${validFiles.length} fichier${validFiles.length === 1 ? "" : "s"} chargé${validFiles.length === 1 ? "" : "s"} depuis le stockage local. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.`, "success");
+    sourceChoiceDialog.close();
+    showView("recherche");
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Erreur de lecture non détaillée.";
+    setFileStatus(`Erreur lors du chargement des fichiers locaux : ${reason}`, "error");
   }
 }
 
@@ -396,6 +502,11 @@ sourceChoiceDialog.addEventListener("click", (event) => {
 document.querySelector("#choose-local-files").addEventListener("click", () => {
   sourceChoiceDialog.close();
   localFilesInput.click();
+});
+
+document.querySelector("#choose-local-files-native").addEventListener("click", async () => {
+  sourceChoiceDialog.close();
+  await loadLocalFilesNative();
 });
 document.querySelector("#explore-demo").addEventListener("click", () => {
   completeOnboarding();

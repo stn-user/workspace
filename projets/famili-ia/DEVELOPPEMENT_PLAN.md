@@ -1,0 +1,57 @@
+# Famili-IA – Plan de Développement
+
+## 📊 Vue d'ensemble
+- **Phase actuelle** : Phase 4 – MVP privé sur un seul Cloud (Google Drive) – en cours ; l’étape de recherche locale est en planification.
+- **Prochaine étape prioritaire** : Implémentation de l’**acces local** → intégration du plugin Capacitor et unification des résultats.
+
+## 📋 Liste des étapes
+
+### Phase 0 – Cadrer le problème
+- [✓] ✅ 0.1 : Vision & principe de design réd. (roadmap) 
+- [✓] ✅ 0.2 : Analyse des exigences de sécurité/privacy (roadmap)
+
+### Phase 1 – MVP : version cloud unique
+- [✓] ✅ 1.1 : Implémenter OAuth/Picker Drive (scope `drive.file`)
+- [✓] ✅ 1.2 : Moteur de recherche local‑cloud, index immédiat en mémoire
+- [✓] ❌ 1.3 : OCR intégration (Vision/ML‑kit) – **incomplete** (à valider plus tard)
+
+### Phase 2 – Conception technique
+- [✓] ✅ 2.1 : Architecture de stockage *en‑mémoire* (no persistence)
+- [✓] ✅ 2.2 : Composants UI de résultats (source cloud/local)
+- [ ] 2.3 : Sécurisation des scopes OAuth & gestion des tokens
+- [ ] 2.4 : Design de l’authentification locale `READ_EXTERNAL_STORAGE`/scope‑files
+
+### Phase 3 – Prototype web local (déjà réalisé)
+- [✓] ✅ 3.1 : UI de sélection de fichiers locaux (web + Capacitor)
+- [✓] ✅ 3.2 : Extraction texte via PDF.js + OCR expérimental
+- [✓] ✅ 3.3 : Tableau de résultats unifié
+- [ ] 3.4 : Tests de régression sur le moteur de recherche (cloud vs local)
+
+### Phase 4 – MVP privé sur un seul Cloud (✅ TERMINÉE)
+- [✓] ✅ 4.1 : Mise à jour de la roadmap (ajout *recherche locale*)
+- [✓] ✅ 4.2 : Intégration du plugin **@capacitor/filesystem**
+- [✓] ✅ 4.3 : Gestion des permissions système (Android `READ_EXTERNAL_STORAGE`, iOS Files access)
+- [✓] ✅ 4.4 : Création du module local-files.js
+- [✓] ✅ 4.5 : Extraction texte pour fichiers “local‑only” (même chemin que Drive)
+- [✓] ✅ 4.6 : Unifier la logique index‑ing : concaténer résultats cloud + local
+- [✓] ✅ 4.7 : UI indicateur “☁️ / 💾” de provenance
+- [✓] ✅ 4.8 : Tests unitaires & d’intégration local‑cloud
+- [✓] ✅ 4.9 : Vérification de la min‑sécurité (pas de persistance, accès limité)
+- [✓] ✅ 4.10 : Documentation de la chaîne d’authentification locale
+
+### Phase 5 – Pilote fermé (prochaine étape)
+- [ ] 5.1 : Tests utilisateurs sur mobile (iOS/Android, locales + cloud)
+- [ ] 5.2 : Mesure des indicateurs (taux de réussite, temps de recherche, précision)
+- [ ] 5.3 : Recueil & analyse des retours
+- [ ] 5.4 : Rapport de pilotage & next‑steps
+
+---
+
+## 📌 Comment mettre à jour
+- Cochez la case `[✓]` lorsque la tâche est terminée.
+- Si une tâche est bloquée, ajoutez un commentaire après la case (ex : `[ ] ❌ 4.4 : En attente de Android X debugging → config `.  
+- Maintenez le fichier à jour dans chaque branche ou commit important.
+
+---
+
+> **Remarque :** Ce fichier sert de référentiel vivant. En cas de question, navigator vers la section correspondante ou laisser un commentaire.
