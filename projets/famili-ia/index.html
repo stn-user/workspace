@@ -222,6 +222,99 @@
           <p class="demo-disclaimer">Ces alertes sont des exemples inventés et ne correspondent à aucun contrat ou événement réel.</p>
         </section>
 
+        <section class="view detail-view" id="view-detail" data-view="detail" aria-labelledby="detail-title" hidden>
+          <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="maison">Maison</button><span aria-hidden="true">/</span><strong id="detail-breadcrumb">Équipement</strong></nav>
+          <div class="view-heading"><div><p class="eyebrow">DÉTAILS ÉQUIPEMENT</p><h1 id="detail-title">Chargement...</h1></div></div>
+          <div id="detail-content" class="detail-content">
+            <!-- Rempli dynamiquement par app.js -->
+          </div>
+        </section>
+
+        <section class="view assistant-view" id="view-assistant" data-view="assistant" aria-labelledby="assistant-title" hidden>
+          <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="accueil">Accueil</button><span aria-hidden="true">/</span><strong>Assistant IA</strong></nav>
+          <div class="view-heading"><div><p class="eyebrow">VOTRE COMPAGNON NUMÉRIQUE</p><h1 id="assistant-title">Assistant Famili-IA</h1></div></div>
+          <div class="chat-container" id="assistant-chat">
+            <div class="chat-message ai">Bonjour ! Je peux vous aider à retrouver un document ou répondre à une question sur votre foyer. Que souhaitez-vous savoir ?</div>
+          </div>
+          <form class="chat-form" id="assistant-form">
+            <input type="text" id="assistant-input" placeholder="Posez votre question ici...">
+            <button type="submit">Envoyer</button>
+          </form>
+        </section>
+
+        <section class="view import-view" id="view-importer" data-view="importer" aria-labelledby="import-title" hidden>
+          <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="recherche">Recherche</button><span aria-hidden="true">/</span><strong>Importer</strong></nav>
+          <div class="view-heading"><div><p class="eyebrow">AJOUT DE DOCUMENTS</p><h1 id="import-title">Importer un document</h1></div></div>
+          <div class="import-container">
+            <div class="drop-zone" id="drop-zone">
+              <span class="drop-icon" aria-hidden="true">☁</span>
+              <p>Glissez-déposez vos fichiers ici ou <label for="import-input" class="text-button">parcourez vos dossiers</label></p>
+              <input type="file" id="import-input" class="visually-hidden" multiple accept=".txt,.md,.pdf">
+            </div>
+            <div class="import-options">
+              <button class="secondary-button" type="button" data-open-source-dialog>Choisir via Google Drive</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="view profile-view" id="view-profil" data-view="profil" aria-labelledby="profile-title" hidden>
+          <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="famille">Famille</button><span aria-hidden="true">/</span><strong>Profil</strong></nav>
+          <div class="view-heading"><div><p class="eyebrow">MON COMPTE</p><h1 id="profile-title">Profil & Paramètres</h1></div></div>
+          <div class="profile-grid">
+            <section class="panel user-info-panel">
+              <div class="user-header">
+                <div class="user-avatar-large" id="profile-avatar">S</div>
+                <div class="user-meta">
+                  <strong id="profile-name">Steve</strong>
+                  <span id="profile-role">Administrateur</span>
+                </div>
+              </div>
+              <div class="profile-fields">
+                <div class="field">
+                  <label>Nom d'affichage</label>
+                  <input type="text" id="edit-name" value="Steve">
+                </div>
+                <div class="field">
+                  <label>Rôle</label>
+                  <span class="readonly-field">Administrateur</span>
+                </div>
+              </div>
+              <button class="primary-button" type="button" id="save-profile">Enregistrer les modifications</button>
+            </section>
+            <section class="panel privacy-panel">
+              <div class="section-heading"><h2>Confidentialité</h2></div>
+              <div class="privacy-option">
+                <div class="option-text"><strong>Accès local</strong><small>Autoriser le scan des dossiers Documents/Téléchargements</small></div>
+                <input type="checkbox" checked>
+              </div>
+              <div class="privacy-option">
+                <div class="option-text"><strong>Connexion Drive</strong><small>Lier mon compte Google Drive</small></div>
+                <input type="checkbox">
+              </div>
+              <button class="text-button" type="button" data-open-view="vos-donnees">Gérer mes données</button>
+            </section>
+          </div>
+        </section>
+
+        <section class="view data-view" id="view-vos-donnees" data-view="vos-donnees" aria-labelledby="data-title" hidden>
+          <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="profil">Profil</button><span aria-hidden="true">/</span><strong>Vos données</strong></nav>
+          <div class="view-heading"><div><p class="eyebrow">SOUVERAINETÉ NUMÉRIQUE</p><h1 id="data-title">Vos données</h1></div></div>
+          <div class="data-inventory">
+            <section class="panel">
+              <div class="section-heading"><h2>Inventaire des fichiers</h2></div>
+              <div class="data-list" id="data-inventory-list">
+                <!-- Liste des fichiers indexés -->
+              </div>
+            </section>
+            <section class="panel danger-panel">
+              <div class="section-heading"><h2>Actions critiques</h2></div>
+              <p>Ces actions sont irréversibles et supprimeront toutes les données de la session actuelle.</p>
+              <button class="danger-button" type="button" id="purge-all-data">Supprimer toutes mes données</button>
+              <button class="secondary-button" type="button" id="export-all-data">Exporter mes données (JSON)</button>
+            </section>
+          </div>
+        </section>
+
         <p class="toast-message" id="toast-message" role="status" aria-live="polite" hidden></p>
       </main>
     </div>

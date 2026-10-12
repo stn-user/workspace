@@ -3,6 +3,7 @@ import { GoogleDriveClient } from "./google-drive.js";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem } from '@capacitor/filesystem';
 import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
+import { getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts } from "./state.js";
 
 const googleDriveConfig = {
   clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
@@ -668,7 +669,12 @@ const pageTitles = {
   recherche: "Recherche",
   maison: "Maison",
   famille: "Famille",
-  alertes: "Alertes"
+  alertes: "Alertes",
+  detail: "Détail équipement",
+  assistant: "Assistant IA",
+  importer: "Importer",
+  profil: "Profil",
+  "vos-donnees": "Vos données"
 };
 const toast = document.querySelector("#toast-message");
 let toastTimeout;
@@ -721,6 +727,77 @@ document.querySelectorAll("[data-open-view]").forEach((button) => {
 
 document.querySelectorAll("[data-demo-action]").forEach((button) => {
   button.addEventListener("click", () => showDemoNotice());
+});
+
+// Gestion des nouvelles vues
+document.querySelectorAll("[data-nav~='detail']").forEach((button) => {
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    const eqId = button.dataset.eqId;
+    if (eqId) {
+      const eqDetail = getEquipmentDetail(eqId);
+      const detailTitle = document.querySelector("#detail-title");
+      const detailContent = document.querySelector("#detail-content");
+      if (detailTitle && detailContent) {
+        detailTitle.textContent = eqDetail ? eqDetail.name : "Équipement";
+        detailContent.innerHTML = `
+          <div class="equipment-specs">
+            <h3>${eqDetail.name}</h3>
+            <p><strong>Catégorie :</strong> ${eqDetail.category}</p>
+            <p><strong>Statut :</strong> ${eqDetail.status}</p>
+            ${eqDetail.docs && eqDetail.docs.length > 0 ? `<p><strong>Documents associés :</strong> ${eqDetail.docs.map((d) => `<span class="doc-badge">${d}</span>`).join(' ')}</p>` : ''}
+          </div>
+        `;
+        showView("detail");
+      }
+    }
+  });
+});
+
+document.querySelectorAll("[data-nav~='assistant']").forEach((button) => {
+  button.addEventListener("click", () => {
+    showView("assistant");
+  });
+});
+
+document.querySelectorAll("[data-nav~='importer']").forEach((button) => {
+  button.addEventListener("click", () => {
+    showView("importer");
+  });
+});
+
+document.querySelectorAll("[data-nav~='profil']").forEach((button) => {
+  button.addEventListener("click", () => {
+    showView("profil");
+    // Populate profile data from state
+    const user = getCurrentUser();
+    const avatar = document.querySelector("#profile-avatar");
+    const nameEl = document.querySelector("#profile-name");
+    const roleEl = document.querySelector("#profile-role");
+    if (avatar && nameEl) {
+      avatar.textContent = user.avatar || 'S';
+      nameEl.textContent = user.name || 'Steve';
+    }
+    if (roleEl) {
+      roleEl.textContent = user.role || 'Administrateur';
+    }
+  });
+});
+
+document.querySelectorAll("[data-nav~='vos-donnees']").forEach((button) => {
+  button.addEventListener("click", () => {
+    showView("vos-donnees");
+    // Populate data inventory
+    const dataList = document.querySelector("#data-inventory-list");
+    if (dataList) {
+      dataList.innerHTML = `
+        <div class="file-row"><span>Facture piscine.pdf</span><small>(local)</small></div>
+        <div class="file-row"><small>Garantie pompe.pdf</small><small>(local)</small></div>
+        <div class="file-row"><small>Bambu facture.pdf</small><small>(local)</small></div>
+        <div class="file-row"><small>Contrat habitation.pdf</small><small>(local)</small></div>
+      `;
+    }
+  });
 });
 
 document.querySelector("#quick-search-form").addEventListener("submit", (event) => {
