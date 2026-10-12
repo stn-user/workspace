@@ -226,11 +226,15 @@ function search(question) {
   }
 
   const matches = findDocuments(trimmedQuestion);
-  results.hidden = matches.length === 0;
-  noResults.hidden = matches.length !== 0;
-  if (matches.length === 0) return;
 
-  const bestMatch = matches[0];
+  // Apply filters if any
+  const filteredMatches = applyFilters(matches);
+
+  results.hidden = filteredMatches.length === 0;
+  noResults.hidden = filteredMatches.length !== 0;
+  if (filteredMatches.length === 0) return;
+
+  const bestMatch = filteredMatches[0];
   answerLabel.textContent = bestMatch.document.isLocal
     ? bestMatch.exactFact
       ? "INFORMATION EXTRAITE DU FICHIER — SANS IA"
@@ -241,10 +245,80 @@ function search(question) {
       ? `Dans « ${bestMatch.document.name} », ${bestMatch.exactFact}`
       : `Extrait du fichier « ${bestMatch.document.name} » : « ${bestMatch.excerpt} »`
     : bestMatch.document.summary;
-  resultCount.textContent = `${matches.length} ${matches.length === 1 ? "document trouvé" : "documents trouvés"}`;
-  renderDocuments(matches);
+  resultCount.textContent = `${filteredMatches.length} ${filteredMatches.length === 1 ? "document trouvé" : "documents trouvés"}`;
+  renderDocuments(filteredMatches);
   results.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
+
+/**
+ * Applique les filtres sélectionnés par l'utilisateur
+ * @param {Array} matches - Résultats de recherche bruts
+ * @returns {Array} Résultats filtrés
+ */
+function applyFilters(matches) {
+  const typeFilter = document.querySelector('#filter-type')?.value || '';
+  const sourceFilter = document.querySelector('#filter-source')?.value || '';
+
+  // Si aucun filtre actif, retourner les résultats tels quels
+  if (!typeFilter && !sourceFilter) {
+    return matches;
+  }
+
+  return matches.filter(result => {
+    const doc = result.document;
+
+    // Filtre par type de document
+    if (typeFilter) {
+      let matchesType = false;
+      if (typeFilter === 'Facture' && doc.type === 'Facture') matchesType = true;
+      else if (typeFilter === 'Garantie' && doc.type === 'Garantie') matchesType = true;
+      else if (typeFilter === 'Contrat' && doc.type === 'Contrat') matchesType = true;
+      else if (typeFilter === 'Notice' && doc.type === 'Notice') matchesType = true;
+      else if (typeFilter === 'PDF' && doc.type === 'PDF') matchesType = true;
+      else if (typeFilter === 'Texte' && (doc.type === 'Texte' || doc.type === 'Markdown')) matchesType = true;
+      else if (typeFilter === 'Markdown' && doc.type === 'Markdown') matchesType = true;
+
+      if (!matchesType) return false;
+    }
+
+    // Filtre par source
+    if (sourceFilter) {
+      let matchesSource = false;
+      if (sourceFilter === 'local' && doc.isLocal && !doc.driveSource && !doc.driveDemo) matchesSource = true;
+      else if (sourceFilter === 'drive' && doc.driveSource) matchesSource = true;
+      else if (sourceFilter === 'demo' && (doc.driveDemo || !doc.isLocal)) matchesSource = true;
+
+      if (!matchesSource) return false;
+    }
+
+    return true;
+  });
+}
+
+// Event listeners pour les filtres
+document.querySelectorAll('#filter-type, #filter-source').forEach(select => {
+  select.addEventListener('change', () => {
+    // Réexécuter la recherche actuelle si elle existe
+    if (input.value.trim()) {
+      search(input.value);
+      // Afficher le bouton "Effacer les filtres"
+      const clearBtn = document.querySelector('#clear-filters');
+      if (clearBtn) clearBtn.hidden = false;
+    }
+  });
+});
+
+// Gestion du bouton "Effacer les filtres"
+document.querySelector('#clear-filters').addEventListener('click', () => {
+  document.querySelector('#filter-type').value = '';
+  document.querySelector('#filter-source').value = '';
+  document.querySelector('#clear-filters').hidden = true;
+
+  // Réexécuter la recherche sans filtres
+  if (input.value.trim()) {
+    search(input.value);
+  }
+});
 
 function setFileStatus(message, state) {
   fileStatus.textContent = message;
@@ -733,21 +807,45 @@ document.querySelectorAll("[data-demo-action]").forEach((button) => {
 document.querySelectorAll("[data-nav~='detail']").forEach((button) => {
   button.addEventListener("click", (event) => {
     event.preventDefault();
-    const eqId = button.dataset.eqId;
+    const eqId = button.dataset.equipment; // Updated from eqId to equipment to match HTML data-equipment
     if (eqId) {
       const eqDetail = getEquipmentDetail(eqId);
       const detailTitle = document.querySelector("#detail-title");
       const detailContent = document.querySelector("#detail-content");
+      const detailBreadcrumb = document.querySelector("#detail-breadcrumb");
+
       if (detailTitle && detailContent) {
-        detailTitle.textContent = eqDetail ? eqDetail.name : "Équipement";
-        detailContent.innerHTML = `
+        const name = eqDetail ? eqDetail.name : "Équipement";
+        detailTitle.textContent = name;
+        if (detailBreadcrumb) detailBreadcrumb.textContent = name;
+
+        detailContent.innerHTML = eqDetail ? `
           <div class="equipment-specs">
-            <h3>${eqDetail.name}</h3>
-            <p><strong>Catégorie :</strong> ${eqDetail.category}</p>
-            <p><strong>Statut :</strong> ${eqDetail.status}</p>
-            ${eqDetail.docs && eqDetail.docs.length > 0 ? `<p><strong>Documents associés :</strong> ${eqDetail.docs.map((d) => `<span class="doc-badge">${d}</span>`).join(' ')}</p>` : ''}
+            <div class="spec-header">
+              <span class="spec-icon ${eqDetail.category === 'pompe' ? 'green' : 'blue'}">▤</span>
+              <h3>${eqDetail.name}</h3>
+            </div>
+            <div class="spec-grid">
+              <div class="spec-item"><label>Catégorie</label><span>${eqDetail.category}</span></div>
+              <div class="spec-item"><label>Statut</label><span class="status-pill">${eqDetail.status}</span></div>
+            </div>
+            <div class="spec-docs">
+              <h4>Documents associés</h4>
+              <div class="doc-grid">
+                ${eqDetail.docs && eqDetail.docs.length > 0
+                  ? eqDetail.docs.map(docId => `
+                      <button class="doc-link-card" type="button" data-open-source-dialog>
+                        <span class="doc-icon">📄</span>
+                        <span class="doc-name">${docId}</span>
+                        <span class="doc-arrow">›</span>
+                      </button>
+                    `).join('')
+                  : '<p class="empty-docs">Aucun document lié pour cet équipement.</p>'}
+              </div>
+            </div>
           </div>
-        `;
+        ` : '<p class="error-state">Équipement non trouvé.</p>';
+
         showView("detail");
       }
     }
@@ -800,6 +898,72 @@ document.querySelectorAll("[data-nav~='vos-donnees']").forEach((button) => {
   });
 });
 
+/**
+ * Render equipment list based on category filter
+ */
+function renderEquipmentList(category = 'tout') {
+  const equipmentList = document.querySelector('#equipment-list');
+  const equipmentEmpty = document.querySelector('#equipment-empty');
+  if (!equipmentList || !equipmentEmpty) return;
+
+  const equipment = getEquipmentByCategory(category);
+
+  if (equipment.length === 0) {
+    equipmentList.innerHTML = '';
+    equipmentEmpty.hidden = false;
+    return;
+  }
+
+  equipmentList.innerHTML = equipment.map(eq => {
+    // Determine icon based on category or name
+    let icon = '▤';
+    let iconClass = 'blue';
+    if (eq.category === 'pompe') { icon = '⚙'; iconClass = 'green'; }
+    else if (eq.category === 'piscine') { icon = '≋'; iconClass = 'violet'; }
+    else if (eq.category === 'imprimante') { icon = '🖨️'; iconClass = 'cyan'; }
+    else if (eq.category === 'assurance') { icon = '📄'; iconClass = 'amber'; }
+
+    return `
+      <button class="equipment-row" type="button" data-equipment="${eq.id}" data-open-view="detail">
+        <span class="row-icon ${iconClass}">${icon}</span>
+        <span class="row-copy"><strong>${eq.name}</strong><small>${eq.status}</small></span>
+        <span class="stat-arrow">›</span>
+      </button>
+    `;
+  }).join('');
+
+  equipmentEmpty.hidden = true;
+}
+
+/**
+ * Initialize category tab filtering
+ */
+function initCategoryTabs() {
+  const tabs = document.querySelectorAll('[data-house-category]');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Update active tab
+      document.querySelectorAll('[data-house-category]').forEach(t => {
+        const isSelected = t === tab;
+        t.classList.toggle('is-selected', isSelected);
+        t.setAttribute('aria-pressed', String(isSelected));
+      });
+
+      // Get category and render equipment list
+      const category = tab.dataset.houseCategory;
+      renderEquipmentList(category);
+
+      // Update pool illustration visibility
+      const poolIllustration = document.querySelector('.pool-illustration');
+      if (poolIllustration) {
+        poolIllustration.hidden = category !== 'tout' && category !== 'piscine';
+      }
+
+      // Update equipment empty state (handled by renderEquipmentList)
+    });
+  });
+}
+
 document.querySelector("#quick-search-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const question = document.querySelector("#quick-question").value.trim();
@@ -809,26 +973,8 @@ document.querySelector("#quick-search-form").addEventListener("submit", (event) 
   if (question) search(question);
 });
 
-document.querySelectorAll("[data-house-category]").forEach((button) => {
-  button.addEventListener("click", () => {
-    const category = button.dataset.houseCategory;
-    document.querySelectorAll("[data-house-category]").forEach((tab) => {
-      const isSelected = tab === button;
-      tab.classList.toggle("is-selected", isSelected);
-      tab.setAttribute("aria-pressed", String(isSelected));
-    });
-
-    let visibleCount = 0;
-    document.querySelectorAll("[data-equipment]").forEach((row) => {
-      const isVisible = category === "tout" || row.dataset.equipment === category;
-      row.hidden = !isVisible;
-      if (isVisible) visibleCount += 1;
-    });
-    document.querySelector("#equipment-empty").hidden = visibleCount !== 0;
-    document.querySelector(".pool-illustration").hidden = category !== "tout" && category !== "piscine";
-  });
-  button.setAttribute("aria-pressed", String(button.classList.contains("is-selected")));
-});
+// The house category filtering is now handled by initCategoryTabs() and renderEquipmentList()
+// This duplicate event listener is removed to avoid conflicts
 
 document.querySelectorAll("[data-alert-card]").forEach((card) => {
   card.addEventListener("click", () => {
@@ -842,6 +988,73 @@ document.querySelector("#mark-alerts-read").addEventListener("click", (event) =>
   event.currentTarget.disabled = true;
 });
 
+
+/**
+ * Initialization - Render Accueil dashboard with state data
+ */
+function renderAccueilDashboard() {
+  const user = getCurrentUser();
+  const members = getFamilyMembers();
+  const equipment = getEquipmentByCategory('tout');
+  const alerts = getAlerts();
+
+  // Update dashboard greeting
+  const greetingName = document.querySelector('#dashboard-title strong, #dashboard-title');
+  if (greetingName && greetingName.textContent?.includes('Bonjour')) {
+    greetingName.innerHTML = `Bonjour ${user.name} <span aria-hidden="true">👋</span>`;
+  }
+
+  // Update stats grid with real data
+  const statCards = document.querySelectorAll('.stat-card');
+  if (statCards[0]) {
+    // Documents importants
+    statCards[0].querySelector('strong').textContent = `${equipment.length + 5}`;
+  }
+  if (statCards[1]) {
+    // Garanties actives
+    const activeWarranties = alerts.filter(a => a.type === 'amber' || a.type === 'red').length;
+    statCards[1].querySelector('strong').textContent = activeWarranties.toString();
+  }
+  if (statCards[3]) {
+    // Maison
+    statCards[3].querySelector('strong').textContent = '1';
+  }
+
+  // Update "À vérifier" section
+  const verifyRows = document.querySelector('#view-accueil .verify-panel');
+  if (verifyRows) {
+    verifyRows.innerHTML = `
+      <div class="section-heading">
+        <h2 id="verify-title">À vérifier</h2>
+        <button class="text-button" type="button" data-open-view="alertes">Voir tout</button>
+      </div>
+      ${alerts.map(alert => `
+        <button class="verify-row" type="button" data-open-view="alertes">
+          <span class="row-icon ${alert.type}">${alert.type === 'red' ? '◉' : '♢'}</span>
+          <span class="row-copy">
+            <strong>${alert.title}</strong>
+            <small>${alert.detail}</small>
+          </span>
+          <span class="stat-arrow">›</span>
+        </button>
+      `).join('')}
+    `;
+
+    // Re-attach event listeners
+    verifyRows.querySelectorAll('[data-open-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        showView(btn.dataset.openView);
+      });
+    });
+  }
+
+  // Update member avatars in sidebar
+  const sidebarNav = document.querySelector('.sidebar .avatar-small');
+  if (sidebarNav && user.avatar) {
+    sidebarNav.textContent = user.avatar;
+  }
+}
+
 const initialView = window.location.hash.slice(1);
 const firstRun = localStorage.getItem(onboardingCompleteKey) !== "true";
 document.querySelector("#welcome-panel").hidden = !firstRun;
@@ -849,3 +1062,11 @@ document.querySelector("#dashboard-content").hidden = firstRun;
 document.querySelector("#view-accueil").setAttribute("aria-labelledby", firstRun ? "welcome-title" : "dashboard-title");
 showView(Object.hasOwn(pageTitles, initialView) ? initialView : "accueil", { addHistory: false });
 window.history.replaceState({ view: activeView }, "", `#${activeView}`);
+
+// Render dashboard on load
+if (!firstRun) {
+  renderAccueilDashboard();
+}
+
+// The house view must be initialized on page load
+initHouseView();
