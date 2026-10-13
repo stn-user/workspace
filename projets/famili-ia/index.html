@@ -107,6 +107,34 @@
           </form>
           <p class="privacy-note" id="privacy-note"><span aria-hidden="true">♧</span> Les fichiers choisis restent dans cette session. La connexion Google est facultative et ne commence qu’après votre action et votre consentement ; aucune IA ni backend.</p>
 
+          <!-- Recherche avancée avec filtres -->
+          <section class="search-filters" aria-labelledby="filters-title">
+            <h2 id="filters-title" class="visually-hidden">Filtres de recherche</h2>
+            <div class="filter-group">
+              <label for="filter-type">Type de document</label>
+              <select id="filter-type" class="filter-select">
+                <option value="">Tous les types</option>
+                <option value="Facture">Facture</option>
+                <option value="Garantie">Garantie</option>
+                <option value="Contrat">Contrat</option>
+                <option value="Notice">Notice</option>
+                <option value="PDF">PDF</option>
+                <option value="Texte">Texte</option>
+                <option value="Markdown">Markdown</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="filter-source">Source</label>
+              <select id="filter-source" class="filter-select">
+                <option value="">Toutes les sources</option>
+                <option value="local">💾 Stockage local</option>
+                <option value="drive">☁️ Google Drive</option>
+                <option value="demo">✦ Démo (fictif)</option>
+              </select>
+            </div>
+            <button type="button" id="clear-filters" class="text-button" hidden>Effacer les filtres</button>
+          </section>
+
           <section class="local-files" aria-labelledby="local-files-title">
             <div class="local-files-copy">
               <h2 id="local-files-title">Mes sources</h2>
@@ -166,15 +194,10 @@
           <section class="panel equipment-panel" aria-labelledby="equipment-title">
             <div class="section-heading"><h2 id="equipment-title">Équipements</h2><span class="demo-chip">Tout fictif</span></div>
             <div class="pool-illustration" role="img" aria-label="Illustration fictive d’une piscine"><span>● En bon état</span></div>
-            <div class="equipment-list">
-              <button class="equipment-row" type="button" data-equipment="piscine" data-open-view="recherche"><span class="row-icon blue">▤</span><span class="row-copy"><strong>Facture</strong><small>04/03/2023 · 8 900 €</small></span><span class="stat-arrow">›</span></button>
-              <button class="equipment-row" type="button" data-equipment="piscine" data-open-view="recherche"><span class="row-icon green">♢</span><span class="row-copy"><strong>Garantie</strong><small>Jusqu’au 04/05/2028</small></span><span class="stat-arrow">›</span></button>
-              <button class="equipment-row" type="button" data-equipment="piscine" data-open-view="recherche"><span class="row-icon violet">▤</span><span class="row-copy"><strong>Notice</strong><small>Filtre de piscine</small></span><span class="stat-arrow">›</span></button>
-              <button class="equipment-row" type="button" data-equipment="pompe" data-open-view="recherche"><span class="row-icon cyan">⚙</span><span class="row-copy"><strong>Pompe</strong><small>Hayward · Modèle 2022</small></span><span class="stat-arrow">›</span></button>
-              <button class="equipment-row" type="button" data-equipment="piscine" data-demo-action><span class="row-icon amber">▤</span><span class="row-copy"><strong>Filtre</strong><small><span class="warning-pill">À nettoyer dans 10 jours</span></small></span><span class="stat-arrow">›</span></button>
-              <button class="equipment-row" type="button" data-equipment="piscine" data-demo-action><span class="row-icon green">◷</span><span class="row-copy"><strong>Dernier entretien</strong><small>15/09/2026</small></span><span class="stat-arrow">›</span></button>
-              <p class="empty-state" id="equipment-empty" hidden>Aucun équipement fictif pour cette catégorie.</p>
+            <div class="equipment-list" id="equipment-list">
+              <!-- Equipment list will be populated dynamically by app.js -->
             </div>
+            <p class="empty-state" id="equipment-empty" hidden>Aucun équipement trouvé.</p>
           </section>
         </section>
 
@@ -211,13 +234,8 @@
 
         <section class="view alerts-view" id="view-alertes" data-view="alertes" aria-labelledby="alerts-title" hidden>
           <div class="view-heading"><div><p class="eyebrow">SUIVI DE VOTRE ESPACE</p><h1 id="alerts-title">Alertes</h1><p>Restez informé des événements importants.</p></div><button class="text-button" id="mark-alerts-read" type="button">Tout marquer comme lu</button></div>
-          <div class="alert-list" aria-label="Alertes fictives">
-            <button class="alert-card alert-red" type="button" data-alert-card><span class="alert-icon">▰</span><span class="alert-copy"><strong>Assurance voiture</strong><small>Renouvellement dans 15 jours</small></span><time>12 oct. 2025</time><span class="stat-arrow">›</span></button>
-            <button class="alert-card alert-amber" type="button" data-alert-card><span class="alert-icon">♢</span><span class="alert-copy"><strong>Garantie piscine</strong><small>Expire dans 40 jours</small></span><time>18 nov. 2025</time><span class="stat-arrow">›</span></button>
-            <button class="alert-card alert-orange" type="button" data-alert-card><span class="alert-icon">⚒</span><span class="alert-copy"><strong>Contrôle technique</strong><small>Dans 2 mois</small></span><time>16 déc. 2025</time><span class="stat-arrow">›</span></button>
-            <button class="alert-card alert-green" type="button" data-alert-card><span class="alert-icon">⌁</span><span class="alert-copy"><strong>Contrat internet</strong><small>Renouvelé</small></span><time>02 janv. 2025</time><span class="stat-arrow">›</span></button>
-            <button class="alert-card alert-blue" type="button" data-alert-card><span class="alert-icon">▤</span><span class="alert-copy"><strong>Nouvelle facture</strong><small>Détectée — EDF</small></span><time>20 janv. 2025</time><span class="stat-arrow">›</span></button>
-            <button class="alert-card alert-success" type="button" data-alert-card><span class="alert-icon">✓</span><span class="alert-copy"><strong>Tout va bien !</strong><small>Aucune autre action requise.</small></span><span class="stat-arrow">›</span></button>
+          <div class="alert-list" id="alert-list" aria-label="Alertes">
+            <!-- Alertes seront générées dynamiquement par app.js -->
           </div>
           <p class="demo-disclaimer">Ces alertes sont des exemples inventés et ne correspondent à aucun contrat ou événement réel.</p>
         </section>

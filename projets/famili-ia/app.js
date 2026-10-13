@@ -1070,3 +1070,4 @@ if (!firstRun) {
 
 // The house view must be initialized on page load
 initHouseView();
+initAlertsView();
