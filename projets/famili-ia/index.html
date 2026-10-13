@@ -203,15 +203,10 @@
 
         <section class="view family-view" id="view-famille" data-view="famille" aria-labelledby="family-title" hidden>
           <div class="view-heading"><div><p class="eyebrow">ESPACE PRIVÉ ET PARTAGÉ</p><h1 id="family-title">Famille</h1><p>Protégez ceux qui comptent.</p></div><button class="secondary-button" type="button" data-demo-action>＋ Gérer les accès</button></div>
-          <section class="panel members-panel" aria-label="Membres fictifs de la famille">
-            <div class="section-heading"><h2>Membres</h2><span>Exemple de démonstration</span></div>
-            <div class="member-list">
-              <article class="member-card"><div class="member-avatar avatar-steve">S</div><strong>Steve</strong><span>Accès complet</span><span class="member-you">Vous</span></article>
-              <article class="member-card"><div class="member-avatar avatar-conjointe">C</div><strong>Conjointe</strong><span>Accès limité</span></article>
-              <article class="member-card"><div class="member-avatar avatar-aaron">A</div><strong>Aaron</strong><span>Accès limité</span></article>
-              <article class="member-card"><div class="member-avatar avatar-lorena">L</div><strong>Lorena</strong><span>Accès limité</span></article>
-              <article class="member-card"><div class="member-avatar avatar-elyana">E</div><strong>Elyana</strong><span>Accès limité</span></article>
-              <button class="member-card add-member" type="button" data-demo-action><span class="add-member-icon">＋</span><strong>Ajouter</strong><span>Un proche</span></button>
+          <section class="panel members-panel" aria-label="Membres de la famille" id="family-members-panel">
+            <div class="section-heading"><h2>Membres</h2><span>Gérez les accès de votre famille</span></div>
+            <div class="member-list" id="member-list">
+              <!-- Members will be rendered dynamically by app.js -->
             </div>
           </section>
           <div class="family-panels">
