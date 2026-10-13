@@ -11,7 +11,12 @@ const state = {
     id: 'u1',
     name: 'Steve',
     role: 'Admin',
-    avatar: 'S'
+    avatar: 'S',
+    // Preferences for the current user
+    preferences: {
+      localAccess: true,
+      driveConnection: false
+    }
   },
 
   // Membres de la famille

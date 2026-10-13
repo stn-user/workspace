@@ -870,17 +870,72 @@ document.querySelectorAll("[data-nav~='profil']").forEach((button) => {
     // Populate profile data from state
     const user = getCurrentUser();
     const avatar = document.querySelector("#profile-avatar");
-    const nameEl = document.querySelector("#profile-name");
+    const nameInput = document.querySelector("#edit-name");
     const roleEl = document.querySelector("#profile-role");
-    if (avatar && nameEl) {
+    if (avatar && nameInput) {
       avatar.textContent = user.avatar || 'S';
-      nameEl.textContent = user.name || 'Steve';
+      nameInput.value = user.name || 'Steve';
     }
     if (roleEl) {
       roleEl.textContent = user.role || 'Administrateur';
     }
   });
 });
+
+/**
+ * Handle profile updates
+ */
+function initProfileHandlers() {
+  const saveBtn = document.querySelector("#save-profile");
+  if (!saveBtn) return;
+
+  saveBtn.addEventListener("click", () => {
+    const newName = document.querySelector("#edit-name").value.trim();
+    if (newName) {
+      // Update current user in state
+      const user = getCurrentUser();
+      user.name = newName;
+
+      // Trigger a re-render of the dashboard if it's visible
+      if (activeView === 'accueil') {
+        renderAccueilDashboard();
+      }
+
+      showDemoNotice(`Profil mis à jour : ${newName}`);
+    }
+  });
+
+  // Initialize profile view with data from state
+  document.querySelectorAll("[data-nav~='profil']").forEach((button) => {
+    button.addEventListener("click", () => {
+      showView("profil");
+      // Populate profile data from state
+      const user = getCurrentUser();
+      const avatar = document.querySelector("#profile-avatar");
+      const nameInput = document.querySelector("#edit-name");
+      const roleEl = document.querySelector("#profile-role");
+
+      if (avatar && nameInput) {
+        avatar.textContent = user.avatar || 'S';
+        nameInput.value = user.name || 'Steve';
+      }
+      if (roleEl) {
+        roleEl.textContent = user.role || 'Administrateur';
+      }
+
+      // Set checkboxes based on preferences
+      const localAccessCheckbox = document.querySelector('.privacy-option:nth-child(1) input[type="checkbox"]');
+      const driveConnectionCheckbox = document.querySelector('.privacy-option:nth-child(2) input[type="checkbox"]');
+
+      if (localAccessCheckbox && user.preferences) {
+        localAccessCheckbox.checked = user.preferences.localAccess ?? true;
+      }
+      if (driveConnectionCheckbox && user.preferences) {
+        driveConnectionCheckbox.checked = user.preferences.driveConnection ?? false;
+      }
+    });
+  });
+}
 
 document.querySelectorAll("[data-nav~='vos-donnees']").forEach((button) => {
   button.addEventListener("click", () => {
@@ -1071,3 +1126,64 @@ if (!firstRun) {
 // The house view must be initialized on page load
 initHouseView();
 initAlertsView();
+initFamilyView();
+initProfileHandlers();
+
+/**
+ * Render family members list from state data
+ */
+function renderFamilyMembers() {
+  const memberList = document.querySelector('#member-list');
+  if (!memberList) return;
+
+  const members = getFamilyMembers();
+  const currentUser = getCurrentUser();
+
+  if (members.length === 0) {
+    memberList.innerHTML = '<p class="empty-state">Aucun membre de famille.</p>';
+    return;
+  }
+
+  memberList.innerHTML = members.map(member => {
+    const isCurrentUser = member.id === currentUser.id;
+    const avatarText = member.avatar || (member.name ? member.name.charAt(0).toUpperCase() : '?');
+    const accessText = member.access === 'full' ? 'Accès complet' : 'Accès limité';
+
+    return `
+      <article class="member-card">
+        <div class="member-avatar">${avatarText}</div>
+        <strong>${member.name}</strong>
+        <span>${accessText}</span>
+        ${isCurrentUser ? '<span class="member-you">Vous</span>' : ''}
+      </article>
+    `;
+  }).join('');
+
+  // Add the add member button
+  const addMemberBtn = `
+    <button class="member-card add-member" type="button" data-demo-action>
+      <span class="add-member-icon">＋</span>
+      <strong>Ajouter</strong>
+      <span>Un proche</span>
+    </button>
+  `;
+  memberList.innerHTML += addMemberBtn;
+}
+
+// Add event listener to the add-member button after rendering
+function attachAddMemberListener() {
+  const addBtn = document.querySelector('#member-list .add-member');
+  if (!addBtn) return;
+  addBtn.addEventListener('click', () => {
+    // For now just alert; in real app would open a dialog to add a family member
+    alert('Ajouter un nouveau membre (fonctionnalité en cours)');
+  });
+}
+
+/**
+ * Initialize family view
+ */
+function initFamilyView() {
+  renderFamilyMembers();
+  attachAddMemberListener();
+}
