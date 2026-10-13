@@ -4,6 +4,7 @@ import { Capacitor } from "@capacitor/core";
 import { Filesystem } from '@capacitor/filesystem';
 import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
 import { getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts } from "./state.js";
+import { loadFamilyState, saveFamilyState } from "./family-storage.js";
 
 const googleDriveConfig = {
   clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
@@ -1112,6 +1113,14 @@ window.history.replaceState({ view: activeView }, "", `#${activeView}`);
 // Render dashboard on load
 if (!firstRun) {
   renderAccueilDashboard();
+}
+
+// Initialize family state from localStorage (if available)
+const savedFamily = loadFamilyState();
+if (savedFamily && savedFamily.length > 0) {
+  // Update the family state with saved data
+  const state = await import('./state.js');
+  state.default.family = savedFamily;
 }
 
 // The house view must be initialized on page load
