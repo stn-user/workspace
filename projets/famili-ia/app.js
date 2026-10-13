@@ -940,16 +940,7 @@ function initProfileHandlers() {
 document.querySelectorAll("[data-nav~='vos-donnees']").forEach((button) => {
   button.addEventListener("click", () => {
     showView("vos-donnees");
-    // Populate data inventory
-    const dataList = document.querySelector("#data-inventory-list");
-    if (dataList) {
-      dataList.innerHTML = `
-        <div class="file-row"><span>Facture piscine.pdf</span><small>(local)</small></div>
-        <div class="file-row"><small>Garantie pompe.pdf</small><small>(local)</small></div>
-        <div class="file-row"><small>Bambu facture.pdf</small><small>(local)</small></div>
-        <div class="file-row"><small>Contrat habitation.pdf</small><small>(local)</small></div>
-      `;
-    }
+    initDataView();
   });
 });
 
@@ -1239,4 +1230,87 @@ initAlertsView();
 initFamilyView();
 initProfileHandlers();
 initImportView();
+initDataView();
+
+/**
+ * Render data inventory for Vos données view
+ */
+function renderDataInventory() {
+  const dataList = document.querySelector('#data-inventory-list');
+  if (!dataList) return;
+
+  const docs = uploadedDocuments.length > 0 ? uploadedDocuments : documents;
+
+  if (docs.length === 0) {
+    dataList.innerHTML = '<p class="empty-state">Aucun document indexé.</p>';
+    return;
+  }
+
+  dataList.innerHTML = docs.map(doc => {
+    let sourceBadge = '✦';
+    let sourceText = 'Démonstration';
+    if (doc.driveSource) {
+      sourceBadge = '☁️';
+      sourceText = 'Google Drive';
+    } else if (doc.driveDemo) {
+      sourceBadge = '✦';
+      sourceText = 'Démo';
+    } else if (doc.isLocal) {
+      sourceBadge = '💾';
+      sourceText = doc.sourceDir && Capacitor.isNativePlatform() ? 'Stockage local' : 'Fichier local';
+    }
+
+    return `
+      <div class="data-file-row">
+        <div class="data-file-info">
+          <span class="data-file-icon">${sourceBadge}</span>
+          <div>
+            <div class="data-file-name">${doc.name}</div>
+            <div class="data-file-meta">${doc.type} · ${sourceText}</div>
+          </div>
+        </div>
+        <div class="data-file-size">—</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/**
+ * Initialize Vos données view
+ */
+function initDataView() {
+  renderDataInventory();
+
+  const exportBtn = document.querySelector('#export-all-data');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      const dataToExport = uploadedDocuments.map(doc => ({
+        id: doc.id,
+        name: doc.name,
+        type: doc.type,
+        date: doc.date,
+        source: doc.driveSource ? 'google-drive' : (doc.driveDemo ? 'demo' : (doc.isLocal ? 'local' : 'unknown'))
+      }));
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'famili-ia-data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      showDemoNotice('Données exportées vers famili-ia-data.json');
+    });
+  }
+
+  const purgeBtn = document.querySelector('#purge-all-data');
+  if (purgeBtn) {
+    purgeBtn.addEventListener('click', () => {
+      clearSessionFiles();
+      renderDataInventory();
+      showDemoNotice('Toutes les données de la session ont été supprimées');
+    });
+  }
+}
+initDataView();
 
