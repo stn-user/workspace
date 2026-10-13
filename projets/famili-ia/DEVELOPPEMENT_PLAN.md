@@ -1,4 +1,4 @@
-# Famili-IA – Plan de Développement
+# Famili-IA – Plan de Développement
 
 ## 📊 Vue d'ensemble
 - **Phase actuelle** : Phase 4 – MVP privé sur un seul Cloud (Google Drive) – en cours ; l’étape de recherche locale est en planification.
@@ -11,7 +11,7 @@
 - [✓] ✅ 0.2 : Analyse des exigences de sécurité/privacy (roadmap)
 
 ### Phase 1 – MVP : version cloud unique
-- [✓] ✅ 1.1 : Implémenter OAuth/Picker Drive (scope `drive.file`)
+- [✓] ✅ 1.1 : Implémenter OAuth/Picker Drive (scope `drive.file`)
 - [✓] ✅ 1.2 : Moteur de recherche local‑cloud, index immédiat en mémoire
 - [✓] ❌ 1.3 : OCR intégration (Vision/ML‑kit) – **incomplete** (à valider plus tard)
 
@@ -39,17 +39,34 @@
 - [✓] ✅ 4.9 : Vérification de la min‑sécurité (pas de persistance, accès limité)
 - [✓] ✅ 4.10 : Documentation de la chaîne d’authentification locale
 
-### Phase 5 – Pilote fermé (prochaine étape)
-- [ ] 5.1 : Tests utilisateurs sur mobile (iOS/Android, locales + cloud)
-- [ ] 5.2 : Mesure des indicateurs (taux de réussite, temps de recherche, précision)
-- [ ] 5.3 : Recueil & analyse des retours
-- [ ] 5.4 : Rapport de pilotage & next‑steps
+### Phase 5 – Extension Family & Interface (en cours)
+- [✓] ✅ 5.1 : État global → Création state.js (utilisateur, famille, équipements, alertes)
+- [✓] ✅ 5.2 : Navigation → Refactor app.js pour supporter 10 écrans + routes imbriquées
+- [✓] ✅ 5.3 : Composants UI → **Accueil** (dashboard familial, stats, actions rapides)
+- [✓] ✅ 5.4 : Composants UI → **Recherche** (recherche avancée avec filtres par type/source)
+- [✓] ✅ 5.5 : Composants UI → **Maison** (liste équipements par catégorie + ajout rapide)
+- [✓] ✅ 5.6 : Composants UI → **Détail équipement** (affichage facture/garantie/notice liés)
+- [✓] ✅ 5.7 : Composants UI → **Alertes** (suivi échéances, statuts, actions)
+- [✓] ✅ 5.8 : Composants UI → **Famille** (gestion membres, rôles, accès, invitations)
+- [✓] ✅ 5.9 : Composants UI → **Profil/Paramètres** (infos user, confidentialité, export/suppression)
+- [✓] ✅ 5.10 : Composants UI → **Importer** (sélection local/cloud, drag & drop)
+- [✓] ✅ 5.11 : Composants UI → **Vos données** (inventaire, historique, export)
+- [✓] ✅ 5.12 : Composants UI → **Assistant IA** (chat conversationnel, suggestions)
+- [ ] 5.13 : Services → Données familiales partagées (stockage local partagé)
+- [ ] 5.14 : Services → Système notifications/alertes automatisées
+- [ ] 5.15 : Intégration → Navigation 10 écrans + états partagés
+- [ ] 5.16 : Tests → UI/UX sur use‑cases familiaux
+
+### Phase 6 – Validation & Lancement (à venir)
+- [ ] 6.1 : Tests utilisateurs complets (famille monoparentale, multi‑membres)
+- [ ] 6.2 : Mesure de la satisfaction utilisateur et des temps de recherche
+- [ ] 6.3  Rapport final & next‑steps pour Phase 7 (éventuelle)
 
 ---
 
 ## 📌 Comment mettre à jour
 - Cochez la case `[✓]` lorsque la tâche est terminée.
-- Si une tâche est bloquée, ajoutez un commentaire après la case (ex : `[ ] ❌ 4.4 : En attente de Android X debugging → config `.  
+- Si une tâche est bloquée, ajoutez un commentaire après la case (ex : `[ ] ❌ 4.4 : En attente de Android X debugging → config `. 
 - Maintenez le fichier à jour dans chaque branche ou commit important.
 
 ---

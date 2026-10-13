@@ -1312,5 +1312,96 @@ function initDataView() {
     });
   }
 }
+
+/**
+ * Initialize Assistant IA view
+ */
+function initAssistantView() {
+  const form = document.querySelector('#assistant-form');
+  const input = document.querySelector('#assistant-input');
+  const chatContainer = document.querySelector('#assistant-chat');
+
+  if (!form || !input || !chatContainer) return;
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const question = input.value.trim();
+    if (!question) return;
+
+    // Add user message
+    addUserMessage(question, chatContainer);
+    input.value = '';
+
+    // Get AI response
+    const aiResponse = getAssistantResponse(question);
+    // Simulate a small delay for realism
+    setTimeout(() => {
+      addAIMessage(aiResponse, chatContainer);
+    }, 500);
+  });
+}
+
+/**
+ * Add a user message to the chat container
+ */
+function addUserMessage(text, container) {
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'chat-message user';
+  msgDiv.textContent = text;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Add an AI message to the chat container
+ */
+function addAIMessage(text, container) {
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'chat-message ai';
+  msgDiv.textContent = text;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Get a response from the assistant based on the question
+ * Uses the same search logic as the main search view
+ */
+function getAssistantResponse(question) {
+  const trimmed = question.trim();
+  if (!trimmed) return "Posez une question pour obtenir une réponse.";
+
+  const matches = findDocuments(trimmed);
+  if (matches.length === 0) {
+    return "Je n'ai pas trouvé de document correspondant à votre question. Essayez de reformuler ou d'ajouter des documents.";
+  }
+
+  const bestMatch = matches[0];
+  const doc = bestMatch.document;
+
+  let answerText;
+  if (doc.isLocal) {
+    if (bestMatch.exactFact) {
+      answerText = `Dans « ${doc.name} », ${bestMatch.exactFact}`;
+    } else {
+      answerText = `Extrait du fichier « ${doc.name} » : « ${bestMatch.excerpt} »`;
+    }
+  } else {
+    answerText = doc.summary;
+  }
+
+  let sourceInfo = '';
+  if (doc.driveSource) {
+    sourceInfo = ' (Source : Google Drive)';
+  } else if (doc.driveDemo) {
+    sourceInfo = ' (Source : Démonstration)';
+  } else if (doc.isLocal) {
+    sourceInfo = doc.sourceDir && Capacitor.isNativePlatform() ? ' (Source : Stockage local)' : ' (Source : Fichier local)';
+  } else {
+    sourceInfo = ' (Source : Démonstration)';
+  }
+
+  return answerText + sourceInfo;
+}
 initDataView();
 

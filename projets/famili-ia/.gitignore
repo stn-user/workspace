@@ -6,3 +6,11 @@ android/build/
 android/app/build/
 .env*
 !.env.example
+*.log
+*.tmp
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+android/app/src/main/assets/public
+android/app/build/intermediates/assets/debug/mergeDebugAssets/public
