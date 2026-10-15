@@ -12,6 +12,7 @@ export default defineConfig({
       apply: "build",
       closeBundle() {
         copyFileSync(resolve(projectRoot, "app.js"), resolve(projectRoot, "dist/app.js"));
+        copyFileSync(resolve(projectRoot, "styles.css"), resolve(projectRoot, "dist/styles.css"));
         cpSync(resolve(projectRoot, "samples"), resolve(projectRoot, "dist/samples"), { recursive: true });
       },
     },
