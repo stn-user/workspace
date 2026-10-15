@@ -28,6 +28,10 @@
           <button class="nav-item" type="button" data-nav="maison"><span aria-hidden="true">⌂</span>Maison</button>
           <button class="nav-item" type="button" data-nav="famille"><span aria-hidden="true">♧</span>Famille</button>
           <button class="nav-item" type="button" data-nav="alertes"><span aria-hidden="true">◉</span>Alertes</button>
+          <button class="nav-item" type="button" data-nav="assistant"><span aria-hidden="true">✦</span>Assistant</button>
+          <button class="nav-item" type="button" data-nav="importer"><span aria-hidden="true">⇪</span>Importer</button>
+          <button class="nav-item" type="button" data-nav="profil"><span aria-hidden="true">👤</span>Profil</button>
+          <button class="nav-item" type="button" data-nav="vos-donnees"><span aria-hidden="true">💾</span>Données</button>
         </nav>
         <section class="sidebar-note">
           <span class="status-dot" aria-hidden="true"></span>
@@ -260,12 +264,29 @@
           <div class="view-heading"><div><p class="eyebrow">AJOUT DE DOCUMENTS</p><h1 id="import-title">Importer un document</h1></div></div>
           <div class="import-container">
             <div class="drop-zone" id="drop-zone">
-              <span class="drop-icon" aria-hidden="true">☁</span>
-              <p>Glissez-déposez vos fichiers ici ou <label for="import-input" class="text-button">parcourez vos dossiers</label></p>
+              <span class="drop-icon" aria-hidden="true"></span>
+              <p class="drop-text">Glissez un fichier ici</p>
+              <label for="import-input" class="drop-button">Choisir un fichier</label>
               <input type="file" id="import-input" class="visually-hidden" multiple accept=".txt,.md,.pdf">
+              <p class="drop-formats">Formats acceptés : .txt, .md, .pdf (max 10 Mo)</p>
             </div>
             <div class="import-options">
-              <button class="secondary-button" type="button" data-open-source-dialog>Choisir via Google Drive</button>
+              <button class="import-option active" type="button" data-action="drag-drop">
+                <span class="option-icon" aria-hidden="true"></span>
+                <span>Glisser-déposer</span>
+              </button>
+              <button class="import-option" type="button" data-action="camera">
+                <span class="option-icon" aria-hidden="true"></span>
+                <span>Prendre une photo</span>
+              </button>
+              <button class="import-option" type="button" data-action="scan">
+                <span class="option-icon" aria-hidden="true"></span>
+                <span>Scanner un document</span>
+              </button>
+              <button class="import-option" type="button" data-action="manual">
+                <span class="option-icon" aria-hidden="true"></span>
+                <span>Saisir manuellement</span>
+              </button>
             </div>
           </div>
         </section>
@@ -331,15 +352,6 @@
         <p class="toast-message" id="toast-message" role="status" aria-live="polite" hidden></p>
       </main>
     </div>
-
-    <nav class="bottom-nav" aria-label="Navigation principale">
-      <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><span aria-hidden="true">⌂</span>Accueil</button>
-      <button class="nav-item" type="button" data-nav="recherche"><span aria-hidden="true">⌕</span>Recherche</button>
-      <button class="nav-item" type="button" data-nav="maison"><span aria-hidden="true">⌂</span>Maison</button>
-      <button class="nav-item" type="button" data-nav="famille"><span aria-hidden="true">♧</span>Famille</button>
-      <button class="nav-item" type="button" data-nav="alertes"><span aria-hidden="true">◉</span>Alertes</button>
-    </nav>
-  </div>
 
   <dialog class="source-dialog" id="source-dialog" aria-labelledby="dialog-title">
     <div class="dialog-header"><div><p class="eyebrow" id="dialog-eyebrow">DOCUMENT DE DÉMONSTRATION</p><h2 id="dialog-title"></h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fermer">×</button></div>
