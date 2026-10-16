@@ -2,6 +2,26 @@
 
 ## Bienvenue dans la version "Famille & Interface" !
 
+---
+
+### 📅 Dernière mise à jour : 16 octobre 2026
+
+#### ✨ Point 5.17 - Améliorations UX de l'accueil (terminé)
+
+**Corrections CSS et mise en page mobile :**
+- ✅ Restauration du fichier CSS complet (421 lignes) après troncature
+- ✅ Configuration du layout mobile par défaut avec navigation en bas
+- ✅ Masquage de la sidebar latérale pour correspondre à la maquette
+- ✅ Affichage correct du contenu principal sur toute la largeur
+- ✅ Icônes SVG colorées dans les cartes statistiques
+- ✅ Greeting personnalisé : "Bonjour Steve 👋"
+- ✅ Palette de couleurs alignée sur CLAUDE.md
+
+**Configuration Android :**
+- ✅ Ajout du plugin Capacitor Filesystem dans les fichiers Gradle
+
+---
+
 Nous sommes ravis de vous présenter la mise à jour la plus importante de Famili-IA. Cette version transforme notre moteur de recherche privé en une véritable application de gestion familiale, tout en restant fidèle à notre promesse : **vos données restent chez vous.**
 
 ### 🌟 Quoi de neuf ?
