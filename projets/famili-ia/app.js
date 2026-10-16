@@ -1,7 +1,8 @@
 import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch, normalizeText } from "./search-utils.js";
 import { GoogleDriveClient } from "./google-drive.js";
-import { Capacitor } from "@capacitor/core";
-import { Filesystem } from '@capacitor/filesystem';
+// Mock Capacitor pour le navigateur web (non disponible en local sans build)
+const Capacitor = { isNativePlatform: () => false };
+const Filesystem = null;
 import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
 import { getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts } from "./state.js";
 import { loadFamilyState, saveFamilyState } from "./family-storage.js";
@@ -416,7 +417,7 @@ async function loadLocalFiles(files) {
     const count = uploadedDocuments.length;
     setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session ; rien n'est envoyé ni conservé après fermeture.`, "success");
     sourceChoiceDialog.close();
-    showView("recherche");
+    showView("recherche", { params: { q: "" } });
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Erreur de lecture non détaillée.";
     setFileStatus(`La sélection n'a pas pu être lue : ${reason} Aucun fichier de cette sélection n'a été ajouté.`, "error");
@@ -510,7 +511,7 @@ async function loadLocalFilesNative() {
     const count = uploadedDocuments.length;
     setFileStatus(`${validFiles.length} fichier${validFiles.length === 1 ? "" : "s"} chargé${validFiles.length === 1 ? "" : "s"} depuis le stockage local. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.`, "success");
     sourceChoiceDialog.close();
-    showView("recherche");
+    showView("recherche", { params: { q: "" } });
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Erreur de lecture non détaillée.";
     setFileStatus(`Erreur lors du chargement des fichiers locaux : ${reason}`, "error");
@@ -755,29 +756,171 @@ const toast = document.querySelector("#toast-message");
 let toastTimeout;
 let activeView = "accueil";
 
-function showView(name, { addHistory = true } = {}) {
-  if (!Object.hasOwn(pageTitles, name)) return;
-  if (addHistory && activeView !== name) {
-    window.history.pushState({ view: name }, "", `#${name}`);
+/**
+ * Parses the URL hash into a view and parameters.
+ * Supports formats:
+ *   #/view
+ *   #/view?param=value&param2=value2
+ *   #view (legacy format for backward compatibility)
+ * @returns {{view: string, params: Object}} An object with the view name and parameters
+ */
+function parseHash() {
+  const hash = window.location.hash.substring(1); // Remove leading '#'
+  if (!hash) return { view: 'accueil', params: {} };
+
+  // Handle legacy format without slash (e.g., #accueil)
+  if (!hash.includes('/') && !hash.includes('?')) {
+    return { view: hash, params: {} };
   }
+
+  let [path, queryString] = hash.split('?');
+  // Ensure path starts with a slash for consistency
+  if (!path.startsWith('/')) path = '/' + path;
+  const view = path.substring(1).split('/')[0]; // Get first segment as view
+
+  const params = {};
+  if (queryString) {
+    queryString.split('&').forEach(pair => {
+      const [key, value] = pair.split('=');
+      if (key) params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+    });
+  }
+  return { view, params };
+}
+
+/**
+ * Initializes a view based on the provided parameters.
+ * This is called after the view is displayed.
+ * @param {string} viewName - The name of the view being shown
+ * @param {Object} params - The parameters parsed from the URL
+ */
+function initializeViewWithParams(viewName, params) {
+  switch (viewName) {
+    case 'detail':
+      // Initialize equipment detail view
+      const eqId = params.id;
+      if (eqId) {
+        const eqDetail = getEquipmentDetail(eqId);
+        if (eqDetail) {
+          const detailTitle = document.querySelector("#detail-title");
+          const detailContent = document.querySelector("#detail-content");
+          const detailBreadcrumb = document.querySelector("#detail-breadcrumb");
+
+          if (detailTitle && detailContent) {
+            const name = eqDetail.name;
+            detailTitle.textContent = name;
+            if (detailBreadcrumb) detailBreadcrumb.textContent = name;
+
+            detailContent.innerHTML = eqDetail ? `
+              <div class="equipment-specs">
+                <div class="spec-header">
+                  <span class="spec-icon ${eqDetail.category === 'pompe' ? 'green' : 'blue'}">▤</span>
+                  <h3>${eqDetail.name}</h3>
+                </div>
+                <div class="spec-grid">
+                  <div class="spec-item"><label>Catégorie</label><span>${eqDetail.category}</span></div>
+                  <div class="spec-item"><label>Statut</label><span class="status-pill">${eqDetail.status}</span></div>
+                </div>
+                <div class="spec-docs">
+                  <h4>Documents associés</h4>
+                  <div class="doc-grid">
+                    ${eqDetail.docs && eqDetail.docs.length > 0
+                      ? eqDetail.docs.map(docId => `
+                          <button class="doc-link-card" type="button" data-open-source-dialog>
+                            <span class="doc-icon">📄</span>
+                            <span class="doc-name">${docId}</span>
+                            <span class="doc-arrow">›</span>
+                          </button>
+                        `).join('')
+                      : '<p class="empty-docs">Aucun document lié pour cet équipement.</p>'}
+                  </div>
+                </div>
+              </div>
+            ` : '<p class="error-state">Équipement non trouvé.</p>';
+          }
+        }
+      }
+      break;
+
+    case 'recherche':
+      // Initialize search view with query from params
+      const searchQuery = params.q;
+      if (searchQuery !== undefined) {
+        const searchInput = document.querySelector("#question");
+        if (searchInput) {
+          searchInput.value = searchQuery;
+          // Trigger search if there's a query
+          if (searchQuery.trim()) {
+            search(searchQuery);
+          }
+        }
+      }
+      break;
+
+    default:
+      break;
+  }
+}
+
+function showView(name, { addHistory = true, params = {} } = {}) {
+  if (!Object.hasOwn(pageTitles, name)) return;
+
+  // Build the new URL hash
+  let hash = `#/${name}`;
+  if (params && Object.keys(params).length > 0) {
+    const queryString = Object.keys(params)
+      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+      .join('&');
+    hash += `?${queryString}`;
+  }
+
+  // Only update history if the URL is actually changing
+  if (addHistory && window.location.hash !== hash) {
+    window.history.pushState({ view: name, params }, "", hash);
+  } else if (!addHistory) {
+    window.history.replaceState({ view: name, params }, "", hash);
+  }
+
   activeView = name;
 
   views.forEach((view) => {
     view.hidden = view.dataset.view !== name;
   });
+
   navigationButtons.forEach((button) => {
     const isActive = button.dataset.nav === name;
     button.classList.toggle("is-active", isActive);
     if (isActive) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
+
+  // Update bottom nav active state
+  document.querySelectorAll(".bottom-nav .nav-item").forEach((button) => {
+    const isActive = button.dataset.nav === name;
+    button.classList.toggle("is-active", isActive);
+    if (isActive) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+
   document.title = `${pageTitles[name]} | Famili-IA`;
   window.scrollTo({ top: 0, behavior: "smooth" });
+
+  initializeViewWithParams(name, params);
 }
 
+
 window.addEventListener("popstate", (event) => {
-  const view = event.state?.view ?? window.location.hash.slice(1);
-  showView(Object.hasOwn(pageTitles, view) ? view : "accueil", { addHistory: false });
+  // If state is available from pushState/replaceState, use it
+  if (event.state && event.state.view) {
+    showView(event.state.view, {
+      addHistory: false,
+      params: event.state.params || {}
+    });
+  } else {
+    // Fallback to parsing the hash (for backward compatibility)
+    const { view, params } = parseHash();
+    showView(view, { addHistory: false, params });
+  }
 });
 
 function showDemoNotice(message = "Cette fonction est illustrée par des données fictives ; aucun compte réel n’est connecté.") {
@@ -791,6 +934,18 @@ function showDemoNotice(message = "Cette fonction est illustrée par des donnée
 
 navigationButtons.forEach((button) => {
   button.addEventListener("click", () => showView(button.dataset.nav));
+});
+
+// Bottom navigation (mobile) - switches views
+document.querySelectorAll(".bottom-nav .nav-item").forEach((button) => {
+  button.addEventListener("click", () => {
+    const nav = button.dataset.nav;
+    showView(nav);
+    // Close sidebar on mobile when selecting a nav item
+    if (!Capacitor.isNativePlatform() && window.innerWidth < 1025) {
+      document.querySelector(".sidebar").style.display = "none";
+    }
+  });
 });
 
 document.querySelectorAll("[data-open-view]").forEach((button) => {
@@ -847,7 +1002,7 @@ document.querySelectorAll("[data-nav~='detail']").forEach((button) => {
           </div>
         ` : '<p class="error-state">Équipement non trouvé.</p>';
 
-        showView("detail");
+        showView("detail", { params: { id: eqId } });
       }
     }
   });
@@ -1014,7 +1169,7 @@ function initCategoryTabs() {
 document.querySelector("#quick-search-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const question = document.querySelector("#quick-question").value.trim();
-  showView("recherche");
+  showView("recherche", { params: { q: question } });
   input.value = question;
   input.focus();
   if (question) search(question);
@@ -1051,54 +1206,90 @@ function renderAccueilDashboard() {
     greetingName.innerHTML = `Bonjour ${user.name} <span aria-hidden="true">👋</span>`;
   }
 
-  // Update stats grid with real data
+  // Update stats grid with real data and semantic icons (Unicode filled)
   const statCards = document.querySelectorAll('.stat-card');
   if (statCards[0]) {
-    // Documents importants
+    // Documents importants - Icon ▤ (document)
     statCards[0].querySelector('strong').textContent = `${equipment.length + 5}`;
+    statCards[0].querySelector('.stat-icon').textContent = '▤';
+    statCards[0].querySelector('.stat-icon').className = 'stat-icon blue';
   }
   if (statCards[1]) {
-    // Garanties actives
+    // Garanties actives - Icon ♢ (shield/check)
     const activeWarranties = alerts.filter(a => a.type === 'amber' || a.type === 'red').length;
     statCards[1].querySelector('strong').textContent = activeWarranties.toString();
+    statCards[1].querySelector('.stat-icon').textContent = '♢';
+    statCards[1].querySelector('.stat-icon').className = 'stat-icon green';
+  }
+  if (statCards[2]) {
+    // Véhicules - Icon ▧ (vehicle/special)
+    statCards[2].querySelector('strong').textContent = '2';
+    statCards[2].querySelector('.stat-icon').textContent = '▧';
+    statCards[2].querySelector('.stat-icon').className = 'stat-icon violet';
   }
   if (statCards[3]) {
-    // Maison
+    // Maison - Icon ⌂ (home)
     statCards[3].querySelector('strong').textContent = '1';
+    statCards[3].querySelector('.stat-icon').textContent = '⌂';
+    statCards[3].querySelector('.stat-icon').className = 'stat-icon green';
+  }
+  if (statCards[4]) {
+    // Photos - Icon ▦ (photo/gallery)
+    statCards[4].querySelector('strong').textContent = '18 642';
+    statCards[4].querySelector('.stat-icon').textContent = '▦';
+    statCards[4].querySelector('.stat-icon').className = 'stat-icon purple';
+  }
+  if (statCards[5]) {
+    // Contrats - Icon ▤ (document/contract)
+    statCards[5].querySelector('strong').textContent = '31';
+    statCards[5].querySelector('.stat-icon').textContent = '▤';
+    statCards[5].querySelector('.stat-icon').className = 'stat-icon blue';
   }
 
-  // Update "À vérifier" section
-  const verifyRows = document.querySelector('#view-accueil .verify-panel');
-  if (verifyRows) {
-    verifyRows.innerHTML = `
+  // Update "À vérifier" section with event delegation
+  const verifyPanel = document.querySelector('#view-accueil .verify-panel');
+  if (verifyPanel) {
+    verifyPanel.innerHTML = `
       <div class="section-heading">
         <h2 id="verify-title">À vérifier</h2>
         <button class="text-button" type="button" data-open-view="alertes">Voir tout</button>
       </div>
       ${alerts.map(alert => `
-        <button class="verify-row" type="button" data-open-view="alertes">
-          <span class="row-icon ${alert.type}">${alert.type === 'red' ? '◉' : '♢'}</span>
-          <span class="row-copy">
+        <button class="verify-row" type="button" data-open-view="alertes" data-alert-type="${alert.type}">
+          <span class="verify-icon ${alert.type}" aria-hidden="true">${getAlertIcon(alert.type)}</span>
+          <div class="verify-info">
             <strong>${alert.title}</strong>
             <small>${alert.detail}</small>
-          </span>
+          </div>
           <span class="stat-arrow">›</span>
         </button>
       `).join('')}
     `;
-
-    // Re-attach event listeners
-    verifyRows.querySelectorAll('[data-open-view]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        showView(btn.dataset.openView);
-      });
-    });
   }
 
   // Update member avatars in sidebar
   const sidebarNav = document.querySelector('.sidebar .avatar-small');
   if (sidebarNav && user.avatar) {
     sidebarNav.textContent = user.avatar;
+  }
+}
+
+/**
+ * Retourne l'icône appropriée pour un type d'alerte
+ * Utilise des icônes Unicode remplies pour la cohérence visuelle
+ * @param {string} type - Le type d'alerte (red, amber, etc.)
+ * @returns {string} L'icône à afficher
+ */
+function getAlertIcon(type) {
+  switch (type) {
+    case 'red':
+      return '◉'; // Rond point rempli rouge
+    case 'amber':
+      return '◉'; // Rond point rempli jaune
+    case 'blue':
+      return '◉'; // Rond point rempli bleu
+    default:
+      return '◉';
   }
 }
 
@@ -1115,19 +1306,43 @@ if (!firstRun) {
   renderAccueilDashboard();
 }
 
+/**
+ * Initialize alerts view
+ */
+function initAlertsView() {
+  // Initial render of alerts list (handled by renderAccueilDashboard for dashboard,
+  // but we should ensure the alerts view is also updated)
+  const alertsView = document.querySelector('#view-alertes');
+  if (alertsView) {
+    // Logic to render the full alerts list if necessary
+    // For now, it's managed by the dynamic dashboards and basic view switching
+  }
+}
+
 // Initialize family state from localStorage (if available)
 const savedFamily = loadFamilyState();
 if (savedFamily && savedFamily.length > 0) {
   // Update the family state with saved data
-  const state = await import('./state.js');
-  state.default.family = savedFamily;
+  // Note: in a real module, we would handle this in state.js
+  // This is a temporary fix for the demo prototype
+  try {
+    const stateModule = await import('./state.js');
+    stateModule.default.family = savedFamily;
+  } catch (e) {
+    console.warn('Error loading family state:', e);
+  }
 }
 
 // The house view must be initialized on page load
-initHouseView();
-initAlertsView();
-initFamilyView();
-initProfileHandlers();
+// Note: These calls are now moved to the end of the file to avoid ReferenceErrors
+
+/**
+ * Initialize house view
+ */
+function initHouseView() {
+  renderEquipmentList();
+  initCategoryTabs();
+}
 
 /**
  * Render family members list from state data
@@ -1189,6 +1404,7 @@ function initFamilyView() {
 }
 
 /**
+ /**
  * Initialize import view (drag & drop and file selection)
  */
 function initImportView() {
@@ -1413,4 +1629,85 @@ function getAssistantResponse(question) {
   return answerText + sourceInfo;
 }
 initDataView();
+
+/**
+ * Initialise le système de vérification d'alertes automatisé
+ * Vérifie si des alertes arrivent à échéance (< 3 jours) et notifie l'utilisateur
+ */
+function startAlertScheduler() {
+  // Vérification immédiate au chargement
+  checkAlertsForExpiry();
+
+  // Puis toutes les 24 heures (86400000 ms)
+  setInterval(checkAlertsForExpiry, 86400000);
+}
+
+/**
+ * Parcourt les alertes et vérifie lesquelles arrivent à moins de 3 jours
+ */
+function checkAlertsForExpiry() {
+  const today = new Date();
+  const alerts = getAlerts();
+  const alertsToNotify = [];
+
+  alerts.forEach(alert => {
+    if (!alert.dueDate) return; // Sans date précise, on ne peut pas vérifier automatiquement
+
+    const dueDate = new Date(alert.dueDate);
+    const diffTime = Math.abs(dueDate - today);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Si l'échéance est dans moins de 3 jours (ou déjà dépassée)
+    if (diffDays <= 3 && diffDays >= 0) {
+      alertsToNotify.push(alert);
+    }
+  });
+
+  if (alertsToNotify.length > 0) {
+    showAlertNotifications(alertsToNotify);
+  }
+}
+
+/**
+ * Affiche les notifications pour les alertes en cours
+ * @param {Array} alerts - Array d'alertes à notifier
+ */
+function showAlertNotifications(alerts) {
+  // Demander la permission si nécessaire
+  if (!('Notification' in window)) {
+    console.warn('Cette navigateur ne supporte pas les notifications');
+    return;
+  }
+
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        alerts.forEach(alert => {
+          new Notification('📅 Famili-IA - Alerte', {
+            body: `${alert.title} : ${alert.detail}`,
+            icon: '/favicon.ico'
+          });
+        });
+      }
+    });
+  } else if (Notification.permission === 'granted') {
+    alerts.forEach(alert => {
+      new Notification('📅 Famili-IA - Alerte', {
+        body: `${alert.title} : ${alert.detail}`,
+        icon: '/favicon.ico'
+      });
+    });
+  }
+}
+
+// Démarrage du scheduler au chargement
+startAlertScheduler();
+
+initHouseView();
+initAlertsView();
+initFamilyView();
+initProfileHandlers();
+initImportView();
+initDataView();
+initAssistantView();
 

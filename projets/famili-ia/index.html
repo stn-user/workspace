@@ -73,12 +73,12 @@
           </form>
 
           <div class="stats-grid" aria-label="Résumé de démonstration">
-            <button class="stat-card" type="button" data-open-view="recherche"><span class="stat-icon blue">▤</span><span class="stat-copy"><span>Documents importants</span><strong>428</strong></span><span class="stat-arrow">›</span></button>
-            <button class="stat-card" type="button" data-open-view="alertes"><span class="stat-icon violet">♢</span><span class="stat-copy"><span>Garanties actives</span><strong>17</strong></span><span class="stat-arrow">›</span></button>
-            <button class="stat-card" type="button" data-demo-action><span class="stat-icon cyan">▰</span><span class="stat-copy"><span>Véhicules</span><strong>2</strong></span><span class="stat-arrow">›</span></button>
-            <button class="stat-card" type="button" data-open-view="maison"><span class="stat-icon green">⌂</span><span class="stat-copy"><span>Maison</span><strong>1</strong></span><span class="stat-arrow">›</span></button>
-            <button class="stat-card" type="button" data-demo-action><span class="stat-icon purple">▧</span><span class="stat-copy"><span>Photos</span><strong>18 642</strong></span><span class="stat-arrow">›</span></button>
-            <button class="stat-card" type="button" data-open-view="recherche"><span class="stat-icon blue">▤</span><span class="stat-copy"><span>Contrats</span><strong>31</strong></span><span class="stat-arrow">›</span></button>
+            <button class="stat-card" type="button" data-open-view="recherche"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg></span><span class="stat-copy"><span>Documents importants</span><strong>428</strong></span><span class="stat-arrow">›</span></button>
+            <button class="stat-card" type="button" data-open-view="alertes"><span class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span class="stat-copy"><span>Garanties actives</span><strong>17</strong></span><span class="stat-arrow">›</span></button>
+            <button class="stat-card" type="button" data-demo-action><span class="stat-icon violet"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="2"/></svg></span><span class="stat-copy"><span>Véhicules</span><strong>2</strong></span><span class="stat-arrow">›</span></button>
+            <button class="stat-card" type="button" data-open-view="maison"><span class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><span class="stat-copy"><span>Maison</span><strong>1</strong></span><span class="stat-arrow">›</span></button>
+            <button class="stat-card" type="button" data-demo-action><span class="stat-icon purple"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 17"/></svg></span><span class="stat-copy"><span>Photos</span><strong>18 642</strong></span><span class="stat-arrow">›</span></button>
+            <button class="stat-card" type="button" data-open-view="recherche"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span><span class="stat-copy"><span>Contrats</span><strong>31</strong></span><span class="stat-arrow">›</span></button>
           </div>
 
           <section class="panel verify-panel" aria-labelledby="verify-title">
@@ -351,6 +351,17 @@
 
         <p class="toast-message" id="toast-message" role="status" aria-live="polite" hidden></p>
       </main>
+    <nav class="bottom-nav" aria-label="Navigation principale">
+      <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><span aria-hidden="true">⌂</span>Accueil</button>
+      <button class="nav-item" type="button" data-nav="recherche"><span aria-hidden="true">⌕</span>Recherche</button>
+      <button class="nav-item" type="button" data-nav="maison"><span aria-hidden="true">⌂</span>Maison</button>
+      <button class="nav-item" type="button" data-nav="famille"><span aria-hidden="true">♧</span>Famille</button>
+      <button class="nav-item" type="button" data-nav="alertes"><span aria-hidden="true">◉</span>Alertes</button>
+      <button class="nav-item" type="button" data-nav="assistant"><span aria-hidden="true">✦</span>Assistant</button>
+      <button class="nav-item" type="button" data-nav="importer"><span aria-hidden="true">⇪</span>Importer</button>
+      <button class="nav-item" type="button" data-nav="profil"><span aria-hidden="true">👤</span>Profil</button>
+      <button class="nav-item" type="button" data-nav="vos-donnees"><span aria-hidden="true">💾</span>Données</button>
+    </nav>
     </div>
 
   <dialog class="source-dialog" id="source-dialog" aria-labelledby="dialog-title">

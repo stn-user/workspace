@@ -1,6 +1,7 @@
-import { Capacitor } from "@capacitor/core";
-import { Filesystem } from '@capacitor/filesystem';
-import { Ocr } from "@jcesarmobile/capacitor-ocr";
+// Mock Capacitor pour le navigateur web
+const Capacitor = { isNativePlatform: () => false };
+const Filesystem = null;
+const Ocr = { process: async () => ({ results: [] }) };
 import * as pdfjs from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 

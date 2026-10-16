@@ -63,9 +63,9 @@ const state = {
 
   // Alertes administratives
   alerts: [
-    { id: 'a1', title: 'Garantie piscine', detail: 'Expire dans 32 jours', type: 'amber', docId: 'piscine-garantie' },
-    { id: 'a2', title: 'Contrôle technique', detail: 'Dans 18 jours', type: 'red', docId: 'vehicule-ct' },
-    { id: 'a3', title: 'Doublons détectés', detail: '247 doublons', type: 'amber', docId: null },
+    { id: 'a1', title: 'Garantie piscine', detail: 'Expire bientôt', type: 'amber', docId: 'piscine-garantie', dueDate: '2026-11-15' },
+    { id: 'a2', title: 'Contrôle technique', detail: 'Échéance proche', type: 'red', docId: 'vehicule-ct', dueDate: '2026-10-25' },
+    { id: 'a3', title: 'Doublons détectés', detail: '247 doublons', type: 'amber', docId: null, dueDate: null },
   ]
 };
 
