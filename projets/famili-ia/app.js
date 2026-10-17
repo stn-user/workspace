@@ -333,6 +333,7 @@ function setFileStatus(message, state) {
 }
 
 function setDriveConnectionStatus(message, state) {
+  if (!driveConnectionStatus) return;
   driveConnectionStatus.textContent = message;
   if (state) driveConnectionStatus.dataset.state = state;
   else delete driveConnectionStatus.dataset.state;
