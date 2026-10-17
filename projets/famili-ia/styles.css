@@ -378,37 +378,46 @@ body {
 .stat-icon svg {
   width: 24px;
   height: 24px;
-  color: white;
-  fill: white;
 }
 
-/* Colored icon backgrounds */
+/* Colored icon backgrounds - transparent style with colored icons */
 .stat-icon.blue {
-  background: var(--color-blue);
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--color-blue);
 }
 
 .stat-icon.green {
-  background: var(--color-green);
+  background: rgba(5, 150, 105, 0.1);
+  color: var(--color-green);
 }
 
 .stat-icon.violet {
-  background: var(--color-violet);
+  background: rgba(124, 58, 237, 0.1);
+  color: var(--color-violet);
 }
 
 .stat-icon.purple {
-  background: var(--color-purple);
+  background: rgba(147, 51, 234, 0.1);
+  color: var(--color-purple);
 }
 
 .stat-icon.amber {
-  background: var(--color-amber);
+  background: rgba(217, 119, 6, 0.1);
+  color: var(--color-amber);
 }
 
 .stat-icon.red {
-  background: var(--color-red);
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--color-red);
 }
 
 .stat-icon.cyan {
-  background: var(--color-cyan);
+  background: rgba(8, 145, 178, 0.1);
+  color: var(--color-cyan);
+}
+
+.stat-icon svg {
+  fill: currentColor;
 }
 
 .stat-copy {
@@ -641,6 +650,7 @@ body {
   padding: 0.5rem 0;
   position: sticky;
   bottom: 0;
+  z-index: 100;
 }
 
 .bottom-nav .nav-item {
@@ -661,8 +671,9 @@ body {
   min-width: 60px;
 }
 
-.bottom-nav .nav-item [aria-hidden="true"] {
-  font-size: 1.25rem;
+.bottom-nav .nav-item svg {
+  width: 20px;
+  height: 20px;
   margin-bottom: 2px;
 }
 

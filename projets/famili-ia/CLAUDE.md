@@ -82,27 +82,35 @@ To maintain visual consistency, follow these rules based on the official design 
 
 ### Icons & Visuals
 **Icon Style:**
-- **Format:** SVG inline pour les icônes principales
-- **Size:** `1.5rem` (24px) dans les cartes stats
-- **Container:** Cercle coloré de `48px` diameter avec l'icône centrée
-- **Colors:** Utiliser les couleurs sémantiques (blue, green, violet, etc.)
+- **Format:** SVG inline (stroke-based, not filled)
+- **Stat Cards:** 
+  - Size: `24px` icon in `48px` circular container
+  - Style: Transparent colored background (`rgba(color, 0.1)`) with colored icon
+  - Colors: Use semantic colors (blue, green, violet, purple, amber, red, cyan)
+  - SVG uses `fill="none"` and `stroke="currentColor"`
+- **Navigation (bottom bar):**
+  - Size: `20px` 
+  - Style: Outline/stroke icons (Feather/Lucide style)
+  - Colors: Muted by default, primary when active
 
-**Standard SVG Icons:**
-- **Documents:** `<rect>` avec lignes (fichier papier)
-- **Garantie/Protection:** `<shield>` (bouclier)
-- **Véhicule:** `<rect><circle>` (voiture stylisée)
-- **Maison:** `<path>` (maison avec toit)
-- **Photos:** `<rect><circle><path>` (image avec montagne)
-- **Contrat:** `<path><polyline>` (document avec lignes)
+**Standard SVG Icons (Stat Cards - filled style):**
+- **Documents:** `<rect>` with horizontal lines inside
+- **Garantie/Protection:** `<path>` (shield shape)
+- **Véhicule:** `<rect><circle>` (car with wheel)
+- **Maison:** `<path>` with `<polyline>` (house with roof and door)
+- **Photos:** `<rect>` with `<circle>` and `<path>` (image frame with mountain)
+- **Contrat:** `<path>` with `<polyline>` (document with fold and lines)
 
-**Fallback Unicode Icons (navigation, small elements):**
-- Document: `▤`
-- Home: `⌂`
-- Search: `⌕`
-- Settings: `⚙`
-- Family: `♧`
-- Alert: `◉`
-- Assistant: `✦`
+**Standard SVG Icons (Navigation - outline style):**
+- **Accueil:** House outline
+- **Recherche:** Magnifying glass (circle + line)
+- **Maison:** Grid/building outline
+- **Famille:** Multiple user silhouettes
+- **Alertes:** Triangle with exclamation
+- **Assistant:** Microphone
+- **Importer:** Upload arrow
+- **Profil:** User circle
+- **Données:** Document/file
 
 **Avatars:**
 - Cercles avec initiale centrée

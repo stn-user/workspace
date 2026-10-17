@@ -352,15 +352,75 @@
         <p class="toast-message" id="toast-message" role="status" aria-live="polite" hidden></p>
       </main>
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><span aria-hidden="true">⌂</span>Accueil</button>
-      <button class="nav-item" type="button" data-nav="recherche"><span aria-hidden="true">⌕</span>Recherche</button>
-      <button class="nav-item" type="button" data-nav="maison"><span aria-hidden="true">⌂</span>Maison</button>
-      <button class="nav-item" type="button" data-nav="famille"><span aria-hidden="true">♧</span>Famille</button>
-      <button class="nav-item" type="button" data-nav="alertes"><span aria-hidden="true">◉</span>Alertes</button>
-      <button class="nav-item" type="button" data-nav="assistant"><span aria-hidden="true">✦</span>Assistant</button>
-      <button class="nav-item" type="button" data-nav="importer"><span aria-hidden="true">⇪</span>Importer</button>
-      <button class="nav-item" type="button" data-nav="profil"><span aria-hidden="true">👤</span>Profil</button>
-      <button class="nav-item" type="button" data-nav="vos-donnees"><span aria-hidden="true">💾</span>Données</button>
+      <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span>Accueil</span>
+      </button>
+      <button class="nav-item" type="button" data-nav="recherche">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <span>Recherche</span>
+      </button>
+      <button class="nav-item" type="button" data-nav="maison">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <line x1="9" y1="3" x2="9" y2="21"/>
+        </svg>
+        <span>Maison</span>
+      </button>
+      <button class="nav-item" type="button" data-nav="famille">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span>Famille</span>
+      </button>
+      <button class="nav-item" type="button" data-nav="alertes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>Alertes</span>
+      </button>
+      <button class="nav-item" type="button" data-nav="assistant">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+        <span>Assistant</span>
+      </button>
+      <button class="nav-item" type="button" data-nav="importer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Importer</span>
+      </button>
+      <button class="nav-item" type="button" data-nav="profil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span>Profil</span>
+      </button>
+      <button class="nav-item" type="button" data-nav="vos-donnees">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+          <polyline points="13 2 13 9 20 9"/>
+        </svg>
+        <span>Données</span>
+      </button>
     </nav>
     </div>
 
