@@ -867,6 +867,7 @@ function initializeViewWithParams(viewName, params) {
 }
 
 function showView(name, { addHistory = true, params = {} } = {}) {
+  console.log("showView called for:", name);
   if (!Object.hasOwn(pageTitles, name)) return;
 
   // Build the new URL hash
@@ -943,6 +944,7 @@ navigationButtons.forEach((button) => {
 // Bottom navigation (mobile) - switches views
 document.querySelectorAll(".bottom-nav .nav-item").forEach((button) => {
   button.addEventListener("click", () => {
+    console.log("Clicked nav:", button.dataset.nav);
     const nav = button.dataset.nav;
     showView(nav);
     // Close sidebar on mobile when selecting a nav item
@@ -954,6 +956,7 @@ document.querySelectorAll(".bottom-nav .nav-item").forEach((button) => {
 
 document.querySelectorAll("[data-open-view]").forEach((button) => {
   button.addEventListener("click", (event) => {
+    console.log("Clicked data-open-view:", button.dataset.openView);
     if (button instanceof HTMLAnchorElement) event.preventDefault();
     showView(button.dataset.openView);
   });
