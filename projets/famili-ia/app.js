@@ -258,8 +258,12 @@ function search(question) {
  * @returns {Array} Résultats filtrés
  */
 function applyFilters(matches) {
-  const typeFilter = document.querySelector('#filter-type')?.value || '';
-  const sourceFilter = document.querySelector('#filter-source')?.value || '';
+  // Read active filter chips instead of select values
+  const typeChip = document.querySelector('#filter-type-group .chip.is-selected');
+  const sourceChip = document.querySelector('#filter-source-group .chip.is-selected');
+
+  const typeFilter = typeChip?.dataset.filterType || '';
+  const sourceFilter = sourceChip?.dataset.filterSource || '';
 
   // Si aucun filtre actif, retourner les résultats tels quels
   if (!typeFilter && !sourceFilter) {
