@@ -510,7 +510,192 @@ body {
   flex-shrink: 0;
 }
 
-/* House View & Equipment Styles */
+/* Family View Styles */
+.member-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.member-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1rem;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.member-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.member-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.member-card:nth-child(2) .member-avatar { background: var(--color-violet); }
+.member-card:nth-child(3) .member-avatar { background: var(--color-blue); }
+.member-card:nth-child(4) .member-avatar { background: var(--color-green); }
+.member-card:nth-child(5) .member-avatar { background: var(--color-amber); }
+
+.member-card strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.member-card span {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.member-you {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  padding: 0.1rem 0.5rem;
+  font-weight: 600;
+}
+
+.member-card.add-member {
+  border-style: dashed;
+  background: transparent;
+  cursor: pointer;
+  justify-content: center;
+}
+
+.add-member-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px dashed var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.member-card.add-member:hover .add-member-icon {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.family-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.family-doc-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 0.5rem;
+  background: var(--color-bg);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.family-doc-row:last-child {
+  margin-bottom: 0;
+}
+
+.family-doc-row:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-border);
+  transform: translateX(4px);
+}
+
+.doc-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.doc-dot.green { background-color: var(--color-green); }
+.doc-dot.violet { background-color: var(--color-violet); }
+.doc-dot.amber { background-color: var(--color-amber); }
+.doc-dot.blue { background-color: var(--color-blue); }
+.doc-dot.cyan { background-color: var(--color-cyan); }
+.doc-dot.red { background-color: var(--color-red); }
+
+.emergency-panel {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  border-left: 4px solid var(--color-amber);
+  background: #fffbeb;
+  border-color: #f59e0b;
+}
+
+.emergency-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.emergency-panel h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+  color: #92400e;
+}
+
+.emergency-panel p {
+  font-size: 0.85rem;
+  color: #b45309;
+  margin: 0 0 0.5rem 0;
+}
+
+.active-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #047857;
+  background: #d1fae5;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-full);
+}
+
 .property-card {
   display: flex;
   align-items: center;
