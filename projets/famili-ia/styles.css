@@ -478,7 +478,9 @@ body {
 }
 
 .stat-icon svg {
-  fill: currentColor;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
 }
 
 .stat-copy {
