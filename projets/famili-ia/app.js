@@ -1210,44 +1210,26 @@ function renderAccueilDashboard() {
     greetingName.innerHTML = `Bonjour ${user.name} <span aria-hidden="true">👋</span>`;
   }
 
-  // Update stats grid with real data and semantic icons (Unicode filled)
+  // Update stats grid with real data (preserving SVG icons)
   const statCards = document.querySelectorAll('.stat-card');
   if (statCards[0]) {
-    // Documents importants - Icon ▤ (document)
     statCards[0].querySelector('strong').textContent = `${equipment.length + 5}`;
-    statCards[0].querySelector('.stat-icon').textContent = '▤';
-    statCards[0].querySelector('.stat-icon').className = 'stat-icon blue';
   }
   if (statCards[1]) {
-    // Garanties actives - Icon ♢ (shield/check)
     const activeWarranties = alerts.filter(a => a.type === 'amber' || a.type === 'red').length;
     statCards[1].querySelector('strong').textContent = activeWarranties.toString();
-    statCards[1].querySelector('.stat-icon').textContent = '♢';
-    statCards[1].querySelector('.stat-icon').className = 'stat-icon green';
   }
   if (statCards[2]) {
-    // Véhicules - Icon ▧ (vehicle/special)
     statCards[2].querySelector('strong').textContent = '2';
-    statCards[2].querySelector('.stat-icon').textContent = '▧';
-    statCards[2].querySelector('.stat-icon').className = 'stat-icon violet';
   }
   if (statCards[3]) {
-    // Maison - Icon ⌂ (home)
     statCards[3].querySelector('strong').textContent = '1';
-    statCards[3].querySelector('.stat-icon').textContent = '⌂';
-    statCards[3].querySelector('.stat-icon').className = 'stat-icon green';
   }
   if (statCards[4]) {
-    // Photos - Icon ▦ (photo/gallery)
     statCards[4].querySelector('strong').textContent = '18 642';
-    statCards[4].querySelector('.stat-icon').textContent = '▦';
-    statCards[4].querySelector('.stat-icon').className = 'stat-icon purple';
   }
   if (statCards[5]) {
-    // Contrats - Icon ▤ (document/contract)
     statCards[5].querySelector('strong').textContent = '31';
-    statCards[5].querySelector('.stat-icon').textContent = '▤';
-    statCards[5].querySelector('.stat-icon').className = 'stat-icon blue';
   }
 
   // Update "À vérifier" section with event delegation
