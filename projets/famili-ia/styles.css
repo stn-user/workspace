@@ -345,7 +345,7 @@ body {
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
   gap: var(--space-md);
   margin-bottom: var(--space-xl);
 }
@@ -1241,7 +1241,7 @@ body {
 
 .suggestion-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
   gap: 0.75rem;
 }
 
@@ -1485,22 +1485,19 @@ body {
   font-weight: 600;
 }
 
-/* Responsive */
-/* Temporarily disabled desktop view to test mobile layout on all screen sizes */
-/*
-@media (min-width: 1024px) {
-  .app-shell {
-    grid-template-columns: 260px 1fr;
-    grid-template-rows: 64px 1fr;
-  }
-  .sidebar {
-    display: flex !important;
-  }
-  .bottom-nav {
-    display: none;
-  }
+@media (max-width: 360px) {
+  .main-content { padding: var(--space-md); }
 }
-*/
+
+/* Flex wrap for narrow containers */
+.dashboard-greeting,
+.emergency-panel,
+.property-card,
+.equipment-row,
+.verify-row,
+.alert-header {
+  flex-wrap: wrap;
+}
 
 /* Equipment Detail View Styles */
 .equipment-specs {
