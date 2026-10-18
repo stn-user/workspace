@@ -245,6 +245,11 @@
 
         <section class="view alerts-view" id="view-alertes" data-view="alertes" aria-labelledby="alerts-title" hidden>
           <div class="view-heading"><div><p class="eyebrow">SUIVI DE VOTRE ESPACE</p><h1 id="alerts-title">Alertes</h1><p>Restez informé des événements importants.</p></div><button class="text-button" id="mark-alerts-read" type="button">Tout marquer comme lu</button></div>
+          <div class="alert-filter-tabs" aria-label="Filtrer les alertes">
+            <button class="alert-filter-tab is-selected" type="button" data-filter="à-traiter">À traiter<span class="alert-badge">2</span></button>
+            <button class="alert-filter-tab" type="button" data-filter="à-anticiper">À anticiper<span class="alert-badge">2</span></button>
+            <button class="alert-filter-tab" type="button" data-filter="à-surveiller">À surveiller<span class="alert-badge">1</span></button>
+          </div>
           <div class="alert-list" id="alert-list" aria-label="Alertes">
             <!-- Alertes seront générées dynamiquement par app.js -->
           </div>

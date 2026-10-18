@@ -60,10 +60,10 @@
 ### Phase 5bis – Améliorations UX & alignement maquettes (EN COURS)
 - [✓] ✅ 5.17 : Accueil – Personnalisation greeting, icônes SVG remplis, cartes stats
 - [✓] ✅ 5.18 : Recherche – Barre centrée, suggestions prompt, filtres stylisés, résultats
-- [ ] 5.19 : Maison – SVG propriété, onglets catégorie stylisés, liste équipements dynamique
-- [ ] 5.20 : Famille – Avatars membres, liste avec rôles, panel documents couleur-codés
-- [ ] 5.21 : Alertes – Icône cloche remplie, bouton marquer lu, cartes alertes colorées
-- [ ] 5.22 : Detail – Illustrations équipements, sections techniques, actions contextuelles
+- [✓] ✅ 5.19 : Maison – SVG propriété, onglets catégorie stylisés, liste équipements dynamique
+- [✓] ✅ 5.20 : Famille – Avatars membres, liste avec rôles, panel documents couleur-codés
+- [✓] ✅ 5.21 : Alertes – Icône cloche remplie, bouton marquer lu, cartes alertes colorées
+- [✓] ✅ 5.22 : Detail – Illustrations équipements, sections techniques, actions contextuelles
 - [ ] 5.23 : Assistant – Bulles chat différenciées, avatar, suggestions rapides, scroll auto
 - [ ] 5.24 : Profil – Avatar initiale lettre, champs éditables, bouton sauvegarder, cases cocher stylisées
 - [ ] 5.25 : Vos données – Icône dossier rempli, liste fichiers avec métadonnées, actions critiques

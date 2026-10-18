@@ -63,9 +63,11 @@ const state = {
 
   // Alertes administratives
   alerts: [
-    { id: 'a1', title: 'Garantie piscine', detail: 'Expire bientôt', type: 'amber', docId: 'piscine-garantie', dueDate: '2026-11-15' },
-    { id: 'a2', title: 'Contrôle technique', detail: 'Échéance proche', type: 'red', docId: 'vehicule-ct', dueDate: '2026-10-25' },
-    { id: 'a3', title: 'Doublons détectés', detail: '247 doublons', type: 'amber', docId: null, dueDate: null },
+    { id: 'a1', title: 'Garantie piscine', detail: 'Vérifiez les conditions et préparez le renouvellement.', type: 'red', docId: 'piscine-garantie', dueDate: '2026-11-15' }, // Expire dans 32 jours
+    { id: 'a2', title: 'Entretien chaudière', detail: 'Pensez à faire le contrôle annuel.', type: 'amber', docId: 'chaudiere-entretien', dueDate: '2026-11-02' }, // Dans 15 jours
+    { id: 'a3', title: 'Assurance habitation', detail: 'Renouvellement à prévoir.', type: 'amber', docId: 'assurance-habitation', dueDate: '2026-12-08' }, // Dans 52 jours
+    { id: 'a4', title: 'Contrôle technique', detail: 'Vérifiez les documents du véhicule.', type: 'blue', docId: 'vehicule-ct', dueDate: '2027-01-20' }, // Dans 95 jours
+    { id: 'a5', title: 'Facture électricité', detail: 'Paiement en attente.', type: 'muted', docId: 'facture-elec', dueDate: '2026-10-20' }, // Exemple
   ]
 };
 

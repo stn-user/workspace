@@ -802,48 +802,9 @@ function parseHash() {
 function initializeViewWithParams(viewName, params) {
   switch (viewName) {
     case 'detail':
-      // Initialize equipment detail view
       const eqId = params.id;
       if (eqId) {
-        const eqDetail = getEquipmentDetail(eqId);
-        if (eqDetail) {
-          const detailTitle = document.querySelector("#detail-title");
-          const detailContent = document.querySelector("#detail-content");
-          const detailBreadcrumb = document.querySelector("#detail-breadcrumb");
-
-          if (detailTitle && detailContent) {
-            const name = eqDetail.name;
-            detailTitle.textContent = name;
-            if (detailBreadcrumb) detailBreadcrumb.textContent = name;
-
-            detailContent.innerHTML = eqDetail ? `
-              <div class="equipment-specs">
-                <div class="spec-header">
-                  <span class="spec-icon ${eqDetail.category === 'pompe' ? 'green' : 'blue'}">▤</span>
-                  <h3>${eqDetail.name}</h3>
-                </div>
-                <div class="spec-grid">
-                  <div class="spec-item"><label>Catégorie</label><span>${eqDetail.category}</span></div>
-                  <div class="spec-item"><label>Statut</label><span class="status-pill">${eqDetail.status}</span></div>
-                </div>
-                <div class="spec-docs">
-                  <h4>Documents associés</h4>
-                  <div class="doc-grid">
-                    ${eqDetail.docs && eqDetail.docs.length > 0
-                      ? eqDetail.docs.map(docId => `
-                          <button class="doc-link-card" type="button" data-open-source-dialog>
-                            <span class="doc-icon">📄</span>
-                            <span class="doc-name">${docId}</span>
-                            <span class="doc-arrow">›</span>
-                          </button>
-                        `).join('')
-                      : '<p class="empty-docs">Aucun document lié pour cet équipement.</p>'}
-                  </div>
-                </div>
-              </div>
-            ` : '<p class="error-state">Équipement non trouvé.</p>';
-          }
-        }
+        initEquipmentDetailView(eqId);
       }
       break;
 
@@ -860,6 +821,22 @@ function initializeViewWithParams(viewName, params) {
           }
         }
       }
+      break;
+
+    case 'famille':
+      initFamilyView();
+      break;
+
+    case 'alertes':
+      initAlertsView();
+      break;
+
+    case 'maison':
+      initHouseView();
+      break;
+
+    case 'accueil':
+      renderAccueilDashboard();
       break;
 
     default:
@@ -971,47 +948,9 @@ document.querySelectorAll("[data-demo-action]").forEach((button) => {
 document.querySelectorAll("[data-nav~='detail']").forEach((button) => {
   button.addEventListener("click", (event) => {
     event.preventDefault();
-    const eqId = button.dataset.equipment; // Updated from eqId to equipment to match HTML data-equipment
+    const eqId = button.dataset.equipment;
     if (eqId) {
-      const eqDetail = getEquipmentDetail(eqId);
-      const detailTitle = document.querySelector("#detail-title");
-      const detailContent = document.querySelector("#detail-content");
-      const detailBreadcrumb = document.querySelector("#detail-breadcrumb");
-
-      if (detailTitle && detailContent) {
-        const name = eqDetail ? eqDetail.name : "Équipement";
-        detailTitle.textContent = name;
-        if (detailBreadcrumb) detailBreadcrumb.textContent = name;
-
-        detailContent.innerHTML = eqDetail ? `
-          <div class="equipment-specs">
-            <div class="spec-header">
-              <span class="spec-icon ${eqDetail.category === 'pompe' ? 'green' : 'blue'}">▤</span>
-              <h3>${eqDetail.name}</h3>
-            </div>
-            <div class="spec-grid">
-              <div class="spec-item"><label>Catégorie</label><span>${eqDetail.category}</span></div>
-              <div class="spec-item"><label>Statut</label><span class="status-pill">${eqDetail.status}</span></div>
-            </div>
-            <div class="spec-docs">
-              <h4>Documents associés</h4>
-              <div class="doc-grid">
-                ${eqDetail.docs && eqDetail.docs.length > 0
-                  ? eqDetail.docs.map(docId => `
-                      <button class="doc-link-card" type="button" data-open-source-dialog>
-                        <span class="doc-icon">📄</span>
-                        <span class="doc-name">${docId}</span>
-                        <span class="doc-arrow">›</span>
-                      </button>
-                    `).join('')
-                  : '<p class="empty-docs">Aucun document lié pour cet équipement.</p>'}
-              </div>
-            </div>
-          </div>
-        ` : '<p class="error-state">Équipement non trouvé.</p>';
-
-        showView("detail", { params: { id: eqId } });
-      }
+      showView("detail", { params: { id: eqId } });
     }
   });
 });
@@ -1265,22 +1204,117 @@ function renderAccueilDashboard() {
 }
 
 /**
- * Retourne l'icône appropriée pour un type d'alerte
- * Utilise des icônes Unicode remplies pour la cohérence visuelle
- * @param {string} type - Le type d'alerte (red, amber, etc.)
- * @returns {string} L'icône à afficher
+ * Retourne l'icône SVG pour une catégorie donnée
  */
-function getAlertIcon(type) {
-  switch (type) {
-    case 'red':
-      return '◉'; // Rond point rempli rouge
-    case 'amber':
-      return '◉'; // Rond point rempli jaune
-    case 'blue':
-      return '◉'; // Rond point rempli bleu
+function getCategorySvgIcon(category) {
+  switch (category) {
+    case 'pompe':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+    case 'piscine':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/></svg>`;
+    case 'imprimante':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`;
+    case 'assurance':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
     default:
-      return '◉';
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>`;
   }
+}
+
+/**
+ * Retourne la classe de couleur pour une catégorie donnée
+ */
+function getCategoryColorClass(category) {
+  switch (category) {
+    case 'pompe': return 'green';
+    case 'piscine': return 'violet';
+    case 'imprimante': return 'cyan';
+    case 'assurance': return 'amber';
+    default: return 'blue';
+  }
+}
+
+/**
+ * Initialise la vue de détail d'un équipement
+ */
+function initEquipmentDetailView(eqId) {
+  const eqDetail = getEquipmentDetail(eqId);
+  const detailTitle = document.querySelector("#detail-title");
+  const detailContent = document.querySelector("#detail-content");
+  const detailBreadcrumb = document.querySelector("#detail-breadcrumb");
+
+  if (!detailTitle || !detailContent) return;
+
+  if (!eqDetail) {
+    detailTitle.textContent = "Équipement non trouvé";
+    detailContent.innerHTML = '<p class="error-state">Désolé, cet équipement n’existe pas ou a été supprimé.</p>';
+    return;
+  }
+
+  const name = eqDetail.name;
+  detailTitle.textContent = name;
+  if (detailBreadcrumb) detailBreadcrumb.textContent = name;
+
+  const categoryIcon = getCategorySvgIcon(eqDetail.category);
+  const colorClass = getCategoryColorClass(eqDetail.category);
+
+  detailContent.innerHTML = `
+    <div class="equipment-specs">
+      <div class="spec-header">
+        <span class="spec-icon ${colorClass}">${categoryIcon}</span>
+        <h3>${eqDetail.name}</h3>
+      </div>
+      <div class="spec-grid">
+        <div class="spec-item"><label>Catégorie</label><span>${eqDetail.category.charAt(0).toUpperCase() + eqDetail.category.slice(1)}</span></div>
+        <div class="spec-item"><label>Statut</label><span class="status-pill">${eqDetail.status}</span></div>
+        <div class="spec-item"><label>Installation</label><span>Janvier 2023</span></div>
+        <div class="spec-item"><label>Référence</label><span>#${eqId.split('-').pop().toUpperCase()}</span></div>
+      </div>
+
+      <div class="spec-docs">
+        <h4>Documents associés</h4>
+        <div class="doc-grid">
+          ${eqDetail.docs && eqDetail.docs.length > 0
+            ? eqDetail.docs.map(docId => {
+                const doc = [...documents, ...uploadedDocuments].find(d => d.id === docId);
+                const docName = doc ? doc.name : docId;
+                return `
+                  <button class="doc-link-card" type="button" data-doc-id="${docId}">
+                    <span class="doc-icon">📄</span>
+                    <span class="doc-name">${docName}</span>
+                    <span class="doc-arrow">›</span>
+                  </button>
+                `;
+              }).join('')
+            : '<p class="empty-docs">Aucun document lié pour cet équipement.</p>'}
+        </div>
+      </div>
+
+      <div class="equipment-actions">
+        <button class="context-action-button" type="button" data-demo-action>
+          <span>✎</span> Modifier
+        </button>
+        <button class="context-action-button" type="button" data-demo-action>
+          <span>＋</span> Lier un document
+        </button>
+        <button class="context-action-button" type="button" data-demo-action>
+          <span>↻</span> Historique
+        </button>
+      </div>
+    </div>
+  `;
+
+  detailContent.querySelectorAll('.doc-link-card').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const docId = btn.dataset.docId;
+      const doc = [...documents, ...uploadedDocuments].find(d => d.id === docId);
+      if (doc) openSource(doc);
+    });
+  });
+
+  detailContent.querySelectorAll('[data-demo-action]').forEach(btn => {
+    btn.addEventListener('click', () => showDemoNotice());
+  });
 }
 
 const initialView = window.location.hash.slice(1);
@@ -1296,17 +1330,104 @@ if (!firstRun) {
   renderAccueilDashboard();
 }
 
+function getAlertIcon(type) {
+  let iconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+  if (type === 'red') {
+    iconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  }
+  return iconSvg;
+}
+
 /**
  * Initialize alerts view
  */
 function initAlertsView() {
-  // Initial render of alerts list (handled by renderAccueilDashboard for dashboard,
-  // but we should ensure the alerts view is also updated)
-  const alertsView = document.querySelector('#view-alertes');
-  if (alertsView) {
-    // Logic to render the full alerts list if necessary
-    // For now, it's managed by the dynamic dashboards and basic view switching
+  const alertList = document.querySelector('#alert-list');
+  if (!alertList) return;
+
+  // Add event listeners for filter tabs
+  const tabs = document.querySelectorAll('.alert-filter-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('is-selected'));
+      tab.classList.add('is-selected');
+      renderAlerts(tab.dataset.filter);
+    });
+  });
+
+  // Render initial alerts (default: à-traiter)
+  renderAlerts('à-traiter');
+}
+
+/**
+ * Render alerts based on filter
+ */
+function renderAlerts(filter) {
+  const alertList = document.querySelector('#alert-list');
+  if (!alertList) return;
+
+  const alerts = getAlerts();
+
+  // Logic mapping based on alert type/data
+  const filteredAlerts = alerts.filter(alert => {
+    if (filter === 'à-traiter') return alert.type === 'red';
+    if (filter === 'à-anticiper') return alert.type === 'amber';
+    if (filter === 'à-surveiller') return alert.type === 'blue' || alert.type === 'muted';
+    return true;
+  });
+
+  // Update badges
+  document.querySelectorAll('.alert-filter-tab').forEach(tab => {
+    const f = tab.dataset.filter;
+    const count = alerts.filter(a => {
+      if (f === 'à-traiter') return a.type === 'red';
+      if (f === 'à-anticiper') return a.type === 'amber';
+      if (f === 'à-surveiller') return a.type === 'blue' || a.type === 'muted';
+      return false;
+    }).length;
+    tab.querySelector('.alert-badge').textContent = count.toString();
+  });
+
+  if (filteredAlerts.length === 0) {
+    alertList.innerHTML = '<p class="empty-state">Aucune alerte dans cette catégorie.</p>';
+    return;
   }
+
+  alertList.innerHTML = filteredAlerts.map(alert => {
+    const iconSvg = getAlertIcon(alert.type);
+
+    return `
+      <article class="alert-card ${alert.type}" data-alert-card data-alert-id="${alert.id}">
+        <div class="alert-icon ${alert.type}">
+          ${iconSvg}
+        </div>
+        <div class="alert-content">
+          <div class="alert-header">
+            <strong>${alert.title}</strong>
+            ${alert.dueDate ? `<span class="alert-date">Échéance : ${alert.dueDate}</span>` : ''}
+          </div>
+          <p>${alert.detail}</p>
+        </div>
+        <button class="alert-action" type="button" data-open-view="recherche" aria-label="Voir le détail">›</button>
+      </article>
+    `;
+  }).join('');
+
+  // Re-bind alert card click listeners for read toggle
+  document.querySelectorAll("[data-alert-card]").forEach((card) => {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest('.alert-action')) return;
+      card.classList.toggle("is-read");
+    });
+  });
+
+  // Handle alert action button navigation
+  document.querySelectorAll(".alert-card [data-open-view]").forEach((button) => {
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showView(button.dataset.openView);
+    });
+  });
 }
 
 // Initialize family state from localStorage (if available)
@@ -1362,17 +1483,13 @@ function renderFamilyMembers() {
         ${isCurrentUser ? '<span class="member-you">Vous</span>' : ''}
       </article>
     `;
-  }).join('');
-
-  // Add the add member button
-  const addMemberBtn = `
+  }).join('') + `
     <button class="member-card add-member" type="button" data-demo-action>
       <span class="add-member-icon">＋</span>
       <strong>Ajouter</strong>
       <span>Un proche</span>
     </button>
   `;
-  memberList.innerHTML += addMemberBtn;
 }
 
 // Add event listener to the add-member button after rendering
@@ -1446,6 +1563,7 @@ initFamilyView();
 initProfileHandlers();
 initImportView();
 initDataView();
+initAssistantView();
 
 /**
  * Render data inventory for Vos données view
@@ -1618,7 +1736,6 @@ function getAssistantResponse(question) {
 
   return answerText + sourceInfo;
 }
-initDataView();
 
 /**
  * Initialise le système de vérification d'alertes automatisé
@@ -1692,12 +1809,3 @@ function showAlertNotifications(alerts) {
 
 // Démarrage du scheduler au chargement
 startAlertScheduler();
-
-initHouseView();
-initAlertsView();
-initFamilyView();
-initProfileHandlers();
-initImportView();
-initDataView();
-initAssistantView();
-
