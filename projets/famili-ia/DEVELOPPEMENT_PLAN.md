@@ -64,7 +64,7 @@
 - [✓] ✅ 5.20 : Famille – Avatars membres, liste avec rôles, panel documents couleur-codés
 - [✓] ✅ 5.21 : Alertes – Icône cloche remplie, bouton marquer lu, cartes alertes colorées
 - [✓] ✅ 5.22 : Detail – Illustrations équipements, sections techniques, actions contextuelles
-- [ ] 5.23 : Assistant – Bulles chat différenciées, avatar, suggestions rapides, scroll auto
+- [✓] ✅ 5.23 : Assistant – Bulles chat différenciées, avatar, suggestions rapides, scroll auto
 - [ ] 5.24 : Profil – Avatar initiale lettre, champs éditables, bouton sauvegarder, cases cocher stylisées
 - [ ] 5.25 : Vos données – Icône dossier rempli, liste fichiers avec métadonnées, actions critiques
 - [ ] 5.26 : Homogénéisation – Variables espacements, audit cohérence couleurs/ombres/rayons, focus-visible

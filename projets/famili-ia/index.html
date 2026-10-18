@@ -268,10 +268,18 @@
           <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="accueil">Accueil</button><span aria-hidden="true">/</span><strong>Assistant IA</strong></nav>
           <div class="view-heading"><div><p class="eyebrow">VOTRE COMPAGNON NUMÉRIQUE</p><h1 id="assistant-title">Assistant Famili-IA</h1></div></div>
           <div class="chat-container" id="assistant-chat">
-            <div class="chat-message ai">Bonjour ! Je peux vous aider à retrouver un document ou répondre à une question sur votre foyer. Que souhaitez-vous savoir ?</div>
+            <div class="chat-message ai">
+              <div class="chat-avatar">✦</div>
+              <div class="chat-bubble">Bonjour ! Je peux vous aider à retrouver un document ou répondre à une question sur votre foyer. Que souhaitez-vous savoir ?</div>
+            </div>
+          </div>
+          <div class="assistant-suggestions" id="assistant-suggestions">
+            <button type="button" class="assistant-suggestion-chip" data-question="Combien ai-je payé pour ma piscine ?">Combien ai-je payé pour ma piscine ?</button>
+            <button type="button" class="assistant-suggestion-chip" data-question="Jusqu’à quand la pompe est-elle garantie ?">Jusqu’à quand la pompe est-elle garantie ?</button>
+            <button type="button" class="assistant-suggestion-chip" data-question="Quand se termine mon contrat habitation ?">Quand se termine mon contrat habitation ?</button>
           </div>
           <form class="chat-form" id="assistant-form">
-            <input type="text" id="assistant-input" placeholder="Posez votre question ici...">
+            <input type="text" id="assistant-input" placeholder="Posez votre question ici..." autocomplete="off">
             <button type="submit">Envoyer</button>
           </form>
         </section>

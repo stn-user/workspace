@@ -1653,8 +1653,18 @@ function initAssistantView() {
   const form = document.querySelector('#assistant-form');
   const input = document.querySelector('#assistant-input');
   const chatContainer = document.querySelector('#assistant-chat');
+  const suggestionChips = document.querySelectorAll('.assistant-suggestion-chip');
 
   if (!form || !input || !chatContainer) return;
+
+  // Handle suggestion chips
+  suggestionChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const question = chip.dataset.question;
+      input.value = question;
+      input.focus();
+    });
+  });
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1680,7 +1690,10 @@ function initAssistantView() {
 function addUserMessage(text, container) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'chat-message user';
-  msgDiv.textContent = text;
+  msgDiv.innerHTML = `
+    <div class="chat-avatar">S</div>
+    <div class="chat-bubble">${text}</div>
+  `;
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
 }
@@ -1691,7 +1704,10 @@ function addUserMessage(text, container) {
 function addAIMessage(text, container) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'chat-message ai';
-  msgDiv.textContent = text;
+  msgDiv.innerHTML = `
+    <div class="chat-avatar">✦</div>
+    <div class="chat-bubble">${text}</div>
+  `;
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
 }
