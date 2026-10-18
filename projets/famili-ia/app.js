@@ -4,13 +4,71 @@ import { GoogleDriveClient } from "./google-drive.js";
 const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument } from "./state.js";
 
 // Initialisation asynchrone de l'application
 (async () => {
   await initState();
+  uploadedDocuments.push(...getDocuments());
+  initEquipmentDialog();
   // Reste de l'initialisation...
 })();
+
+// ... (rest of the file)
+
+/**
+ * Initialise la modale d'ajout/modification d'équipement
+ */
+function initEquipmentDialog() {
+  const dialog = document.querySelector('#equipment-dialog');
+  const form = document.querySelector('#equipment-form');
+  const cancelBtn = document.querySelector('#cancel-equipment-dialog');
+
+  if (!dialog || !form) return;
+
+  cancelBtn.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.querySelector('#eq-id-input').value;
+    const name = document.querySelector('#eq-name-input').value;
+    const category = document.querySelector('#eq-category-input').value;
+    const status = document.querySelector('#eq-status-input').value;
+
+    const equipment = {
+      id: id || `eq-${Date.now()}`,
+      name,
+      category,
+      status,
+      docs: []
+    };
+
+    if (id) {
+      await updateEquipment(equipment);
+      showDemoNotice(`Équipement mis à jour : ${name}`);
+    } else {
+      await addEquipment(equipment);
+      showDemoNotice(`Équipement ajouté : ${name}`);
+    }
+
+    dialog.close();
+    renderEquipmentList(); // Refresh list
+    if (activeView === 'detail') initEquipmentDetailView(equipment.id);
+  });
+}
+
+function openEquipmentForm(equipment = null) {
+  const dialog = document.querySelector('#equipment-dialog');
+  const form = document.querySelector('#equipment-form');
+  document.querySelector('#eq-id-input').value = equipment ? equipment.id : '';
+  document.querySelector('#eq-name-input').value = equipment ? equipment.name : '';
+  document.querySelector('#eq-category-input').value = equipment ? equipment.category : 'pompe';
+  document.querySelector('#eq-status-input').value = equipment ? equipment.status : '';
+  dialog.showModal();
+}
 
 const googleDriveConfig = {
   clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
@@ -423,12 +481,15 @@ async function loadLocalFiles(files) {
     })));
 
     uploadedDocuments.push(...loaded);
+    for (const doc of loaded) {
+      await addDocument(doc);
+    }
     clearFilesButton.hidden = false;
     updateGoogleDriveButton();
     updateModeBanner();
     completeOnboarding();
     const count = uploadedDocuments.length;
-    setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session ; rien n'est envoyé ni conservé après fermeture.`, "success");
+    setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.`, "success");
     sourceChoiceDialog.close();
     showView("recherche", { params: { q: "" } });
   } catch (error) {
@@ -517,6 +578,9 @@ async function loadLocalFilesNative() {
     }
 
     uploadedDocuments.push(...validFiles);
+    for (const doc of validFiles) {
+      await addDocument(doc);
+    }
     clearFilesButton.hidden = false;
     updateGoogleDriveButton();
     updateModeBanner();
@@ -628,6 +692,9 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     }
 
     uploadedDocuments.push(...newFiles);
+    for (const doc of newFiles) {
+      await addDocument(doc);
+    }
     clearFilesButton.hidden = false;
     updateGoogleDriveButton();
     updateModeBanner();
@@ -684,6 +751,9 @@ confirmDrivePickerButton.addEventListener("click", () => {
       isLocal: true
     }));
   uploadedDocuments.push(...selectedDocuments);
+  for (const doc of selectedDocuments) {
+    await addDocument(doc);
+  }
   clearFilesButton.hidden = false;
   updateGoogleDriveButton();
   updateModeBanner();
@@ -715,6 +785,9 @@ localFilesInput.addEventListener("change", () => {
 
 async function clearSessionFiles() {
   const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
+  for (const doc of [...uploadedDocuments]) {
+    await deleteDocument(doc.id);
+  }
   uploadedDocuments.length = 0;
   if (sourceDialog.open) sourceDialog.close();
   dialogTitle.textContent = "";
@@ -1312,8 +1385,11 @@ function initEquipmentDetailView(eqId) {
       </div>
 
       <div class="equipment-actions">
-        <button class="context-action-button" type="button" data-demo-action>
+        <button class="context-action-button" type="button" id="edit-equipment">
           <span>✎</span> Modifier
+        </button>
+        <button class="context-action-button" type="button" id="delete-equipment" style="color: var(--color-danger, #ef4444);">
+          <span>🗑</span> Supprimer
         </button>
         <button class="context-action-button" type="button" data-demo-action>
           <span>＋</span> Lier un document
@@ -1324,6 +1400,19 @@ function initEquipmentDetailView(eqId) {
       </div>
     </div>
   `;
+
+  document.querySelector('#edit-equipment').addEventListener('click', () => {
+    openEquipmentForm(eqDetail);
+  });
+
+  document.querySelector('#delete-equipment').addEventListener('click', async () => {
+    if (confirm(`Voulez-vous vraiment supprimer "${eqDetail.name}" ?`)) {
+      await deleteEquipment(eqId);
+      showDemoNotice(`Équipement supprimé : ${eqDetail.name}`);
+      showView("maison");
+      renderEquipmentList();
+    }
+  });
 
   detailContent.querySelectorAll('.doc-link-card').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1387,7 +1476,21 @@ function renderAlerts(filter) {
   const alertList = document.querySelector('#alert-list');
   if (!alertList) return;
 
-  const alerts = getAlerts();
+  const rawAlerts = getAlerts();
+  const alerts = rawAlerts.map(alert => {
+    if (!alert.dueDate) return alert;
+    const dueDate = new Date(alert.dueDate);
+    const today = new Date();
+    const diffTime = dueDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    let type = alert.type;
+    if (diffDays <= 0) type = 'red';
+    else if (diffDays <= 30) type = 'amber';
+    else type = 'blue';
+
+    return { ...alert, type };
+  });
 
   // Logic mapping based on alert type/data
   const filteredAlerts = alerts.filter(alert => {
@@ -1474,6 +1577,13 @@ if (savedFamily && savedFamily.length > 0) {
 function initHouseView() {
   renderEquipmentList();
   initCategoryTabs();
+
+  const addBtn = document.querySelector('#add-equipment-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      openEquipmentForm();
+    });
+  }
 }
 
 /**

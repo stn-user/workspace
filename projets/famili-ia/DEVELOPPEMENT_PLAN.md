@@ -1,8 +1,8 @@
 # Famili-IA – Plan de Développement
 
 ## 📊 Vue d'ensemble
-- **Phase actuelle** : Phase 6 – Infrastructure Data & Persistance
-- **Prochaine étape prioritaire** : Mise en place de la persistance réelle
+- **Phase actuelle** : Phase 7 – Implémentation fonctionnelle
+- **Prochaine étape prioritaire** : Phase 8 – Sécurisation & Vie privée avancée
 
 ## 📋 Liste des étapes
 
@@ -57,10 +57,10 @@
 - [ ] 6.3 : Mise en place de la synchronisation (si multi-appareil nécessaire)
 
 ### Phase 7 – Implémentation fonctionnelle
-- [ ] 7.1 : Gestion Multi-utilisateurs (RBAC : Admin/Membre, gestion des rôles)
-- [ ] 7.2 : Moteur d'indexation réel (recherche multi-fichiers, indexation persistante)
-- [ ] 7.3 : Système d'Alertes et rappels automatisés (calcul des échéances réel)
-- [ ] 7.4 : Inventaire des équipements (CRUD complet, catégorisation réelle)
+- [✓] ✅ 7.1 : Gestion Multi-utilisateurs (RBAC : Admin/Membre, gestion des rôles) - *Initialisé*
+- [✓] ✅ 7.2 : Moteur d'indexation réel (recherche multi-fichiers, indexation persistante) - *Terminé*
+- [✓] ✅ 7.3 : Système d'Alertes et rappels automatisés (calcul des échéances réel) - *Terminé*
+- [✓] ✅ 7.4 : Inventaire des équipements (CRUD complet, catégorisation réelle) - *Terminé*
 
 ### Phase 8 – Sécurisation & Vie privée avancée
 - [ ] 8.1 : Chiffrement des données sensibles en local
