@@ -1,21 +1,20 @@
-# Plan d'implémentation : Vos données (5.25)
+# Plan d'implémentation : Étape 5.26 (Homogénéisation UI)
 
 ## Contexte
-L'étape 5.25 du plan de développement vise à peaufiner l'écran "Vos données" (`#view-vos-donnees`) :
-- Icône de dossier rempli/stylisée pour les fichiers.
-- Liste de fichiers avec métadonnées claires (type, taille, source).
-- Actions critiques bien stylisées (suppression, export).
+L'étape 5.26 vise à assurer la cohérence visuelle et l'accessibilité de l'application Famili-IA en auditant et homogénéisant les styles CSS :
+- Vérification des variables d'espacement (`var(--space-*)`).
+- Cohérence des rayons de bordure (`--radius-*`) et des ombres (`--shadow-*`).
+- Implémentation des styles globaux `:focus-visible` pour l'accessibilité au clavier.
 
-## Approche
-1. **Style CSS (`styles.css`)** : Ajouter des règles pour `.data-inventory`, `.data-file-row`, `.data-file-icon` (style dossier rempli avec couleur primaire ou cyan), et les boutons d'actions critiques (`.danger-button`, `.secondary-button`).
-2. **Structure HTML (`index.html`)** : S'assurer que les classes correspondent bien.
-3. **Logique JavaScript (`app.js`)** : Vérifier que `renderDataInventory` affiche correctement les métadonnées et icônes adaptées.
-
-## Fichiers critiques
-- `projets/famili-ia/index.html`
+## Fichiers concernés
 - `projets/famili-ia/styles.css`
-- `projets/famili-ia/app.js`
+
+## Étapes de réalisation
+1. **Audit des sélecteurs et composants** :
+   - Vérifier les éléments interactifs (`button`, `a`, `.chip`, `.nav-item`, `.stat-card`, `.alert-card`, etc.) pour s'assurer qu'ils utilisent les variables CSS standard.
+   - Ajouter une règle globale `:focus-visible` claire et accessible (ex: outline de couleur primaire avec offset).
+2. **Vérification de la cohérence** :
+   - S'assurer que les espacements et les rayons de bordure respectent la charte graphique définie dans `CLAUDE.md`.
 
 ## Vérification
-- Ouvrir la vue "Vos données" et vérifier l'affichage des icônes de dossiers et fichiers.
-- Tester l'export et la suppression des données.
+- Validation visuelle et test de la navigation clavier (focus) sur l'ensemble des éléments interactifs.
