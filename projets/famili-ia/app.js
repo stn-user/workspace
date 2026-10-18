@@ -998,6 +998,13 @@ function initProfileHandlers() {
       // Update current user in state
       const user = getCurrentUser();
       user.name = newName;
+      user.avatar = newName.charAt(0).toUpperCase();
+
+      // Update avatar display in profile
+      const avatar = document.querySelector("#profile-avatar");
+      if (avatar) {
+        avatar.textContent = user.avatar;
+      }
 
       // Trigger a re-render of the dashboard if it's visible
       if (activeView === 'accueil') {
@@ -1019,7 +1026,7 @@ function initProfileHandlers() {
       const roleEl = document.querySelector("#profile-role");
 
       if (avatar && nameInput) {
-        avatar.textContent = user.avatar || 'S';
+        avatar.textContent = user.avatar || (user.name ? user.name.charAt(0).toUpperCase() : 'S');
         nameInput.value = user.name || 'Steve';
       }
       if (roleEl) {
@@ -1032,9 +1039,15 @@ function initProfileHandlers() {
 
       if (localAccessCheckbox && user.preferences) {
         localAccessCheckbox.checked = user.preferences.localAccess ?? true;
+        localAccessCheckbox.onchange = (e) => {
+          user.preferences.localAccess = e.target.checked;
+        };
       }
       if (driveConnectionCheckbox && user.preferences) {
         driveConnectionCheckbox.checked = user.preferences.driveConnection ?? false;
+        driveConnectionCheckbox.onchange = (e) => {
+          user.preferences.driveConnection = e.target.checked;
+        };
       }
     });
   });
