@@ -1,20 +1,24 @@
-# Plan d'implémentation : Étape 5.26 (Homogénéisation UI)
+# Plan d'implémentation : Amélioration Recherche IA (5.28)
 
 ## Contexte
-L'étape 5.26 vise à assurer la cohérence visuelle et l'accessibilité de l'application Famili-IA en auditant et homogénéisant les styles CSS :
-- Vérification des variables d'espacement (`var(--space-*)`).
-- Cohérence des rayons de bordure (`--radius-*`) et des ombres (`--shadow-*`).
-- Implémentation des styles globaux `:focus-visible` pour l'accessibilité au clavier.
+L'objectif est d'aligner l'interface de "Recherche IA" sur la maquette :
+- Rendre l'interface plus "conversationnelle" (barre de recherche centrale, style épuré).
+- Améliorer l'aspect visuel des suggestions (les transformer en "chips" interactifs mieux intégrés).
+- Ajuster le flux de recherche pour une meilleure expérience utilisateur.
 
 ## Fichiers concernés
-- `projets/famili-ia/styles.css`
+- `projets/famili-ia/index.html` (structure de `#view-recherche`)
+- `projets/famili-ia/styles.css` (styles de la section `.search-view`)
 
 ## Étapes de réalisation
-1. **Audit des sélecteurs et composants** :
-   - Vérifier les éléments interactifs (`button`, `a`, `.chip`, `.nav-item`, `.stat-card`, `.alert-card`, etc.) pour s'assurer qu'ils utilisent les variables CSS standard.
-   - Ajouter une règle globale `:focus-visible` claire et accessible (ex: outline de couleur primaire avec offset).
-2. **Vérification de la cohérence** :
-   - S'assurer que les espacements et les rayons de bordure respectent la charte graphique définie dans `CLAUDE.md`.
+1. **HTML** :
+   - Refondre la structure de `.search-form` pour une apparence plus centrée et épurée.
+   - Refactoriser le conteneur `.suggestions` pour mieux intégrer les puces de suggestions (`.assistant-suggestion-chip` réutilisées ici ou nouveau style de chips).
+2. **CSS** :
+   - Appliquer des styles plus modernes pour la zone de recherche (plus grande, ombre légère, radius accru).
+   - Styliser les suggestions pour qu'elles ressemblent à des puces interactives (chips).
+   - Ajuster la mise en page pour que le tout soit centré et aéré.
 
 ## Vérification
-- Validation visuelle et test de la navigation clavier (focus) sur l'ensemble des éléments interactifs.
+- Tester le flux de recherche : entrée de question, affichage des résultats, clics sur les suggestions.
+- Vérifier la cohérence visuelle avec les autres écrans.
