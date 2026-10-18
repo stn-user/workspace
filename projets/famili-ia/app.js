@@ -1539,7 +1539,7 @@ function initImportView() {
     dropZone.addEventListener(eventName, (e) => {
       e.preventDefault();
       e.stopPropagation();
-      dropZone.classList.add('drag-over');
+      dropZone.classList.add('is-dragover');
     });
   });
 
@@ -1547,7 +1547,7 @@ function initImportView() {
     dropZone.addEventListener(eventName, (e) => {
       e.preventDefault();
       e.stopPropagation();
-      dropZone.classList.remove('drag-over');
+      dropZone.classList.remove('is-dragover');
     });
   });
 

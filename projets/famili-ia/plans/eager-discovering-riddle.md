@@ -1,24 +1,21 @@
-# Plan d'implémentation : Amélioration Recherche IA (5.28)
+# Plan d'implémentation : Finalisation du Drag & Drop (5.29)
 
 ## Contexte
-L'objectif est d'aligner l'interface de "Recherche IA" sur la maquette :
-- Rendre l'interface plus "conversationnelle" (barre de recherche centrale, style épuré).
-- Améliorer l'aspect visuel des suggestions (les transformer en "chips" interactifs mieux intégrés).
-- Ajuster le flux de recherche pour une meilleure expérience utilisateur.
+L'étape 5.29 vise à finaliser la fonctionnalité de "Glisser-déposer" (Drag & Drop) dans la vue d'importation (`#view-importer`) et à s'assurer qu'elle offre un feedback visuel robuste et un traitement correct des fichiers déposés.
 
 ## Fichiers concernés
-- `projets/famili-ia/index.html` (structure de `#view-recherche`)
-- `projets/famili-ia/styles.css` (styles de la section `.search-view`)
+- `projets/famili-ia/index.html` (structure de `#view-importer`)
+- `projets/famili-ia/app.js` (gestion des événements dragover, dragleave, drop et intégration dans `uploadedDocuments`)
+- `projets/famili-ia/styles.css` (styles pour les états de la zone de dépôt : survol, fichier accepté, etc.)
 
 ## Étapes de réalisation
-1. **HTML** :
-   - Refondre la structure de `.search-form` pour une apparence plus centrée et épurée.
-   - Refactoriser le conteneur `.suggestions` pour mieux intégrer les puces de suggestions (`.assistant-suggestion-chip` réutilisées ici ou nouveau style de chips).
-2. **CSS** :
-   - Appliquer des styles plus modernes pour la zone de recherche (plus grande, ombre légère, radius accru).
-   - Styliser les suggestions pour qu'elles ressemblent à des puces interactives (chips).
-   - Ajuster la mise en page pour que le tout soit centré et aéré.
+1. **CSS (`styles.css`)** :
+   - Ajouter des classes pour le survol de la zone de dépôt (`.drop-zone.is-dragover`).
+2. **JavaScript (`app.js`)** :
+   - Implémenter les gestionnaires d'événements pour `dragover`, `dragleave`, et `drop` sur `#drop-zone`.
+   - Traiter les fichiers déposés de la même manière que ceux sélectionnés via l'explorateur de fichiers (validation du type, taille, ajout à `uploadedDocuments`).
+   - Afficher un message de succès ou un toast de confirmation.
 
 ## Vérification
-- Tester le flux de recherche : entrée de question, affichage des résultats, clics sur les suggestions.
-- Vérifier la cohérence visuelle avec les autres écrans.
+- Tester le glisser-déposer d'un fichier compatible (.txt, .md, .pdf) dans la zone dédiée.
+- Vérifier que le fichier est bien ajouté et indexé dans la session.

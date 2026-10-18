@@ -70,7 +70,7 @@
 - [✓] ✅ 5.26 : Homogénéisation – Variables espacements, audit cohérence couleurs/ombres/rayons, focus-visible
 - [✓] ✅ 5.27 : Responsive – Tests sur mobile (<540px) pour chaque écran, ajustements spécifiques
 - [✓] ✅ 5.28 : Recherche IA – Amélioration de l'interface conversationnelle et intégration fluide des suggestions
-- [ ] 5.29 : Importation – Finalisation du Drag & Drop (feedback visuel robuste et traitement)
+- [✓] ✅ 5.29 : Importation – Finalisation du Drag & Drop (feedback visuel robuste et traitement)
 
 ### Phase 6 – Validation & Lancement (à venir)
 - [ ] 6.1 : Tests utilisateurs complets (famille monoparentale, multi-membres)
