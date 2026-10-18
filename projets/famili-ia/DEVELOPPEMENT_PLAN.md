@@ -52,8 +52,8 @@
 - [✓] ✅ 5.29 : Importation – Finalisation du Drag & Drop (feedback visuel robuste et traitement)
 
 ### Phase 6 – Infrastructure Data & Persistance
-- [ ] 6.1 : Choix et implémentation du moteur de stockage persistant (IndexedDB)
-- [ ] 6.2 : Modélisation réelle des données (User, Family, Equipment, Document, Alert)
+- [✓] ✅ 6.1 : Choix et implémentation du moteur de stockage persistant (IndexedDB)
+- [✓] ✅ 6.2 : Modélisation réelle des données (User, Family, Equipment, Document, Alert)
 - [ ] 6.3 : Mise en place de la synchronisation (si multi-appareil nécessaire)
 
 ### Phase 7 – Implémentation fonctionnelle

@@ -1,125 +1,103 @@
 /**
- * state.js - Gestion de l'état global de l'application Famili-IA
- *
- * Ce module gère les données utilisateur, familiales et les équipements
- * pour permettre une synchronisation entre les différents écrans.
+ * state.js - Gestion de l'état global de l'application Famili-IA avec IndexedDB
  */
 
-const state = {
-  // Utilisateur actuellement connecté
+import { getAll, put, initDB } from './db.js';
+
+const defaultState = {
   currentUser: {
     id: 'u1',
     name: 'Steve',
     role: 'Admin',
     avatar: 'S',
-    // Preferences for the current user
     preferences: {
       localAccess: true,
       driveConnection: false
     }
   },
-
-  // Membres de la famille
   family: [
     { id: 'u1', name: 'Steve', role: 'Admin', avatar: 'S', access: 'full' },
     { id: 'u2', name: 'Conjointe', role: 'Member', avatar: 'C', access: 'limited' },
     { id: 'u3', name: 'Aaron', role: 'Member', avatar: 'A', access: 'limited' },
     { id: 'u4', name: 'Lorena', role: 'Member', avatar: 'L', access: 'limited' },
-    { id: 'u5', name: 'Elyana', role: 'Member', avatar: 'E', access: 'limited' },
+    { id: 'u5', name: 'Elyana', role: 'Member', avatar: 'E', access: 'limited' }
   ],
-
-  // Équipements de la maison
-  // Chaque équipement est lié à un ou plusieurs documents par leur ID
   homeEquipment: [
-    {
-      id: 'eq-piscine-pompe',
-      category: 'pompe',
-      name: 'Pompe Hayward Modèle 2022',
-      status: 'Bon état',
-      docs: ['piscine-garantie']
-    },
-    {
-      id: 'eq-piscine-filtre',
-      category: 'piscine',
-      name: 'Filtre de piscine',
-      status: 'À nettoyer',
-      docs: ['maison-notice']
-    },
-    {
-      id: 'eq-bambu-a1',
-      category: 'imprimante',
-      name: 'Bambu Lab A1',
-      status: 'Opérationnelle',
-      docs: ['bambu-facture']
-    },
-    {
-      id: 'eq-assurance-hab',
-      category: 'assurance',
-      name: 'Contrat Habitation',
-      status: 'Actif',
-      docs: ['habitation-contrat']
-    }
+    { id: 'eq-piscine-pompe', category: 'pompe', name: 'Pompe Hayward Modèle 2022', status: 'Bon état', docs: ['piscine-garantie'] },
+    { id: 'eq-piscine-filtre', category: 'piscine', name: 'Filtre de piscine', status: 'À nettoyer', docs: ['maison-notice'] },
+    { id: 'eq-bambu-a1', category: 'imprimante', name: 'Bambu Lab A1', status: 'Opérationnelle', docs: ['bambu-facture'] },
+    { id: 'eq-assurance-hab', category: 'assurance', name: 'Contrat Habitation', status: 'Actif', docs: ['habitation-contrat'] }
   ],
-
-  // Alertes administratives
   alerts: [
-    { id: 'a1', title: 'Garantie piscine', detail: 'Vérifiez les conditions et préparez le renouvellement.', type: 'red', docId: 'piscine-garantie', dueDate: '2026-11-15' }, // Expire dans 32 jours
-    { id: 'a2', title: 'Entretien chaudière', detail: 'Pensez à faire le contrôle annuel.', type: 'amber', docId: 'chaudiere-entretien', dueDate: '2026-11-02' }, // Dans 15 jours
-    { id: 'a3', title: 'Assurance habitation', detail: 'Renouvellement à prévoir.', type: 'amber', docId: 'assurance-habitation', dueDate: '2026-12-08' }, // Dans 52 jours
-    { id: 'a4', title: 'Contrôle technique', detail: 'Vérifiez les documents du véhicule.', type: 'blue', docId: 'vehicule-ct', dueDate: '2027-01-20' }, // Dans 95 jours
-    { id: 'a5', title: 'Facture électricité', detail: 'Paiement en attente.', type: 'muted', docId: 'facture-elec', dueDate: '2026-10-20' }, // Exemple
+    { id: 'a1', title: 'Garantie piscine', detail: 'Vérifiez les conditions et préparez le renouvellement.', type: 'red', docId: 'piscine-garantie', dueDate: '2026-11-15' },
+    { id: 'a2', title: 'Entretien chaudière', detail: 'Pensez à faire le contrôle annuel.', type: 'amber', docId: 'chaudiere-entretien', dueDate: '2026-11-02' },
+    { id: 'a3', title: 'Assurance habitation', detail: 'Renouvellement à prévoir.', type: 'amber', docId: 'assurance-habitation', dueDate: '2026-12-08' },
+    { id: 'a4', title: 'Contrôle technique', detail: 'Vérifiez les documents du véhicule.', type: 'blue', docId: 'vehicule-ct', dueDate: '2027-01-20' },
+    { id: 'a5', title: 'Facture électricité', detail: 'Paiement en attente.', type: 'muted', docId: 'facture-elec', dueDate: '2026-10-20' }
   ]
 };
 
+let state = { ...defaultState };
+
 /**
- * Récupère l'utilisateur actuel
+ * Initialise l'état depuis IndexedDB ou peuple avec les défauts
  */
+export async function initState() {
+  try {
+    await initDB();
+    const family = await getAll('family');
+    const equipment = await getAll('equipment');
+    const alerts = await getAll('alerts');
+    const users = await getAll('users');
+
+    if (family.length > 0) state.family = family;
+    else for (const m of defaultState.family) await put('family', m);
+
+    if (equipment.length > 0) state.homeEquipment = equipment;
+    else for (const e of defaultState.homeEquipment) await put('equipment', e);
+
+    if (alerts.length > 0) state.alerts = alerts;
+    else for (const a of defaultState.alerts) await put('alerts', a);
+
+    if (users.length > 0) state.currentUser = users[0];
+    else await put('users', defaultState.currentUser);
+
+  } catch (e) {
+    console.warn('Erreur lors de l\'initialisation IndexedDB, utilisation des valeurs par défaut:', e);
+  }
+  return state;
+}
+
 export function getCurrentUser() {
   return state.currentUser;
 }
 
-/**
- * Récupère la liste des membres de la famille
- */
 export function getFamilyMembers() {
   return state.family;
 }
 
-/**
- * Récupère les équipements par catégorie
- */
 export function getEquipmentByCategory(category = 'tout') {
   if (category === 'tout') return state.homeEquipment;
   return state.homeEquipment.filter(eq => eq.category === category);
 }
 
-/**
- * Récupère les détails d'un équipement spécifique
- */
 export function getEquipmentDetail(id) {
   return state.homeEquipment.find(eq => eq.id === id);
 }
 
-/**
- * Récupère toutes les alertes
- */
 export function getAlerts() {
   return state.alerts;
 }
 
-/**
- * Ajoute un membre à la famille
- */
-export function addFamilyMember(member) {
+export async function addFamilyMember(member) {
   state.family.push(member);
+  await put('family', member);
   return state.family;
 }
 
-/**
- * Met à jour le profil utilisateur
- */
-export function updateCurrentUser(updates) {
+export async function updateCurrentUser(updates) {
   state.currentUser = { ...state.currentUser, ...updates };
+  await put('users', state.currentUser);
   return state.currentUser;
 }
 

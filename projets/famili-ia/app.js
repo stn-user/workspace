@@ -4,8 +4,13 @@ import { GoogleDriveClient } from "./google-drive.js";
 const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
-import { getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts } from "./state.js";
-import { loadFamilyState, saveFamilyState } from "./family-storage.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts } from "./state.js";
+
+// Initialisation asynchrone de l'application
+(async () => {
+  await initState();
+  // Reste de l'initialisation...
+})();
 
 const googleDriveConfig = {
   clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
