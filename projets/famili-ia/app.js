@@ -715,56 +715,65 @@ connectGoogleDriveButton.addEventListener("click", async () => {
   }
 });
 
-document.querySelector("#open-drive-picker").addEventListener("click", () => {
-  sourceChoiceDialog.close();
-  renderDrivePickerOptions();
-  drivePickerDialog.showModal();
-});
+const openDrivePickerBtn = document.querySelector("#open-drive-picker");
+if (openDrivePickerBtn && drivePickerDialog) {
+  openDrivePickerBtn.addEventListener("click", () => {
+    sourceChoiceDialog.close();
+    renderDrivePickerOptions();
+    drivePickerDialog.showModal();
+  });
+}
 
-drivePickerList.addEventListener("change", updateDrivePickerCount);
-document.querySelector("#close-drive-picker").addEventListener("click", () => drivePickerDialog.close());
-document.querySelector("#cancel-drive-picker").addEventListener("click", () => drivePickerDialog.close());
-drivePickerDialog.addEventListener("click", (event) => {
-  if (event.target === drivePickerDialog) drivePickerDialog.close();
-});
-confirmDrivePickerButton.addEventListener("click", () => {
-  const selectedIds = new Set(
-    [...drivePickerList.querySelectorAll('input[name="drive-demo-file"]:checked:not(:disabled)')].map((checkbox) => checkbox.value)
-  );
-  if (selectedIds.size === 0) {
-    drivePickerStatus.textContent = "Sélectionnez au moins un fichier fictif.";
-    return;
-  }
+if (drivePickerDialog) {
+  document.querySelector("#close-drive-picker").addEventListener("click", () => drivePickerDialog.close());
+  document.querySelector("#cancel-drive-picker").addEventListener("click", () => drivePickerDialog.close());
+  drivePickerDialog.addEventListener("click", (event) => {
+    if (event.target === drivePickerDialog) drivePickerDialog.close();
+  });
+}
+if (drivePickerList) {
+  drivePickerList.addEventListener("change", updateDrivePickerCount);
+}
+if (confirmDrivePickerButton && drivePickerList) {
+  confirmDrivePickerButton.addEventListener("click", async () => {
+    const selectedIds = new Set(
+      [...drivePickerList.querySelectorAll('input[name="drive-demo-file"]:checked:not(:disabled)')].map((checkbox) => checkbox.value)
+    );
+    if (selectedIds.size === 0) {
+      drivePickerStatus.textContent = "Sélectionnez au moins un fichier fictif.";
+      return;
+    }
 
-  if (uploadedDocuments.length + selectedIds.size > maxFiles) {
-    drivePickerStatus.textContent = `La limite de ${maxFiles} fichiers par session serait dépassée.`;
-    return;
-  }
+    if (uploadedDocuments.length + selectedIds.size > maxFiles) {
+      drivePickerStatus.textContent = `La limite de ${maxFiles} fichiers par session serait dépassée.`;
+      return;
+    }
 
-  const selectedDocuments = driveDemoDocuments
-    .filter((document) => selectedIds.has(document.id))
-    .map((document) => ({
-      ...document,
-      id: `drive-demo-${document.id}`,
-      driveDemo: true,
-      driveDemoId: document.id,
-      isLocal: true
-    }));
-  uploadedDocuments.push(...selectedDocuments);
-  for (const doc of selectedDocuments) {
-    await addDocument(doc);
-  }
-  clearFilesButton.hidden = false;
-  updateGoogleDriveButton();
-  updateModeBanner();
-  completeOnboarding();
-  setFileStatus(
-    `${selectedDocuments.length} fichier${selectedDocuments.length === 1 ? "" : "s"} fictif${selectedDocuments.length === 1 ? "" : "s"} ajouté${selectedDocuments.length === 1 ? "" : "s"} à la session. Aucun compte Google n’est connecté et aucun fichier Drive n’a été consulté.`,
-    "success"
-  );
-  drivePickerDialog.close();
-  showView("recherche");
-});
+    const selectedDocuments = driveDemoDocuments
+      .filter((document) => selectedIds.has(document.id))
+      .map((document) => ({
+        ...document,
+        id: `drive-demo-${document.id}`,
+        driveDemo: true,
+        driveDemoId: document.id,
+        isLocal: true
+      }));
+    uploadedDocuments.push(...selectedDocuments);
+    for (const doc of selectedDocuments) {
+      await addDocument(doc);
+    }
+    clearFilesButton.hidden = false;
+    updateGoogleDriveButton();
+    updateModeBanner();
+    completeOnboarding();
+    setFileStatus(
+      `${selectedDocuments.length} fichier${selectedDocuments.length === 1 ? "" : "s"} fictif${selectedDocuments.length === 1 ? "" : "s"} ajouté${selectedDocuments.length === 1 ? "" : "s"} à la session. Aucun compte Google n’est connecté et aucun fichier Drive n’a été consulté.`,
+      "success"
+    );
+    drivePickerDialog.close();
+    showView("recherche");
+  });
+}
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
