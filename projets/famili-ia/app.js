@@ -314,17 +314,20 @@ document.querySelectorAll('#filter-type, #filter-source').forEach(select => {
   });
 });
 
-// Gestion du bouton "Effacer les filtres"
-document.querySelector('#clear-filters').addEventListener('click', () => {
-  document.querySelector('#filter-type').value = '';
-  document.querySelector('#filter-source').value = '';
-  document.querySelector('#clear-filters').hidden = true;
+// Gestion du bouton "Effacer les filtres" (Obsolète)
+const clearFiltersBtn = document.querySelector('#clear-filters');
+if (clearFiltersBtn) {
+  clearFiltersBtn.addEventListener('click', () => {
+    document.querySelector('#filter-type').value = '';
+    document.querySelector('#filter-source').value = '';
+    clearFiltersBtn.hidden = true;
 
-  // Réexécuter la recherche sans filtres
-  if (input.value.trim()) {
-    search(input.value);
-  }
-});
+    // Réexécuter la recherche sans filtres
+    if (input.value.trim()) {
+      search(input.value);
+    }
+  });
+}
 
 function setFileStatus(message, state) {
   fileStatus.textContent = message;
