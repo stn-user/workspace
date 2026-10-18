@@ -2,7 +2,7 @@
  * state.js - Gestion de l'état global de l'application Famili-IA avec IndexedDB
  */
 
-import { getAll, put, initDB } from './db.js';
+import { getAll, put, initDB, remove } from './db.js';
 
 const defaultState = {
   currentUser: {
@@ -34,7 +34,8 @@ const defaultState = {
     { id: 'a3', title: 'Assurance habitation', detail: 'Renouvellement à prévoir.', type: 'amber', docId: 'assurance-habitation', dueDate: '2026-12-08' },
     { id: 'a4', title: 'Contrôle technique', detail: 'Vérifiez les documents du véhicule.', type: 'blue', docId: 'vehicule-ct', dueDate: '2027-01-20' },
     { id: 'a5', title: 'Facture électricité', detail: 'Paiement en attente.', type: 'muted', docId: 'facture-elec', dueDate: '2026-10-20' }
-  ]
+  ],
+  documents: []
 };
 
 let state = { ...defaultState };
@@ -49,6 +50,7 @@ export async function initState() {
     const equipment = await getAll('equipment');
     const alerts = await getAll('alerts');
     const users = await getAll('users');
+    const documents = await getAll('documents');
 
     if (family.length > 0) state.family = family;
     else for (const m of defaultState.family) await put('family', m);
@@ -62,6 +64,8 @@ export async function initState() {
     if (users.length > 0) state.currentUser = users[0];
     else await put('users', defaultState.currentUser);
 
+    if (documents.length > 0) state.documents = documents;
+
   } catch (e) {
     console.warn('Erreur lors de l\'initialisation IndexedDB, utilisation des valeurs par défaut:', e);
   }
@@ -70,6 +74,10 @@ export async function initState() {
 
 export function getCurrentUser() {
   return state.currentUser;
+}
+
+export function getFullState() {
+  return state;
 }
 
 export function getFamilyMembers() {
@@ -89,16 +97,68 @@ export function getAlerts() {
   return state.alerts;
 }
 
+export function getDocuments() {
+  return state.documents;
+}
+
 export async function addFamilyMember(member) {
   state.family.push(member);
   await put('family', member);
   return state.family;
 }
 
-export async function updateCurrentUser(updates) {
-  state.currentUser = { ...state.currentUser, ...updates };
-  await put('users', state.currentUser);
-  return state.currentUser;
+export async function addEquipment(equipment) {
+  state.homeEquipment.push(equipment);
+  await put('equipment', equipment);
+  return state.homeEquipment;
+}
+
+export async function updateEquipment(equipment) {
+  const index = state.homeEquipment.findIndex(eq => eq.id === equipment.id);
+  if (index !== -1) {
+    state.homeEquipment[index] = equipment;
+    await put('equipment', equipment);
+  }
+  return state.homeEquipment;
+}
+
+export async function deleteEquipment(id) {
+  state.homeEquipment = state.homeEquipment.filter(eq => eq.id !== id);
+  await remove('equipment', id);
+  return state.homeEquipment;
+}
+
+export async function addDocument(document) {
+  state.documents.push(document);
+  await put('documents', document);
+  return state.documents;
+}
+
+export async function deleteDocument(id) {
+  state.documents = state.documents.filter(doc => doc.id !== id);
+  await remove('documents', id);
+  return state.documents;
+}
+
+export async function updateAlert(alert) {
+  const index = state.alerts.findIndex(a => a.id === alert.id);
+  if (index !== -1) {
+    state.alerts[index] = alert;
+    await put('alerts', alert);
+  }
+  return state.alerts;
+}
+
+export function calculateAlertType(dueDate, currentType) {
+  if (!dueDate) return currentType;
+  const dueDateObj = new Date(dueDate);
+  const today = new Date();
+  const diffTime = dueDateObj - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) return 'red';
+  if (diffDays <= 30) return 'amber';
+  return 'blue';
 }
 
 export default state;

@@ -4,7 +4,7 @@ import { GoogleDriveClient } from "./google-drive.js";
 const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState } from "./state.js";
 
 // Initialisation asynchrone de l'application
 (async () => {
@@ -1486,20 +1486,7 @@ function renderAlerts(filter) {
   if (!alertList) return;
 
   const rawAlerts = getAlerts();
-  const alerts = rawAlerts.map(alert => {
-    if (!alert.dueDate) return alert;
-    const dueDate = new Date(alert.dueDate);
-    const today = new Date();
-    const diffTime = dueDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    let type = alert.type;
-    if (diffDays <= 0) type = 'red';
-    else if (diffDays <= 30) type = 'amber';
-    else type = 'blue';
-
-    return { ...alert, type };
-  });
+  const alerts = rawAlerts.map(alert => ({ ...alert, type: calculateAlertType(alert.dueDate, alert.type) }));
 
   // Logic mapping based on alert type/data
   const filteredAlerts = alerts.filter(alert => {
@@ -1757,13 +1744,7 @@ function initDataView() {
   const exportBtn = document.querySelector('#export-all-data');
   if (exportBtn) {
     exportBtn.addEventListener('click', () => {
-      const dataToExport = uploadedDocuments.map(doc => ({
-        id: doc.id,
-        name: doc.name,
-        type: doc.type,
-        date: doc.date,
-        source: doc.driveSource ? 'google-drive' : (doc.driveDemo ? 'demo' : (doc.isLocal ? 'local' : 'unknown'))
-      }));
+      const dataToExport = getFullState();
       const dataStr = JSON.stringify(dataToExport, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
