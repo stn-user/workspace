@@ -1,8 +1,8 @@
 # Famili-IA – Plan de Développement
 
 ## 📊 Vue d'ensemble
-- **Phase actuelle** : Phase 5bis – Améliorations UX & alignement maquettes
-- **Prochaine étape prioritaire** : Alignement visuel des 10 écrans selon les maquettes (Phase 5bis)
+- **Phase actuelle** : Phase 6 – Infrastructure Data & Persistance
+- **Prochaine étape prioritaire** : Mise en place de la persistance réelle
 
 ## 📋 Liste des étapes
 
@@ -42,45 +42,42 @@
 ### Phase 5 – Extension Family & Interface (✅ TERMINÉE)
 - [✓] ✅ 5.1 : État global → Création state.js (utilisateur, famille, équipements, alertes)
 - [✓] ✅ 5.2 : Navigation → Refactor app.js pour supporter 10 écrans + routes imbriquées
-- [✓] ✅ 5.3 : Composants UI → **Accueil** (dashboard familial, stats, actions rapides)
-- [✓] ✅ 5.4 : Composants UI → **Recherche** (recherche avancée avec filtres par type/source)
-- [✓] ✅ 5.5 : Composants UI → **Maison** (liste équipements par catégorie + ajout rapide)
-- [✓] ✅ 5.6 : Composants UI → **Détail équipement** (affichage facture/garantie/notice liés)
-- [✓] ✅ 5.7 : Composants UI → **Alertes** (suivi échéances, statuts, actions)
-- [✓] ✅ 5.8 : Composants UI → **Famille** (gestion membres, rôles, accès, invitations)
-- [✓] ✅ 5.9 : Composants UI → **Profil/Paramètres** (infos user, confidentialité, export/suppression)
-- [✓] ✅ 5.10 : Composants UI → **Importer** (sélection local/cloud, drag & drop)
-- [✓] ✅ 5.11 : Composants UI → **Vos données** (inventaire, historique, export)
-- [✓] ✅ 5.12 : Composants UI → **Assistant IA** (chat conversationnel, suggestions)
-- [✓] ✅ 5.13 : Services → Données familiales partagées (stockage local partagé)
+- [✓] ✅ 5.3 : Composants UI → Accueil, Recherche, Maison, Famille, Alertes, Assistant, Importer, Profil, Vos données
+- [✓] ✅ 5.13 : Services → Données familiales partagées
 - [✓] ✅ 5.14 : Services → Système notifications/alertes automatisées
-- [✓] ✅ 5.15 : Intégration → Navigation 10 écrans + états partagés
-- [✓] ✅ 5.16 : Tests → UI/UX sur use-cases familiaux
 
-### Phase 5bis – Améliorations UX & alignement maquettes (EN COURS)
-- [✓] ✅ 5.17 : Accueil – Personnalisation greeting, icônes SVG remplis, cartes stats
-- [✓] ✅ 5.18 : Recherche – Barre centrée, suggestions prompt, filtres stylisés, résultats
-- [✓] ✅ 5.19 : Maison – SVG propriété, onglets catégorie stylisés, liste équipements dynamique
-- [✓] ✅ 5.20 : Famille – Avatars membres, liste avec rôles, panel documents couleur-codés
-- [✓] ✅ 5.21 : Alertes – Icône cloche remplie, bouton marquer lu, cartes alertes colorées
-- [✓] ✅ 5.22 : Detail – Illustrations équipements, sections techniques, actions contextuelles
-- [✓] ✅ 5.23 : Assistant – Bulles chat différenciées, avatar, suggestions rapides, scroll auto
-- [✓] ✅ 5.24 : Profil – Avatar initiale lettre, champs éditables, bouton sauvegarder, cases cocher stylisées
-- [✓] ✅ 5.25 : Vos données – Icône dossier rempli, liste fichiers avec métadonnées, actions critiques
-- [✓] ✅ 5.26 : Homogénéisation – Variables espacements, audit cohérence couleurs/ombres/rayons, focus-visible
-- [✓] ✅ 5.27 : Responsive – Tests sur mobile (<540px) pour chaque écran, ajustements spécifiques
-- [✓] ✅ 5.28 : Recherche IA – Amélioration de l'interface conversationnelle et intégration fluide des suggestions
-- [✓] ✅ 5.30 : Recherche IA – Alignement design (logo, texte, filtres contextuels, icône protection)
+### Phase 5bis – Améliorations UX & alignement maquettes (✅ TERMINÉE)
+- [✓] ✅ 5.17 - 5.28 : Homogénéisation, Responsive, Recherche IA, etc.
+- [✓] ✅ 5.30 : Recherche IA – Alignement design (logo, titre centré, nettoyage)
 - [✓] ✅ 5.29 : Importation – Finalisation du Drag & Drop (feedback visuel robuste et traitement)
 
-### Phase 6 – Validation & Lancement (à venir)
-- [ ] 6.1 : Tests utilisateurs complets (famille monoparentale, multi-membres)
-- [ ] 6.2 : Mesure de la satisfaction utilisateur et des temps de recherche
-- [ ] 6.3 Rapport final & next-steps pour Phase 7 (éventuelle)
+### Phase 6 – Infrastructure Data & Persistance
+- [ ] 6.1 : Choix et implémentation du moteur de stockage persistant (IndexedDB)
+- [ ] 6.2 : Modélisation réelle des données (User, Family, Equipment, Document, Alert)
+- [ ] 6.3 : Mise en place de la synchronisation (si multi-appareil nécessaire)
+
+### Phase 7 – Implémentation fonctionnelle
+- [ ] 7.1 : Gestion Multi-utilisateurs (RBAC : Admin/Membre, gestion des rôles)
+- [ ] 7.2 : Moteur d'indexation réel (recherche multi-fichiers, indexation persistante)
+- [ ] 7.3 : Système d'Alertes et rappels automatisés (calcul des échéances réel)
+- [ ] 7.4 : Inventaire des équipements (CRUD complet, catégorisation réelle)
+
+### Phase 8 – Sécurisation & Vie privée avancée
+- [ ] 8.1 : Chiffrement des données sensibles en local
+- [ ] 8.2 : Workflow d'export complet (JSON/PDF) et purge sécurisée
+- [ ] 8.3 : Gestion fine des consentements et logs d'accès
+
+### Phase 9 – Homogénéisation UI & Polish
+- [ ] 9.1 : Standardisation globale des headers et titres
+- [ ] 9.2 : Audit d'accessibilité complet
+- [ ] 9.3 : Gestion robuste des états d'erreur et états vides
+
+### Phase 10 – Validation & Lancement
+- [ ] 10.1 : Tests utilisateurs complets
+- [ ] 10.2 : Mesure de la satisfaction utilisateur
+- [ ] 10.3 : Rapport final & lancement
 
 ## 📌 Comment mettre à jour
 - Cochez la case `[✓]` lorsque la tâche est terminée.
-- Si une tâche est bloquée, ajoutez un commentaire après la case (ex : `[ ] ❌ 4.4 : En attente de Android X debugging → config .`).
+- Si une tâche est bloquée, ajoutez un commentaire après la case.
 - Maintenez le fichier à jour dans chaque branche ou commit important.
-
-> **Remarque** : Ce fichier sert de référentiel vivant. En cas de question, naviguer vers la section correspondante ou laisser un commentaire.
