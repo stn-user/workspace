@@ -4,6 +4,7 @@ import { GoogleDriveClient } from "./google-drive.js";
 const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
+import { loadFamilyState } from "./family-storage.js";
 import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState } from "./state.js";
 
 // Initialisation asynchrone de l'application
@@ -978,6 +979,13 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   document.title = `${pageTitles[name]} | Famili-IA`;
   window.scrollTo({ top: 0, behavior: "smooth" });
 
+  // Show FAB only on Accueil and Recherche views
+  const fab = document.querySelector('.fab-add-document');
+  if (fab) {
+    const showFab = name === 'accueil' || name === 'recherche';
+    fab.hidden = !showFab;
+  }
+
   initializeViewWithParams(name, params);
 }
 
@@ -1278,18 +1286,18 @@ function renderAccueilDashboard() {
     statCards[5].querySelector('strong').textContent = '31';
   }
 
-  // Update "À vérifier" section with event delegation
+  // Update "Vos prochaines échéances" section with event delegation
   const verifyPanel = document.querySelector('#view-accueil .verify-panel');
   if (verifyPanel) {
     verifyPanel.innerHTML = `
       <div class="section-heading">
-        <h2 id="verify-title">À vérifier</h2>
+        <h2 id="verify-title">Vos prochaines échéances</h2>
         <button class="text-button" type="button" data-open-view="alertes">Voir tout</button>
       </div>
       ${alerts.map(alert => `
         <button class="verify-row" type="button" data-open-view="alertes" data-alert-type="${alert.type}">
-          <span class="verify-icon ${alert.type}" aria-hidden="true">${getAlertIcon(alert.type)}</span>
-          <div class="verify-info">
+          <span class="row-icon ${alert.type}" aria-hidden="true">${getAlertIcon(alert.type)}</span>
+          <div class="row-copy">
             <strong>${alert.title}</strong>
             <small>${alert.detail}</small>
           </div>

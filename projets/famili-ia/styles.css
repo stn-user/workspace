@@ -236,17 +236,28 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Dashboard Greeting */
+/* Dashboard Greeting centered */
 .dashboard-greeting {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   margin-bottom: var(--space-xl);
   gap: var(--space-md);
 }
 
 .dashboard-greeting > div {
-  flex: 1;
+  text-align: center;
+  width: 100%;
+  max-width: 500px;
+}
+
+.dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: var(--space-md);
 }
 
 .eyebrow {
@@ -313,7 +324,7 @@ body {
   font-weight: 500;
 }
 
-/* Quick Search */
+/* Quick Search - harmonisé avec la page Recherche IA */
 .quick-search {
   display: flex;
   align-items: center;
@@ -324,6 +335,13 @@ body {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--color-border);
+}
+
+.quick-search .search-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-right: var(--space-sm);
 }
 
 .quick-search input {
@@ -1031,7 +1049,49 @@ body {
   margin: 1rem 0.5rem;
 }
 
-/* Utility */
+/* --- HEADER DE VUE CENTRÉ (Phase 9.1) --- */
+.view-header-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: var(--space-xl);
+  gap: var(--space-md);
+  padding: var(--space-lg) 0;
+}
+
+.view-header-centered .view-titles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.view-header-centered .eyebrow {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.view-header-centered h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.view-header-centered p {
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  margin: 0;
+  max-width: 500px;
+}
+
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -2445,7 +2505,39 @@ body {
   cursor: pointer;
 }
 
-/* Modals & Dialogs (Charte Graphique Conforme) */
+/* Floating Action Button (FAB) */
+.fab-add-document {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 56px;
+  height: 56px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  z-index: 1000;
+  transition: all 0.2s ease;
+}
+
+.fab-add-document:hover {
+  background: var(--color-primary-dark);
+  transform: scale(1.05);
+}
+
+@media (max-width: 1024px) {
+  .fab-add-document {
+    bottom: 5rem; /* Above mobile bottom nav */
+    right: 1.5rem;
+  }
+}
+
 .source-dialog {
   padding: var(--space-xl);
   border-radius: var(--radius-lg);

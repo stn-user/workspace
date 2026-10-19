@@ -22,15 +22,15 @@
 
       <aside class="sidebar" aria-label="Navigation principale">
         <nav class="primary-nav">
-          <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><span aria-hidden="true">⌂</span>Accueil</button>
-          <button class="nav-item" type="button" data-nav="recherche"><span aria-hidden="true">⌕</span>Recherche</button>
-          <button class="nav-item" type="button" data-nav="maison"><span aria-hidden="true">⌂</span>Maison</button>
-          <button class="nav-item" type="button" data-nav="famille"><span aria-hidden="true">♧</span>Famille</button>
-          <button class="nav-item" type="button" data-nav="alertes"><span aria-hidden="true">◉</span>Alertes</button>
-          <button class="nav-item" type="button" data-nav="assistant"><span aria-hidden="true">✦</span>Assistant</button>
-          <button class="nav-item" type="button" data-nav="importer"><span aria-hidden="true">⇪</span>Importer</button>
-          <button class="nav-item" type="button" data-nav="profil"><span aria-hidden="true">👤</span>Profil</button>
-          <button class="nav-item" type="button" data-nav="vos-donnees"><span aria-hidden="true">💾</span>Données</button>
+            <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
+          <button class="nav-item" type="button" data-nav="recherche"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche</button>
+          <button class="nav-item" type="button" data-nav="maison"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Maison</button>
+          <button class="nav-item" type="button" data-nav="famille"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Famille</button>
+          <button class="nav-item" type="button" data-nav="alertes"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>Alertes</button>
+          <button class="nav-item" type="button" data-nav="assistant"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Assistant</button>
+          <button class="nav-item" type="button" data-nav="importer"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Importer</button>
+          <button class="nav-item" type="button" data-nav="profil"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profil</button>
+          <button class="nav-item" type="button" data-nav="vos-donnees"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>Données</button>
         </nav>
         <section class="sidebar-note">
           <span class="status-dot" aria-hidden="true"></span>
@@ -52,24 +52,32 @@
           </section>
 
           <div id="dashboard-content">
-          <div class="view-heading dashboard-greeting">
-            <div>
+          <div class="view-header-centered">
+            <div class="view-titles">
               <p class="eyebrow">VOTRE ESPACE FAMILIAL</p>
               <h1 id="dashboard-title">Bonjour Steve <span aria-hidden="true">👋</span></h1>
               <p>Votre vie numérique, enfin retrouvée.</p>
             </div>
-            <div class="dashboard-actions">
-              <button class="dashboard-add-documents" type="button" data-open-source-dialog>Ajouter des documents <span aria-hidden="true">+</span></button>
-              <span class="demo-chip"><span class="status-dot"></span> Données fictives</span>
-            </div>
           </div>
 
-          <form class="quick-search" id="quick-search-form" role="search">
-            <span aria-hidden="true">⌕</span>
+          <form class="search-form" id="quick-search-form" role="search" style="margin-bottom: var(--space-xl);">
             <label class="visually-hidden" for="quick-question">Rechercher dans la démonstration</label>
+            <span class="search-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
             <input id="quick-question" type="search" placeholder="Rechercher un document, une facture, une photo, une information…">
-            <button type="submit" aria-label="Ouvrir la recherche">→</button>
+            <button class="submit-button" type="submit" aria-label="Ouvrir la recherche">
+              <span>Rechercher</span>
+              <span aria-hidden="true">→</span>
+            </button>
           </form>
+
+          <div style="margin-bottom: var(--space-md);">
+            <h2 style="font-size: 1.1rem; font-weight: 600; color: var(--color-text);">Votre foyer en un coup d’œil</h2>
+          </div>
 
           <div class="stats-grid" aria-label="Résumé de démonstration">
             <button class="stat-card" type="button" data-open-view="recherche"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg></span><span class="stat-copy"><span>Documents importants</span><strong>428</strong></span><span class="stat-arrow">›</span></button>
@@ -82,7 +90,7 @@
 
           <section class="panel verify-panel" aria-labelledby="verify-title">
             <div class="section-heading">
-              <h2 id="verify-title">À vérifier</h2>
+              <h2 id="verify-title">Vos prochaines échéances</h2>
               <button class="text-button" type="button" data-open-view="alertes">Voir tout</button>
             </div>
             <button class="verify-row" type="button" data-open-view="alertes"><span class="row-icon amber">♢</span><span class="row-copy"><strong>Garantie piscine</strong><small>Expire dans 32 jours</small></span><span class="stat-arrow">›</span></button>
@@ -155,7 +163,13 @@
         </section>
 
         <section class="view house-view" id="view-maison" data-view="maison" aria-labelledby="house-title" hidden>
-          <div class="view-heading"><div><p class="eyebrow">VOTRE ESPACE DE VIE</p><h1 id="house-title">Maison</h1></div><button class="icon-button" type="button" data-demo-action aria-label="Modifier la maison">✎</button></div>
+          <div class="view-header-centered">
+            <div class="view-titles">
+              <p class="eyebrow">VOTRE ESPACE DE VIE</p>
+              <h1 id="house-title">Maison</h1>
+              <p>Gérez vos biens et équipements domestiques.</p>
+            </div>
+          </div>
           <article class="property-card">
             <div class="property-illustration" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -175,7 +189,7 @@
             <button class="category-tab" type="button" data-house-category="chauffage"><span>♨</span>Chauffage</button>
           </div>
           <section class="panel equipment-panel" aria-labelledby="equipment-title">
-            <div class="section-heading"><h2 id="equipment-title">Équipements</h2><span class="demo-chip">Tout fictif</span></div>
+            <div class="section-heading"><h2 id="equipment-title">Équipements</h2><button class="secondary-button" type="button" id="add-equipment-btn" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">＋ Ajouter</button></div>
             <div class="pool-illustration" role="img" aria-label="Illustration fictive d’une piscine"><span>● En bon état</span></div>
             <div class="equipment-list" id="equipment-list">
               <!-- Equipment list will be populated dynamically by app.js -->
@@ -185,7 +199,13 @@
         </section>
 
         <section class="view family-view" id="view-famille" data-view="famille" aria-labelledby="family-title" hidden>
-          <div class="view-heading"><div><p class="eyebrow">ESPACE PRIVÉ ET PARTAGÉ</p><h1 id="family-title">Famille</h1><p>Protégez ceux qui comptent.</p></div><button class="secondary-button" type="button" data-demo-action>＋ Gérer les accès</button></div>
+          <div class="view-header-centered">
+            <div class="view-titles">
+              <p class="eyebrow">ESPACE PRIVÉ ET PARTAGÉ</p>
+              <h1 id="family-title">Famille</h1>
+              <p>Protégez ceux qui comptent.</p>
+            </div>
+          </div>
           <section class="panel members-panel" aria-label="Membres de la famille" id="family-members-panel">
             <div class="section-heading"><h2>Membres</h2><span>Gérez les accès de votre famille</span></div>
             <div class="member-list" id="member-list">
@@ -211,7 +231,16 @@
         </section>
 
         <section class="view alerts-view" id="view-alertes" data-view="alertes" aria-labelledby="alerts-title" hidden>
-          <div class="view-heading"><div><p class="eyebrow">SUIVI DE VOTRE ESPACE</p><h1 id="alerts-title">Alertes</h1><p>Restez informé des événements importants.</p></div><button class="text-button" id="mark-alerts-read" type="button">Tout marquer comme lu</button></div>
+          <div class="view-header-centered">
+            <div class="view-titles">
+              <p class="eyebrow">SUIVI DE VOTRE ESPACE</p>
+              <h1 id="alerts-title">Alertes</h1>
+              <p>Gérez vos rappels et documents arrivant à échéance.</p>
+            </div>
+            <div class="view-header-actions">
+              <button class="text-button" id="mark-alerts-read" type="button">Tout marquer comme lu</button>
+            </div>
+          </div>
           <div class="alert-filter-tabs" aria-label="Filtrer les alertes">
             <button class="alert-filter-tab is-selected" type="button" data-filter="à-traiter">À traiter<span class="alert-badge">2</span></button>
             <button class="alert-filter-tab" type="button" data-filter="à-anticiper">À anticiper<span class="alert-badge">2</span></button>
@@ -225,15 +254,26 @@
 
         <section class="view detail-view" id="view-detail" data-view="detail" aria-labelledby="detail-title" hidden>
           <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="maison">Maison</button><span aria-hidden="true">/</span><strong id="detail-breadcrumb">Équipement</strong></nav>
-          <div class="view-heading"><div><p class="eyebrow">DÉTAILS ÉQUIPEMENT</p><h1 id="detail-title">Chargement...</h1></div></div>
+          <div class="view-header-std">
+            <div class="view-titles">
+              <p class="eyebrow">DÉTAILS ÉQUIPEMENT</p>
+              <h1 id="detail-title">Chargement...</h1>
+              <p>Fiche d’informations de l’équipement.</p>
+            </div>
+          </div>
           <div id="detail-content" class="detail-content">
             <!-- Rempli dynamiquement par app.js -->
           </div>
         </section>
 
         <section class="view assistant-view" id="view-assistant" data-view="assistant" aria-labelledby="assistant-title" hidden>
-          <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="accueil">Accueil</button><span aria-hidden="true">/</span><strong>Assistant IA</strong></nav>
-          <div class="view-heading"><div><p class="eyebrow">VOTRE COMPAGNON NUMÉRIQUE</p><h1 id="assistant-title">Assistant Famili-IA</h1></div></div>
+          <div class="view-header-centered">
+            <div class="view-titles">
+              <p class="eyebrow">VOTRE COMPAGNON NUMÉRIQUE</p>
+              <h1 id="assistant-title">Assistant Famili-IA</h1>
+              <p>Posez vos questions à l’IA locale en toute confidentialité.</p>
+            </div>
+          </div>
           <div class="chat-container" id="assistant-chat">
             <div class="chat-message ai">
               <div class="chat-avatar">✦</div>
@@ -252,8 +292,13 @@
         </section>
 
         <section class="view import-view" id="view-importer" data-view="importer" aria-labelledby="import-title" hidden>
-          <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="recherche">Recherche</button><span aria-hidden="true">/</span><strong>Importer</strong></nav>
-          <div class="view-heading"><div><p class="eyebrow">AJOUT DE DOCUMENTS</p><h1 id="import-title">Importer un document</h1></div></div>
+          <div class="view-header-centered">
+            <div class="view-titles">
+              <p class="eyebrow">AJOUT DE DOCUMENTS</p>
+              <h1 id="import-title">Importer un document</h1>
+              <p>Ajouter des fichiers depuis votre appareil ou Drive.</p>
+            </div>
+          </div>
           <div class="import-container">
             <div class="drop-zone" id="drop-zone">
               <span class="drop-icon" aria-hidden="true"></span>
@@ -284,8 +329,13 @@
         </section>
 
         <section class="view profile-view" id="view-profil" data-view="profil" aria-labelledby="profile-title" hidden>
-          <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="famille">Famille</button><span aria-hidden="true">/</span><strong>Profil</strong></nav>
-          <div class="view-heading"><div><p class="eyebrow">MON COMPTE</p><h1 id="profile-title">Profil & Paramètres</h1></div></div>
+          <div class="view-header-centered">
+            <div class="view-titles">
+              <p class="eyebrow">MON COMPTE</p>
+              <h1 id="profile-title">Profil & Paramètres</h1>
+              <p>Gérez vos préférences et informations personnelles.</p>
+            </div>
+          </div>
           <div class="profile-grid">
             <section class="panel user-info-panel">
               <div class="user-header">
@@ -334,8 +384,13 @@
         </section>
 
         <section class="view data-view" id="view-vos-donnees" data-view="vos-donnees" aria-labelledby="data-title" hidden>
-          <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="profil">Profil</button><span aria-hidden="true">/</span><strong>Vos données</strong></nav>
-          <div class="view-heading"><div><p class="eyebrow">SOUVERAINETÉ NUMÉRIQUE</p><h1 id="data-title">Vos données</h1></div></div>
+          <div class="view-header-centered">
+            <div class="view-titles">
+              <p class="eyebrow">SOUVERAINETÉ NUMÉRIQUE</p>
+              <h1 id="data-title">Vos données</h1>
+              <p>Contrôlez, exportez ou supprimez vos données locales en toute transparence.</p>
+            </div>
+          </div>
           <div class="data-inventory">
             <section class="panel">
               <div class="section-heading"><h2>Inventaire des fichiers</h2></div>
@@ -464,19 +519,41 @@
     <p class="source-choice-footnote">Google Drive ne donne accès qu’aux fichiers que vous sélectionnez. Aucun autre service cloud n’est encore connecté.</p>
   </dialog>
 
-  <dialog class="source-dialog drive-picker-dialog" id="drive-picker-dialog" aria-labelledby="drive-picker-title">
+  <dialog class="source-dialog drive-picker-dialog" id="equipment-dialog" aria-labelledby="equipment-dialog-title">
     <div class="dialog-header">
-      <div><p class="eyebrow">DÉMO FICTIVE</p><h2 id="drive-picker-title">Sélectionner des exemples</h2></div>
-      <button class="close-button" id="close-drive-picker" type="button" aria-label="Fermer">×</button>
+      <div><p class="eyebrow">GESTION MAISON</p><h2 id="equipment-dialog-title">Ajouter / Modifier un équipement</h2></div>
+      <button class="close-button" id="close-equipment-dialog" type="button" aria-label="Fermer">×</button>
     </div>
-    <p class="dialog-meta">Choisissez des documents inventés pour essayer la recherche de cette session.</p>
-    <p class="dialog-notice drive-picker-warning"><span aria-hidden="true">ⓘ</span> Aucun compte n’est connecté. Cette sélection est une simulation ; aucun fichier Drive n’est consulté ni téléchargé.</p>
-    <div class="drive-picker-list" id="drive-picker-list"></div>
-    <p class="file-status drive-picker-status" id="drive-picker-status" role="status" aria-live="polite"></p>
-    <div class="drive-picker-actions">
-      <button class="clear-files" id="cancel-drive-picker" type="button">Annuler</button>
-      <button class="file-picker" id="confirm-drive-picker" type="button">Ajouter à la session</button>
-    </div>
-  </dialog>
-</body>
+    <form id="equipment-form" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+      <input type="hidden" id="eq-id-input">
+      <div class="field" style="display: flex; flex-direction: column; gap: 0.25rem;">
+        <label for="eq-name-input" style="font-weight: 600; font-size: 0.9rem;">Nom de l'équipement</label>
+        <input type="text" id="eq-name-input" required placeholder="Ex. : Pompe de piscine" style="padding: 0.5rem; border: 1px solid var(--color-border, #ccc); border-radius: 4px;">
+      </div>
+      <div class="field" style="display: flex; flex-direction: column; gap: 0.25rem;">
+        <label for="eq-category-input" style="font-weight: 600; font-size: 0.9rem;">Catégorie</label>
+        <select id="eq-category-input" style="padding: 0.5rem; border: 1px solid var(--color-border, #ccc); border-radius: 4px;">
+          <option value="pompe">Pompe</option>
+          <option value="piscine">Piscine</option>
+          <option value="volets">Volets</option>
+          <option value="pergola">Pergola</option>
+          <option value="chauffage">Chauffage</option>
+          <option value="assurance">Assurance</option>
+          <option value="imprimante">Imprimante</option>
+        </select>
+      </div>
+      <div class="field" style="display: flex; flex-direction: column; gap: 0.25rem;">
+        <label for="eq-status-input" style="font-weight: 600; font-size: 0.9rem;">Statut</label>
+        <input type="text" id="eq-status-input" required placeholder="Ex. : Bon état" style="padding: 0.5rem; border: 1px solid var(--color-border, #ccc); border-radius: 4px;">
+      </div>
+      <div class="drive-picker-actions" style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+        <button class="clear-files" id="cancel-equipment-dialog" type="button">Annuler</button>
+        <button class="file-picker" type="submit">Enregistrer</button>
+      </div>
+    </form>
+    </dialog>
+
+    <button class="fab-add-document" type="button" data-open-source-dialog aria-label="Ajouter un document">＋</button>
+
+    </body>
 </html>
