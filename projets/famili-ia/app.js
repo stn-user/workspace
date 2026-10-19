@@ -5,13 +5,14 @@ const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
 import { loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment } from "./state.js";
 
 // Initialisation asynchrone de l'application
 (async () => {
   await initState();
   uploadedDocuments.push(...getDocuments());
   initEquipmentDialog();
+  initAddMemberDialog();
   // Reste de l'initialisation...
 })();
 
@@ -1627,13 +1628,45 @@ function renderFamilyMembers() {
   `;
 }
 
+function initAddMemberDialog() {
+  const dialog = document.querySelector('#add-member-dialog');
+  const form = document.querySelector('#add-member-form');
+  const cancelBtn = document.querySelector('#cancel-add-member-dialog');
+  const closeBtn = document.querySelector('#close-add-member-dialog');
+
+  if (!dialog || !form) return;
+
+  cancelBtn.addEventListener('click', () => dialog.close());
+  closeBtn.addEventListener('click', () => dialog.close());
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.querySelector('#member-name-input').value;
+    const access = document.querySelector('#member-access-input').value;
+
+    const newMember = {
+      id: `u-${Date.now()}`,
+      name,
+      role: 'Member',
+      avatar: name.charAt(0).toUpperCase(),
+      access
+    };
+
+    await addFamilyMember(newMember);
+    showDemoNotice(`Membre ajouté : ${name}`);
+    dialog.close();
+    form.reset();
+    renderFamilyMembers(); // Refresh list
+    attachAddMemberListener(); // Re-attach listener
+  });
+}
+
 // Add event listener to the add-member button after rendering
 function attachAddMemberListener() {
   const addBtn = document.querySelector('#member-list .add-member');
   if (!addBtn) return;
   addBtn.addEventListener('click', () => {
-    // For now just alert; in real app would open a dialog to add a family member
-    alert('Ajouter un nouveau membre (fonctionnalité en cours)');
+    document.querySelector('#add-member-dialog').showModal();
   });
 }
 

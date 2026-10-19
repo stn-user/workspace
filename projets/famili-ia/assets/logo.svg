@@ -1,0 +1,5 @@
+<svg width="150" height="40" viewBox="0 0 150 40" xmlns="http://www.w3.org/2000/svg">
+  <text x="5" y="30" font-family="sans-serif" font-size="24" font-weight="bold" fill="#0f7173">Famili-</text>
+  <text x="95" y="30" font-family="sans-serif" font-size="24" font-weight="bold" fill="#0f7173">IA</text>
+  <path d="M105 5 Q110 -5 115 5 Q110 0 105 5 Z" fill="#059669" />
+</svg>
