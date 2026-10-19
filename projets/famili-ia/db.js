@@ -5,7 +5,7 @@
 import { encryptData, decryptData } from './crypto.js';
 
 const DB_NAME = 'FamiliIADatabase';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const initDB = () => {
   return new Promise((resolve, reject) => {
@@ -18,6 +18,8 @@ export const initDB = () => {
       if (!db.objectStoreNames.contains('equipment')) db.createObjectStore('equipment', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('documents')) db.createObjectStore('documents', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('alerts')) db.createObjectStore('alerts', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('logs')) db.createObjectStore('logs', { keyPath: 'id', autoIncrement: true });
+      if (!db.objectStoreNames.contains('access_logs')) db.createObjectStore('access_logs', { keyPath: 'id', autoIncrement: true });
     };
 
     request.onsuccess = () => resolve(request.result);
@@ -72,6 +74,60 @@ export const remove = async (storeName, id) => {
   const store = await getStore(storeName, 'readwrite');
   return new Promise((resolve, reject) => {
     const request = store.delete(id);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+// Fonction de purge sécurisée unique et propre
+export const purgeDatabase = async () => {
+  const db = await initDB();
+  const stores = ['users', 'family', 'equipment', 'documents', 'alerts', 'logs', 'access_logs'];
+  return Promise.all(stores.map(storeName => {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, 'readwrite');
+      const request = transaction.objectStore(storeName).clear();
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }));
+};
+
+export const addLog = async (action, details) => {
+  const logEntry = {
+    id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    timestamp: new Date().toISOString(),
+    action,
+    details
+  };
+  const store = await getStore('logs', 'readwrite');
+  return new Promise((resolve, reject) => {
+    const request = store.put(logEntry);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const getLogs = async () => {
+  const store = await getStore('logs', 'readonly');
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const logAccess = async (userId, action, resourceId, details = {}) => {
+  const logEntry = {
+    userId,
+    action,
+    resourceId,
+    details,
+    timestamp: new Date().toISOString()
+  };
+  const store = await getStore('access_logs', 'readwrite');
+  return new Promise((resolve, reject) => {
+    const request = store.add(logEntry);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });

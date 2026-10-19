@@ -65,7 +65,7 @@
 ### Phase 8 – Sécurisation & Vie privée avancée
 - [✓] ✅ 8.1 : Chiffrement des données sensibles en local
 - [✓] ✅ 8.2 : Workflow d'export complet (JSON/PDF) et purge sécurisée
-- [ ] 8.3 : Gestion fine des consentements et logs d'accès
+- [✓] ✅ 8.3 : Gestion fine des consentements et logs d'accès
 
 ### Phase 9 – Homogénéisation UI & Polish
 - [ ] 9.1 : Standardisation globale des headers et titres

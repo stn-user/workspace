@@ -2,7 +2,7 @@
  * state.js - Gestion de l'état global de l'application Famili-IA avec IndexedDB
  */
 
-import { getAll, put, initDB, remove } from './db.js';
+import { getAll, put, initDB, remove, purgeDatabase } from './db.js';
 
 const defaultState = {
   currentUser: {
@@ -13,6 +13,12 @@ const defaultState = {
     preferences: {
       localAccess: true,
       driveConnection: false
+    },
+    privacy: {
+      consentVersion: '1.0',
+      telemetryEnabled: false,
+      dataSharingConsent: false,
+      lastConsentDate: null
     }
   },
   family: [
@@ -159,6 +165,33 @@ export function calculateAlertType(dueDate, currentType) {
   if (diffDays <= 0) return 'red';
   if (diffDays <= 30) return 'amber';
   return 'blue';
+}
+
+export async function updatePrivacyConsent(newPrivacySettings) {
+  state.currentUser.privacy = {
+    ...state.currentUser.privacy,
+    ...newPrivacySettings,
+    lastConsentDate: new Date().toISOString()
+  };
+  await put('users', state.currentUser);
+  return state.currentUser.privacy;
+}
+
+export async function addLog(action, details) {
+  const logEntry = {
+    id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    timestamp: new Date().toISOString(),
+    action,
+    details
+  };
+  await put('logs', logEntry);
+  return logEntry;
+}
+
+export async function resetState() {
+  await purgeDatabase();
+  state = { ...defaultState };
+  return state;
 }
 
 export default state;
