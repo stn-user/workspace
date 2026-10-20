@@ -5,7 +5,7 @@ const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
 import { loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember } from "./state.js";
 
 // Initialisation asynchrone de l'application
 (async () => {
@@ -25,10 +25,12 @@ function initEquipmentDialog() {
   const dialog = document.querySelector('#equipment-dialog');
   const form = document.querySelector('#equipment-form');
   const cancelBtn = document.querySelector('#cancel-equipment-dialog');
+  const closeBtn = document.querySelector('#close-equipment-dialog');
 
   if (!dialog || !form) return;
 
-  cancelBtn.addEventListener('click', () => dialog.close());
+  if (cancelBtn) cancelBtn.addEventListener('click', () => dialog.close());
+  if (closeBtn) closeBtn.addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) dialog.close();
   });
@@ -1620,10 +1622,10 @@ function renderFamilyMembers() {
       </article>
     `;
   }).join('') + `
-    <button class="member-card add-member" type="button" data-demo-action>
+    <button class="member-card add-member" type="button">
       <span class="add-member-icon">＋</span>
-      <strong>Ajouter</strong>
-      <span>Un proche</span>
+      <strong>Gérer les accès</strong>
+      <span>Famille et invités</span>
     </button>
   `;
 }
@@ -1639,34 +1641,147 @@ function initAddMemberDialog() {
   cancelBtn.addEventListener('click', () => dialog.close());
   closeBtn.addEventListener('click', () => dialog.close());
 
+  const deleteBtn = document.querySelector('#delete-member-btn');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      const id = document.querySelector('#member-id-input').value;
+      if (id && confirm('Voulez-vous vraiment supprimer ce membre ?')) {
+        await deleteFamilyMember(id);
+        showDemoNotice('Membre supprimé');
+        dialog.close();
+        form.reset();
+        renderFamilyMembers();
+        attachAddMemberListener();
+      }
+    });
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const id = document.querySelector('#member-id-input').value;
     const name = document.querySelector('#member-name-input').value;
     const access = document.querySelector('#member-access-input').value;
 
-    const newMember = {
-      id: `u-${Date.now()}`,
-      name,
-      role: 'Member',
-      avatar: name.charAt(0).toUpperCase(),
-      access
-    };
+    if (id) {
+        // Edit existing
+        const member = { id, name, role: 'Member', avatar: name.charAt(0).toUpperCase(), access };
+        await updateFamilyMember(member);
+        showDemoNotice(`Membre modifié : ${name}`);
+    } else {
+        // Add new
+        const newMember = {
+          id: `u-${Date.now()}`,
+          name,
+          role: 'Member',
+          avatar: name.charAt(0).toUpperCase(),
+          access
+        };
+        await addFamilyMember(newMember);
+        showDemoNotice(`Membre ajouté : ${name}`);
+    }
 
-    await addFamilyMember(newMember);
-    showDemoNotice(`Membre ajouté : ${name}`);
     dialog.close();
     form.reset();
     renderFamilyMembers(); // Refresh list
     attachAddMemberListener(); // Re-attach listener
+    if (document.querySelector('#manage-members-dialog')?.open) {
+      updateManageMembersList();
+    }
   });
 }
 
 // Add event listener to the add-member button after rendering
 function attachAddMemberListener() {
   const addBtn = document.querySelector('#member-list .add-member');
-  if (!addBtn) return;
-  addBtn.addEventListener('click', () => {
-    document.querySelector('#add-member-dialog').showModal();
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      openManageMembersModal();
+    });
+  }
+}
+
+function openManageMembersModal() {
+  let modal = document.querySelector('#manage-members-dialog');
+  if (!modal) {
+    modal = document.createElement('dialog');
+    modal.id = 'manage-members-dialog';
+    modal.className = 'source-dialog';
+    modal.setAttribute('aria-labelledby', 'manage-members-title');
+    modal.innerHTML = `
+      <div class="dialog-header">
+        <div><p class="eyebrow">FAMILLE</p><h2 id="manage-members-title">Gérer les membres et accès</h2></div>
+        <button class="close-button" id="close-manage-members" type="button" aria-label="Fermer">×</button>
+      </div>
+      <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+        <div id="manage-members-list" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 300px; overflow-y: auto;"></div>
+        <button class="primary-button" id="open-add-member-from-manager" type="button" style="background: var(--color-primary, #0f7173); color: white; padding: 0.75rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">＋ Ajouter un membre</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('#close-manage-members').addEventListener('click', () => modal.close());
+    modal.querySelector('#open-add-member-from-manager').addEventListener('click', () => {
+      document.querySelector('#member-id-input').value = '';
+      document.querySelector('#delete-member-btn').hidden = true;
+      document.querySelector('#add-member-form').reset();
+      document.querySelector('#add-member-dialog').showModal();
+    });
+  }
+
+  updateManageMembersList();
+  modal.showModal();
+}
+
+function updateManageMembersList() {
+  const listContainer = document.querySelector('#manage-members-list');
+  if (!listContainer) return;
+
+  const members = getFamilyMembers();
+  const currentUser = getCurrentUser();
+
+  listContainer.innerHTML = members.map(member => {
+    const isCurrentUser = member.id === currentUser.id;
+    return `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--color-surface-hover, #f8fafc); border: 1px solid var(--color-border, #e2e8f0); border-radius: 8px;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-primary-light, #e6f4f4); color: var(--color-primary, #0f7173); display: flex; align-items: center; justify-content: center; font-weight: 600;">${member.avatar}</div>
+          <div>
+            <strong>${member.name}</strong> ${isCurrentUser ? '<span style="font-size: 0.75rem; background: #e2e8f0; padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.5rem;">Vous</span>' : ''}
+            <div style="font-size: 0.8rem; color: var(--color-text-secondary, #64748b);">${member.access === 'full' ? 'Accès complet' : 'Accès limité'}</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="edit-member-item secondary-button" data-id="${member.id}" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; border-radius: 6px;">Modifier</button>
+          ${!isCurrentUser ? `<button type="button" class="delete-member-item text-button" data-id="${member.id}" style="color: var(--color-danger, #dc2626); padding: 0.4rem 0.75rem; font-size: 0.85rem;">Supprimer</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  listContainer.querySelectorAll('.edit-member-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const member = getFamilyMembers().find(m => m.id === id);
+      if (member) {
+        document.querySelector('#member-id-input').value = member.id;
+        document.querySelector('#member-name-input').value = member.name;
+        document.querySelector('#member-access-input').value = member.access;
+        document.querySelector('#delete-member-btn').hidden = false;
+        document.querySelector('#add-member-dialog').showModal();
+      }
+    });
+  });
+
+  listContainer.querySelectorAll('.delete-member-item').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      if (confirm('Voulez-vous vraiment supprimer ce membre ?')) {
+        await deleteFamilyMember(id);
+        showDemoNotice('Membre supprimé');
+        updateManageMembersList();
+        renderFamilyMembers();
+      }
+    });
   });
 }
 

@@ -68,12 +68,12 @@
 - [✓] ✅ 8.3 : Gestion fine des consentements et logs d'accès
 
 ### Phase 9 – Homogénéisation UI & Polish
-- [ ] 9.1 : Standardisation globale des headers et titres
-- [ ] 9.2 : Audit d'accessibilité complet
-- [ ] 9.3 : Gestion robuste des états d'erreur et états vides
+- [✓] ✅ 9.1 : Standardisation globale des headers et titres
+- [✓] ✅ 9.2 : Audit d'accessibilité complet
+- [✓] ✅ 9.3 : Gestion robuste des états d'erreur et états vides
 - [✓] ✅ 9.4 : Alignement FAB & bouton + (uniquement accueil/recherche), retrait de la section "Mes sources" en doublon sur la page Recherche
 - [✓] ✅ 9.5 : Intégration du logo officiel de l'application
-- [✓] ✅ 9.6 : Implémentation de la gestion des membres de famille
+- [✓] ✅ 9.6 : Implémentation de la gestion des membres de famille (CRUD & Refonte UX)
 
 ### Phase 10 – Validation & Lancement
 - [ ] 10.1 : Tests utilisateurs complets

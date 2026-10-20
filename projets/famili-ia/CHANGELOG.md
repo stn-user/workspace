@@ -2,7 +2,23 @@
 
 Toutes les modifications notables de Famili-IA sont documentées ici. Ce projet suit un cycle de développement par phases pour garantir une approche privacy-first.
 
-## [0.6.0] - Phase 8 : Sécurisation & Vie privée (Version Actuelle)
+## [0.9.0] - Phase 9 : Homogénéisation UI, Polish & Gestion des Membres
+### 🚀 Nouvelles Fonctionnalités
+- **Gestion des Membres (Phase 9.6)** :
+  - Refonte de la gestion des membres de la famille avec une modale dédiée et centralisée ("Gérer les membres et accès").
+  - Intégration complète du CRUD (Création, Lecture, Modification, Suppression) pour les proches et invités.
+  - Épuration visuelle de la liste des membres dans la vue Famille principale.
+- **Logo Officiel (Phase 9.5)** :
+  - Intégration du logo officiel SVG Famili-IA dans le header et la vue de recherche.
+
+### 🛠️ Correctifs et Améliorations UI
+- **Conformité Charte Graphique & Modales** :
+  - Mise à jour des boutons de modales (Maison, Membres) pour utiliser les classes CSS uniformes du design system (`primary-button`, `secondary-button`, `danger-button`).
+  - Correction de la fermeture par la croix (`×`) de la modale de gestion des équipements domestiques (`#close-equipment-dialog`).
+  - Correction d'une erreur de taille de clé AES (`DataError: AES key data must be 128 or 256 bits`) dans `crypto.js` en utilisant une clé 256 bits de 32 octets.
+  - Correction d'un import manquant (`deleteFamilyMember`) dans `app.js`.
+
+## [0.6.0] - Phase 8 : Sécurisation & Vie privée
 ### 🚀 Nouvelles Fonctionnalités
 - **Consentements (Phase 8.3)** : Ajout d'une structure de préférences de confidentialité (`privacy`) dans l'état utilisateur pour gérer les consentements (télémétrie, partage de données).
 - **Journalisation (Phase 8.3)** : Implémentation d'un système de logs d'accès (`access_logs`) dans IndexedDB pour assurer une traçabilité sécurisée des actions.

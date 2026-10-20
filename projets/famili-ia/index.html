@@ -13,7 +13,7 @@
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="#accueil" data-open-view="accueil" aria-label="Famili-IA, accueil">
-        <img src="assets/logo.svg" alt="Logo Famili-IA" style="height: 32px;">
+        <img src="assets/logo.svg" alt="Famili-IA" style="height: 32px;">
       </a>
       <div class="demo-status"><span class="status-dot"></span><span id="demo-status-label">Prototype — données fictives</span></div>
       <button class="avatar avatar-small" type="button" data-demo-action aria-label="Profil de démonstration">S</button>
@@ -103,7 +103,7 @@
         <section class="view search-view" id="view-recherche" data-view="recherche" aria-labelledby="page-title" hidden>
           <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="accueil">Accueil</button><span aria-hidden="true">/</span><strong>Recherche</strong></nav>
           <section class="intro" aria-labelledby="page-title" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
-            <div class="brand-mark" aria-hidden="true" style="margin-bottom: 1rem; width: 64px; height: 64px; font-size: 2rem; border-radius: var(--radius-md);">F</div>
+            <div class="brand-mark" aria-hidden="true" style="margin-bottom: 1rem; width: auto; height: 48px; background: transparent;"><img src="assets/logo.svg" alt="Logo Famili-IA" style="height: 48px;"></div>
             <h1 id="page-title" style="margin: 0.5rem 0; text-align: center;">Que cherchez-vous&nbsp;?</h1>
             <p class="intro-copy" style="text-align: center; max-width: 80%; margin: 0 auto;">Posez votre question simplement. Famili-IA retrouve l’information et vous indique dans quel document la vérifier.</p>
           </section>
@@ -148,7 +148,10 @@
           <input class="visually-hidden" id="local-files-input" type="file" accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf" multiple>
           <button class="clear-files" id="disconnect-google-drive" type="button" hidden>Déconnecter Drive</button>
           <button class="clear-files" id="clear-files" type="button" hidden>Retirer mes fichiers</button>
-          <p class="no-results" id="no-results" role="status" hidden>Aucun document correspondant. Essayez une question suggérée ou reformulez avec un mot-clé du document recherché.</p>
+          <div class="empty-state" id="no-results" role="status" hidden>
+            <div class="empty-icon" aria-hidden="true">⌕</div>
+            <p>Aucun document correspondant. Essayez une question suggérée ou reformulez avec un mot-clé du document recherché.</p>
+          </div>
         </section>
 
         <section class="view house-view" id="view-maison" data-view="maison" aria-labelledby="house-title" hidden>
@@ -183,7 +186,10 @@
             <div class="equipment-list" id="equipment-list">
               <!-- Equipment list will be populated dynamically by app.js -->
             </div>
-            <p class="empty-state" id="equipment-empty" hidden>Aucun équipement trouvé.</p>
+            <div class="empty-state" id="equipment-empty" hidden role="status">
+              <div class="empty-icon" aria-hidden="true">⌕</div>
+              <p>Aucun équipement trouvé.</p>
+            </div>
           </section>
         </section>
 
@@ -196,7 +202,7 @@
             </div>
           </div>
           <section class="panel members-panel" aria-label="Membres de la famille" id="family-members-panel">
-            <div class="section-heading"><h2>Membres</h2><span>Gérez les accès de votre famille</span></div>
+            <div class="section-heading"><h2>Membres</h2><span>Vos proches et collaborateurs</span></div>
             <div class="member-list" id="member-list">
               <!-- Members will be rendered dynamically by app.js -->
             </div>
@@ -275,6 +281,7 @@
             <button type="button" class="assistant-suggestion-chip" data-question="Quand se termine mon contrat habitation ?">Quand se termine mon contrat habitation ?</button>
           </div>
           <form class="chat-form" id="assistant-form">
+            <label class="visually-hidden" for="assistant-input">Votre question pour l'assistant</label>
             <input type="text" id="assistant-input" placeholder="Posez votre question ici..." autocomplete="off">
             <button type="submit">Envoyer</button>
           </form>
@@ -336,7 +343,7 @@
               </div>
               <div class="profile-fields">
                 <div class="field">
-                  <label>Nom d'affichage</label>
+                  <label for="edit-name">Nom d'affichage</label>
                   <input type="text" id="edit-name" value="Steve">
                 </div>
                 <div class="field">
@@ -348,11 +355,11 @@
                 <div class="section-heading"><h2>Confidentialité</h2></div>
                 <div class="privacy-option">
                   <div class="option-text"><strong>Accès local</strong><small>Autoriser le scan des dossiers Documents/Téléchargements</small></div>
-                  <input type="checkbox" checked>
+                  <input type="checkbox" checked aria-label="Autoriser l'accès local au scan des dossiers">
                 </div>
                 <div class="privacy-option">
                   <div class="option-text"><strong>Connexion Drive</strong><small>Lier mon compte Google Drive</small></div>
-                  <input type="checkbox">
+                  <input type="checkbox" aria-label="Lier mon compte Google Drive">
                 </div>
               </div>
               <button class="primary-button" type="button" id="save-profile">Enregistrer les modifications</button>
@@ -536,8 +543,8 @@
         <input type="text" id="eq-status-input" required placeholder="Ex. : Bon état" style="padding: 0.5rem; border: 1px solid var(--color-border, #ccc); border-radius: 4px;">
       </div>
       <div class="drive-picker-actions" style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
-        <button class="clear-files" id="cancel-equipment-dialog" type="button">Annuler</button>
-        <button class="file-picker" type="submit">Enregistrer</button>
+        <button class="secondary-button" id="cancel-equipment-dialog" type="button" style="padding: 0.6rem 1rem;">Annuler</button>
+        <button class="primary-button" type="submit" style="padding: 0.6rem 1.25rem;">Enregistrer</button>
       </div>
     </form>
     </dialog>
@@ -548,6 +555,7 @@
         <button class="close-button" id="close-add-member-dialog" type="button" aria-label="Fermer">×</button>
       </div>
       <form id="add-member-form" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+        <input type="hidden" id="member-id-input">
         <div class="field" style="display: flex; flex-direction: column; gap: 0.25rem;">
           <label for="member-name-input" style="font-weight: 600; font-size: 0.9rem;">Nom</label>
           <input type="text" id="member-name-input" required placeholder="Ex. : Marie" style="padding: 0.5rem; border: 1px solid var(--color-border, #ccc); border-radius: 4px;">
@@ -559,9 +567,12 @@
             <option value="full">Accès complet</option>
           </select>
         </div>
-        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
-          <button class="clear-files" id="cancel-add-member-dialog" type="button">Annuler</button>
-          <button class="file-picker" type="submit">Ajouter</button>
+        <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem;">
+          <button class="danger-button" id="delete-member-btn" type="button" style="padding: 0.6rem 1rem; margin-bottom: 0;" hidden>Supprimer</button>
+          <div style="display: flex; gap: 1rem; margin-left: auto;">
+            <button class="secondary-button" id="cancel-add-member-dialog" type="button" style="padding: 0.6rem 1rem;">Annuler</button>
+            <button class="primary-button" type="submit" style="padding: 0.6rem 1.25rem;">Enregistrer</button>
+          </div>
         </div>
       </form>
     </dialog>
