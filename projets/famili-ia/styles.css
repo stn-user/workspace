@@ -168,6 +168,8 @@ body {
   .app-shell {
     grid-template-columns: 1fr;
     grid-template-rows: 64px 1fr 60px;
+    height: 100vh;
+    overflow: hidden;
   }
 }
 
@@ -306,6 +308,7 @@ body {
   padding: var(--space-xl);
   background: var(--color-bg);
   overflow-y: auto;
+  width: 100%;
 }
 
 @media (max-width: 1024px) {
