@@ -153,9 +153,15 @@ body {
 /* Layout Shell */
 .app-shell {
   display: grid;
-  grid-template-columns: 260px 1fr;
-  grid-template-rows: 64px 1fr;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 64px) minmax(0, 1fr);
   height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.app-shell > * {
+  min-width: 0;
 }
 
 @media (max-width: 1024px) {
@@ -238,6 +244,7 @@ body {
   padding: var(--space-lg) var(--space-md);
   width: 260px;
   flex-shrink: 0;
+  min-width: 0;
   overflow-y: auto;
 }
 
@@ -294,11 +301,11 @@ body {
 .main-content {
   grid-column: 2;
   grid-row: 2;
-  width: 100%;
+  min-width: 0;
+  min-height: 0;
   padding: var(--space-xl);
   background: var(--color-bg);
   overflow-y: auto;
-  min-height: 100%;
 }
 
 @media (max-width: 1024px) {
@@ -309,9 +316,15 @@ body {
 
 .view {
   animation: fadeIn 0.3s ease;
+  visibility: visible;
+  display: block;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
 }
 
 .view[hidden] {
+  visibility: hidden;
   display: none;
 }
 
@@ -1184,7 +1197,7 @@ body {
   text-align: center;
   margin-bottom: var(--space-xl);
   gap: var(--space-md);
-  padding: var(--space-lg) 0;
+  padding: 0 0 var(--space-lg) 0;
 }
 
 .view-header-centered .view-titles {

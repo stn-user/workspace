@@ -90,9 +90,68 @@ async function readFileContent(fileBlob, filename) {
     case 'txt':
     case 'md':
       return await readTextFile(fileBlob);
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+      return await readImageFile(fileBlob);
     default:
       throw new Error(`Format de fichier non supporté : .${extension}`);
   }
+}
+
+/**
+ * Read an image file and extract text via OCR (canvas-based).
+ * Note: On the web (non-native platform), OCR is intentionally limited to encourage
+ * using the native mobile app for full scanning/OCR capabilities.
+ */
+async function readImageFile(fileBlob) {
+  if (!Capacitor.isNativePlatform()) {
+    // In web demo, OCR is not available without native platform.
+    // Return a placeholder indicating the image was selected but OCR not available.
+    return `Image ${fileBlob.name} sélectionnée. L'extraction de texte par OCR n'est disponible que sur l'application mobile native.`;
+  }
+
+  // Use the existing OCR pipeline adapted for images
+  // We'll render the image to a canvas and use the Ocr service
+  const img = new Image();
+  const url = URL.createObjectURL(fileBlob);
+
+  return new Promise((resolve, reject) => {
+    img.onload = async () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          throw new Error('Impossible de préparer le canvas pour l\'OCR.');
+        }
+
+        // Set canvas to image dimensions
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Draw image onto canvas
+        ctx.drawImage(img, 0, 0);
+
+        // Use the OCR service to process the canvas image
+        const { results } = await Ocr.process({ image: canvas.toDataURL('image/jpeg', 0.85) });
+        const extractedText = results.map(({ text }) => text.trim()).filter(Boolean).join('\n');
+
+        URL.revokeObjectURL(url);
+        resolve(extractedText || 'Aucun texte détecté sur cette image.');
+      } catch (error) {
+        URL.revokeObjectURL(url);
+        reject(error);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Impossible de charger l\'image.'));
+    };
+
+    img.src = url;
+  });
 }
 
 /**
@@ -209,6 +268,7 @@ async function getAccessibleDirectories() {
 export {
   listLocalFiles,
   readFileContent,
+  readImageFile,
   requestPermissions,
   getAccessibleDirectories
 };

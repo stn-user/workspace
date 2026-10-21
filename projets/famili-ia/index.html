@@ -22,12 +22,8 @@
       <aside class="sidebar" aria-label="Navigation principale">
         <nav class="primary-nav">
             <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
-          <button class="nav-item" type="button" data-nav="recherche">
-  <span class="icon icon-blue icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche</span>
-</button>
-          <button class="nav-item" type="button" data-nav="maison">
-  <span class="icon icon-green icon-circle"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Maison</span>
-</button>
+          <button class="nav-item" type="button" data-nav="recherche"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche</button>
+          <button class="nav-item" type="button" data-nav="maison"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Maison</button>
           <button class="nav-item" type="button" data-nav="famille"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Famille</button>
           <button class="nav-item" type="button" data-nav="alertes"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>Alertes</button>
           <button class="nav-item" type="button" data-nav="assistant"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Assistant</button>
@@ -55,7 +51,6 @@
           </section>
 
           <div id="dashboard-content">
-          <div class="view-header-centered">
             <div class="view-titles">
               <p class="eyebrow">VOTRE ESPACE FAMILIAL</p>
               <h1 id="dashboard-title">Bonjour Steve <span aria-hidden="true">👋</span></h1>
@@ -149,7 +144,8 @@
             <div class="source-heading"><h3>Documents sources</h3><span>Vérifiez l’information dans son contexte</span></div>
             <div class="document-list" id="document-list"></div>
           </section>
-          <input class="visually-hidden" id="local-files-input" type="file" accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf" multiple>
+          <input class="visually-hidden" id="local-files-input" type="file" accept=".txt,.md,.pdf,.jpg,.jpeg,.png,text/plain,text/markdown,application/pdf,image/jpeg,image/png" multiple>
+          <p id="file-status" class="file-status-message" aria-live="polite" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--color-text-secondary);"></p>
           <button class="clear-files" id="disconnect-google-drive" type="button" hidden>Déconnecter Drive</button>
           <button class="clear-files" id="clear-files" type="button" hidden>Retirer mes fichiers</button>
           <div class="empty-state" id="no-results" role="status" hidden>
@@ -307,7 +303,7 @@
               <p class="drop-text">Glissez un fichier ici</p>
               <label for="import-input" class="drop-button">Choisir un fichier</label>
               <input type="file" id="import-input" class="visually-hidden" multiple accept=".txt,.md,.pdf">
-              <p class="drop-formats">Formats acceptés : .txt, .md, .pdf (max 10 Mo)</p>
+              <p class="drop-formats">Formats acceptés : .txt, .md, .pdf, .jpg, .jpeg, .png (max 10 Mo)</p>
             </div>
             <div class="import-options">
               <button class="import-option active" type="button" data-action="drag-drop">
@@ -499,7 +495,7 @@
     <div class="source-choice-list">
       <button class="source-choice" id="choose-local-files" type="button">
         <span class="source-choice-icon" aria-hidden="true">▤</span>
-        <span><strong>Sur cet appareil</strong><small>Choisir des fichiers TXT, Markdown ou PDF. Les photos ne sont pas encore prises en charge.</small></span>
+        <span><strong>Sur cet appareil</strong><small>Choisir des fichiers TXT, Markdown, PDF, JPG, PNG. Les photos sont maintenant prises en charge.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
       <button class="source-choice" id="choose-local-files-native" type="button">

@@ -75,11 +75,24 @@
 - [✓] ✅ 9.5 : Intégration du logo officiel de l'application
 - [✓] ✅ 9.6 : Implémentation de la gestion des membres de famille (CRUD & Refonte UX)
 - [✓] ✅ 9.7 : Harmonisation des icônes *(Terminée)*
-- [ ] 9.8 : Standardisation et validation du composant Logo
-- [ ] 9.9 : Intégration d'images contextuelles sur la vue Maison *(En attente de validation import photos)*
-- [ ] 9.10 : Correction navigation dynamique (tabs Maison/Alertes)
-- [ ] 9.11 : Support des images (photos) dans le file picker
+- [✓] ✅ 9.8 : Standardisation et validation du composant Logo
+- [✓] ✅ 9.9 : **Phase A – Intégration d'images (photos) dans le file picker** — Utilisation de l'OCR existant (`local-files.js`) pour extraire le texte des images JPG/PNG et les classifier automatiquement.
+- [ ] 9.10 : **Phase B – Support des fichiers Word (.docx)** — Parsing du texte via bibliothèque dédiée (ex: mammoth.js).
+- [ ] 9.11 : **Phase C – Support des fichiers Excel (.xlsx)** — Extraction des données tabulaires via bibliothèque dédiée (ex: sheetjs).
 - [ ] 9.12 : Préparation modèle monétisation (état utilisateur & limites dynamiques)
+- [ ] 9.13 : Correction navigation dynamique (tabs Maison/Alertes)
+
+
+## 💡 Points d'amélioration stratégiques (pour un impact "disrupt")
+
+**Intelligence Contextuelle (Le "Killer Feature") :**
+L'app doit comprendre le contenu, pas seulement le stocker. Exemple : l'OCR existant devrait permettre une auto-classification intelligente — *"Ceci est une facture d'électricité de Janvier, je l'ajoute à la catégorie Maison"*. C'est le passage du stockage à l'assistance.
+
+**Transversalité (Recherche croisée & Sémantique) :**
+La capacité de recherche doit évoluer vers le sémantique. Il faut comprendre que "Ticket de caisse" = "Garantie", que deux factures similaires couvrent la même garantie, etc. Cela transforme l'outil d'un simple catalogue en véritable assistant de gestion.
+
+**Rétention & Aide à la décision :**
+L'app ne doit pas être un simple coffre-fort, mais un assistant proactif. Le système d'alertes actuel est un excellent début : il faut le renforcer avec des rappels intelligents (ex. : *"Attention, votre garantie expire dans 2 mois sur cet équipement"*).
 
 
 ### Phase 10 – Validation & Lancement

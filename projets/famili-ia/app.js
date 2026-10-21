@@ -407,9 +407,15 @@ if (clearFiltersBtn) {
 }
 
 function setFileStatus(message, state) {
-  fileStatus.textContent = message;
-  if (state) fileStatus.dataset.state = state;
-  else delete fileStatus.dataset.state;
+  if (fileStatus) {
+    fileStatus.textContent = message;
+    if (state) fileStatus.dataset.state = state;
+    else delete fileStatus.dataset.state;
+  }
+  // Afficher également un toast pour une meilleure visibilité utilisateur
+  if (typeof showDemoNotice === "function") {
+    showDemoNotice(message);
+  }
 }
 
 function setDriveConnectionStatus(message, state) {
@@ -453,9 +459,9 @@ async function loadLocalFiles(files) {
   const selectedFiles = [...files];
   if (selectedFiles.length === 0) return;
 
-  const invalidFile = selectedFiles.find((file) => !/\.(txt|md|pdf)$/i.test(file.name));
+  const invalidFile = selectedFiles.find((file) => !/\.(txt|md|pdf|jpg|png|jpeg)$/i.test(file.name));
   if (invalidFile) {
-    setFileStatus(`« ${invalidFile.name} » n'est pas un fichier TXT, MD ou PDF. Aucun fichier de cette sélection n'a été ajouté.`, "error");
+    setFileStatus(`« ${invalidFile.name} » n'est pas un fichier TXT, MD, PDF, JPG ou PNG. Aucun fichier de cette sélection n'a été ajouté.`, "error");
     localFilesInput.value = "";
     return;
   }
@@ -484,13 +490,20 @@ async function loadLocalFiles(files) {
       name: file.name,
       type: file.name.toLocaleLowerCase("fr").endsWith(".pdf")
         ? "PDF"
-        : file.name.toLocaleLowerCase("fr").endsWith(".md") ? "Markdown" : "Texte",
+        : file.name.toLocaleLowerCase("fr").endsWith(".md") ? "Markdown"
+        : file.name.toLocaleLowerCase("fr").endsWith(".jpg") || file.name.toLocaleLowerCase("fr").endsWith(".jpeg") || file.name.toLocaleLowerCase("fr").endsWith(".png")
+          ? "Image"
+          : "Texte",
       date: "Session locale",
       keywords: "",
       summary: "",
       content: file.name.toLocaleLowerCase("fr").endsWith(".pdf")
         ? await (await import("./document-reader.js")).readPdfFile(file)
-        : await file.text(),
+        : file.name.toLocaleLowerCase("fr").endsWith(".md")
+          ? await file.text()
+          : file.name.toLocaleLowerCase("fr").endsWith(".jpg") || file.name.toLocaleLowerCase("fr").endsWith(".jpeg") || file.name.toLocaleLowerCase("fr").endsWith(".png")
+            ? await (await import("./local-files.js")).readImageFile(file)
+            : await file.text(),
       isLocal: true
     })));
 
@@ -933,10 +946,39 @@ function initializeViewWithParams(viewName, params) {
 
     case 'alertes':
       initAlertsView();
+      // Apply filter from URL params if present
+      const hashFilter = params?.filter;
+      if (hashFilter) {
+        const matchingTab = document.querySelector(`.alert-filter-tab[data-filter="${hashFilter}"]`);
+        if (matchingTab) {
+          const tabs = document.querySelectorAll('.alert-filter-tab');
+          tabs.forEach(t => t.classList.remove('is-selected'));
+          matchingTab.classList.add('is-selected');
+          renderAlerts(hashFilter);
+        }
+      }
       break;
 
     case 'maison':
       initHouseView();
+      // Apply filter from URL params if present
+      const categoryFilter = params?.filter;
+      if (categoryFilter) {
+        const matchingTab = document.querySelector(`[data-house-category="${categoryFilter}"]`);
+        if (matchingTab) {
+          const tabs = document.querySelectorAll('[data-house-category]');
+          tabs.forEach(t => {
+            t.classList.toggle('is-selected', t === matchingTab);
+            t.setAttribute('aria-pressed', String(t === matchingTab));
+          });
+          renderEquipmentList(categoryFilter);
+          // Update pool illustration visibility
+          const poolIllustration = document.querySelector('.pool-illustration');
+          if (poolIllustration) {
+            poolIllustration.hidden = categoryFilter !== 'tout' && categoryFilter !== 'piscine';
+          }
+        }
+      }
       break;
 
     case 'accueil':
@@ -951,6 +993,12 @@ function initializeViewWithParams(viewName, params) {
 function showView(name, { addHistory = true, params = {} } = {}) {
   console.log("showView called for:", name);
   if (!Object.hasOwn(pageTitles, name)) return;
+
+  // Cacher le welcome panel lorsqu'on navigue hors de la vue accueil
+  const welcomePanel = document.querySelector("#welcome-panel");
+  if (welcomePanel && name !== 'accueil') {
+    welcomePanel.hidden = true;
+  }
 
   // Build the new URL hash
   let hash = `#/${name}`;
@@ -990,7 +1038,12 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   });
 
   document.title = `${pageTitles[name]} | Famili-IA`;
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  const mainContent = document.querySelector('.main-content');
+  if (mainContent) {
+    mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   // Show FAB only on Accueil and Recherche views
   const fab = document.querySelector('.fab-add-document');
@@ -1236,6 +1289,11 @@ function initCategoryTabs() {
       }
 
       // Update equipment empty state (handled by renderEquipmentList)
+      // Update URL hash to preserve filter state
+      const hash = `#/maison?filter=${encodeURIComponent(category)}`;
+      if (window.location.hash !== hash) {
+        window.history.pushState({ view: 'maison', filter: category }, "", hash);
+      }
     });
   });
 }
@@ -1461,15 +1519,27 @@ function initEquipmentDetailView(eqId) {
 }
 
 const initialView = window.location.hash.slice(1);
-const firstRun = localStorage.getItem(onboardingCompleteKey) !== "true";
-document.querySelector("#welcome-panel").hidden = !firstRun;
+// Amélioration : détecter firstRun de manière robuste
+// Si localStorage n'est pas disponible (ex: mode debug/incognito), on considère ce n'est pas le first run
+let firstRun = false;
+try {
+  firstRun = localStorage.getItem(onboardingCompleteKey) !== "true";
+} catch (e) {
+  // localStorage unavailable - not first run by default
+}
+document.querySelector("#welcome-panel").hidden = true; // Caché par défaut
+
+// Montrer le welcome panel UNIQUEMENT sur la vue accueil AU CHARGEMENT INITIAL
+if (firstRun && initialView === 'accueil') {
+  document.querySelector("#welcome-panel").hidden = false;
+}
 document.querySelector("#dashboard-content").hidden = firstRun;
 document.querySelector("#view-accueil").setAttribute("aria-labelledby", firstRun ? "welcome-title" : "dashboard-title");
 showView(Object.hasOwn(pageTitles, initialView) ? initialView : "accueil", { addHistory: false });
 window.history.replaceState({ view: activeView }, "", `#${activeView}`);
 
-// Render dashboard on load
-if (!firstRun) {
+// Render dashboard on load (uniquement si ce n'est pas le premier RUN OU si on est déjà sur accueil)
+if (!firstRun || initialView === 'accueil') {
   renderAccueilDashboard();
 }
 
@@ -1484,7 +1554,7 @@ function getAlertIcon(type) {
 /**
  * Initialize alerts view
  */
-function initAlertsView() {
+function initAlertsView(params = {}) {
   const alertList = document.querySelector('#alert-list');
   if (!alertList) return;
 
@@ -1495,11 +1565,28 @@ function initAlertsView() {
       tabs.forEach(t => t.classList.remove('is-selected'));
       tab.classList.add('is-selected');
       renderAlerts(tab.dataset.filter);
+
+      // Update URL hash to preserve filter state
+      const hash = `#/alertes?filter=${encodeURIComponent(tab.dataset.filter)}`;
+      if (window.location.hash !== hash) {
+        window.history.pushState({ view: 'alertes', filter: tab.dataset.filter }, "", hash);
+      }
     });
   });
 
   // Render initial alerts (default: à-traiter)
   renderAlerts('à-traiter');
+
+  // Apply filter from URL hash if present
+  const hashFilter = params?.filter;
+  if (hashFilter) {
+    const matchingTab = document.querySelector(`.alert-filter-tab[data-filter="${hashFilter}"]`);
+    if (matchingTab) {
+      tabs.forEach(t => t.classList.remove('is-selected'));
+      matchingTab.classList.add('is-selected');
+      renderAlerts(hashFilter);
+    }
+  }
 }
 
 /**
