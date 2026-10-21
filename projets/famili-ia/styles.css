@@ -44,7 +44,50 @@
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-base: 200ms ease;
+
+  /* Icon sizes */
+  --icon-sm: 24px;
+  --icon-md: 40px;
+  --icon-lg: 48px;
 }
+
+/* Icon Utilities */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--icon-size, var(--icon-md));
+  height: var(--icon-size, var(--icon-md));
+}
+
+.icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
+.icon-circle { border-radius: 50%; }
+
+.icon-primary { color: var(--color-primary); }
+.icon-blue { color: var(--color-blue); }
+.icon-green { color: var(--color-green); }
+.icon-violet { color: var(--color-violet); }
+.icon-amber { color: var(--color-amber); }
+.icon-red { color: var(--color-red); }
+.icon-cyan { color: var(--color-cyan); }
+.icon-purple { color: var(--color-purple); }
+
+.icon-bg { background: rgba(var(--icon-color-rgb, 15, 113, 115), 0.1); }
+.icon-bg-blue { background: rgba(37, 99, 235, 0.1); color: var(--color-blue); }
+.icon-bg-green { background: rgba(5, 150, 105, 0.1); color: var(--color-green); }
+.icon-bg-violet { background: rgba(124, 58, 237, 0.1); color: var(--color-violet); }
+.icon-bg-amber { background: rgba(217, 119, 6, 0.1); color: var(--color-amber); }
+.icon-bg-red { background: rgba(220, 38, 38, 0.1); color: var(--color-red); }
+.icon-bg-cyan { background: rgba(8, 145, 178, 0.1); color: var(--color-cyan); }
+.icon-bg-purple { background: rgba(147, 51, 234, 0.1); color: var(--color-purple); }
 
 /* Breadcrumbs */
 .breadcrumbs {
@@ -822,6 +865,26 @@ body {
   stroke-width: 2;
 }
 
+/* Photo de la maison dans la propriété-card */
+.property-card img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* Photos dans les catégorie-tabs */
+.category-tab img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
 .property-copy {
   display: flex;
   flex-direction: column;
@@ -1094,6 +1157,25 @@ body {
   margin: 1rem 0.5rem;
 }
 
+/* --- VUE MAISON (Phase 9.9) - Vraies photos --- */
+.property-illustration img,
+.equipment-illustration img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  display: block;
+}
+
+.equipment-illustration {
+  height: 140px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 1rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
 /* --- HEADER DE VUE CENTRÉ (Phase 9.1) --- */
 .view-header-centered {
   display: flex;
@@ -1137,8 +1219,11 @@ body {
 }
 
 
-.logo-small { height: 32px; }
-.logo-large { height: 48px; }
+/* Logo sizes */
+.logo-sm { height: 28px; }
+.logo-md { height: 32px; }
+.logo-lg { height: 48px; }
+
 
 .text-button {
   background: none;

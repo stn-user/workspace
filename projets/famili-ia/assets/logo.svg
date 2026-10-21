@@ -5,10 +5,12 @@
       <stop offset="100%" stop-color="#2563eb" />
     </linearGradient>
   </defs>
-  <!-- The "F" letter -->
-  <text x="0" y="30" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="#0f7173">F</text>
+  <!-- The "F" letter with curved stems -->
+  <text x="0" y="30" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="#0f7173">
+    <tspan x="0" dy="0.9em">F</tspan>
+  </text>
   <!-- The "IA" letters with gradient fill and leaf icon above the "I" -->
-  <text x="40" y="30" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="url(#ia-gradient)">IA</text>
-  <!-- Leaf icon -->
-  <path d="M50 5 C50 5 54 1 57 4 C60 7 56 11 56 11 C56 11 48 9 50 5 Z" fill="#059669"/>
+  <text x="45" y="30" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="url(#ia-gradient)">IA</text>
+  <!-- Leaf icon - repositioned and redesigned for better visibility above "IA" -->
+  <path d="M42 2 C42 2 46 1 49 3 C52 5 48 9 50 9 C52 9 48 13 50 13 C48 13 52 5 50 3 Z" fill="#059669" opacity="0.8"/>
 </svg>
