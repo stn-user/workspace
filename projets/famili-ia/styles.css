@@ -156,7 +156,8 @@ body {
   grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 64px) minmax(0, 1fr);
   height: 100vh;
-  width: 100vw;
+  min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -309,7 +310,6 @@ body {
   padding: var(--space-xl);
   background: var(--color-bg);
   overflow-y: auto;
-  width: 100%;
 }
 
 @media (max-width: 1024px) {
