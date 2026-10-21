@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f8ff">
-  <meta name="description" content="Prototype Famili-IA : retrouvez vos informations dans une démonstration à données fictives.">
+  <meta name="description" content="Famili-IA : retrouvez vos documents familiaux facilement et en toute confidentialité.">
   <title>Accueil | Famili-IA</title>
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.js"></script>
@@ -13,9 +13,9 @@
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="#accueil" data-open-view="accueil" aria-label="Famili-IA, accueil">
-        <img src="assets/logo.svg" alt="Famili-IA" style="height: 32px;">
+        <img src="assets/logo.svg" alt="Famili-IA" class="logo-small">
       </a>
-      <div class="demo-status"><span class="status-dot"></span><span id="demo-status-label">Prototype — données fictives</span></div>
+      <!-- <div class="demo-status"><span class="status-dot"></span><span id="demo-status-label">Prototype — données fictives</span></div> -->
       <button class="avatar avatar-small" type="button" data-demo-action aria-label="Profil de démonstration">S</button>
     </header>
 
@@ -31,11 +31,11 @@
           <button class="nav-item" type="button" data-nav="profil"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profil</button>
           <button class="nav-item" type="button" data-nav="vos-donnees"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>Données</button>
         </nav>
-        <section class="sidebar-note">
+        <!-- <section class="sidebar-note">
           <span class="status-dot" aria-hidden="true"></span>
           <strong>Mode démonstration</strong>
           <p id="sidebar-mode-copy">Exemples inventés, sans connexion à vos services.</p>
-        </section>
+        </section> -->
       </aside>
 
       <main class="main-content">
@@ -96,14 +96,14 @@
             <button class="verify-row" type="button" data-open-view="alertes"><span class="row-icon red">◉</span><span class="row-copy"><strong>Contrôle technique</strong><small>Dans 18 jours</small></span><span class="stat-arrow">›</span></button>
             <button class="verify-row" type="button" data-open-view="alertes"><span class="row-icon amber">▤</span><span class="row-copy"><strong>247 doublons détectés</strong><small>À vérifier</small></span><span class="stat-arrow">›</span></button>
           </section>
-          <p class="demo-disclaimer">Tous les éléments de cet écran sont fictifs et servent uniquement à illustrer la maquette.</p>
+          <!-- <p class="demo-disclaimer">Tous les éléments de cet écran sont fictifs et servent uniquement à illustrer la maquette.</p> -->
           </div>
         </section>
 
         <section class="view search-view" id="view-recherche" data-view="recherche" aria-labelledby="page-title" hidden>
           <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="accueil">Accueil</button><span aria-hidden="true">/</span><strong>Recherche</strong></nav>
           <section class="intro" aria-labelledby="page-title" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
-            <div class="brand-mark" aria-hidden="true" style="margin-bottom: 1rem; width: auto; height: 48px; background: transparent;"><img src="assets/logo.svg" alt="Logo Famili-IA" style="height: 48px;"></div>
+            <div class="brand-mark" aria-hidden="true" style="margin-bottom: 1rem; width: auto; background: transparent;"><img src="assets/logo.svg" alt="Logo Famili-IA" class="logo-large"></div>
             <h1 id="page-title" style="margin: 0.5rem 0; text-align: center;">Que cherchez-vous&nbsp;?</h1>
             <p class="intro-copy" style="text-align: center; max-width: 80%; margin: 0 auto;">Posez votre question simplement. Famili-IA retrouve l’information et vous indique dans quel document la vérifier.</p>
           </section>
@@ -222,7 +222,7 @@
               <button class="secondary-button" type="button" data-demo-action>Configurer</button>
             </section>
           </div>
-          <p class="demo-disclaimer">Les membres, documents et autorisations de cette maquette sont fictifs. Aucun accès familial réel n’est configuré.</p>
+          <!-- <p class="demo-disclaimer">Les membres, documents et autorisations de cette maquette sont fictifs. Aucun accès familial réel n’est configuré.</p> -->
         </section>
 
         <section class="view alerts-view" id="view-alertes" data-view="alertes" aria-labelledby="alerts-title" hidden>
@@ -244,7 +244,7 @@
           <div class="alert-list" id="alert-list" aria-label="Alertes">
             <!-- Alertes seront générées dynamiquement par app.js -->
           </div>
-          <p class="demo-disclaimer">Ces alertes sont des exemples inventés et ne correspondent à aucun contrat ou événement réel.</p>
+          <!-- <p class="demo-disclaimer">Ces alertes sont des exemples inventés et ne correspondent à aucun contrat ou événement réel.</p> -->
         </section>
 
         <section class="view detail-view" id="view-detail" data-view="detail" aria-labelledby="detail-title" hidden>
@@ -297,7 +297,13 @@
           </div>
           <div class="import-container">
             <div class="drop-zone" id="drop-zone">
-              <span class="drop-icon" aria-hidden="true"></span>
+              <span class="drop-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </span>
               <p class="drop-text">Glissez un fichier ici</p>
               <label for="import-input" class="drop-button">Choisir un fichier</label>
               <input type="file" id="import-input" class="visually-hidden" multiple accept=".txt,.md,.pdf">
@@ -478,10 +484,10 @@
     </nav>
 
   <dialog class="source-dialog" id="source-dialog" aria-labelledby="dialog-title">
-    <div class="dialog-header"><div><p class="eyebrow" id="dialog-eyebrow">DOCUMENT DE DÉMONSTRATION</p><h2 id="dialog-title"></h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fermer">×</button></div>
+    <div class="dialog-header"><div><p class="eyebrow" id="dialog-eyebrow"></p><h2 id="dialog-title"></h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fermer">×</button></div>
     <p class="dialog-meta" id="dialog-meta"></p>
     <p class="dialog-content" id="dialog-content"></p>
-    <div class="dialog-notice"><span aria-hidden="true">ⓘ</span><span id="dialog-notice-text">Ceci est un contenu d’exemple inventé pour le prototype.</span></div>
+    <!-- <div class="dialog-notice"><span aria-hidden="true">ⓘ</span><span id="dialog-notice-text">Ceci est un contenu d’exemple inventé pour le prototype.</span></div> -->
   </dialog>
 
   <dialog class="source-dialog source-choice-dialog" id="source-choice-dialog" aria-labelledby="source-choice-title">

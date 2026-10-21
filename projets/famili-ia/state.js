@@ -113,6 +113,21 @@ export async function addFamilyMember(member) {
   return state.family;
 }
 
+export async function updateFamilyMember(member) {
+  const index = state.family.findIndex(m => m.id === member.id);
+  if (index !== -1) {
+    state.family[index] = member;
+    await put('family', member);
+  }
+  return state.family;
+}
+
+export async function deleteFamilyMember(id) {
+  state.family = state.family.filter(m => m.id !== id);
+  await remove('family', id);
+  return state.family;
+}
+
 export async function addEquipment(equipment) {
   state.homeEquipment.push(equipment);
   await put('equipment', equipment);

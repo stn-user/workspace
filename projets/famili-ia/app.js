@@ -16,7 +16,17 @@ import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, ge
   // Reste de l'initialisation...
 })();
 
-// ... (rest of the file)
+/**
+ * Met à jour la visibilité des boutons de gestion de fichiers en fonction de la vue actuelle et de la présence de fichiers.
+ */
+function updateClearFilesButtonsVisibility() {
+  const hasFiles = uploadedDocuments.length > 0;
+  const isDataView = activeView === 'vos-donnees';
+
+  clearFilesButton.hidden = !(hasFiles && isDataView);
+  disconnectGoogleDriveButton.hidden = !(hasFiles && isDataView && googleDriveClient?.hasAccessToken);
+}
+
 
 /**
  * Initialise la modale d'ajout/modification d'équipement
@@ -410,7 +420,7 @@ function setDriveConnectionStatus(message, state) {
 }
 
 function updateDriveConnectionActions() {
-  disconnectGoogleDriveButton.hidden = !googleDriveClient?.hasAccessToken;
+  updateClearFilesButtonsVisibility();
 }
 
 function updateGoogleDriveButton() {
@@ -488,7 +498,7 @@ async function loadLocalFiles(files) {
     for (const doc of loaded) {
       await addDocument(doc);
     }
-    clearFilesButton.hidden = false;
+    updateClearFilesButtonsVisibility();
     updateGoogleDriveButton();
     updateModeBanner();
     completeOnboarding();
@@ -585,7 +595,7 @@ async function loadLocalFilesNative() {
     for (const doc of validFiles) {
       await addDocument(doc);
     }
-    clearFilesButton.hidden = false;
+    updateClearFilesButtonsVisibility();
     updateGoogleDriveButton();
     updateModeBanner();
     completeOnboarding();
@@ -699,7 +709,7 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     for (const doc of newFiles) {
       await addDocument(doc);
     }
-    clearFilesButton.hidden = false;
+    updateClearFilesButtonsVisibility();
     updateGoogleDriveButton();
     updateModeBanner();
     completeOnboarding();
@@ -766,7 +776,7 @@ if (confirmDrivePickerButton && drivePickerList) {
     for (const doc of selectedDocuments) {
       await addDocument(doc);
     }
-    clearFilesButton.hidden = false;
+    updateClearFilesButtonsVisibility();
     updateGoogleDriveButton();
     updateModeBanner();
     completeOnboarding();
@@ -806,7 +816,7 @@ async function clearSessionFiles() {
   dialogTitle.textContent = "";
   dialogMeta.textContent = "";
   dialogContent.textContent = "";
-  clearFilesButton.hidden = true;
+  updateClearFilesButtonsVisibility();
   documentList.replaceChildren();
   answerText.textContent = "";
   resultCount.textContent = "";
@@ -990,6 +1000,9 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   }
 
   initializeViewWithParams(name, params);
+
+  // Mettre à jour la visibilité des boutons de gestion de fichiers
+  updateClearFilesButtonsVisibility();
 }
 
 

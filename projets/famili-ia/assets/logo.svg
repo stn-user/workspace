@@ -1,13 +1,14 @@
-<svg width="160" height="40" viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg">
+<svg width="180" height="40" viewBox="0 0 180 40" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="ia-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#059669" />
       <stop offset="100%" stop-color="#2563eb" />
     </linearGradient>
   </defs>
-  <!-- Leaf icon above the I of IA -->
-  <path d="M122 4 C122 4 126 0 129 3 C132 6 128 10 128 10 C128 10 120 8 122 4 Z" fill="#059669"/>
-  <!-- Text Famili-IA -->
-  <text x="0" y="28" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Famili-</text>
-  <text x="110" y="28" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="700" fill="url(#ia-gradient)">IA</text>
+  <!-- The "F" letter -->
+  <text x="0" y="30" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="#0f7173">F</text>
+  <!-- The "IA" letters with gradient fill and leaf icon above the "I" -->
+  <text x="40" y="30" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="url(#ia-gradient)">IA</text>
+  <!-- Leaf icon -->
+  <path d="M50 5 C50 5 54 1 57 4 C60 7 56 11 56 11 C56 11 48 9 50 5 Z" fill="#059669"/>
 </svg>
