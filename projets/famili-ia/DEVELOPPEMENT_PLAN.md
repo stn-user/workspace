@@ -95,6 +95,63 @@ La capacité de recherche doit évoluer vers le sémantique. Il faut comprendre 
 L'app ne doit pas être un simple coffre-fort, mais un assistant proactif. Le système d'alertes actuel est un excellent début : il faut le renforcer avec des rappels intelligents (ex. : *"Attention, votre garantie expire dans 2 mois sur cet équipement"*).
 
 
+### 📐 Schéma Technique (Mermaid)
+
+```mermaid
+graph TD
+    %% Couches d'application
+    subgraph "Couche Presentation [UI]"
+        A[app.html / index.html]
+        B[app.js - showView / routing]
+        C[Views: accueil, recherche, maison, famille, alertes, detail, assistant, importer, profil, vos-données]
+    end
+
+    subgraph "Couche État [state.js]"
+        D[state.js - IndexedDB & stockage local]
+        E[currentUser, family, homeEquipment, alerts, documents]
+    end
+
+    subgraph "Couche Logique [search-utils.js + local-files.js]"
+        F[search-utils.js - extraction mots-clés / normalisation]
+        G[local-files.js - lecture fichiers Capacitor / OCR]
+        H[moteur recherche - concaténation cloud + local]
+    end
+
+    subgraph "Intégrations Externes [Capacitor / Google Drive]"
+        I[Capacitor Filesystem - dossiers locaux]
+        J[Google Drive Picker - drive.file scope]
+        K[PDF.js / OCR Vision/ML-kit - extraction texte]
+    end
+
+    %% Flux de données
+    A --> B
+    B --> C
+    C -->|user input| F
+    F --> H
+    H --> C
+    
+    %% Flux cloud
+    J -->|fichiers sélectionnés| K
+    K --> H
+    I -->|after auth| K
+    
+    %% État
+    D -->|mise à jour| B
+    B -->|état courant| D
+    
+    %% Style
+    classDef ui fill:#e0f7fa,stroke:#0277bd,stroke-width:2px;
+    classDef state fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+    classDef logic fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
+    classDef ext fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
+    
+    class A,B,C ui;
+    class D,E state;
+    class F,G,H logic;
+    class I,J,K ext;
+```
+
+
 ### Phase 10 – Validation & Lancement
 - [ ] 10.1 : Tests utilisateurs complets
 - [ ] 10.2 : Mesure de la satisfaction utilisateur

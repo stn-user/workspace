@@ -71,3 +71,13 @@ Pour maintenir la cohérence visuelle, suivez ces règles basées sur les maquet
 - **Google Drive :** OAuth restreint à la version Web (prototype).
 - **Pas de serveur :** Prototype client-side uniquement.
 - **Hash de compatibilité :** Supportez `#/view` et `#view` dans `parseHash()`.
+
+## ✅ Checklist Anti-Régression (avant commit)
+- [ ] **Structure des modules** : `state.js`, `app.js`, `search-utils.js`, `local-files.js` sont présents et exportent les fonctions attendues.
+- [ ] **Pas de fichiers orphelins** : Aucun fichier `.bak`, `.tmp`, ou backup à la racine du projet ou dans `projets/famili-ia/`.
+- [ ] **Respect des tokens CSS** : Les couleurs utilisées respectent la charte (`#0f7173`, `#2563eb`, `#059669`, etc.) et sont définies dans les variables CSS.
+- [ ] **Navigation hash** : `parseHash()` gère correctement `#/view` et `#view` sans régression.
+- [ ] **Capacitor safety** : `Capacitor.isNativePlatform()` vérifié avant tout appel API native.
+- [ ] **Interface de recherche** : La barre de recherche et les résultats s'affichent correctement sur desktop et mobile.
+- [ ] **États d'erreur** : Les composants affichent un état vide/erreur significatif si les données manquent.
+- [ ] **Accessibilité** : Les contrastes respectent les ratios minimaux (texte: 4.5:1, UI components: 3:1).
