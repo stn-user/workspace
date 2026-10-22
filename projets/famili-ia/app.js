@@ -985,6 +985,10 @@ function initializeViewWithParams(viewName, params) {
       renderAccueilDashboard();
       break;
 
+    case 'vos-donnees':
+      initDataView();
+      break;
+
     default:
       break;
   }
@@ -996,8 +1000,15 @@ function showView(name, { addHistory = true, params = {} } = {}) {
 
   // Cacher le welcome panel lorsqu'on navigue hors de la vue accueil
   const welcomePanel = document.querySelector("#welcome-panel");
-  if (welcomePanel && name !== 'accueil') {
-    welcomePanel.hidden = true;
+  // Si l'onboarding est terminé, le welcome panel doit rester caché
+  const onboardingDone = localStorage.getItem(onboardingCompleteKey) === "true";
+  if (welcomePanel) {
+    if (name === 'accueil' && !onboardingDone) {
+      // S'assurer que le welcome panel est visible uniquement si c'est la vue actuelle ET si onboarding n'est pas terminé
+      welcomePanel.hidden = false;
+    } else {
+      welcomePanel.hidden = true;
+    }
   }
 
   // Build the new URL hash
@@ -1019,7 +1030,10 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   activeView = name;
 
   views.forEach((view) => {
-    view.hidden = view.dataset.view !== name;
+    view.removeAttribute('hidden');
+    if (view.dataset.view !== name) {
+      view.setAttribute('hidden', 'true');
+    }
   });
 
   navigationButtons.forEach((button) => {
