@@ -3,22 +3,55 @@
  * Utilise Web Crypto API
  */
 
-// Clé fixe de 256 bits (32 octets) pour le prototype
-const KEY_MATERIAL = new Uint8Array([
-  0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87,
-  0x78, 0x69, 0x5a, 0x4b, 0x3c, 0x2d, 0x1e, 0x0f,
-  0x0f, 0x1e, 0x2d, 0x3c, 0x4b, 0x5a, 0x69, 0x78,
-  0x87, 0x96, 0xa5, 0xb4, 0xc3, 0xd2, 0xe1, 0xf0
-]);
+const KEY_STORE_NAME = 'CryptoKeyStore';
+const KEY_NAME = 'masterKey';
 
+// Initialise ou récupère la clé depuis IndexedDB
 async function getMasterKey() {
-  return await crypto.subtle.importKey(
-    "raw",
-    KEY_MATERIAL,
-    { name: "AES-GCM" },
-    false,
-    ["encrypt", "decrypt"]
-  );
+  const db = await openKeyDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(KEY_STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(KEY_STORE_NAME);
+    const request = store.get(KEY_NAME);
+
+    request.onsuccess = async () => {
+      if (request.result) {
+        // La clé existe, l'importer
+        const key = await crypto.subtle.importKey(
+          "jwk",
+          request.result,
+          { name: "AES-GCM" },
+          false,
+          ["encrypt", "decrypt"]
+        );
+        resolve(key);
+      } else {
+        // Générer une nouvelle clé
+        const newKey = await crypto.subtle.generateKey(
+          { name: "AES-GCM", length: 256 },
+          true,
+          ["encrypt", "decrypt"]
+        );
+
+        // Exporter pour stockage
+        const exported = await crypto.subtle.exportKey("jwk", newKey);
+        store.put(exported, KEY_NAME);
+        resolve(newKey);
+      }
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function openKeyDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("CryptoDB", 1);
+    request.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore(KEY_STORE_NAME);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
 }
 
 export async function encryptData(data) {

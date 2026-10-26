@@ -6,7 +6,8 @@
 import fs from 'fs';
 import path from 'path';
 
-const projectDir = path.resolve('projets/famili-ia');
+// Utiliser path.resolve('.') au lieu d'un chemin relatif qui plante si exécuté depuis le bon répertoire
+const projectDir = path.resolve('.');
 
 const checks = [
   {

@@ -63,9 +63,9 @@
 - [✓] ✅ 7.4 : Inventaire des équipements (CRUD complet, catégorisation réelle) - *Terminé*
 
 ### Phase 8 – Sécurisation & Vie privée avancée
-- [✓] ✅ 8.1 : Chiffrement des données sensibles en local
+- [✓] ✅ 8.1 : Chiffrement des données sensibles en local (clé dynamique IndexedDB)
 - [✓] ✅ 8.2 : Workflow d'export complet (JSON/PDF) et purge sécurisée
-- [✓] ✅ 8.3 : Gestion fine des consentements et logs d'accès
+- [✓] ✅ 8.3 : Gestion fine des consentements (télémétrie/partage) et logs d'accès
 
 ### Phase 9 – Homogénéisation UI & Polish
 - [✓] ✅ 9.1 : Standardisation globale des headers et titres
@@ -161,3 +161,56 @@ graph TD
 - Cochez la case `[✓]` lorsque la tâche est terminée.
 - Si une tâche est bloquée, ajoutez un commentaire après la case.
 - Maintenez le fichier à jour dans chaque branche ou commit important.
+
+## 🛠 Framework des Skills - Implémentation Structurée
+Cette section définit les skills techniques et domain spécifiques à mettre en place pour assurer la qualité, la cohérence UI et l'automatisation tout au long du projet Famili-IA.
+
+### ✅ Skills Techniques - État d'avancement
+| Skill | Statut | Description | Cas d'usage | Coché |
+|-------|--------|-------------|-------------|-------|
+| **update-config** | ✅ **Terminé** | settings.json créé avec attribution et permissions de base (`Bash(npm *)`, `Bash(git *)`, Read/Edit/Write) | Configuration de base, réduction prompts Capacitor, attribution git/pr | [x] |
+| **fewer-permission-prompts** | ✅ **Terminé** | Allowlist des appels natives problématiques - 5 règles prioritaires validées | Gestion READ_EXTERNAL_STORAGE, notifications, accès Capacitor | [x] |
+| **code-review** | ✅ **Terminé** | Qualité continue - revue medium effectuée, 4 findings identifiés et résolus | Détection régressions UI, respect charte graphique, standards architecture | [x] |
+| **simplify** | ✅ **Terminé** | Nettoyage périodique du code - corrections Finding A-D appliquées, event delegation, async state loading | Refactoring composants, optimisation selectors, réduction technical debt | [x] |
+
+### 🎯 Skills Domain Spécifiques
+| Skill | Portée | Description |
+|-------|--------|-------------|
+| **artifact-design** | UI/UX | Maintenir la charte graphique (#0f7173, #2563eb, #059669, etc.) lors des nouvelles vues/pages |
+| **workflow-authoring** | Automatisation | Workflows multi-étapes : lancement app, build Capacitor, tests de régression, génération rapports |
+| **dataviz** | Analytics | Visualisation données familiales, graphiques équipements, stats alertes, KPI dashboards |
+
+### Ordre d'Implémentation Recommandé
+1. **Phase 0 - Setup** : `update-config` → configuration de base des settings.json ✅ **Déjà fait** (fichier créé avec attribution + permissions Bash)
+2. **Phase 0 - Setup** : `fewer-permission-prompts` → allowlist des appels Capacitor critiques ✅ **Terminé** - 5 règles prioritaires validées et ajoutées à settings.json
+3. **Qualité & Correction** : `code-review` → revue de niveau medium effectuée, 4 findings identifiés et résolus ✅ **Terminé**
+   - Finding A résolu : bouton "ajouter membre" dans liste vide
+   - Finding B résolu : chemin fragile dans test-sanity.mjs
+   - Finding C résolu : listeners d'événements obsolètes supprimés
+   - Finding D résolu : persistance IndexedDB correcte
+4. **Qualité & Maintenance** : `simplify` → nettoyage effectué via corrections Finding A-D, delegation et async loading ✅ **Terminé**
+5. **Avant commit** : `code-review` + validation `artifact-design` (charte graphique) ✅ **Workflow intégré** - Dans la checklist anti-régression existante
+6. **Phase 10 (Lancement)** : `workflow-authoring` → scripts de test utilisateur automatisés ⏳ **Planification Phase 10** - Définir les workflows de test
+7. **Phase 10 (Lancement)** : `dataviz` → visualisations pour rapports satisfaction/utilisateurs ⏳ **Planification Phase 10** - Graphiques/KPI pour rapports
+
+### Intégration dans les Phases Existantes
+- **Phase 7-9** : `code-review` comme étape finale avant commit (checklist anti-régression déjà présente)
+- **Phase 8** (Sécurité) : Intégrer `security-review` dans la validation des consentements et chiffrement
+- **Phase 9** (UI Polish) : Valider `artifact-design` pour chaque nouvelle vue/ composant
+- **Toutes phases** : `fewer-permission-prompts` pour tout nouvel appel API native Capacitor
+
+### Checklist Compétences par Phase
+- **Avant tout commit** : ✅ `code-review` passé, ✅ `artifact-design` validé (si UI), ✅ `fewer-permission-prompts` à jour
+- **Findings code-review (Phase 7-9)** : 4 findings identifiés lors de la revue de niveau medium - **TOUS RÉSOLUS** ✅
+  1. [x] **Finding A** : app.js:1720 - Liste vide famille omet bouton "ajouter membre" → Corrigé : le bouton s'affiche toujours, même avec liste vide (return prématuré retiré)
+  2. [x] **Finding B** : test-sanity.mjs:9 - Chemin relatif fragile → Corrigé : `path.resolve('.')` au lieu de `path.resolve('projets/famili-ia')`
+  3. [x] **Finding C** : app.js:382 - Écouteurs d'événements sur éléments non-existent (filters chips) → Corrigé : supprimé listeners redondants `#filter-type, #filter-source`, la logique utilise maintenant `.chip.is-selected` dans `applyFilters()`
+  4. [x] **Finding D** : app.js:1679 - Mutation directe d'objet module importé → Corrigé : remplacement par `import().then(() => initFamilyFromSaved(savedFamily()))` avec méthode officielle state.js
+- **Règles de permission prioritaires (5 règles)** : Vérifier l'application des 5 règles ci-dessous dans `.claude/settings.json`
+  1. [x] `Read(src/**, *.js)` - Lectures fichiers source JS ✅ Validé
+  2. [x] `Edit(src/**, *.js)` - Modifications fichiers source JS ✅ Validé
+  3. [x] `Read(**) `** - Lectures générales ✅ Validé
+  4. [x] `Glob(**)` - Recherche globale de fichiers ✅ Validé
+  5. [x] `Bash(npm *)`, `Bash(git *)` - Commandes npm/git ✅ Validé
+- **Nouvelle feature** : Vérifier `update-config` si modification des permissions ou env vars
+- **Nouvelle visualisation** : Appliquer `dataviz` si dashboard/statistiques impliquées

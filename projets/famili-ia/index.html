@@ -352,14 +352,14 @@
               </div>
             </div>
             <div class="privacy-panel">
-              <div class="section-heading"><h2>Confidentialité</h2></div>
+              <div class="section-heading"><h2>Consentements & Logs</h2></div>
               <div class="privacy-option">
-                <div class="option-text"><strong>Accès local</strong><small>Autoriser le scan des dossiers Documents/Téléchargements</small></div>
-                <input type="checkbox" checked aria-label="Autoriser l'accès local au scan des dossiers">
+                <div class="option-text"><strong>Télémétrie anonyme</strong><small>Partager des métriques d'utilisation non identifiables</small></div>
+                <input type="checkbox" id="consent-telemetry" aria-label="Télémétrie anonyme">
               </div>
               <div class="privacy-option">
-                <div class="option-text"><strong>Connexion Drive</strong><small>Lier mon compte Google Drive</small></div>
-                <input type="checkbox" aria-label="Lier mon compte Google Drive">
+                <div class="option-text"><strong>Partage de données</strong><small>Autoriser le partage sécurisé entre membres de la famille</small></div>
+                <input type="checkbox" id="consent-sharing" aria-label="Partage de données">
               </div>
               <button class="primary-button" type="button" id="save-profile">Enregistrer les modifications</button>
             </section>
@@ -399,6 +399,7 @@
             <p>Ces actions sont irréversibles et supprimeront toutes les données de la session actuelle.</p>
             <button class="danger-button" type="button" id="purge-all-data">Supprimer toutes mes données</button>
             <button class="secondary-button" type="button" id="export-all-data">Exporter mes données (JSON)</button>
+            <button class="secondary-button" type="button" id="export-pdf-data">Exporter le rapport (PDF)</button>
           </section>
         </div>
       </section>

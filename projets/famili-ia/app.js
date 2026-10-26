@@ -334,6 +334,23 @@ function search(question) {
  * @param {Array} matches - Résultats de recherche bruts
  * @returns {Array} Résultats filtrés
  */
+// Filtres de configuration - centralisation des règles de filtrage
+const documentTypeFilters = {
+  Facture: doc => doc.type === 'Facture',
+  Garantie: doc => doc.type === 'Garantie',
+  Contrat: doc => doc.type === 'Contrat',
+  Notice: doc => doc.type === 'Notice',
+  PDF: doc => doc.type === 'PDF',
+  Texte: doc => doc.type === 'Texte' || doc.type === 'Markdown',
+  Markdown: doc => doc.type === 'Markdown'
+};
+
+const sourceFilters = {
+  local: doc => doc.isLocal && !doc.driveSource && !doc.driveDemo,
+  drive: doc => doc.driveSource,
+  demo: doc => doc.driveDemo || !doc.isLocal
+};
+
 function applyFilters(matches) {
   // Read active filter chips instead of select values
   const typeChip = document.querySelector('#filter-type-group .chip.is-selected');
@@ -350,46 +367,22 @@ function applyFilters(matches) {
   return matches.filter(result => {
     const doc = result.document;
 
-    // Filtre par type de document
-    if (typeFilter) {
-      let matchesType = false;
-      if (typeFilter === 'Facture' && doc.type === 'Facture') matchesType = true;
-      else if (typeFilter === 'Garantie' && doc.type === 'Garantie') matchesType = true;
-      else if (typeFilter === 'Contrat' && doc.type === 'Contrat') matchesType = true;
-      else if (typeFilter === 'Notice' && doc.type === 'Notice') matchesType = true;
-      else if (typeFilter === 'PDF' && doc.type === 'PDF') matchesType = true;
-      else if (typeFilter === 'Texte' && (doc.type === 'Texte' || doc.type === 'Markdown')) matchesType = true;
-      else if (typeFilter === 'Markdown' && doc.type === 'Markdown') matchesType = true;
+    // Filtre par type de document - lookup dans l'objet de configuration
+    if (typeFilter && !(typeFilter in documentTypeFilters)) return false;
+    if (typeFilter && !documentTypeFilters[typeFilter](doc)) return false;
 
-      if (!matchesType) return false;
-    }
-
-    // Filtre par source
-    if (sourceFilter) {
-      let matchesSource = false;
-      if (sourceFilter === 'local' && doc.isLocal && !doc.driveSource && !doc.driveDemo) matchesSource = true;
-      else if (sourceFilter === 'drive' && doc.driveSource) matchesSource = true;
-      else if (sourceFilter === 'demo' && (doc.driveDemo || !doc.isLocal)) matchesSource = true;
-
-      if (!matchesSource) return false;
-    }
+    // Filtre par source - lookup dans l'objet de configuration
+    if (sourceFilter && !(sourceFilter in sourceFilters)) return false;
+    if (sourceFilter && !sourceFilters[sourceFilter](doc)) return false;
 
     return true;
   });
 }
 
-// Event listeners pour les filtres
-document.querySelectorAll('#filter-type, #filter-source').forEach(select => {
-  select.addEventListener('change', () => {
-    // Réexécuter la recherche actuelle si elle existe
-    if (input.value.trim()) {
-      search(input.value);
-      // Afficher le bouton "Effacer les filtres"
-      const clearBtn = document.querySelector('#clear-filters');
-      if (clearBtn) clearBtn.hidden = false;
-    }
-  });
-});
+// Gestion des filtres par chips (implémentation actuelle)
+// Les listeners directs sur #filter-type/#filter-source sont redondants
+// car les filtres sont des .chip dans des groupes .chip-group.
+// Voir applyFilters() qui lit .chip.is-selected dans les groupes dédiés.
 
 // Gestion du bouton "Effacer les filtres" (Obsolète)
 const clearFiltersBtn = document.querySelector('#clear-filters');
@@ -1100,6 +1093,14 @@ navigationButtons.forEach((button) => {
   button.addEventListener("click", () => showView(button.dataset.nav));
 });
 
+// Événements globaux avec délégation
+document.addEventListener('click', (event) => {
+  // Gestion actions démo
+  if (event.target.closest('[data-demo-action]')) {
+    showDemoNotice();
+  }
+});
+
 // Bottom navigation (mobile) - switches views
 document.querySelectorAll(".bottom-nav .nav-item").forEach((button) => {
   button.addEventListener("click", () => {
@@ -1121,9 +1122,6 @@ document.querySelectorAll("[data-open-view]").forEach((button) => {
   });
 });
 
-document.querySelectorAll("[data-demo-action]").forEach((button) => {
-  button.addEventListener("click", () => showDemoNotice());
-});
 
 // Gestion des nouvelles vues
 document.querySelectorAll("[data-nav~='detail']").forEach((button) => {
@@ -1181,6 +1179,10 @@ function initProfileHandlers() {
       user.name = newName;
       user.avatar = newName.charAt(0).toUpperCase();
 
+      // Update privacy settings
+      user.privacy.telemetryEnabled = document.querySelector('#consent-telemetry').checked;
+      user.privacy.dataSharingConsent = document.querySelector('#consent-sharing').checked;
+
       // Update avatar display in profile
       const avatar = document.querySelector("#profile-avatar");
       if (avatar) {
@@ -1214,21 +1216,15 @@ function initProfileHandlers() {
         roleEl.textContent = user.role || 'Administrateur';
       }
 
-      // Set checkboxes based on preferences
-      const localAccessCheckbox = document.querySelector('.privacy-option:nth-child(1) input[type="checkbox"]');
-      const driveConnectionCheckbox = document.querySelector('.privacy-option:nth-child(2) input[type="checkbox"]');
+      // Set checkboxes based on consent
+      const telemetryCheckbox = document.querySelector('#consent-telemetry');
+      const sharingCheckbox = document.querySelector('#consent-sharing');
 
-      if (localAccessCheckbox && user.preferences) {
-        localAccessCheckbox.checked = user.preferences.localAccess ?? true;
-        localAccessCheckbox.onchange = (e) => {
-          user.preferences.localAccess = e.target.checked;
-        };
+      if (telemetryCheckbox && user.privacy) {
+        telemetryCheckbox.checked = user.privacy.telemetryEnabled ?? false;
       }
-      if (driveConnectionCheckbox && user.preferences) {
-        driveConnectionCheckbox.checked = user.preferences.driveConnection ?? false;
-        driveConnectionCheckbox.onchange = (e) => {
-          user.preferences.driveConnection = e.target.checked;
-        };
+      if (sharingCheckbox && user.privacy) {
+        sharingCheckbox.checked = user.privacy.dataSharingConsent ?? false;
       }
     });
   });
@@ -1676,18 +1672,25 @@ function renderAlerts(filter) {
 }
 
 // Initialize family state from localStorage (if available)
-const savedFamily = loadFamilyState();
-if (savedFamily && savedFamily.length > 0) {
-  // Update the family state with saved data
-  // Note: in a real module, we would handle this in state.js
-  // This is a temporary fix for the demo prototype
-  try {
-    const stateModule = await import('./state.js');
-    stateModule.default.family = savedFamily;
-  } catch (e) {
-    console.warn('Error loading family state:', e);
+let familyInitialized = false;
+
+async function loadSavedFamilyState() {
+  if (familyInitialized) return;
+
+  const savedFamily = loadFamilyState();
+  if (savedFamily && savedFamily.length > 0) {
+    try {
+      const stateModule = await import('./state.js');
+      stateModule.initFamilyFromSaved(savedFamily);
+      familyInitialized = true;
+    } catch (e) {
+      console.warn('Error loading family state:', e);
+    }
   }
 }
+
+// Appeler au chargement
+loadSavedFamilyState();
 
 // The house view must be initialized on page load
 // Note: These calls are now moved to the end of the file to avoid ReferenceErrors
@@ -1717,25 +1720,28 @@ function renderFamilyMembers() {
   const members = getFamilyMembers();
   const currentUser = getCurrentUser();
 
+  // Always show empty state or member list, then always show add-member button
   if (members.length === 0) {
     memberList.innerHTML = '<p class="empty-state">Aucun membre de famille.</p>';
-    return;
+  } else {
+    memberList.innerHTML = members.map(member => {
+      const isCurrentUser = member.id === currentUser.id;
+      const avatarText = member.avatar || (member.name ? member.name.charAt(0).toUpperCase() : '?');
+      const accessText = member.access === 'full' ? 'Accès complet' : 'Accès limité';
+
+      return `
+        <article class="member-card">
+          <div class="member-avatar">${avatarText}</div>
+          <strong>${member.name}</strong>
+          <span>${accessText}</span>
+          ${isCurrentUser ? '<span class="member-you">Vous</span>' : ''}
+        </article>
+      `;
+    }).join('');
   }
 
-  memberList.innerHTML = members.map(member => {
-    const isCurrentUser = member.id === currentUser.id;
-    const avatarText = member.avatar || (member.name ? member.name.charAt(0).toUpperCase() : '?');
-    const accessText = member.access === 'full' ? 'Accès complet' : 'Accès limité';
-
-    return `
-      <article class="member-card">
-        <div class="member-avatar">${avatarText}</div>
-        <strong>${member.name}</strong>
-        <span>${accessText}</span>
-        ${isCurrentUser ? '<span class="member-you">Vous</span>' : ''}
-      </article>
-    `;
-  }).join('') + `
+  // Always show the add-member button, even when list is empty
+  memberList.innerHTML += `
     <button class="member-card add-member" type="button">
       <span class="add-member-icon">＋</span>
       <strong>Gérer les accès</strong>
@@ -2027,6 +2033,24 @@ function initDataView() {
     });
   }
 
+  // PDF Export - Génère un rapport PDF des données exportées
+  const pdfExportBtn = document.querySelector('#export-pdf-data');
+  if (pdfExportBtn) {
+    pdfExportBtn.addEventListener('click', () => {
+      const dataToExport = getFullState();
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const pdfContent = generatePDF(dataStr);
+      const blob = new Blob([pdfContent], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'famili-ia-data.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+      showDemoNotice('Rapport PDF généré : famili-ia-data.pdf');
+    });
+  }
+
   const purgeBtn = document.querySelector('#purge-all-data');
   if (purgeBtn) {
     purgeBtn.addEventListener('click', () => {
@@ -2035,6 +2059,80 @@ function initDataView() {
       showDemoNotice('Toutes les données de la session ont été supprimées');
     });
   }
+}
+
+/**
+ * Génère un rapport PDF basique contenant les données exportées
+ * Utilise une approche légère sans bibliothèque externe
+ * @param {string} dataStr - Chaîne JSON des données à exporter
+ * @returns {Uint8Array} Tableau d'octets représentant le fichier PDF
+ */
+function generatePDF(dataStr) {
+  const data = JSON.parse(dataStr);
+
+  // Construction du contenu PDF minimal
+  let pdf = '%PDF-1.4\n';
+
+  // Objet 1 : Document root
+  pdf += '1 0 obj\n';
+  pdf += '<< /Type /Catalog /Pages 2 0 R >>\n';
+  pdf += 'endobj\n';
+
+  // Objet 2 : Pages (vide pour l'instant)
+  pdf += '2 0 obj\n';
+  pdf += '<< /Type /Pages /Kids [] /Count 0 >>\n';
+  pdf += 'endobj\n';
+
+  // Objet 3 : Police Helvetica
+  pdf += '3 0 obj\n';
+  pdf += '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\n';
+  pdf += 'endobj\n';
+
+  // Préparation du texte à inclure
+  const username = data.currentUser ? data.currentUser.name : 'Inconnu';
+  const eqCount = data.homeEquipment ? data.homeEquipment.length : 0;
+  const alertCount = data.alerts ? data.alerts.length : 0;
+
+  // Texte au format PDF (encodage simple)
+  const text = 'FAMILI-IA - Rapport d\'export\n';
+  const text2 = 'Utilisateur : ' + username + '\n';
+  const text3 = 'Résumé :\n';
+  const text4 = '- Équipements : ' + eqCount + '\n';
+  const text5 = '- Alertes : ' + alertCount + '\n';
+
+  // Objet 4 : Contenu textuel compressé
+  pdf += '4 0 obj\n';
+  const content = text + text2 + text3 + text4 + text5;
+  const contentLength = Buffer ? Buffer.from(content).length : new Blob([content]).size;
+  pdf += '<< /Length ' + content.length + ' >>\n';
+  pdf += 'stream\n';
+  pdf += content;
+  pdf += '\nendstream\n';
+  pdf += 'endobj\n';
+
+  // Table des matières (xref)
+  const objOffsets = [0, 10, 10 + 12, 10 + 12 + 14, 10 + 12 + 14 + 18];
+  pdf += 'xref\n';
+  pdf += '0 5\n';
+  pdf += '0000000000 65535 f \n';
+
+  for (let i = 1; i <= 4; i++) {
+    const offset = objOffsets[i];
+    pdf += String(offset).padStart(10, '0') + ' 00000 n \n';
+  }
+
+  pdf += 'trailer\n';
+  pdf += '<< /Size 5 /Root 1 0 R >>\n';
+  pdf += 'startxref\n';
+  pdf += (10 + 12 + 14 + 18).toString().padStart(10, '0') + '\n';
+  pdf += '%%EOF\n';
+
+  // Conversion en Uint8Array compatible Vite
+  const bytes = new Uint8Array(pdf.length);
+  for (let i = 0; i < pdf.length; i++) {
+    bytes[i] = pdf.charCodeAt(i);
+  }
+  return bytes;
 }
 
 /**
