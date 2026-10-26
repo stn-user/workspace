@@ -1430,8 +1430,8 @@ function renderAccueilDashboard() {
   // Update dashboard greeting
   const greetingName = document.querySelector('#dashboard-title strong, #dashboard-title');
   if (greetingName && greetingName.textContent?.includes('Bonjour')) {
-    // Utilisation du code Unicode pour l'emoji mainlevée 👋 pour éviter les problèmes d'encodage
-    greetingName.innerHTML = `Bonjour ${user.name} <span aria-hidden="true">🙋</span>`;
+    // Icône d'étincelles ✨ pour marquer l'accueil
+    greetingName.innerHTML = `Bonjour ${user.name} <span aria-hidden="true">✨</span>`;
   }
 
   // Update stats grid with real data (preserving SVG icons)
