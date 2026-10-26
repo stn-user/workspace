@@ -1,4 +1,4 @@
-import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch, normalizeText } from "./search-utils.js";
+﻿import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch, normalizeText } from "./search-utils.js";
 import { GoogleDriveClient } from "./google-drive.js";
 // Mock Capacitor pour le navigateur web (non disponible en local sans build)
 const Capacitor = { isNativePlatform: () => false };
@@ -23,8 +23,8 @@ function updateClearFilesButtonsVisibility() {
   const hasFiles = uploadedDocuments.length > 0;
   const isDataView = activeView === 'vos-donnees';
 
-  clearFilesButton.hidden = !(hasFiles && isDataView);
-  disconnectGoogleDriveButton.hidden = !(hasFiles && isDataView && googleDriveClient?.hasAccessToken);
+  if (clearFilesButton) clearFilesButton.hidden = !(hasFiles && isDataView);
+  if (disconnectGoogleDriveButton) disconnectGoogleDriveButton.hidden = !(hasFiles && isDataView && googleDriveClient?.hasAccessToken);
 }
 
 
@@ -99,8 +99,8 @@ const documents = [
     type: "Facture",
     date: "4 mars 2023",
     keywords: "piscine facture paiement prix payé cout installation montant",
-    summary: "La facture d’installation de la piscine indique un montant total de 8 900 € TTC, réglé le 4 mars 2023.",
-    content: "AQUA JARDIN — FACTURE N° AJ-2023-0318\nDate : 4 mars 2023\nObjet : Installation d’une piscine familiale\nMontant total : 8 900 € TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
+    summary: "La facture d'installation de la piscine indique un montant total de 8 900 â‚¬ TTC, réglé le 4 mars 2023.",
+    content: "AQUA JARDIN — FACTURE NÂ° AJ-2023-0318\nDate : 4 mars 2023\nObjet : Installation d'une piscine familiale\nMontant total : 8 900 â‚¬ TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
   },
   {
     id: "piscine-garantie",
@@ -108,7 +108,7 @@ const documents = [
     type: "Garantie",
     date: "12 avril 2023",
     keywords: "garantie pompe piscine duree échéance fin expire expiration hayward modèle 2022",
-    summary: "La garantie de la pompe Hayward Modèle 2022 est valable jusqu’au 4 mai 2028.",
+    summary: "La garantie de la pompe Hayward Modèle 2022 est valable jusqu'au 4 mai 2028.",
     content: "CERTIFICAT DE GARANTIE — ÉQUIPEMENT PISCINE\nÉquipement : Pompe Hayward Modèle 2022\nDate de début : 4 mai 2023\nDurée : 5 ans\nFin de garantie : 4 mai 2028\n\nExemple fictif créé pour le prototype Famili-IA."
   },
   {
@@ -117,8 +117,8 @@ const documents = [
     type: "Facture",
     date: "10 février 2025",
     keywords: "bambu lab a1 imprimante facture numéro référence achat prix coût montant",
-    summary: "La facture de la Bambu Lab A1 porte le numéro BL-2025-10482. Le montant indiqué est de 449 € TTC.",
-    content: "BAMBU STORE — FACTURE N° BL-2025-10482\nDate : 10 février 2025\nArticle : Imprimante Bambu Lab A1\nMontant : 449 € TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
+    summary: "La facture de la Bambu Lab A1 porte le numéro BL-2025-10482. Le montant indiqué est de 449 â‚¬ TTC.",
+    content: "BAMBU STORE — FACTURE NÂ° BL-2025-10482\nDate : 10 février 2025\nArticle : Imprimante Bambu Lab A1\nMontant : 449 â‚¬ TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
   },
   {
     id: "habitation-contrat",
@@ -126,8 +126,8 @@ const documents = [
     type: "Contrat",
     date: "1 janvier 2025",
     keywords: "contrat assurance habitation échéance termine fin renouvellement date",
-    summary: "Le contrat d’assurance habitation arrive à échéance le 31 décembre 2025. La reconduction est prévue à cette date, sauf résiliation.",
-    content: "ASSURANCE DEMO — CONTRAT HABITATION N° HAB-2025-7204\nDate d’effet : 1er janvier 2025\nÉchéance annuelle : 31 décembre 2025\nReconduction : tacite, sauf résiliation\n\nExemple fictif créé pour le prototype Famili-IA."
+    summary: "Le contrat d'assurance habitation arrive à échéance le 31 décembre 2025. La reconduction est prévue à cette date, sauf résiliation.",
+    content: "ASSURANCE DEMO — CONTRAT HABITATION NÂ° HAB-2025-7204\nDate d'effet : 1er janvier 2025\nÉchéance annuelle : 31 décembre 2025\nReconduction : tacite, sauf résiliation\n\nExemple fictif créé pour le prototype Famili-IA."
   },
   {
     id: "maison-notice",
@@ -135,8 +135,8 @@ const documents = [
     type: "Notice",
     date: "7 mars 2023",
     keywords: "notice filtre piscine entretien nettoyage cartouche",
-    summary: "La notice recommande de rincer la cartouche du filtre toutes les deux semaines en période d’utilisation.",
-    content: "NOTICE D’ENTRETIEN — FILTRE DE PISCINE\nFréquence de rinçage recommandée : toutes les deux semaines en période d’utilisation.\nRemplacement de la cartouche : selon l’usure et au minimum une fois par saison.\n\nExemple fictif créé pour le prototype Famili-IA."
+    summary: "La notice recommande de rincer la cartouche du filtre toutes les deux semaines en période d'utilisation.",
+    content: "NOTICE D'ENTRETIEN — FILTRE DE PISCINE\nFréquence de rinçage recommandée : toutes les deux semaines en période d'utilisation.\nRemplacement de la cartouche : selon l'usure et au minimum une fois par saison.\n\nExemple fictif créé pour le prototype Famili-IA."
   }
 ];
 
@@ -181,18 +181,20 @@ const sidebarModeCopy = document.querySelector("#sidebar-mode-copy");
 function updateModeBanner() {
   const hasDriveFiles = uploadedDocuments.some((file) => file.driveSource);
   const hasLocalFiles = uploadedDocuments.some((file) => file.isLocal && !file.driveDemo && !file.driveSource);
-  if (hasDriveFiles) {
-    demoStatusLabel.textContent = "Drive de test — contenu en mémoire locale";
-    sidebarModeCopy.textContent = "Fichiers choisis manuellement ; aucune IA ni serveur Famili-IA.";
-  } else if (hasLocalFiles) {
-    demoStatusLabel.textContent = "Prototype — fichiers locaux";
-    sidebarModeCopy.textContent = "Fichiers choisis depuis cet appareil et traités localement.";
-  } else if (googleDriveReady) {
-    demoStatusLabel.textContent = "Prototype — Drive facultatif";
-    sidebarModeCopy.textContent = "Aucun fichier Drive n’est lu sans votre sélection explicite.";
-  } else {
-    demoStatusLabel.textContent = "Prototype — données fictives";
-    sidebarModeCopy.textContent = "Exemples inventés, sans connexion à vos services.";
+  if (demoStatusLabel && sidebarModeCopy) {
+    if (hasDriveFiles) {
+      demoStatusLabel.textContent = "Drive de test — contenu en mémoire locale";
+      sidebarModeCopy.textContent = "Fichiers choisis manuellement ; aucune IA ni serveur Famili-IA.";
+    } else if (hasLocalFiles) {
+      demoStatusLabel.textContent = "Prototype — fichiers locaux";
+      sidebarModeCopy.textContent = "Fichiers choisis depuis cet appareil et traités localement.";
+    } else if (googleDriveReady) {
+      demoStatusLabel.textContent = "Prototype — Drive facultatif";
+      sidebarModeCopy.textContent = "Aucun fichier Drive n'est lu sans votre sélection explicite.";
+    } else {
+      demoStatusLabel.textContent = "Prototype — données fictives";
+      sidebarModeCopy.textContent = "Exemples inventés, sans connexion à vos services.";
+    }
   }
 }
 
@@ -241,25 +243,25 @@ function renderDocuments(matches) {
     const card = document.createElement("article");
     card.className = "document-card";
 
-    const icon = addTextElement(card, "span", "file-icon", "▤");
+    const icon = addTextElement(card, "span", "file-icon", "â–¤");
     icon.setAttribute("aria-hidden", "true");
 
     const info = document.createElement("div");
     info.className = "document-info";
     addTextElement(info, "p", "document-name", sourceDocument.name);
     const origin = sourceDocument.driveSource
-      ? "☁️ Google Drive · copie temporaire locale"
+      ? "â˜ï¸ Google Drive · copie temporaire locale"
       : sourceDocument.driveDemo
         ? "Sélection Google Drive simulée · fichier fictif"
         : sourceDocument.isLocal
           ? sourceDocument.sourceDir && Capacitor.isNativePlatform()
-            ? "💾 Stockage local · non transmis"
-            : "💾 Fichier local · non transmis"
+            ? "ðŸ’¾ Stockage local · non transmis"
+            : "ðŸ’¾ Fichier local · non transmis"
           : "Exemple fictif";
     addTextElement(info, "p", "document-meta", `${sourceDocument.type} · ${sourceDocument.date} · ${origin}`);
     card.append(info);
 
-    const button = addTextElement(card, "button", "source-button", "Voir l’extrait");
+    const button = addTextElement(card, "button", "source-button", "Voir l'extrait");
     button.type = "button";
     button.addEventListener("click", () => openSource(sourceDocument));
     documentList.append(card);
@@ -271,7 +273,7 @@ function openSource(document) {
     ? "FICHIER CHOISI DANS GOOGLE DRIVE"
     : document.isLocal
       ? document.sourceDir && Capacitor.isNativePlatform()
-        ? "💾 FICHIER STOCKAGE LOCAL"
+        ? "ðŸ’¾ FICHIER STOCKAGE LOCAL"
         : "FICHIER DE CETTE SESSION"
       : "DOCUMENT DE DÉMONSTRATION";
   dialogTitle.textContent = document.name;
@@ -285,14 +287,14 @@ function openSource(document) {
           : `${document.type} · chargé localement pour cette session`
     : `${document.type} · ${document.date} · Source de démonstration`;
   dialogNoticeText.textContent = document.driveSource
-    ? "Fichier explicitement choisi dans Google Picker. Le contenu est conservé en mémoire dans ce navigateur et n’est envoyé ni à un serveur Famili-IA ni à une IA."
+    ? "Fichier explicitement choisi dans Google Picker. Le contenu est conservé en mémoire dans ce navigateur et n'est envoyé ni à un serveur Famili-IA ni à une IA."
     : document.driveDemo
-      ? "Ceci est un contenu fictif. Aucun compte Google n’est connecté et aucun fichier Drive réel n’a été consulté."
+      ? "Ceci est un contenu fictif. Aucun compte Google n'est connecté et aucun fichier Drive réel n'a été consulté."
       : document.isLocal
         ? document.sourceDir && Capacitor.isNativePlatform()
           ? "Fichier scanné depuis votre stockage local (Documents/Téléchargements). Le contenu est traité en mémoire et n'est pas transmis à un serveur."
-          : "Fichier choisi depuis cet appareil. Le contenu est traité localement et n’est pas transmis."
-        : "Ceci est un contenu d’exemple inventé pour le prototype.";
+          : "Fichier choisi depuis cet appareil. Le contenu est traité localement et n'est pas transmis."
+        : "Ceci est un contenu d'exemple inventé pour le prototype.";
   dialogContent.textContent = document.content;
   sourceDialog.showModal();
 }
@@ -423,17 +425,21 @@ function updateDriveConnectionActions() {
 }
 
 function updateGoogleDriveButton() {
-  connectGoogleDriveButton.disabled = !googleDriveReady || uploadedDocuments.length >= maxFiles;
-  if (isNativePlatform) {
-    googleDriveChoiceDescription.textContent = "La connexion Google native n’est pas encore disponible dans l’application mobile.";
-  } else if (!hasGoogleDriveConfig) {
-    googleDriveChoiceDescription.textContent = "La connexion n’est pas configurée dans cette version web.";
-  } else if (!googleDriveReady) {
-    googleDriveChoiceDescription.textContent = "Connexion en cours de préparation…";
-  } else if (uploadedDocuments.length >= maxFiles) {
-    googleDriveChoiceDescription.textContent = "Limite de fichiers atteinte. Retirez-en pour en ajouter d’autres.";
-  } else {
-    googleDriveChoiceDescription.textContent = "Connecter votre compte puis choisir les fichiers à consulter.";
+  if (connectGoogleDriveButton) {
+    connectGoogleDriveButton.disabled = !googleDriveReady || uploadedDocuments.length >= maxFiles;
+  }
+  if (googleDriveChoiceDescription) {
+    if (isNativePlatform) {
+      googleDriveChoiceDescription.textContent = "La connexion Google native n'est pas encore disponible dans l'application mobile.";
+    } else if (!hasGoogleDriveConfig) {
+      googleDriveChoiceDescription.textContent = "La connexion n'est pas configurée dans cette version web.";
+    } else if (!googleDriveReady) {
+      googleDriveChoiceDescription.textContent = "Connexion en cours de préparation…";
+    } else if (uploadedDocuments.length >= maxFiles) {
+      googleDriveChoiceDescription.textContent = "Limite de fichiers atteinte. Retirez-en pour en ajouter d'autres.";
+    } else {
+      googleDriveChoiceDescription.textContent = "Connecter votre compte puis choisir les fichiers à consulter.";
+    }
   }
 }
 
@@ -649,12 +655,12 @@ function updateDrivePickerCount() {
 }
 
 if (googleDriveClient) {
-  setDriveConnectionStatus("Chargement des bibliothèques Google. Aucun accès aux fichiers n’est demandé avant votre action.", "success");
+  setDriveConnectionStatus("Chargement des bibliothèques Google. Aucun accès aux fichiers n'est demandé avant votre action.", "success");
   googleDriveClient.initialize().then(() => {
     googleDriveReady = true;
     updateGoogleDriveButton();
     updateModeBanner();
-    setDriveConnectionStatus("Prêt. Choisissez Google Drive pour demander l’accès drive.file et sélectionner vos fichiers dans le sélecteur officiel.", "success");
+    setDriveConnectionStatus("Prêt. Choisissez Google Drive pour demander l'accès drive.file et sélectionner vos fichiers dans le sélecteur officiel.", "success");
   }).catch((error) => {
     setDriveConnectionStatus(`Connexion Google indisponible : ${error.message}`, "error");
   });
@@ -691,16 +697,16 @@ connectGoogleDriveButton.addEventListener("click", async () => {
   sourceChoiceDialog.close();
   const remainingCount = maxFiles - uploadedDocuments.length;
   if (!googleDriveClient || remainingCount < 1) {
-    setDriveConnectionStatus("La limite de cinq fichiers par session est atteinte. Retirez des fichiers avant d’en choisir d’autres.", "error");
+    setDriveConnectionStatus("La limite de cinq fichiers par session est atteinte. Retirez des fichiers avant d'en choisir d'autres.", "error");
     return;
   }
 
   connectGoogleDriveButton.disabled = true;
-  setDriveConnectionStatus("Ouverture de l’autorisation Google. Vous pouvez annuler avant de choisir des fichiers.", "success");
+  setDriveConnectionStatus("Ouverture de l'autorisation Google. Vous pouvez annuler avant de choisir des fichiers.", "success");
   try {
     const loadedFiles = await googleDriveClient.pickFiles(remainingCount);
     if (loadedFiles.length === 0) {
-      setDriveConnectionStatus("Sélection annulée. Aucun fichier n’a été lu.", "success");
+      setDriveConnectionStatus("Sélection annulée. Aucun fichier n'a été lu.", "success");
       return;
     }
 
@@ -722,10 +728,10 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     sourceChoiceDialog.close();
     showView("recherche");
     setFileStatus(
-      `${newFiles.length} fichier${newFiles.length === 1 ? "" : "s"} Drive chargé${newFiles.length === 1 ? "" : "s"} en mémoire locale. Aucun serveur Famili-IA ni IA n’a reçu leur contenu.`,
+      `${newFiles.length} fichier${newFiles.length === 1 ? "" : "s"} Drive chargé${newFiles.length === 1 ? "" : "s"} en mémoire locale. Aucun serveur Famili-IA ni IA n'a reçu leur contenu.`,
       "success"
     );
-    setDriveConnectionStatus("Fichiers choisis et chargés en mémoire pour cette session. « Retirer mes fichiers » effacera le contenu et révoquera l’autorisation.", "success");
+    setDriveConnectionStatus("Fichiers choisis et chargés en mémoire pour cette session. « Retirer mes fichiers » effacera le contenu et révoquera l'autorisation.", "success");
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Erreur Google non détaillée.";
     setDriveConnectionStatus(`La sélection Drive a échoué : ${reason}`, "error");
@@ -787,7 +793,7 @@ if (confirmDrivePickerButton && drivePickerList) {
     updateModeBanner();
     completeOnboarding();
     setFileStatus(
-      `${selectedDocuments.length} fichier${selectedDocuments.length === 1 ? "" : "s"} fictif${selectedDocuments.length === 1 ? "" : "s"} ajouté${selectedDocuments.length === 1 ? "" : "s"} à la session. Aucun compte Google n’est connecté et aucun fichier Drive n’a été consulté.`,
+      `${selectedDocuments.length} fichier${selectedDocuments.length === 1 ? "" : "s"} fictif${selectedDocuments.length === 1 ? "" : "s"} ajouté${selectedDocuments.length === 1 ? "" : "s"} à la session. Aucun compte Google n'est connecté et aucun fichier Drive n'a été consulté.`,
       "success"
     );
     drivePickerDialog.close();
@@ -808,9 +814,11 @@ document.querySelectorAll("[data-question]").forEach((button) => {
   });
 });
 
-localFilesInput.addEventListener("change", () => {
-  loadLocalFiles(localFilesInput.files);
-});
+if (localFilesInput) {
+  localFilesInput.addEventListener("change", () => {
+    loadLocalFiles(localFilesInput.files);
+  });
+}
 
 async function clearSessionFiles() {
   const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
@@ -840,13 +848,17 @@ async function clearSessionFiles() {
       setDriveConnectionStatus(`Fichiers retirés localement, mais révocation Google non confirmée : ${error.message}`, "error");
     }
   } else {
-    setDriveConnectionStatus("Fichiers retirés de la mémoire locale. Aucun jeton Google n’était actif.", "success");
+    setDriveConnectionStatus("Fichiers retirés de la mémoire locale. Aucun jeton Google n'était actif.", "success");
   }
   updateDriveConnectionActions();
 }
 
-clearFilesButton.addEventListener("click", clearSessionFiles);
-disconnectGoogleDriveButton.addEventListener("click", clearSessionFiles);
+if (clearFilesButton) {
+  clearFilesButton.addEventListener("click", clearSessionFiles);
+}
+if (disconnectGoogleDriveButton) {
+  disconnectGoogleDriveButton.addEventListener("click", clearSessionFiles);
+}
 
 document.querySelector("#close-dialog").addEventListener("click", () => sourceDialog.close());
 sourceDialog.addEventListener("click", (event) => {
@@ -867,7 +879,6 @@ const pageTitles = {
   profil: "Profil",
   "vos-donnees": "Vos données"
 };
-const toast = document.querySelector("#toast-message");
 let toastTimeout;
 let activeView = "accueil";
 
@@ -1080,12 +1091,32 @@ window.addEventListener("popstate", (event) => {
   }
 });
 
-function showDemoNotice(message = "Cette fonction est illustrée par des données fictives ; aucun compte réel n’est connecté.") {
-  toast.textContent = message;
-  toast.hidden = false;
+function showDemoNotice(message = "Cette fonction est illustrée par des données fictives ; aucun compte réel n'est connecté.") {
+  let toastEl = document.querySelector("#toast-message");
+  if (!toastEl) {
+    toastEl = document.createElement("div");
+    toastEl.id = "toast-message";
+    toastEl.style.position = "fixed";
+    toastEl.style.bottom = "24px";
+    toastEl.style.left = "50%";
+    toastEl.style.transform = "translateX(-50%)";
+    toastEl.style.backgroundColor = "var(--color-text, #0f172a)";
+    toastEl.style.color = "white";
+    toastEl.style.padding = "10px 18px";
+    toastEl.style.borderRadius = "8px";
+    toastEl.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+    toastEl.style.fontSize = "0.9rem";
+    toastEl.style.fontWeight = "500";
+    toastEl.style.zIndex = "9999";
+    toastEl.style.transition = "opacity 0.2s ease-in-out";
+    document.body.appendChild(toastEl);
+  }
+  toastEl.textContent = message;
+  toastEl.hidden = false;
+  toastEl.style.opacity = "1";
   window.clearTimeout(toastTimeout);
   toastTimeout = window.setTimeout(() => {
-    toast.hidden = true;
+    toastEl.hidden = true;
   }, 3500);
 }
 
@@ -1153,10 +1184,22 @@ document.querySelectorAll("[data-nav~='profil']").forEach((button) => {
     const user = getCurrentUser();
     const avatar = document.querySelector("#profile-avatar");
     const nameInput = document.querySelector("#edit-name");
+    const addressInput = document.querySelector("#edit-profile-address");
+    const postalInput = document.querySelector("#edit-profile-postal");
+    const cityInput = document.querySelector("#edit-profile-city");
     const roleEl = document.querySelector("#profile-role");
     if (avatar && nameInput) {
       avatar.textContent = user.avatar || 'S';
       nameInput.value = user.name || 'Steve';
+    }
+    if (addressInput && user.address) {
+      addressInput.value = user.address;
+    }
+    if (postalInput && user.postalCode) {
+      postalInput.value = user.postalCode;
+    }
+    if (cityInput && user.city) {
+      cityInput.value = user.city;
     }
     if (roleEl) {
       roleEl.textContent = user.role || 'Administrateur';
@@ -1179,7 +1222,19 @@ function initProfileHandlers() {
       user.name = newName;
       user.avatar = newName.charAt(0).toUpperCase();
 
-      // Update privacy settings
+      // Update address, postal code, city
+      const addressInput = document.querySelector("#edit-profile-address");
+      const postalInput = document.querySelector("#edit-profile-postal");
+      const cityInput = document.querySelector("#edit-profile-city");
+      if (addressInput) {
+        user.address = addressInput.value.trim();
+      }
+      if (postalInput) {
+        user.postalCode = postalInput.value.trim();
+      }
+      if (cityInput) {
+        user.city = cityInput.value.trim();
+      }
       user.privacy.telemetryEnabled = document.querySelector('#consent-telemetry').checked;
       user.privacy.dataSharingConsent = document.querySelector('#consent-sharing').checked;
 
@@ -1206,11 +1261,23 @@ function initProfileHandlers() {
       const user = getCurrentUser();
       const avatar = document.querySelector("#profile-avatar");
       const nameInput = document.querySelector("#edit-name");
+      const addressInput = document.querySelector("#edit-profile-address");
+      const postalInput = document.querySelector("#edit-profile-postal");
+      const cityInput = document.querySelector("#edit-profile-city");
       const roleEl = document.querySelector("#profile-role");
 
       if (avatar && nameInput) {
         avatar.textContent = user.avatar || (user.name ? user.name.charAt(0).toUpperCase() : 'S');
         nameInput.value = user.name || 'Steve';
+      }
+      if (addressInput && user.address) {
+        addressInput.value = user.address;
+      }
+      if (postalInput && user.postalCode) {
+        postalInput.value = user.postalCode;
+      }
+      if (cityInput && user.city) {
+        cityInput.value = user.city;
       }
       if (roleEl) {
         roleEl.textContent = user.role || 'Administrateur';
@@ -1244,36 +1311,15 @@ document.querySelectorAll("[data-nav~='vos-donnees']").forEach((button) => {
  * @returns {string} HTML img tag or SVG icon
  */
 function getEquipmentIcon(category, eqId) {
-  // Map categories to possible asset image paths
-  const assetPaths = {
-    'pompe': `assets/maison/pompe/pompe-photo.jpg`,
-    'piscine': `assets/maison/piscine/piscine-photo.jpg`,
-    'imprimante': `assets/maison/imprimante/imprimante-photo.jpg`,
-    'assurance': `assets/maison/assurance/assurance-photo.jpg`,
-    'tout': `assets/maison/maison-photo.jpg`
-  };
-
-  const assetPath = assetPaths[category];
-
-  // Check if asset image exists (synchronous check via new Image)
-  const img = new Image();
-  img.src = assetPath;
-
-  // Return image if naturalWidth > 0 (loaded), otherwise return SVG fallback
-  if (img.naturalWidth > 0) {
-    return `<img src="${assetPath}" alt="${category}" class="equipment-row-icon" style="width:100%;height:100%;object-fit:contain;border-radius:8px;">`;
-  }
-
-  // Fallback SVG icons by category
   const svgFallbacks = {
     'pompe': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
     'piscine': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/></svg>`,
     'imprimante': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`,
     'assurance': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
-    'tout': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y9="9"/></svg>`
+    'tout': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>`
   };
 
-  return svgFallbacks[category] || svgFallbacks['tout'];
+  return svgFallbacks[category] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>`;
 }
 
 /**
@@ -1384,7 +1430,7 @@ function renderAccueilDashboard() {
   // Update dashboard greeting
   const greetingName = document.querySelector('#dashboard-title strong, #dashboard-title');
   if (greetingName && greetingName.textContent?.includes('Bonjour')) {
-    greetingName.innerHTML = `Bonjour ${user.name} <span aria-hidden="true">👋</span>`;
+    greetingName.innerHTML = `Bonjour ${user.name} <span aria-hidden="true">ðŸ‘‹</span>`;
   }
 
   // Update stats grid with real data (preserving SVG icons)
@@ -1481,7 +1527,7 @@ function initEquipmentDetailView(eqId) {
 
   if (!eqDetail) {
     detailTitle.textContent = "Équipement non trouvé";
-    detailContent.innerHTML = '<p class="error-state">Désolé, cet équipement n’existe pas ou a été supprimé.</p>';
+    detailContent.innerHTML = '<p class="error-state">Désolé, cet équipement n\'existe pas ou a été supprimé.</p>';
     return;
   }
 
@@ -1514,7 +1560,7 @@ function initEquipmentDetailView(eqId) {
                 const docName = doc ? doc.name : docId;
                 return `
                   <button class="doc-link-card" type="button" data-doc-id="${docId}">
-                    <span class="doc-icon">📄</span>
+                    <span class="doc-icon">ðŸ“„</span>
                     <span class="doc-name">${docName}</span>
                     <span class="doc-arrow">›</span>
                   </button>
@@ -1526,16 +1572,16 @@ function initEquipmentDetailView(eqId) {
 
       <div class="equipment-actions">
         <button class="context-action-button" type="button" id="edit-equipment">
-          <span>✎</span> Modifier
+          <span>âœŽ</span> Modifier
         </button>
         <button class="context-action-button" type="button" id="delete-equipment" style="color: var(--color-danger, #ef4444);">
-          <span>🗑</span> Supprimer
+          <span>ðŸ—‘</span> Supprimer
         </button>
         <button class="context-action-button" type="button" data-demo-action>
-          <span>＋</span> Lier un document
+          <span>+</span> Lier un document
         </button>
         <button class="context-action-button" type="button" data-demo-action>
-          <span>↻</span> Historique
+          <span>â†»</span> Historique
         </button>
       </div>
     </div>
@@ -1747,6 +1793,20 @@ function initHouseView() {
       openEquipmentForm();
     });
   }
+
+  // Synchroniser l'adresse, le code postal et la ville avec l'état global de l'utilisateur
+  const user = getCurrentUser();
+  const displayAddress = document.querySelector('#display-address');
+  const displayCity = document.querySelector('#display-city');
+
+  if (displayAddress && user.address) {
+    displayAddress.textContent = user.address;
+  }
+  if (displayCity) {
+    const postal = user.postalCode || '';
+    const city = user.city || '';
+    displayCity.textContent = `${postal} ${city}`.trim();
+  }
 }
 
 /**
@@ -1782,7 +1842,7 @@ function renderFamilyMembers() {
   // Always show the add-member button, even when list is empty
   memberList.innerHTML += `
     <button class="member-card add-member" type="button">
-      <span class="add-member-icon">＋</span>
+      <span class="add-member-icon">+</span>
       <strong>Gérer les accès</strong>
       <span>Famille et invités</span>
     </button>
@@ -1869,11 +1929,11 @@ function openManageMembersModal() {
     modal.innerHTML = `
       <div class="dialog-header">
         <div><p class="eyebrow">FAMILLE</p><h2 id="manage-members-title">Gérer les membres et accès</h2></div>
-        <button class="close-button" id="close-manage-members" type="button" aria-label="Fermer">×</button>
+        <button class="close-button" id="close-manage-members" type="button" aria-label="Fermer">Ã—</button>
       </div>
       <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
         <div id="manage-members-list" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 300px; overflow-y: auto;"></div>
-        <button class="primary-button" id="open-add-member-from-manager" type="button" style="background: var(--color-primary, #0f7173); color: white; padding: 0.75rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">＋ Ajouter un membre</button>
+        <button class="primary-button" id="open-add-member-from-manager" type="button" style="background: var(--color-primary, #0f7173); color: white; padding: 0.75rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">+ Ajouter un membre</button>
       </div>
     `;
     document.body.appendChild(modal);
@@ -2233,7 +2293,7 @@ function addAIMessage(text, container) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'chat-message ai';
   msgDiv.innerHTML = `
-    <div class="chat-avatar">✦</div>
+    <div class="chat-avatar">âœ¦</div>
     <div class="chat-bubble">${text}</div>
   `;
   container.appendChild(msgDiv);
@@ -2334,7 +2394,7 @@ function showAlertNotifications(alerts) {
     Notification.requestPermission().then(permission => {
       if (permission === 'granted') {
         alerts.forEach(alert => {
-          new Notification('📅 Famili-IA - Alerte', {
+          new Notification('ðŸ“… Famili-IA - Alerte', {
             body: `${alert.title} : ${alert.detail}`,
             icon: '/favicon.ico'
           });
@@ -2343,7 +2403,7 @@ function showAlertNotifications(alerts) {
     });
   } else if (Notification.permission === 'granted') {
     alerts.forEach(alert => {
-      new Notification('📅 Famili-IA - Alerte', {
+      new Notification('ðŸ“… Famili-IA - Alerte', {
         body: `${alert.title} : ${alert.detail}`,
         icon: '/favicon.ico'
       });

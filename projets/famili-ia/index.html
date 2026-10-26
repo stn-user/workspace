@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f8ff">
-  <meta name="description" content="Famili-IA : retrouvez vos documents familiaux facilement et en toute confidentialité.">
+  <meta name="description" content="Famili-IA : retrouvez vos documents familiaux facilement en toute confidentialité.">
   <title>Accueil | Famili-IA</title>
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.js"></script>
@@ -78,11 +78,12 @@
         </div>
 
         <div class="stats-grid" aria-label="Résumé de démonstration">
-          <button class="stat-card" type="button" data-open-view="recherche"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg></span><span class="stat-copy"><span>Documents importants</span><strong>428</strong></span><span class="stat-arrow">›</span></button>
+          <button class="stat-card" type="button" data-open-view="recherche"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></span><span class="stat-copy"><span>Documents importants</span><strong>428</strong></span><span class="stat-arrow">›</span></button>
           <button class="stat-card" type="button" data-open-view="alertes"><span class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span class="stat-copy"><span>Garanties actives</span><strong>17</strong></span><span class="stat-arrow">›</span></button>
+          <button class="stat-card" type="button" data-open-view="maison"><span class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><span class="stat-copy"><span>Maison</span><strong>1</strong></span><span class="stat-arrow">›</span></button>
           <button class="stat-card" type="button" data-demo-action><span class="stat-icon violet"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="2"/></svg></span><span class="stat-copy"><span>Véhicules</span><strong>2</strong></span><span class="stat-arrow">›</span></button>
           <button class="stat-card" type="button" data-open-view="maison"><span class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><span class="stat-copy"><span>Maison</span><strong>1</strong></span><span class="stat-arrow">›</span></button>
-          <button class="stat-card" type="button" data-demo-action><span class="stat-icon purple"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 17"/></svg></span><span class="stat-copy"><span>Photos</span><strong>18 642</strong></span><span class="stat-arrow">›</span></button>
+          <button class="stat-card" type="button" data-demo-action><span class="stat-icon violet"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 17"/></svg></span><span class="stat-copy"><span>Photos</span><strong>18 642</strong></span><span class="stat-arrow">›</span></button>
           <button class="stat-card" type="button" data-open-view="recherche"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span><span class="stat-copy"><span>Contrats</span><strong>31</strong></span><span class="stat-arrow">›</span></button>
         </div>
 
@@ -98,7 +99,7 @@
       </section>
 
       <section class="view search-view" id="view-recherche" data-view="recherche" aria-labelledby="page-title" hidden>
-        <nav class="breadcrumbs" aria-label="Fil d’Ariane"><button type="button" data-open-view="accueil">Accueil</button><span aria-hidden="true">/</span><strong>Recherche</strong></nav>
+        <nav class="breadcrumbs" aria-label="Fil d'Ariane"><button type="button" data-open-view="accueil">Accueil</button><span aria-hidden="true">/</span><strong>Recherche</strong></nav>
         <section class="intro" aria-labelledby="page-title" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
           <div class="brand-mark" aria-hidden="true" style="margin-bottom: 1rem; width: auto; background: transparent;"><img src="assets/logo.svg" alt="Logo Famili-IA" class="logo-large"></div>
           <h1 id="page-title" style="margin: 0.5rem 0; text-align: center;">Que cherchez-vous&nbsp;?</h1>
@@ -142,14 +143,6 @@
           <div class="source-heading"><h3>Documents sources</h3><span>Vérifiez l'information dans son contexte</span></div>
           <div class="document-list" id="document-list"></div>
         </section>
-        <input class="visually-hidden" id="local-files-input" type="file" accept=".txt,.md,.pdf,.jpg,.jpeg,.png,text/plain,text/markdown,application/pdf,image/jpeg,image/png" multiple>
-        <p id="file-status" class="file-status-message" aria-live="polite" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--color-text-secondary);"></p>
-        <button class="clear-files" id="disconnect-google-drive" type="button" hidden>Déconnecter Drive</button>
-        <button class="clear-files" id="clear-files" type="button" hidden>Retirer mes fichiers</button>
-        <div class="empty-state" id="no-results" role="status" hidden>
-          <div class="empty-icon" aria-hidden="true">⌕</div>
-          <p>Aucun document correspondant. Essayez une question suggérée ou reformulez avec un mot-clé du document recherché.</p>
-        </div>
       </section>
 
       <section class="view house-view" id="view-maison" data-view="maison" aria-labelledby="house-title" hidden>
@@ -164,16 +157,17 @@
           <div class="property-illustration" aria-label="Photo de la maison">
             <img src="assets/maison/maison-photo.jpg" alt="Maison en pierre avec jardin" loading="lazy" style="width:48px;height:48px;border-radius:8px;object-fit:cover;">
           </div>
-          <div class="property-copy"><strong>Ma maison</strong><span>12 rue des Bleuets</span><span>Saint-Martin</span></div>
+          <div class="property-copy"><strong>Ma maison</strong><span id="display-address"></span><span id="display-city"></span></div>
+          <button class="text-button" type="button" data-open-view="profil" style="margin-left: auto; font-size: 0.85rem; color: var(--color-primary, #0f7173); font-weight: 500; border: none; background: none; cursor: pointer;">Modifier dans le profil</button>
           <span class="stat-arrow">›</span>
         </article>
         <div class="category-tabs" role="group" aria-label="Filtrer les équipements de la maison">
-          <button class="category-tab is-selected" type="button" data-house-category="tout"><img src="assets/maison/tout-photo.jpg" alt="Tout" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Tout</button>
-          <button class="category-tab" type="button" data-house-category="piscine"><img src="assets/maison/pool-photo.jpg" alt="Piscine" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Piscine</button>
-          <button class="category-tab" type="button" data-house-category="volets"><img src="assets/maison/volets-photo.jpg" alt="Volets" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Volets</button>
-          <button class="category-tab" type="button" data-house-category="pergola"><img src="assets/maison/pergola-photo.jpg" alt="Pergola" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Pergola</button>
-          <button class="category-tab" type="button" data-house-category="pompe"><img src="assets/maison/pompe-photo.jpg" alt="Pompe" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Pompe</button>
-          <button class="category-tab" type="button" data-house-category="chauffage"><img src="assets/maison/chauffage-photo.jpg" alt="Chauffage" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Chauffage</button>
+          <button class="category-tab is-selected" type="button" data-house-category="tout"><img src="assets/maison/maison-photo.jpg" alt="Tout" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Tout</button>
+          <button class="category-tab" type="button" data-house-category="piscine"><img src="assets/piscine/piscine-photo.jpg" alt="Piscine" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Piscine</button>
+          <button class="category-tab" type="button" data-house-category="volets"><img src="assets/store/store-photo.jpg" alt="Volets" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Volets</button>
+          <button class="category-tab" type="button" data-house-category="pergola"><img src="assets/pergola/pergola-photo.jpg" alt="Pergola" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Pergola</button>
+          <button class="category-tab" type="button" data-house-category="pompe"><img src="assets/pompe/pompe-photo.jpg" alt="Pompe" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Pompe</button>
+          <button class="category-tab" type="button" data-house-category="chauffage"><img src="assets/chaudiere/chaudiere-photo.jpg" alt="Chauffage" loading="lazy" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:0.5rem;">Chauffage</button>
         </div>
         <section class="panel equipment-panel" aria-labelledby="equipment-title">
           <div class="section-heading"><h2 id="equipment-title">Équipements</h2><button class="secondary-button" type="button" id="add-equipment-btn" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">＋ Ajouter</button></div>
@@ -212,7 +206,7 @@
             <button class="family-doc-row" type="button" data-open-view="recherche"><span class="doc-dot red"></span>Santé<span class="stat-arrow">›</span></button>
           </section>
           <section class="panel emergency-panel">
-            <div class="emergency-icon icon-circle icon-amber">♧</div><div><h2>Mode urgence</h2><p>En cas d'imprévu, votre famille peut accéder aux informations essentielles.</p><span class="active-pill">● Activé</span></div>
+            <div class="emergency-icon icon-circle icon-amber">♧</div><div><h2>Mode urgence</h2><p>En cas d'imprévu, votre famille peut accéder aux informations essentielles.<span class="active-pill">● Activé</span></div>
             <button class="secondary-button" type="button" data-demo-action>Configurer</button>
           </section>
         </div>
@@ -259,7 +253,7 @@
         <div class="view-header-centered">
           <div class="view-titles">
             <p class="eyebrow">VOTRE COMPAGNON NUMÉRIQUE</p>
-            <h1 id="assistant-title">Assistant Famili-IA</h1>
+            <h1 id="assistant-title">Assistant Famili-IA</p>
             <p>Posez vos questions à l'IA locale en toute confidentialité.</p>
           </div>
         </div>
@@ -285,7 +279,7 @@
         <div class="view-header-centered">
           <div class="view-titles">
             <p class="eyebrow">AJOUT DE DOCUMENTS</p>
-            <h1 id="import-title">Importer un document</h1>
+            <h1 id="import-title">Importer un document</p>
             <p>Ajouter des fichiers depuis votre appareil ou Drive.</p>
           </div>
         </div>
@@ -328,7 +322,7 @@
         <div class="view-header-centered">
           <div class="view-titles">
             <p class="eyebrow">MON COMPTE</p>
-            <h1 id="profile-title">Profil & Paramètres</h1>
+            <h1 id="profile-title">Profil & Paramètres</p>
             <p>Gérez vos préférences et informations personnelles.</p>
           </div>
         </div>
@@ -345,6 +339,18 @@
               <div class="field">
                 <label for="edit-name">Nom d'affichage</label>
                 <input type="text" id="edit-name" value="Steve">
+              </div>
+              <div class="field">
+                <label for="edit-profile-address">Adresse</label>
+                <input type="text" id="edit-profile-address" value="12 rue des Bleuets">
+              </div>
+              <div class="field">
+                <label for="edit-profile-postal">Code postal</label>
+                <input type="text" id="edit-profile-postal" value="31000">
+              </div>
+              <div class="field">
+                <label for="edit-profile-city">Ville</label>
+                <input type="text" id="edit-profile-city" value="Saint-Martin">
               </div>
               <div class="field">
                 <label>Rôle</label>
@@ -442,6 +448,7 @@
       </button>
     </div>
     <p class="source-choice-footnote">Google Drive ne donne accès qu'aux fichiers que vous sélectionnez. Aucun autre service cloud n'est encore connecté.</p>
+    <input type="file" id="local-files-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png">
   </dialog>
 
   <dialog class="source-dialog drive-picker-dialog" id="equipment-dialog" aria-labelledby="equipment-dialog-title">
@@ -477,6 +484,7 @@
       </div>
     </form>
     </dialog>
+  </dialog>
 
   <dialog class="source-dialog" id="add-member-dialog" aria-labelledby="add-member-title">
     <div class="dialog-header">

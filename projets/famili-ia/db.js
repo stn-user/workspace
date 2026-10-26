@@ -55,7 +55,6 @@ export const getAll = async (storeName) => {
 };
 
 export const put = async (storeName, data) => {
-  const store = await getStore(storeName, 'readwrite');
   let dataToStore = data;
   try {
     const encrypted = await encryptData(data);
@@ -63,6 +62,7 @@ export const put = async (storeName, data) => {
   } catch (e) {
     console.warn("Erreur de chiffrement, stockage en clair:", e);
   }
+  const store = await getStore(storeName, 'readwrite');
   return new Promise((resolve, reject) => {
     const request = store.put(dataToStore);
     request.onsuccess = () => resolve(request.result);

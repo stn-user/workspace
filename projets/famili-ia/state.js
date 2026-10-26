@@ -10,6 +10,9 @@ const defaultState = {
     name: 'Steve',
     role: 'Admin',
     avatar: 'S',
+    address: '12 rue des Bleuets',
+    postalCode: '31000',
+    city: 'Saint-Martin',
     preferences: {
       localAccess: true,
       driveConnection: false
