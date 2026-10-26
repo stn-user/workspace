@@ -28,6 +28,13 @@ Toutes les modifications notables de Famili-IA sont documentées ici. Ce projet 
 - **Nettoyage Codebase** : Résolution de l'erreur syntaxique `Identifier 'purgeDatabase' has already been declared` causée par une duplication de fonction dans `db.js`.
 - **Tests** : Ajout d'une suite de tests (Phase 8) validant la logique de chiffrement, la gestion des consentements et la purge de la base de données.
 
+### Sécurité & Corrections (Session actuelle)
+- **Chiffrement dynamique (8.1)** : Remplacement de la clé AES-GCM codée en dur par une clé générée dynamiquement et stockée dans IndexedDB, éliminant la vulnérabilité de clé statique.
+- **Export PDF (8.2)** : Implémentation d'un générateur de rapport PDF léger sans bibliothèque externe, permettant l'export des données vers `famili-ia-data.pdf`.
+- **Gestion des consentements (8.3)** : Ajout d'options de télémétrie anonyme et de partage de données dans la vue Profil, persistant via `state.updatePrivacyConsent`.
+- **Correction layout Données** : Remise en place correcte de la section `view-vos-donnees` dans `<main class="main-content">`, résolvant l'affichage en décalé par rapport à la sidebar.
+- **Correction Vite** : Débogage et correction de l'erreur de syntaxe JavaScript bloquant le démarrage de l'application (`app.js` ligne 2161).
+
 ### 🛠️ Correctifs et Améliorations
 - **Alignement Design (Étape 5.30)** :
   - Centrage du titre et de l'intro sur l'écran "Recherche IA" conformément aux maquettes.
