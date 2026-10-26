@@ -1238,8 +1238,13 @@ body {
 
 /* Logo sizes */
 .logo-sm { height: 28px; }
-.logo-md { height: 32px; }
-.logo-lg { height: 48px; }
+.logo-md { height: 40px; }
+.logo-lg { height: 64px; }
+.app-logo {
+  display: block;
+  width: auto;
+  object-fit: contain;
+}
 
 
 .text-button {
