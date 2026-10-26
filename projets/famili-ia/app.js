@@ -1431,7 +1431,7 @@ function renderAccueilDashboard() {
   const greetingName = document.querySelector('#dashboard-title strong, #dashboard-title');
   if (greetingName && greetingName.textContent?.includes('Bonjour')) {
     // Icône d'étincelles ✨ pour marquer l'accueil
-    greetingName.innerHTML = `Bonjour ${user.name} <span aria-hidden="true">✨</span>`;
+    greetingName.innerHTML = `Bonjour ${user.name} <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-3px; margin-left:6px; color: var(--color-primary, #0f7173);"><path d="M12 0C12 6.627 17.373 12 24 12C17.373 12 12 17.373 12 24C12 17.373 6.627 12 0 12C6.627 12 12 6.627 12 0Z"/></svg>`;
   }
 
   // Update stats grid with real data (preserving SVG icons)
