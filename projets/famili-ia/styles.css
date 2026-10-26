@@ -1,15 +1,15 @@
 :root {
-  /* Colors - Famili-IA Brand */
-  --color-primary: #0f7173;
-  --color-primary-dark: #0c5e5f;
-  --color-primary-light: #e6f4f4;
-  --color-bg: #f8fafc;
+  /* Colors - Famili-IA Brand (Monochrome / Noir & Blanc Épuré) */
+  --color-primary: #09090b;
+  --color-primary-dark: #000000;
+  --color-primary-light: #f4f4f5;
+  --color-bg: #fafafa;
   --color-surface: #ffffff;
-  --color-text: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #52525b;
-  --color-border: #e2e8f0;
-  --color-border-hover: #cbd5e1;
+  --color-text: #09090b;
+  --color-text-secondary: #52525b;
+  --color-text-muted: #71717a;
+  --color-border: #e4e4e7;
+  --color-border-hover: #a1a1aa;
 
   /* Accent Colors for Stats */
   --color-blue: #2563eb;
