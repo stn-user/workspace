@@ -1,16 +1,13 @@
+# Dépendances et builds
 node_modules/
 dist/
-android/.gradle/
-android/local.properties
-android/build/
+build/
 android/app/build/
-.env*
-!.env.example
-*.log
-*.tmp
-.vscode/
-.idea/
+
+# Fichiers temporaires et système
 .DS_Store
 Thumbs.db
-android/app/src/main/assets/public
-android/app/build/intermediates/assets/debug/mergeDebugAssets/public
+*.tmp
+*.bak
+.claude/
+.env.local

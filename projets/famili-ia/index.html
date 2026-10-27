@@ -143,6 +143,10 @@
           <div class="source-heading"><h3>Documents sources</h3><span>Vérifiez l'information dans son contexte</span></div>
           <div class="document-list" id="document-list"></div>
         </section>
+
+        <section class="no-results" id="no-results" hidden>
+          <p>Aucun résultat trouvé. Essayez de reformuler votre question ou ajoutez des documents.</p>
+        </section>
       </section>
 
       <section class="view house-view" id="view-maison" data-view="maison" aria-labelledby="house-title" hidden>
@@ -299,8 +303,11 @@
             </span>
             <p class="drop-text">Glissez un fichier ici</p>
             <label for="import-input" class="drop-button">Choisir un fichier</label>
-            <input type="file" id="import-input" class="visually-hidden" multiple accept=".txt,.md,.pdf">
-            <p class="drop-formats">Formats acceptés : .txt, .md, .pdf, .jpg, .jpeg, .png (max 10 Mo)</p>
+            <input type="file" id="import-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
+            <p class="drop-formats">Formats acceptés : .txt, .md, .pdf, .jpg, .jpeg, .png, .docx, .xlsx, .xls (max 10 Mo)</p>
+          </div>
+          <div id="import-file-list" style="margin-top: 1rem; font-size: 0.9rem; color: var(--color-text-secondary);">
+            <!-- Liste des fichiers importés -->
           </div>
           <div class="import-options">
             <button class="import-option active" type="button" data-action="drag-drop">
@@ -422,7 +429,7 @@
     <div class="dialog-header"><div><p class="eyebrow" id="dialog-eyebrow"></p><h2 id="dialog-title"></h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fermer">×</button></div>
     <p class="dialog-meta" id="dialog-meta"></p>
     <p class="dialog-content" id="dialog-content"></p>
-    <!-- <div class="dialog-notice"><span aria-hidden="true">ⓘ</span><span id="dialog-notice-text">Ceci est un contenu d'exemple inventé pour le prototype.</span></div> -->
+    <div class="dialog-notice"><span aria-hidden="true">ⓘ</span><span id="dialog-notice-text">Ceci est un contenu d'exemple inventé pour le prototype.</span></div>
   </dialog>
 
   <dialog class="source-dialog source-choice-dialog" id="source-choice-dialog" aria-labelledby="source-choice-title">
@@ -454,8 +461,8 @@
       </button>
     </div>
     <p class="source-choice-footnote">Google Drive ne donne accès qu'aux fichiers que vous sélectionnez. Aucun autre service cloud n'est encore connecté.</p>
-    <input type="file" id="local-files-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png">
   </dialog>
+  <input type="file" id="local-files-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
 
   <dialog class="source-dialog drive-picker-dialog" id="equipment-dialog" aria-labelledby="equipment-dialog-title">
     <div class="dialog-header">

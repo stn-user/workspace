@@ -77,16 +77,24 @@ function isCloseTermMatch(queryTerm, documentTerms) {
   });
 }
 
-export function getSearchMatch(question, searchableText) {
+export function getSearchMatch(question, searchableText, hasUploadedDocuments = false) {
   const terms = getQuestionTerms(question);
   if (terms.length === 0) return { matchedTerms: [], score: 0 };
 
   const documentTerms = [...new Set(normalizeText(searchableText).split(/\s+/))];
   const matchedTerms = terms.filter((term) => isCloseTermMatch(term, documentTerms));
   const specificTerms = terms.filter((term) => !genericSearchTerms.has(term));
-  if (specificTerms.some((term) => !matchedTerms.includes(term))) return { matchedTerms: [], score: 0 };
 
-  return { matchedTerms, score: matchedTerms.length / terms.length };
+  // Si des termes spécifiques sont demandés et qu'aucun ne matche, abandonner (strict pour les docs de démo, flexible pour les docs uploadés)
+  if (!hasUploadedDocuments && specificTerms.length > 0 && specificTerms.some((term) => !matchedTerms.includes(term))) {
+    return { matchedTerms: [], score: 0 };
+  }
+
+  // Calcul du score : on pénalise peu si peu de termes matche mais qu'il y a tout de même une correspondance partielle
+  const score = matchedTerms.length / Math.max(1, terms.length);
+  // Seuil abaissé à 0.3 pour les documents locaux (plus sensible)
+  const adjustedThreshold = hasUploadedDocuments ? 0.3 : 0.6;
+  return { matchedTerms, score: score >= adjustedThreshold ? score : 0 };
 }
 
 export function getIntentKeywords(intent) {

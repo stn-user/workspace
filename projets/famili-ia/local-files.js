@@ -4,6 +4,8 @@ const Filesystem = null;
 const Ocr = { process: async () => ({ results: [] }) };
 import * as pdfjs from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import mammoth from "mammoth";
+import * as XLSX from "xlsx";
 
 const maxPdfPages = 20;
 const renderScale = 1.5;
@@ -65,6 +67,32 @@ async function readPdfFile(fileBlob) {
 }
 
 /**
+ * Reads a DOCX file and extracts text content
+ */
+async function readDocxFile(fileBlob) {
+  const arrayBuffer = await fileBlob.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+}
+
+/**
+ * Reads an Excel file (XLSX) and extracts text content
+ */
+async function readExcelFile(fileBlob) {
+  const arrayBuffer = await fileBlob.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+  let text = "";
+  workbook.SheetNames.forEach(sheetName => {
+    const worksheet = workbook.Sheets[sheetName];
+    const sheetText = XLSX.utils.sheet_to_csv(worksheet);
+    text += `\n--- Feuille : ${sheetName} ---\n${sheetText}`;
+  });
+
+  return text.trim();
+}
+
+/**
  * Reads a text file (TXT/MD) from blob
  */
 async function readTextFile(fileBlob) {
@@ -87,6 +115,11 @@ async function readFileContent(fileBlob, filename) {
   switch (extension) {
     case 'pdf':
       return await readPdfFile(fileBlob);
+    case 'docx':
+      return await readDocxFile(fileBlob);
+    case 'xlsx':
+    case 'xls':
+      return await readExcelFile(fileBlob);
     case 'txt':
     case 'md':
       return await readTextFile(fileBlob);
@@ -171,7 +204,7 @@ async function listLocalFiles(directoryPath = "") {
       directory: Filesystem.Directory.Documents // or Data depending on what we need
     });
 
-    const supportedExtensions = new Set(['txt', 'md', 'pdf']);
+    const supportedExtensions = new Set(['txt', 'md', 'pdf', 'docx', 'xlsx', 'xls']);
     const filePromises = files
       .filter(file =>
         !file.name.startsWith('.') &&  // Skip hidden files
