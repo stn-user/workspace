@@ -1,0 +1,18 @@
+# Dépendances
+node_modules/
+package-lock.json
+
+# Builds et sorties
+dist/
+build/
+.gradle/
+android/app/build/
+android/app/build.gradle
+android/app/proguard-rules.pro
+android/app/src/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
