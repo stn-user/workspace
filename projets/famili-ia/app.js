@@ -243,20 +243,23 @@ function renderDocuments(matches) {
     const card = document.createElement("article");
     card.className = "document-card";
 
-    const icon = addTextElement(card, "span", "file-icon", "â–¤");
-    icon.setAttribute("aria-hidden", "true");
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "icon icon-bg-blue icon-circle";
+    iconSpan.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`;
+    iconSpan.setAttribute("aria-hidden", "true");
+    card.append(iconSpan);
 
     const info = document.createElement("div");
     info.className = "document-info";
     addTextElement(info, "p", "document-name", sourceDocument.name);
     const origin = sourceDocument.driveSource
-      ? "â˜ï¸ Google Drive · copie temporaire locale"
+      ? "Google Drive · copie temporaire locale"
       : sourceDocument.driveDemo
         ? "Sélection Google Drive simulée · fichier fictif"
         : sourceDocument.isLocal
           ? sourceDocument.sourceDir && Capacitor.isNativePlatform()
-            ? "ðŸ’¾ Stockage local · non transmis"
-            : "ðŸ’¾ Fichier local · non transmis"
+            ? "Stockage local · non transmis"
+            : "Fichier local · non transmis"
           : "Exemple fictif";
     addTextElement(info, "p", "document-meta", `${sourceDocument.type} · ${sourceDocument.date} · ${origin}`);
     card.append(info);
@@ -273,7 +276,7 @@ function openSource(document) {
     ? "FICHIER CHOISI DANS GOOGLE DRIVE"
     : document.isLocal
       ? document.sourceDir && Capacitor.isNativePlatform()
-        ? "ðŸ’¾ FICHIER STOCKAGE LOCAL"
+        ? "FICHIER STOCKAGE LOCAL"
         : "FICHIER DE CETTE SESSION"
       : "DOCUMENT DE DÉMONSTRATION";
   dialogTitle.textContent = document.name;
@@ -286,15 +289,17 @@ function openSource(document) {
           ? `${document.type} · ${document.sourceDir} · chargé depuis le stockage local natif`
           : `${document.type} · chargé localement pour cette session`
     : `${document.type} · ${document.date} · Source de démonstration`;
-  dialogNoticeText.textContent = document.driveSource
-    ? "Fichier explicitement choisi dans Google Picker. Le contenu est conservé en mémoire dans ce navigateur et n'est envoyé ni à un serveur Famili-IA ni à une IA."
-    : document.driveDemo
-      ? "Ceci est un contenu fictif. Aucun compte Google n'est connecté et aucun fichier Drive réel n'a été consulté."
-      : document.isLocal
-        ? document.sourceDir && Capacitor.isNativePlatform()
-          ? "Fichier scanné depuis votre stockage local (Documents/Téléchargements). Le contenu est traité en mémoire et n'est pas transmis à un serveur."
-          : "Fichier choisi depuis cet appareil. Le contenu est traité localement et n'est pas transmis."
-        : "Ceci est un contenu d'exemple inventé pour le prototype.";
+  if (dialogNoticeText) {
+    dialogNoticeText.textContent = document.driveSource
+      ? "Fichier explicitement choisi dans Google Picker. Le contenu est conservé en mémoire dans ce navigateur et n'est envoyé ni à un serveur Famili-IA ni à une IA."
+      : document.driveDemo
+        ? "Ceci est un contenu fictif. Aucun compte Google n'est connecté et aucun fichier Drive réel n'a été consulté."
+        : document.isLocal
+          ? document.sourceDir && Capacitor.isNativePlatform()
+            ? "Fichier scanné depuis votre stockage local (Documents/Téléchargements). Le contenu est traité en mémoire et n'est pas transmis à un serveur."
+            : "Fichier choisi depuis cet appareil. Le contenu est traité localement et n'est pas transmis."
+          : "Ceci est un contenu d'exemple inventé pour le prototype.";
+  }
   dialogContent.textContent = document.content;
   sourceDialog.showModal();
 }
@@ -2015,6 +2020,26 @@ function initFamilyView() {
 
 /**
  /**
+ * Render the list of imported files in the import view
+ */
+function renderImportFileList() {
+  const container = document.querySelector('#import-file-list');
+  if (!container) return;
+
+  if (uploadedDocuments.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="font-weight: 600; margin-bottom: 0.5rem;">Fichiers importés (${uploadedDocuments.length}) :</div>
+    <ul style="list-style-type: disc; padding-left: 1.5rem; margin: 0;">
+      ${uploadedDocuments.map(doc => `<li>${doc.name} (${doc.type})</li>`).join('')}
+    </ul>
+  `;
+}
+
+/**
  * Initialize import view (drag & drop and file selection)
  */
 function initImportView() {
@@ -2044,17 +2069,18 @@ function initImportView() {
   dropZone.addEventListener('drop', (e) => {
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      // In a real app, files would be processed
-      showDemoNotice(`Fichiers déposés : ${files.length}`);
-      // Trigger file processing logic
+      loadLocalFiles(files).then(() => {
+        renderImportFileList();
+      });
     }
   });
 
   importInput.addEventListener('change', (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      showDemoNotice(`Fichiers sélectionnés : ${files.length}`);
-      // Trigger file processing logic
+      loadLocalFiles(files).then(() => {
+        renderImportFileList();
+      });
     }
   });
 }
@@ -2099,7 +2125,7 @@ function renderDataInventory() {
     return `
       <div class="data-file-row">
         <div class="data-file-info">
-          <span class="data-file-icon">${sourceIcon}</span>
+          <span class="icon icon-bg-blue icon-circle" style="--icon-size: 40px;">${sourceIcon}</span>
           <div>
             <div class="data-file-name">${doc.name}</div>
             <div class="data-file-meta">${doc.type} · ${sourceText} · ${doc.date || 'Session'}</div>
