@@ -1,8 +1,8 @@
 # Famili-IA – Plan de Développement
 
 ## 📊 Vue d'ensemble
-- **Phase actuelle** : Phase 7 – Implémentation fonctionnelle
-- **Prochaine étape prioritaire** : Phase 8 – Sécurisation & Vie privée avancée
+- **Phase actuelle** : Phase 9 – Homogénéisation UI & Polish
+- **Prochaine étape prioritaire** : Phase 10 – Optimisation Mobile & Revue Documentaire
 
 ## 📋 Liste des étapes
 
@@ -97,6 +97,7 @@ L'app ne doit pas être un simple coffre-fort, mais un assistant proactif. Le sy
 
 
 ### 📐 Schéma Technique (Mermaid)
+*(Le diagramme d'architecture principal a été externalisé et mis à jour dans [`docs/architecture/mermaid/overview.mmd`](docs/architecture/mermaid/overview.mmd)).*
 
 ```mermaid
 graph TD
@@ -114,14 +115,14 @@ graph TD
 
     subgraph "Couche Logique [search-utils.js + local-files.js]"
         F[search-utils.js - extraction mots-clés / normalisation]
-        G[local-files.js - lecture fichiers Capacitor / OCR]
+        G[local-files.js - lecture fichiers Capacitor / OCR / Docx / Xlsx]
         H[moteur recherche - concaténation cloud + local]
     end
 
     subgraph "Intégrations Externes [Capacitor / Google Drive]"
         I[Capacitor Filesystem - dossiers locaux]
         J[Google Drive Picker - drive.file scope]
-        K[PDF.js / OCR Vision/ML-kit - extraction texte]
+        K[PDF.js / OCR / Mammoth / SheetJS - extraction]
     end
 
     %% Flux de données
@@ -134,7 +135,7 @@ graph TD
     %% Flux cloud
     J -->|fichiers sélectionnés| K
     K --> H
-    I -->|after auth| K
+    I --> K
     
     %% État
     D -->|mise à jour| B
@@ -153,10 +154,36 @@ graph TD
 ```
 
 
-### Phase 10 – Validation & Lancement
-- [ ] 10.1 : Tests utilisateurs complets
-- [ ] 10.2 : Mesure de la satisfaction utilisateur
-- [ ] 10.3 : Rapport final & lancement
+### Phase 10 – Optimisation Mobile & Revue Documentaire
+- [✓] ✅ 10.1 : Menu – Rendre le menu opérationnel pour la vue smartphone
+- [✓] ✅ 10.2 : UI Recherche – Intégrer correctement le bouton "Rechercher" dans la barre sur mobile
+- [✓] ✅ 10.3 : Navigation – Optimiser la navigation sur la vue Accueil (réduction du scroll)
+- [ ] 10.4 : Revue documentaire – Vérifier et mettre à jour les schémas d'architecture et descriptions
+    - [✓] ✅ 10.4.a : Audit documentaire & suppression des redondances
+    - [✓] ✅ 10.4.b : Mise à jour des schémas Mermaid et intégration dans la nouvelle structure `/docs/`
+    - [✓] ✅ 10.4.c : Mise en place du processus de maintenance (CI, lint, revues PR)
+- [ ] 10.5 : Intelligence Contextuelle – Implémenter l'auto-classification intelligente via OCR (ex: catégorisation automatique des factures)
+    - [✓] ✅ 10.5.a : Définition du schéma d'extraction structuré (`DocumentContext`)
+    - [ ] 10.5.b : Implémentation de l'analyseur heuristique (`document-parser.js`)
+    - [✓] ✅ 10.5.c : Intégration du parser dans le flux de lecture (`local-files.js`)
+    - [✓] ✅ 10.5.d : Mise à jour du `state.js` pour la classification automatique
+    - [✓] ✅ 10.5.e : Tests de validation sur documents de test
+- [ ] 10.6 : Recherche Sémantique – Faire évoluer la recherche vers le sémantique (compréhension des synonymes et des relations entre documents)
+    - [✓] ✅ 10.6.a : Modélisation de la similarité locale (Pondération 40/20/20/10/10)
+    - [✓] ✅ 10.6.b : Mise à jour de `search-utils.js` pour intégrer le score sémantique
+    - [✓] ✅ 10.6.c : Implémentation des règles de correspondance avancées
+    - [✓] ✅ 10.6.d : Tests de similarité et ajustement de la pondération
+- [ ] 10.7 : Assistant Proactif – Renforcer le système d'alertes avec des rappels intelligents basés sur l'état des équipements (ex: expiration de garantie)
+    - [✓] ✅ 10.7.a : Configuration des seuils d'alerte (métier : 60j garantie, 30j assurance/facture)
+    - [✓] ✅ 10.7.b : Implémentation du moteur de génération d'alertes (`alert-engine.js`)
+    - [✓] ✅ 10.7.c : Liaison automatique Document-Alerte
+    - [ ] 10.7.d : Intégration UI Proactive (vue Accueil)
+    - [✓] ✅ 10.7.e : Tests de validation et mise à jour de la documentation technique
+
+### Phase 11 – Validation & Lancement
+- [ ] 11.1 : Tests utilisateurs complets
+- [ ] 11.2 : Mesure de la satisfaction utilisateur
+- [ ] 11.3 : Rapport final & lancement
 
 ## 📌 Comment mettre à jour
 - Cochez la case `[✓]` lorsque la tâche est terminée.

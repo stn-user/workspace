@@ -2,6 +2,7 @@
 const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 const Ocr = { process: async () => ({ results: [] }) };
+import { parseDocument } from "./document-parser.js";
 import * as pdfjs from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import mammoth from "mammoth";
@@ -111,25 +112,40 @@ function getFileExtension(filename) {
  */
 async function readFileContent(fileBlob, filename) {
   const extension = getFileExtension(filename);
+  let textContent;
 
   switch (extension) {
     case 'pdf':
-      return await readPdfFile(fileBlob);
+      textContent = await readPdfFile(fileBlob);
+      break;
     case 'docx':
-      return await readDocxFile(fileBlob);
+      textContent = await readDocxFile(fileBlob);
+      break;
     case 'xlsx':
     case 'xls':
-      return await readExcelFile(fileBlob);
+      textContent = await readExcelFile(fileBlob);
+      break;
     case 'txt':
     case 'md':
-      return await readTextFile(fileBlob);
+      textContent = await readTextFile(fileBlob);
+      break;
     case 'jpg':
     case 'jpeg':
     case 'png':
-      return await readImageFile(fileBlob);
+      textContent = await readImageFile(fileBlob);
+      break;
     default:
       throw new Error(`Format de fichier non supporté : .${extension}`);
   }
+
+  // Intégration du parser pour classification intelligente
+  const documentContext = parseDocument(textContent, filename);
+
+  // Retourner à la fois le texte brut et le contexte structuré
+  return {
+    rawText: textContent,
+    context: documentContext
+  };
 }
 
 /**

@@ -3,6 +3,7 @@
  */
 
 import { getAll, put, initDB, remove, purgeDatabase } from './db.js';
+import { generateAlertForDoc, refreshAlerts } from './alert-engine.js';
 
 const defaultState = {
   currentUser: {
@@ -73,7 +74,15 @@ export async function initState() {
     if (users.length > 0) state.currentUser = users[0];
     else await put('users', defaultState.currentUser);
 
-    if (documents.length > 0) state.documents = documents;
+    if (documents.length > 0) {
+      state.documents = documents;
+      // Synchronisation proactive des alertes au démarrage
+      const dynamicAlerts = refreshAlerts(documents);
+      if (dynamicAlerts.length > 0) {
+        // Fusion des alertes dynamiques avec les alertes par défaut ou existantes
+        state.alerts = [...state.alerts, ...dynamicAlerts];
+      }
+    }
 
   } catch (e) {
     console.warn('Erreur lors de l\'initialisation IndexedDB, utilisation des valeurs par défaut:', e);
@@ -153,8 +162,23 @@ export async function deleteEquipment(id) {
 }
 
 export async function addDocument(document) {
+  // Le document reçu est déjà enrichi par le parser (DocumentContext)
   state.documents.push(document);
   await put('documents', document);
+
+  // Logique de classification automatique
+  if (document.type && document.provider) {
+    console.log(`Auto-classification : Document ${document.originalName} classé (${document.type} - ${document.provider})`);
+  }
+
+  // Liaison automatique Document-Alerte (Intelligence Proactive)
+  const newAlert = generateAlertForDoc(document);
+  if (newAlert) {
+    state.alerts.push(newAlert);
+    await put('alerts', newAlert);
+    console.log(`Assistant Proactif : Nouvelle alerte générée pour ${document.originalName}`);
+  }
+
   return state.documents;
 }
 

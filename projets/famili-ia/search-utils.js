@@ -1,3 +1,70 @@
+/**
+ * Calcule un score de similarité sémantique entre deux documents basé sur leurs métadonnées (DocumentContext).
+ * Pondération : provider (40%), type (20%), category (20%), tags (10%), date (10%).
+ */
+export function calculateSemanticScore(docA, docB) {
+  if (!docA || !docB) return 0;
+  let score = 0;
+
+  // 1. Provider (40%)
+  if (docA.provider && docB.provider && docA.provider.toLowerCase() === docB.provider.toLowerCase()) {
+    score += 0.40;
+  }
+
+  // 2. Type (20%)
+  if (docA.type && docB.type && docA.type === docB.type) {
+    score += 0.20;
+  }
+
+  // 3. Category (20%)
+  if (docA.category && docB.category && docA.category === docB.category) {
+    score += 0.20;
+  }
+
+  // 4. Tags (10%)
+  if (Array.isArray(docA.tags) && Array.isArray(docB.tags) && docA.tags.length > 0 && docB.tags.length > 0) {
+    const commonTags = docA.tags.filter(tag => docB.tags.includes(tag));
+    const tagOverlap = commonTags.length / Math.max(docA.tags.length, docB.tags.length);
+    score += tagOverlap * 0.10;
+  }
+
+  // 5. Date / Proximité temporelle (10%)
+  if (docA.date && docB.date) {
+    const dateA = new Date(docA.date.split('/').reverse().join('-'));
+    const dateB = new Date(docB.date.split('/').reverse().join('-'));
+    if (!isNaN(dateA) && !isNaN(dateB)) {
+      const diffDays = Math.abs(dateA - dateB) / (1000 * 60 * 60 * 24);
+      if (diffDays <= 30) {
+        score += 0.10; // Moins d'un mois d'écart
+      } else if (diffDays <= 365) {
+        score += 0.05; // Moins d'un an d'écart
+      }
+    }
+  }
+
+  // 🔔 RÈGLES DE RÉBOND (Boost conditionnel)
+  // Règle 1 : Facture + Garantie + Même Provider => Fort lien (garantie liée à l'achat)
+  const types = [docA.type, docB.type];
+  const hasFacture = types.includes('facture');
+  const hasGarantie = types.includes('garantie');
+  if (hasFacture && hasGarantie && docA.provider && docB.provider && docA.provider.toLowerCase() === docB.provider.toLowerCase()) {
+    score += 0.15; // Bonus de 15% pour le lien facture/garantie
+  }
+
+  // Règle 2 : Correspondance de tags d'équipement (si un tag correspond à une catégorie connue)
+  const equipementCategories = ['maison', 'auto', 'sante', 'finance'];
+  const tagsA = new Set(docA.tags || []);
+  const tagsB = new Set(docB.tags || []);
+  for (const cat of equipementCategories) {
+    if (tagsA.has(cat) && tagsB.has(cat)) {
+      score += 0.05; // Petit boost si même catégorie d'équipement
+      break; // Éviter les doublons si plusieurs tags coïncident
+    }
+  }
+
+  return score;
+}
+
 const intentTerms = {
   amount: new Set(["combien", "cout", "coute", "couter", "paye", "payer", "prix", "montant", "tarif", "somme", "valeur"]),
   date: new Set(["quand", "date", "echeance", "expire", "expiration", "fin", "jusqu", "termine", "commence", "debut"]),
@@ -77,7 +144,7 @@ function isCloseTermMatch(queryTerm, documentTerms) {
   });
 }
 
-export function getSearchMatch(question, searchableText, hasUploadedDocuments = false) {
+export function getSearchMatch(question, searchableText, hasUploadedDocuments = false, refDoc = null) {
   const terms = getQuestionTerms(question);
   if (terms.length === 0) return { matchedTerms: [], score: 0 };
 
@@ -85,16 +152,27 @@ export function getSearchMatch(question, searchableText, hasUploadedDocuments = 
   const matchedTerms = terms.filter((term) => isCloseTermMatch(term, documentTerms));
   const specificTerms = terms.filter((term) => !genericSearchTerms.has(term));
 
-  // Si des termes spécifiques sont demandés et qu'aucun ne matche, abandonner (strict pour les docs de démo, flexible pour les docs uploadés)
+  // Si des termes spécifiques sont demandés et qu'aucun ne matche, abandonner
   if (!hasUploadedDocuments && specificTerms.length > 0 && specificTerms.some((term) => !matchedTerms.includes(term))) {
     return { matchedTerms: [], score: 0 };
   }
 
-  // Calcul du score : on pénalise peu si peu de termes matche mais qu'il y a tout de même une correspondance partielle
-  const score = matchedTerms.length / Math.max(1, terms.length);
-  // Seuil abaissé à 0.3 pour les documents locaux (plus sensible)
+  // Calcul du score textuel de base
+  const baseScore = matchedTerms.length / Math.max(1, terms.length);
   const adjustedThreshold = hasUploadedDocuments ? 0.3 : 0.6;
-  return { matchedTerms, score: score >= adjustedThreshold ? score : 0 };
+  let finalScore = baseScore >= adjustedThreshold ? baseScore : 0;
+
+  // 2. Ajout du score sémantique si un document de référence est fourni
+  if (refDoc && finalScore > 0) {
+    const semScore = calculateSemanticScore(refDoc, { rawText: searchableText, ...(refDoc || {}) });
+    // On hybride : on prend le meilleur des deux scores, avec un léger favoritisme du matching textuel pur
+    // Formule : 70% du score textuel + 30% du score sémantique (si sémantique fort)
+    if (semScore > 0.2) {
+      finalScore = (finalScore * 0.7) + (semScore * 0.3);
+    }
+  }
+
+  return { matchedTerms, score: finalScore };
 }
 
 export function getIntentKeywords(intent) {

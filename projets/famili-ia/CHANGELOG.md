@@ -1,6 +1,19 @@
-# Changelog - Famili-IA
+## [10.0.0] - 2026-10-28 - Phase 10 : Optimisation Mobile & Revue Documentaire
+### 🚀 Nouvelles Fonctionnalités
+- **Revue Documentaire (Phase 10.4)** : Refonte structurelle complète, migration vers `/docs/`, création de `document-parser.js`, suppression des redondances, mise en place du processus de maintenance (CI, lint, revues PR).
+- **Intelligence Contextuelle (Phase 10.5)** : Moteur `document-parser.js` pour extraction structurée métadonnées (Type/Fournisseur/Date/Montant/Catégorie) sur fichiers locaux (PDF, DOCX, XLSX, TXT). Prise en charge Facture, Garantie, Assurance.
+- **Recherche Sémantique (Phase 10.6)** : Similarité pondérée (Provider 40%, Type 20%, Catégorie 20%, Tags 10%, Date 10%) + règles de rebond (Facture ↔ Garantie). Intégration `search-utils.js`.
+- **Assistant Proactif (Phase 10.7)** : Alertes automatiques à l'import/démarrage (Seuils: Garantie 60j/15j, Assurance 30j, Facture 30j/7j). Moteur `alert-engine.js`. Intégration UI transparente.
 
-Toutes les modifications notables de Famili-IA sont documentées ici. Ce projet suit un cycle de développement par phases pour garantir une approche privacy-first.
+### 🛠 Corrections et Améliorations
+- **Architecture Documentaire** : Migration schémas Mermaid `/docs/architecture/mermaid/`, centralisation `AUTH_LOCALE_DOC.md` → `docs/architecture/integration.md`.
+- **Nettoyage** : Suppression fichiers temporaires `projets/famili-ia/plans/`.
+- **Checklist Anti-Régression** : Mise à jour `CLAUDE.md` et `DEVELOPPEMENT_PLAN.md`.
+
+### 📦 dépendances
+- Aucune dépendance externe ajoutée (traitement "No-AI" / local).
+
+---
 
 ## [0.9.0] - Phase 9 : Homogénéisation UI, Polish & Gestion des Membres
 ### 🚀 Nouvelles Fonctionnalités
@@ -45,7 +58,6 @@ Toutes les modifications notables de Famili-IA sont documentées ici. Ce projet 
   - Restructuration du DOM (`index.html`) et du CSS Grid (`styles.css`) pour rétablir la disposition côte à côte de la sidebar et du contenu principal, résolvant les problèmes de navigation.
   - Correction d'une erreur JavaScript (`TypeError`) empêchant l'initialisation des écouteurs d'événements après le nettoyage de la vue de recherche.
 
-
 ## [0.4.0] - Phase 4 : MVP Privé & Accès Local
 ### 🚀 Nouvelles Fonctionnalités
 - **Accès Système Natif** : Intégration du plugin `@capacitor/filesystem` pour accéder aux dossiers de l'appareil sur Android et iOS.
@@ -54,8 +66,6 @@ Toutes les modifications notables de Famili-IA sont documentées ici. Ce projet 
 
 ### 🛠️ Améliorations Techniques
 - **Gestion des Permissions** : Implémentation des demandes de permissions système pour le stockage externe.
-
----
 
 ## [0.1.0 - 0.3.0] - Phases Initiales : MVP Cloud
 ### 🚀 Nouvelles Fonctionnalités

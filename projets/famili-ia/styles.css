@@ -1343,6 +1343,25 @@ body {
   transform: translateY(-1px);
 }
 
+@media (max-width: 600px) {
+  .search-form {
+    padding: 0.25rem 0.25rem 0.25rem 0.5rem;
+  }
+  .search-form input {
+    font-size: 0.9rem;
+    padding: 0.5rem 0;
+    min-width: 0;
+  }
+  .search-form .search-icon {
+    margin: 0 0.5rem 0 0;
+  }
+  .submit-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+}
+
 /* Search Filters & Chips */
 .search-filters {
   display: flex;
@@ -1730,6 +1749,42 @@ body {
 
 @media (max-width: 360px) {
   .main-content { padding: var(--space-md); }
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    padding: var(--space-md);
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-bottom: var(--space-lg);
+  }
+  .stat-card {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .stat-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  .stat-copy strong {
+    font-size: 1.25rem;
+  }
+  .stat-copy span {
+    font-size: 0.75rem;
+  }
+  .quick-search {
+    margin: var(--space-md) 0;
+  }
+  .welcome-panel {
+    padding: 1.5rem 1rem;
+    margin-bottom: 1rem;
+  }
 }
 
 /* Flex wrap for narrow containers */

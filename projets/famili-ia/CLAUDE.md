@@ -13,6 +13,7 @@ Famili-IA est une application de gestion de documents familiaux et d'équipement
 - **Lancer l'App :** Ouvrez `index.html` dans un navigateur ou utilisez le flow dev Capacitor.
 - **Navigation :** Utilisez toujours `showView(name, options)` pour les transitions de vue afin de gérer l'historique et les paramètres.
 - **État :** Lecture/Écriture des données familiales via les fonctions de `state.js`.
+- **Documentation :** Toute modification majeure (architecture, interactions entre composants, changements critiques dans `styles.css`) **DOIT** s'accompagner d'une mise à jour de la documentation correspondante dans le dossier `/docs/`.
 
 ## 🎨 Charte Graphique & UI/UX (Anti-Régression)
 Pour maintenir la cohérence visuelle, suivez ces règles basées sur les maquettes officielles :
@@ -71,9 +72,11 @@ Pour maintenir la cohérence visuelle, suivez ces règles basées sur les maquet
 - **Google Drive :** OAuth restreint à la version Web (prototype).
 - **Pas de serveur :** Prototype client-side uniquement.
 - **Hash de compatibilité :** Supportez `#/view` et `#view` dans `parseHash()`.
+- **Documentation :** Toute modification majeure de l'architecture, de l'interaction entre composants, ou de la charte de style (`styles.css`) **doit** impérativement s'accompagner d'une mise à jour de la documentation technique (schémas Mermaid, fichiers Markdown dans `/docs/`).
 
 ## ✅ Checklist Anti-Régression (avant commit)
 - [ ] **Structure des modules** : `state.js`, `app.js`, `search-utils.js`, `local-files.js` sont présents et exportent les fonctions attendues.
+- [ ] **Documentation à jour** : Les schémas Mermaid ([overview.mmd](docs/architecture/mermaid/overview.mmd)) et fichiers techniques ([integration.md](docs/architecture/integration.md)) reflètent les changements récents.
 - [ ] **Pas de fichiers orphelins** : Aucun fichier `.bak`, `.tmp`, ou backup à la racine du projet ou dans `projets/famili-ia/`.
 - [ ] **Respect des tokens CSS** : Les couleurs utilisées respectent la charte (`#0f7173`, `#2563eb`, `#059669`, etc.) et sont définies dans les variables CSS.
 - [ ] **Navigation hash** : `parseHash()` gère correctement `#/view` et `#view` sans régression.
