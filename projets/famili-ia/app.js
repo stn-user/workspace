@@ -882,10 +882,26 @@ const pageTitles = {
   assistant: "Assistant IA",
   importer: "Importer",
   profil: "Profil",
-  "vos-donnees": "Vos données"
+  "vos-donnees": "Vos données",
+  plus: "Plus"
 };
 let toastTimeout;
 let activeView = "accueil";
+
+/**
+ * Section de la barre basse (mobile) pour chaque vue.
+ * Les sous-vues restent rattachées à leur section d'origine :
+ * - detail → maison (le fil d'Ariane ramène vers Maison)
+ * - vues secondaires (alertes, famille, assistant, profil, vos-donnees) → plus
+ */
+const NAV_SECTION_OF = {
+  detail: "maison",
+  famille: "plus",
+  alertes: "plus",
+  assistant: "plus",
+  profil: "plus",
+  "vos-donnees": "plus"
+};
 
 /**
  * Parses the URL hash into a view and parameters.
@@ -998,9 +1014,36 @@ function initializeViewWithParams(viewName, params) {
       initDataView();
       break;
 
+    case 'plus':
+      renderPlusBadges();
+      break;
+
     default:
       break;
   }
+}
+
+/**
+ * Met à jour les badges de compteur de la vue « Plus » :
+ * alertes à traiter/anticiper, membres de la famille, documents indexés.
+ */
+function renderPlusBadges() {
+  const counts = {
+    alertes: getAlerts()
+      .map(a => ({ ...a, type: calculateAlertType(a.dueDate, a.type) }))
+      .filter(a => a.type === 'red' || a.type === 'amber').length,
+    famille: getFamilyMembers().length,
+    documents: getDocuments().length
+  };
+  document.querySelectorAll('[data-count-el]').forEach(badge => {
+    const count = counts[badge.dataset.countEl] || 0;
+    if (count > 0) {
+      badge.hidden = false;
+      badge.textContent = count > 99 ? '99+' : String(count);
+    } else {
+      badge.hidden = true;
+    }
+  });
 }
 
 function showView(name, { addHistory = true, params = {} } = {}) {
@@ -1052,9 +1095,10 @@ function showView(name, { addHistory = true, params = {} } = {}) {
     else button.removeAttribute("aria-current");
   });
 
-  // Update bottom nav active state
+  // Update bottom nav active state (section de la vue : les sous-vues renvoient vers leur item d'origine)
+  const bottomNavSection = name in NAV_SECTION_OF ? NAV_SECTION_OF[name] : name;
   document.querySelectorAll(".bottom-nav .nav-item").forEach((button) => {
-    const isActive = button.dataset.nav === name;
+    const isActive = button.dataset.nav === bottomNavSection;
     button.classList.toggle("is-active", isActive);
     if (isActive) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");

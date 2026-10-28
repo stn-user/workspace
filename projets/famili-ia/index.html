@@ -422,12 +422,53 @@
           </section>
         </div>
       </section>
+
+      <section class="view plus-view" id="view-plus" data-view="plus" aria-labelledby="plus-title" hidden>
+        <div class="view-header-centered">
+          <div class="view-titles">
+            <p class="eyebrow">ESPACE FAMILIAL</p>
+            <h1 id="plus-title">Plus</h1>
+            <p>Vos autres espaces : suivi, famille, assistant et gestion des données.</p>
+          </div>
+        </div>
+        <div class="plus-list">
+          <button class="plus-item" type="button" data-nav="alertes">
+            <span class="plus-icon" style="background: rgba(217, 119, 6, 0.1); color: var(--color-amber);" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></span>
+            <span class="plus-body"><strong>Alertes</strong><small>Échéances, garanties et contrats à suivre</small></span>
+            <span class="plus-badge plus-badge--amber" data-count-el="alertes" hidden></span>
+            <span class="plus-arrow" aria-hidden="true">›</span>
+          </button>
+          <button class="plus-item" type="button" data-nav="famille">
+            <span class="plus-icon" style="background: rgba(5, 150, 105, 0.1); color: var(--color-green);" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+            <span class="plus-body"><strong>Famille</strong><small>Membres et niveaux d'accès</small></span>
+            <span class="plus-badge plus-badge--green" data-count-el="famille" hidden></span>
+            <span class="plus-arrow" aria-hidden="true">›</span>
+          </button>
+          <button class="plus-item" type="button" data-nav="assistant">
+            <span class="plus-icon" style="background: rgba(124, 58, 237, 0.1); color: var(--color-violet);" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></span>
+            <span class="plus-body"><strong>Assistant</strong><small>Questionnez vos documents en langage naturel</small></span>
+            <span class="plus-arrow" aria-hidden="true">›</span>
+          </button>
+          <button class="plus-item" type="button" data-nav="profil">
+            <span class="plus-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--color-blue);" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span class="plus-body"><strong>Profil</strong><small>Identité, rôles et préférences</small></span>
+            <span class="plus-arrow" aria-hidden="true">›</span>
+          </button>
+          <button class="plus-item" type="button" data-nav="vos-donnees">
+            <span class="plus-icon" style="background: rgba(8, 145, 178, 0.1); color: var(--color-cyan);" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span>
+            <span class="plus-body"><strong>Vos données</strong><small>Inventaire, export et purge sécurisée</small></span>
+            <span class="plus-badge plus-badge--cyan" data-count-el="documents" hidden></span>
+            <span class="plus-arrow" aria-hidden="true">›</span>
+          </button>
+        </div>
+      </section>
     </main>
-    <nav class="bottom-nav">
-        <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
-        <button class="nav-item" type="button" data-nav="recherche"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche</button>
-        <button class="nav-item" type="button" data-nav="maison"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Maison</button>
-        <button class="nav-item" type="button" data-nav="alertes"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>Alertes</button>
+    <nav class="bottom-nav" aria-label="Navigation principale (mobile)">
+        <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
+        <button class="nav-item" type="button" data-nav="recherche"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche</button>
+        <button class="nav-item nav-item-cta" type="button" data-nav="importer" aria-label="Importer un document"><span class="nav-cta-disc" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></span><span class="nav-cta-label">Importer</span></button>
+        <button class="nav-item" type="button" data-nav="maison"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>Maison</button>
+        <button class="nav-item" type="button" data-nav="plus"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>Plus</button>
     </nav>
   </div>
 
