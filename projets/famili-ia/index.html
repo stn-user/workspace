@@ -152,10 +152,16 @@
         </div>
         <article class="property-card">
           <div class="property-illustration" aria-label="Photo de la maison">
-            <img src="assets/maison/maison-photo.jpg" alt="Maison en pierre avec jardin" loading="lazy" style="width:48px;height:48px;border-radius:8px;object-fit:cover;">
+            <img src="assets/maison/maison-photo.jpg" alt="Maison en pierre avec jardin" loading="lazy" class="property-photo">
           </div>
-          <div class="property-copy"><strong>Ma maison</strong><span id="display-address"></span><span id="display-city"></span></div>
-          <button class="text-button" type="button" data-open-view="profil" style="font-size: 0.85rem; color: var(--color-primary, #0f7173); font-weight: 500; border: none; background: none; cursor: pointer; width: 100%; text-align: left;">Modifier dans le profil</button>
+          <div class="property-content">
+            <div class="property-copy">
+              <strong>Ma maison</strong>
+              <span id="display-address"></span>
+              <span id="display-city"></span>
+            </div>
+            <button class="text-button property-edit-btn" type="button" data-open-view="profil">Modifier dans le profil</button>
+          </div>
           <span class="stat-arrow">›</span>
         </article>
         <div class="category-tabs" role="group" aria-label="Filtrer les équipements de la maison">
