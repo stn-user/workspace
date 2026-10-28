@@ -209,8 +209,9 @@ function findDocuments(question) {
   const searchableDocuments = uploadedDocuments.length > 0 ? uploadedDocuments : documents;
   return searchableDocuments
     .map((document) => {
-      const searchable = normalizeText(`${document.name} ${document.type} ${document.keywords} ${document.content}`);
-      const lines = document.content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const content = document.content || "";
+      const searchable = normalizeText(`${document.name} ${document.type} ${document.keywords} ${content}`);
+      const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
       const exactFact = document.isLocal ? extractExactFact(question, lines) : null;
       const factKeywords = exactFact ? getIntentKeywords(detectQuestionIntent(question)).join(" ") : "";
       const searchableWithIntent = `${searchable} ${factKeywords}`;
@@ -463,7 +464,7 @@ async function loadLocalFiles(files) {
   const selectedFiles = [...files];
   if (selectedFiles.length === 0) return;
 
-  const invalidFile = selectedFiles.find((file) => !/\.(txt|md|pdf|jpg|png|jpeg)$/i.test(file.name));
+  const invalidFile = selectedFiles.find((file) => !/\.(txt|md|pdf|jpg|jpeg|png|docx|doc|xlsx|xls)$/i.test(file.name));
   if (invalidFile) {
     setFileStatus(`« ${invalidFile.name} » n'est pas un fichier TXT, MD, PDF, JPG ou PNG. Aucun fichier de cette sélection n'a été ajouté.`, "error");
     localFilesInput.value = "";
@@ -942,6 +943,16 @@ function parseHash() {
  * @param {Object} params - The parameters parsed from the URL
  */
 function initializeViewWithParams(viewName, params) {
+  // Gestion globale de l'ouverture d'un document via son ID (ex: ?docId=piscine-facture)
+  if (params && params.docId) {
+    const docId = params.docId;
+    const doc = [...documents, ...uploadedDocuments].find(d => d.id === docId);
+    if (doc) {
+      // Petit délai pour laisser la vue s'afficher proprement avant d'ouvrir la modale
+      setTimeout(() => openSource(doc), 150);
+    }
+  }
+
   switch (viewName) {
     case 'detail':
       const eqId = params.id;
@@ -1049,6 +1060,19 @@ function renderPlusBadges() {
 function showView(name, { addHistory = true, params = {} } = {}) {
   console.log("showView called for:", name);
   if (!Object.hasOwn(pageTitles, name)) return;
+
+  // Gestion spéciale : Si un document est demandé, l'ouvrir dans le sourceDialog
+  if (params.docId) {
+    const document = [...documents, ...uploadedDocuments].find(d => d.id === params.docId);
+    if (document) {
+      // Construire un événement ou appeler la logique d'ouverture directement
+      // On ouvre le dialog source avec ce document
+      openSource(document);
+      // Si on voulait aussi naviguer vers la vue recherche, on pourrait le faire ici
+      // mais pour l'instant on se concentre sur l'ouverture du document
+      return; // Arrêter le chargement normal de la vue
+    }
+  }
 
   // Cacher le welcome panel lorsqu'on navigue hors de la vue accueil
   const welcomePanel = document.querySelector("#welcome-panel");
@@ -2152,21 +2176,7 @@ function initImportView() {
             // Fallback web : autoriser les images
             importInput.accept = 'image/*';
             importInput.click();
-            showDemoNotice("La prise de photo depuis l'appareil est disponible sur l'application mobile.");
-          }
-          break;
-
-        case 'scan':
-          // Pour l'instant, on considère que "Scanner" utilise la même caméra
-          // que "Prendre une photo". Si besoin d'un OCR distinct, on peut
-          // le gérer séparément plus tard.
-          if (Capacitor.isNativePlatform()) {
-            importInput.accept = 'image/*';
-            importInput.capture = 'environment';
-            importInput.click();
-            showDemoNotice("L'option Scanner ouvre l'appareil photo. L'OCR sera appliqué automatiquement.");
-          } else {
-            showDemoNotice("L'option Scanner est disponible sur l'application mobile.");
+            showDemoNotice("La prise de photo/scan depuis l'appareil est disponible sur l'application mobile.");
           }
           break;
 
@@ -2201,6 +2211,12 @@ function openManualEntryDialog() {
             <option value="Garantie">Garantie</option>
             <option value="Contrat">Contrat</option>
             <option value="Notice">Notice</option>
+            <option value="Quittance">Quittance</option>
+            <option value="Attestation">Attestation</option>
+            <option value="Ordonnance">Ordonnance</option>
+            <option value="Courrier">Courrier</option>
+            <option value="Certificat">Certificat</option>
+            <option value="Autre">Autre</option>
           </select>
         </div>
         <div style="margin-bottom: 1rem;">
@@ -2208,7 +2224,7 @@ function openManualEntryDialog() {
           <textarea id="manual-content" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: inherit;"></textarea>
         </div>
         <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-          <button type="button" class="text-button" style="flex: 1;" onclick="this.parentElement.parentElement.querySelector('dialog').close()">Annuler</button>
+          <button type="button" class="text-button" style="flex: 1;">Annuler</button>
           <button type="submit" class="primary-button" style="flex: 1;">Enregistrer</button>
         </div>
       </form>
@@ -2218,8 +2234,18 @@ function openManualEntryDialog() {
   document.body.appendChild(dialog);
   dialog.showModal();
 
+  // Gestion du bouton Annuler - retour à l'écran précédent
+  const cancelBtn = dialog.querySelector('button.text-button');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      dialog.close();
+      document.body.removeChild(dialog);
+    });
+  }
+
   // Gestion de la soumission
-  dialog.querySelector('#manual-form').addEventListener('submit', (e) => {
+  dialog.querySelector('#manual-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const title = document.querySelector('#manual-title').value;
     const type = document.querySelector('#manual-type').value;
@@ -2238,15 +2264,15 @@ function openManualEntryDialog() {
       date: new Date().toLocaleDateString('fr-FR'),
       keywords: title.toLowerCase(),
       summary: content || "Document saisi manuellement",
+      content: content || `Document saisi manuellement : ${title}`,
       isLocal: true,
       sourceDir: "Saisie manuelle"
     };
 
     // Ajouter à la liste des documents locaux
     uploadedDocuments.push(newDoc);
-    loadLocalFiles([new Blob([], { type: 'application/pdf' })]).then(() => {
-      renderImportFileList();
-    });
+    await addDocument(newDoc);
+    renderImportFileList();
 
     dialog.close();
     document.body.removeChild(dialog);

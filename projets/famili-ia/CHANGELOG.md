@@ -17,6 +17,10 @@
 
 ## [0.9.0] - Phase 9 : Homogénéisation UI, Polish & Gestion des Membres
 ### 🚀 Nouvelles Fonctionnalités
+- **Optimisation Import & Navigation (Phase 9.17 / 9.18)** :
+  - Unification du bouton de capture (fusion "Prendre une photo" et "Scanner") (9.17.c).
+  - Rétablissement du support des formats `.docx`, `.xlsx`, `.xls` dans le filtre d'importation (9.18.c).
+  - Implémentation d'une navigation contextuelle fonctionnelle avec transmission de `docId` permettant d'ouvrir directement les documents depuis le Dashboard, les Alertes et la vue Famille (9.18.d).
 - **Gestion des Membres (Phase 9.6)** :
   - Refonte de la gestion des membres de la famille avec une modale dédiée et centralisée ("Gérer les membres et accès").
   - Intégration complète du CRUD (Création, Lecture, Modification, Suppression) pour les proches et invités.
