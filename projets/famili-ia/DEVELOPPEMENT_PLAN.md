@@ -94,6 +94,7 @@
     - [ ] 9.17.b : Implémentation du bouton "Prendre une photo" (utilisation de l'input file avec `capture="environment"` / `accept="image/*"` pour déclencher l'appareil photo du smartphone).
     - [ ] 9.17.c : Optimisation ou fusion du bouton "Scanner un document" s'il fait double emploi avec l'appareil photo, ou activation via capture caméra native.
     - [ ] 9.17.d : Implémentation du bouton "Saisir manuellement" (ouverture d'une modale ou d'un formulaire de saisie de texte libre, avec conversion et enregistrement automatique au format document dans l'application).
+    - [x] ✅ 9.17.d : Implémentation du bouton "Saisir manuellement" - Dialogue complet avec saisie titre, type et contenu, enregistrement automatique dans la base locale.
 
 
 ## 💡 Points d'amélioration stratégiques (pour un impact "disrupt")

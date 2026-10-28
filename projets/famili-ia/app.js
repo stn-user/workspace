@@ -2089,7 +2089,9 @@ function renderImportFileList() {
 function initImportView() {
   const dropZone = document.querySelector('#drop-zone');
   const importInput = document.querySelector('#import-input');
-  if (!dropZone || !importInput) return;
+  const importOptions = document.querySelectorAll('.import-option');
+  const importFileList = document.querySelector('#import-file-list');
+  if (!dropZone || !importInput || !importOptions) return;
 
   dropZone.addEventListener('click', () => importInput.click());
 
@@ -2126,6 +2128,129 @@ function initImportView() {
         renderImportFileList();
       });
     }
+  });
+
+  // Gestion des boutons d'options d'import
+  importOptions.forEach(option => {
+    option.addEventListener('click', (e) => {
+      const action = option.dataset.action;
+      e.preventDefault();
+
+      switch (action) {
+        case 'drag-drop':
+          // Already handled - just focus the drop zone
+          dropZone.click();
+          break;
+
+        case 'camera':
+          // Ouvrir le sélecteur de fichiers avec capture de la caméra arrière/env
+          if (Capacitor.isNativePlatform()) {
+            importInput.accept = 'image/*';
+            importInput.capture = 'environment';
+            importInput.click();
+          } else {
+            // Fallback web : autoriser les images
+            importInput.accept = 'image/*';
+            importInput.click();
+            showDemoNotice("La prise de photo depuis l'appareil est disponible sur l'application mobile.");
+          }
+          break;
+
+        case 'scan':
+          // Pour l'instant, on considère que "Scanner" utilise la même caméra
+          // que "Prendre une photo". Si besoin d'un OCR distinct, on peut
+          // le gérer séparément plus tard.
+          if (Capacitor.isNativePlatform()) {
+            importInput.accept = 'image/*';
+            importInput.capture = 'environment';
+            importInput.click();
+            showDemoNotice("L'option Scanner ouvre l'appareil photo. L'OCR sera appliqué automatiquement.");
+          } else {
+            showDemoNotice("L'option Scanner est disponible sur l'application mobile.");
+          }
+          break;
+
+        case 'manual':
+          // Ouvrir un formulaire de saisie manuelle
+          openManualEntryDialog();
+          break;
+      }
+    });
+  });
+}
+
+/**
+ * Ouvre un dialoge de saisie manuelle de texte
+ */
+function openManualEntryDialog() {
+  const dialog = document.createElement('dialog');
+  dialog.innerHTML = `
+    <div class="panel" style="max-width: 90%; padding: 1.5rem;">
+      <div class="section-heading" style="margin-bottom: 1rem;">
+        <h2 style="margin: 0; font-size: 1.25rem;">Saisie manuelle de document</h2>
+      </div>
+      <form id="manual-form">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Titre du document</label>
+          <input type="text" id="manual-title" placeholder="Ex: Facture EDF janvier" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Type de document</label>
+          <select id="manual-type" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+            <option value="Facture">Facture</option>
+            <option value="Garantie">Garantie</option>
+            <option value="Contrat">Contrat</option>
+            <option value="Notice">Notice</option>
+          </select>
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Contenu principal (optionnel)</label>
+          <textarea id="manual-content" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: inherit;"></textarea>
+        </div>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+          <button type="button" class="text-button" style="flex: 1;" onclick="this.parentElement.parentElement.querySelector('dialog').close()">Annuler</button>
+          <button type="submit" class="primary-button" style="flex: 1;">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  // Gestion de la soumission
+  dialog.querySelector('#manual-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = document.querySelector('#manual-title').value;
+    const type = document.querySelector('#manual-type').value;
+    const content = document.querySelector('#manual-content').value;
+
+    if (!title) {
+      showDemoNotice("Veuillez entrer un titre pour le document.");
+      return;
+    }
+
+    // Créer un document factice mais complet
+    const newDoc = {
+      id: `manual-${Date.now()}`,
+      name: `${title}.pdf`,
+      type: type,
+      date: new Date().toLocaleDateString('fr-FR'),
+      keywords: title.toLowerCase(),
+      summary: content || "Document saisi manuellement",
+      isLocal: true,
+      sourceDir: "Saisie manuelle"
+    };
+
+    // Ajouter à la liste des documents locaux
+    uploadedDocuments.push(newDoc);
+    loadLocalFiles([new Blob([], { type: 'application/pdf' })]).then(() => {
+      renderImportFileList();
+    });
+
+    dialog.close();
+    document.body.removeChild(dialog);
+    showDemoNotice(`Document "${title}" créé avec succès (saisie manuelle).`);
   });
 }
 
