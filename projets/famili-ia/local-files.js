@@ -3,15 +3,27 @@ const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 const Ocr = { process: async () => ({ results: [] }) };
 import { parseDocument } from "./document-parser.js";
-import * as pdfjs from "pdfjs-dist";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import mammoth from "mammoth";
-import * as XLSX from "xlsx";
+
+// Top-level await pour charger la version appropriée de pdf.js
+const pdfjs = typeof window === "undefined"
+  ? await import("pdfjs-dist/legacy/build/pdf.mjs")
+  : await import("pdfjs-dist");
 
 const maxPdfPages = 20;
 const renderScale = 1.5;
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+// mammoth/xlsx sont chargés à la demande : le bundle principal (et le test
+// natif Node) évite ainsi les parser superflus.
+const loadMammoth = () => import("mammoth");
+const loadXLSX = () => import("xlsx");
+
+// Sur Vite, pdfWorkerUrl est résolu à l'build ; sur Node (tests), on laisse
+// pdf.js déléguer sa gestion côté thread principal.
+if (typeof window !== "undefined") {
+  import("pdfjs-dist/build/pdf.worker.min.mjs?url").then((mod) => {
+    pdfjs.GlobalWorkerOptions.workerSrc = mod.default;
+  }).catch(() => {});
+}
 
 function getEmbeddedPageText(items) {
   return items
@@ -72,6 +84,7 @@ async function readPdfFile(fileBlob) {
  */
 async function readDocxFile(fileBlob) {
   const arrayBuffer = await fileBlob.arrayBuffer();
+  const mammoth = await loadMammoth();
   const result = await mammoth.extractRawText({ arrayBuffer });
   return result.value;
 }
@@ -81,6 +94,7 @@ async function readDocxFile(fileBlob) {
  */
 async function readExcelFile(fileBlob) {
   const arrayBuffer = await fileBlob.arrayBuffer();
+  const XLSX = await loadXLSX();
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
   let text = "";

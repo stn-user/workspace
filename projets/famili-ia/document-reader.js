@@ -1,12 +1,15 @@
 import { Capacitor } from "@capacitor/core";
 import { Ocr } from "@jcesarmobile/capacitor-ocr";
 import * as pdfjs from "pdfjs-dist";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 const maxPdfPages = 20;
 const renderScale = 1.5;
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+if (typeof window !== "undefined") {
+  import("pdfjs-dist/build/pdf.worker.min.mjs?url").then((mod) => {
+    pdfjs.GlobalWorkerOptions.workerSrc = mod.default;
+  }).catch(() => {});
+}
 
 function getEmbeddedPageText(items) {
   return items

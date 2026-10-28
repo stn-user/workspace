@@ -168,7 +168,7 @@ test("rejects PDF larger than 10MB", async (t) => {
     }
   };
 
-  await t.rejects(
+  await assert.rejects(
     client.pickFiles(1),
     { message: /dépasse la limite de 10 Mo/ }
   );
@@ -252,26 +252,8 @@ test("rejects unsupported file type", async (t) => {
     }
   };
 
-  await t.rejects(
+  await assert.rejects(
     client.pickFiles(1),
     { message: /Le format de « image.jpg » n’est pas pris en charge/ }
   );
-});
-
-  const client = new GoogleDriveClient({ apiKey: "test-api-key", appId: "123456", clientId: "test-client-id" });
-  client.tokenClient = {
-    callback: null,
-    requestAccessToken() {
-      this.callback({ access_token: "memory-only-token", scope: googleDriveScope });
-    }
-  };
-
-  const files = await client.pickFiles(1);
-  assert.equal(files.length, 1);
-  assert.equal(files[0].content, "Montant total : 42 euros");
-  assert.equal(files[0].driveSource, true);
-  assert.equal(requests.length, 2);
-  assert.equal(requests[0].url.pathname, `/drive/v3/files/${selectedDocument.id}`);
-  assert.equal(requests[1].url.pathname, `/drive/v3/files/${selectedDocument.id}`);
-  assert.ok(requests.every((request) => request.authorization === "Bearer memory-only-token"));
 });

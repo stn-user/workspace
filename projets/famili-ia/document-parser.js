@@ -17,7 +17,7 @@ const extractAmount = (text) => {
     // Regex générique pour montants (ex: 123.45 ou 123,45)
     const amountRegex = /(\d+[\.,]\d{2})?\s?(€|EUR)/i;
     const match = text.match(amountRegex);
-    return match ? parseFloat(match[1].replace(',', '.')) : null;
+    return match && match[1] ? parseFloat(match[1].replace(',', '.')) : null;
 };
 
 const extractProvider = (text, providers) => {

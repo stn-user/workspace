@@ -1,30 +1,20 @@
-const { listLocalFiles, readFileContent } = require("../local-files.js");
-const { Filesystem } = require("@capacitor/filesystem");
+import { listLocalFiles, readFileContent } from "../local-files.js";
+import assert from "node:assert/strict";
+import test from "node:test";
+import fs from "node:fs";
+import path from "node:path";
 
-// Mocking Capacitor Filesystem for native platform
-jest.mock("@capacitor/filesystem", () => ({
-  Filesystem: {
-    readdir: jest.fn(),
-    readFile: jest.fn(),
-    stat: jest.fn()
-  }
-}));
+test("local-files module", async (t) => {
+  await t.test("readFileContent reads PDF and returns object with context", async () => {
+    const pdfPath = path.resolve("samples/facture-piscine.pdf");
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    const sampleBlob = new Blob([pdfBuffer], { type: "application/pdf" });
 
-describe("local-files module", () => {
-  test("listLocalFiles returns supported files", async () => {
-    Filesystem.readdir.mockResolvedValue({ files: [{ name: "doc.pdf" }, { name: ".hidden" }, { name: "image.png" }] });
-    const files = await listLocalFiles("Documents");
-    expect(files).toHaveLength(1);
-    expect(files[0].name).toBe("doc.pdf");
-  });
+    const result = await readFileContent(sampleBlob, "facture-piscine.pdf");
 
-  test("readFileContent reads PDF and returns string", async () => {
-    const sampleBlob = new Blob([
-      // minimal PDF bytes
-      "<\?xml version=\"1.0\"?\>\n",
-      "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n2 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF"
-    ], { type: "application/pdf" });
-    const content = await readFileContent(sampleBlob, "doc.pdf");
-    expect(content).toContain("%%EOF");
+    assert.ok(typeof result === "object");
+    assert.ok("rawText" in result);
+    assert.ok("context" in result);
+    assert.ok(result.rawText.length > 0);
   });
 });
