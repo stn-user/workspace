@@ -60,16 +60,12 @@
 
         <form class="search-form" id="quick-search-form" role="search" style="margin-bottom: var(--space-xl);">
           <label class="visually-hidden" for="quick-question">Rechercher dans la démonstration</label>
-          <span class="search-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <input id="quick-question" type="search" placeholder="Rechercher un document, une facture, une photo, une information…">
+          <button class="submit-button" type="submit" aria-label="Ouvrir la recherche">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-          </span>
-          <input id="quick-question" type="search" placeholder="Rechercher un document, une facture, une photo, une information…">
-          <button class="submit-button" type="submit" aria-label="Ouvrir la recherche">
-            <span>Rechercher</span>
-            <span aria-hidden="true">→</span>
           </button>
         </form>
 
@@ -108,16 +104,12 @@
 
         <form class="search-form" id="search-form" role="search">
           <label class="visually-hidden" for="question">Votre question</label>
-          <span class="search-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <input id="question" name="question" type="search" autocomplete="off" placeholder="Ex. : combien ai-je payé pour ma piscine ?" aria-describedby="privacy-note">
+          <button class="submit-button" type="submit">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-          </span>
-          <input id="question" name="question" type="search" autocomplete="off" placeholder="Ex. : combien ai-je payé pour ma piscine ?" aria-describedby="privacy-note">
-          <button class="submit-button" type="submit">
-            <span>Rechercher</span>
-            <span aria-hidden="true">→</span>
           </button>
         </form>
 

@@ -1356,8 +1356,8 @@ body {
     margin: 0 0.5rem 0 0;
   }
   .submit-button {
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
+    padding: 0.5rem;
+    aspect-ratio: 1 / 1;
     flex-shrink: 0;
   }
 }
