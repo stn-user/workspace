@@ -1222,7 +1222,22 @@ document.querySelectorAll("[data-open-view]").forEach((button) => {
   button.addEventListener("click", (event) => {
     console.log("Clicked data-open-view:", button.dataset.openView);
     if (button instanceof HTMLAnchorElement) event.preventDefault();
-    showView(button.dataset.openView);
+
+    // Extraction eventuelle de paramètres dans l'attribut (ex: "recherche?docId=xxx")
+    const viewData = button.dataset.openView || '';
+    const viewName = viewData.split('?')[0]; // Partie avant le '?'
+    const paramsString = viewData.split('?')[1] || ''; // Partie après le '?'
+    const params = {};
+
+    // Parsing simple des paramètres key=value
+    if (paramsString) {
+      paramsString.split('&').forEach(pair => {
+        const [key, value] = pair.split('=');
+        if (key) params[key] = value ? decodeURIComponent(value) : '';
+      });
+    }
+
+    showView(viewName, { addHistory: true, params });
   });
 });
 
