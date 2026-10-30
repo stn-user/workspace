@@ -1,4 +1,5 @@
-﻿import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch, normalizeText } from "./search-utils.js";
+﻿console.log("App script loaded");
+import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch, normalizeText } from "./search-utils.js";
 import { GoogleDriveClient } from "./google-drive.js";
 // Mock Capacitor pour le navigateur web (non disponible en local sans build)
 const Capacitor = { isNativePlatform: () => false };
@@ -1063,7 +1064,9 @@ function initializeViewWithParams(viewName, params) {
       break;
 
     case 'vos-donnees':
-      initDataView();
+      // Extraire les paramètres de filtrage depuis le hash (ex: ?type=document&category=Facture)
+      const hashFilters = params;
+      initDataView(hashFilters);
       break;
 
     case 'plus':
@@ -1259,8 +1262,10 @@ document.querySelectorAll(".bottom-nav .nav-item").forEach((button) => {
   });
 });
 
-document.querySelectorAll("[data-open-view]").forEach((button) => {
-  button.addEventListener("click", (event) => {
+// DÉLÉGATION D'ÉVÉNEMENTS pour data-open-view
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-open-view]');
+  if (button) {
     console.log("Clicked data-open-view:", button.dataset.openView);
     if (button instanceof HTMLAnchorElement) event.preventDefault();
 
@@ -1279,7 +1284,7 @@ document.querySelectorAll("[data-open-view]").forEach((button) => {
     }
 
     showView(viewName, { addHistory: true, params });
-  });
+  }
 });
 
 
@@ -1864,7 +1869,7 @@ function renderAlerts(filter) {
           </div>
           <p>${alert.detail}</p>
         </div>
-        <button class="alert-action" type="button" data-open-view="recherche" aria-label="Voir le détail">›</button>
+        <button class="alert-action" type="button" data-open-view="vos-donnees?docId=${alert.docId}" aria-label="Voir le détail">›</button>
       </article>
     `;
   }).join('');
@@ -1872,18 +1877,39 @@ function renderAlerts(filter) {
   // Re-bind alert card click listeners for read toggle
   document.querySelectorAll("[data-alert-card]").forEach((card) => {
     card.addEventListener("click", (e) => {
-      if (e.target.closest('.alert-action')) return;
+      // Si l'utilisateur clique sur le bouton d'action, on ne fait rien ici
+      // et on laisse le gestionnaire du bouton (délégation globale) agir.
+      if (e.target.closest('.alert-action')) {
+          return;
+      }
+
+      // Sinon, on bascule l'état "lu"
       card.classList.toggle("is-read");
+    }, true); // Le paramètre 'true' active la capture, ce qui est plus robuste
+  });
+
+  // Handle alert action button navigation explicitly
+  alertList.querySelectorAll(".alert-action").forEach((button) => {
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      console.log("Clicked alert action explicitly:", button.dataset.openView);
+      const viewData = button.dataset.openView || '';
+      const viewName = viewData.split('?')[0];
+      const paramsString = viewData.split('?')[1] || '';
+      const params = {};
+
+      if (paramsString) {
+        paramsString.split('&').forEach(pair => {
+          const [key, value] = pair.split('=');
+          if (key) params[key] = value ? decodeURIComponent(value) : '';
+        });
+      }
+
+      showView(viewName, { addHistory: true, params });
     });
   });
 
-  // Handle alert action button navigation
-  document.querySelectorAll(".alert-card [data-open-view]").forEach((button) => {
-    button.addEventListener("click", (e) => {
-      e.stopPropagation();
-      showView(button.dataset.openView);
-    });
-  });
+  // Handle alert action button navigation (Supprimé car géré par la délégation globale)
 }
 
 // Initialize family state from localStorage (if available)
@@ -2347,15 +2373,21 @@ initAssistantView();
 
 /**
  * Render data inventory for Vos données view
+ * @param {Object} filters - Optional filters: { type, category }
  */
-function renderDataInventory() {
+function renderDataInventory(filters = {}) {
   const dataList = document.querySelector('#data-inventory-list');
   if (!dataList) return;
 
-  const docs = uploadedDocuments.length > 0 ? uploadedDocuments : documents;
+  let docs = uploadedDocuments.length > 0 ? uploadedDocuments : documents;
+
+  // Appliquer les filtres si fournis
+  if (filters.category) {
+    docs = docs.filter(d => d.type === filters.category);
+  }
 
   if (docs.length === 0) {
-    dataList.innerHTML = '<p class="empty-state">Aucun document indexé.</p>';
+    dataList.innerHTML = '<p class="empty-state">Aucun document trouvé pour ces critères.</p>';
     return;
   }
 
@@ -2390,9 +2422,11 @@ function renderDataInventory() {
 
 /**
  * Initialize Vos données view
+ * @param {Object} filters - Optional filters passed from URL
  */
-function initDataView() {
-  renderDataInventory();
+function initDataView(filters = {}) {
+  renderDataInventory(filters);
+
 
   const exportBtn = document.querySelector('#export-all-data');
   if (exportBtn) {

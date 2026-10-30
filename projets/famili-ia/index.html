@@ -74,17 +74,17 @@
         </div>
 
         <div class="stats-grid" aria-label="Résumé de démonstration">
-          <button class="stat-card" type="button" data-open-view="documents-list?category=Facture"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></span><span class="stat-copy"><span>Documents importants</span><strong>428</strong></span><span class="stat-arrow">›</span></button>
-          <button class="stat-card" type="button" data-open-view="documents-list?category=Garantie"><span class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span class="stat-copy"><span>Garanties actives</span><strong>17</strong></span><span class="stat-arrow">›</span></button>
-          <button class="stat-card" type="button" data-open-view="documents-list?category=Contrat"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span><span class="stat-copy"><span>Contrats</span><strong>31</strong></span><span class="stat-arrow">›</span></button>
+          <button class="stat-card" type="button" data-open-view="vos-donnees?type=document&category=Facture"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></span><span class="stat-copy"><span>Documents importants</span><strong>428</strong></span><span class="stat-arrow">›</span></button>
+          <button class="stat-card" type="button" data-open-view="vos-donnees?type=document&category=Garantie"><span class="stat-icon green"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span class="stat-copy"><span>Garanties actives</span><strong>17</strong></span><span class="stat-arrow">›</span></button>
+          <button class="stat-card" type="button" data-open-view="vos-donnees?type=document&category=Contrat"><span class="stat-icon blue"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span><span class="stat-copy"><span>Contrats</span><strong>31</strong></span><span class="stat-arrow">›</span></button>
         </div>
 
         <section class="panel verify-panel" aria-labelledby="verify-title">
           <div class="section-heading">
             <h2 id="verify-title">Vos prochaines échéances</h2>
-            <button class="text-button" type="button" data-open-view="documents-list?category=Garantie">Voir tout</button>
+            <button class="text-button" type="button" data-open-view="vos-donnees?type=document&category=Garantie">Voir tout</button>
           </div>
-          <button class="verify-row" type="button" data-open-view="documents-list?category=Garantie"><span class="icon icon-amber icon-circle row-icon amber">♢</span><span class="row-copy"><strong>Garantie piscine</strong><small>Expire dans 32 jours</small></span><span class="stat-arrow">›</span></button>
+          <button class="verify-row" type="button" data-open-view="vos-donnees?type=document&category=Garantie"><span class="icon icon-amber icon-circle row-icon amber">♢</span><span class="row-copy"><strong>Garantie piscine</strong><small>Expire dans 32 jours</small></span><span class="stat-arrow">›</span></button>
           <button class="verify-row" type="button" data-open-view="alertes"><span class="icon icon-red icon-circle row-icon red">◉</span><span class="row-copy"><strong>Contrôle technique</strong><small>Dans 18 jours</small></span><span class="stat-arrow">›</span></button>
           <button class="verify-row" type="button" data-open-view="alertes"><span class="icon icon-amber icon-circle row-icon amber">▤</span><span class="row-copy"><strong>247 doublons détectés</strong><small>À vérifier</small></span><span class="stat-arrow">›</span></button>
         </section>
@@ -203,13 +203,13 @@
         </section>
         <div class="family-panels">
           <section class="panel">
-            <div class="section-heading"><div><h2>Documents importants</h2><p class="panel-subtitle">À partager avec votre famille</p></div><button class="text-button" type="button" data-open-view="documents-list?category=Tous">Voir tout</button></div>
-            <button class="family-doc-row" type="button" data-open-view="documents-list?category=Contrat"><span class="doc-dot green"></span>Assurance habitation<span class="stat-arrow">›</span></button>
-            <button class="family-doc-row" type="button" data-open-view="documents-list?category=Facture"><span class="doc-dot violet"></span>Contrat maison<span class="stat-arrow">›</span></button>
-            <button class="family-doc-row" type="button" data-open-view="documents-list?category=Garantie"><span class="doc-dot amber"></span>Garanties<span class="stat-arrow">›</span></button>
-            <button class="family-doc-row" type="button" data-open-view="documents-list?category=Notice"><span class="doc-dot blue"></span>Véhicules<span class="stat-arrow">›</span></button>
-            <button class="family-doc-row" type="button" data-open-view="documents-list?category=Facture"><span class="doc-dot cyan"></span>Banque<span class="stat-arrow">›</span></button>
-            <button class="family-doc-row" type="button" data-open-view="documents-list?category=Contrat"><span class="doc-dot red"></span>Santé<span class="stat-arrow">›</span></button>
+            <div class="section-heading"><div><h2>Documents importants</h2><p class="panel-subtitle">À partager avec votre famille</p></div><button class="text-button" type="button" data-open-view="vos-donnees?type=document&category=Tous">Voir tout</button></div>
+            <button class="family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Contrat"><span class="doc-dot green"></span>Assurance habitation<span class="stat-arrow">›</span></button>
+            <button class="family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Facture"><span class="doc-dot violet"></span>Contrat maison<span class="stat-arrow">›</span></button>
+            <button class="family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Garantie"><span class="doc-dot amber"></span>Garanties<span class="stat-arrow">›</span></button>
+            <button class="family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Notice"><span class="doc-dot blue"></span>Véhicules<span class="stat-arrow">›</span></button>
+            <button class="family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Facture"><span class="doc-dot cyan"></span>Banque<span class="stat-arrow">›</span></button>
+            <button class="family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Contrat"><span class="doc-dot red"></span>Santé<span class="stat-arrow">›</span></button>
           </section>
           <section class="panel emergency-panel">
             <div class="emergency-icon icon-circle icon-amber">♧</div><div><h2>Mode urgence</h2><p>En cas d'imprévu, votre famille peut accéder aux informations essentielles.<span class="active-pill">● Activé</span></div>

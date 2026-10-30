@@ -111,40 +111,38 @@
 ### Phase 11 – Monétisation, Expérience Utilisateur & Valeur Augmentée
 - [ ] 11.1 : Préparation modèle monétisation (état utilisateur & limites dynamiques)
 - [ ] 11.2 : Correction navigation dynamique (tabs Maison/Alertes)
-- [✓] ✅ 11.3 : Vue "Données" filtrable – Créer un affichage intermédiaire filtré pour visualiser l'ensemble des documents d'une catégorie (ex: "Documents importants") avant sélection.
-    - [✓] ✅ 11.3.a : Audit des liens existants — Identifier toutes les entrées du Dashboard/Alertes qui pointent vers une vue de document unique.
-    - [✓] ✅ 11.3.b : Conception de la vue Liste Filtrée (`view-documents-list`) — Créer un nouveau composant capable d'afficher une liste dynamique de documents selon une catégorie passée en paramètre.
-    - [✓] ✅ 11.3.c : Mise à jour du routage (`app.js`) — Supporter la navigation `#/documents?category=X`.
-    - [✓] ✅ 11.3.d : Refactorisation des liens (Dashboard/Alertes) — Faire pointer les accès vers cette nouvelle vue intermédiaire plutôt que directement vers le `sourceDialog`.
-    - [✓] ✅ 11.3.e : Intégration UI — S'assurer que le retour arrière depuis la liste fonctionne correctement vers la source initiale.
-### Phase 11 – Intégration Proactive & Vie Numérique
-- [✓] ✅ 11.4 : Indexation Globale & Onboarding Utilisateur
-    - [✓] ✅ 11.4.a : Complétion du profil utilisateur & préférences d'indexation.
-    - [✓] ✅ 11.4.b : Demande et sécurisation des permissions système (Accès stockage local récursif).
-    - [ ] 11.4.c : Mise en place du "Worker d'Indexation en Fond" (Background Sync)
-        - [✓] ✅ 11.4.c.1 : Interface du Worker & structure du cycle de vie
-        - [✓] ✅ 11.4.c.2 : Algorithme de parcours récursif des dossiers configurés
-        - [✓] ✅ 11.4.c.3 : Gestion par lots (Batching) pour préserver l'UI
-            - [✓] ✅ 11.4.c.3.a : Logique de partitionnement des fichiers en lots
-            - [✓] ✅ 11.4.c.3.b : Traitement asynchrone par lot (lecture, parsing, indexation)
-            - [✓] ✅ 11.4.c.3.c : Gestion de pause (yield) entre les lots
-        - [✓] ✅ 11.4.c.4 : Traitement sélectif (Skip fichiers existants & Filter système)
-        - [✓] ✅ 11.4.c.5 : Persistance (IndexedDB) & Feedback UI progressif
-            - [✓] ✅ 11.4.c.5.a : UI de progression (Toast/Progress Bar)
-            - [✓] ✅ 11.4.c.5.b : Hook de persistance IndexedDB
-            - [✓] ✅ 11.4.c.5.c : Intégration du worker dans l'Onboarding
-            - [✓] ✅ 11.4.c.5.d : Gestion des erreurs & Nettoyage
-    - [✓] ✅ 11.4.d : Gestion intelligente de la mémoire (Traitement par lots, saut des fichiers verrouillés/protected).
-    - [✓] ✅ 11.4.e : Retour utilisateur — Synthèse du "Ce qui a été trouvé" après le premier scan.
-- [ ] 11.5 : Recherche Sémantique & Visualisation Photos (Assistant Vie Numérique)
-    - [ ] 11.5.a : Extraction de métadonnées EXIF (dates/lieux sur les photos).
-    - [ ] 11.5.b : Moteur de recherche "Moments de vie" (langage naturel : "Photos de Lorena 2 ans").
-    - [ ] 11.5.c : Vue Galerie interactive + Timeline chronologique (Journal de bord).
-    - [ ] 11.5.d : Assistant proactif (notifications intelligentes sur les documents indexés).
-    - [ ] 11.5.a : Extraction de métadonnées EXIF (dates/lieux)
-    - [ ] 11.5.b : Moteur de recherche "Moments de vie" (langage naturel)
-    - [ ] 11.5.c : Vue Galerie + Timeline interactive (Journal de bord)
-    - [ ] 11.5.d : Intégration Assistant (ex: "Montre-moi les photos de Lorena à 2 ans")
+- [ ] 11.3 : Centralisation de la Navigation par Filtres (Vue "Vos données")
+    - [✓] ✅ 11.3.a : Audit complet des points d'accès existants (Dashboard, Alertes, Famille)
+    - [✓] ✅ 11.3.b : Définition du protocole de filtrage par URL (ex: `#/donnees?type=X&category=Y`)
+    - [✓] ✅ 11.3.c : Refactorisation de `showView` dans `app.js` pour traiter la redirection vers `#/donnees` avec paramètres
+    - [✓] ✅ 11.3.d : Généralisation de `renderDataInventory()` pour supporter les filtres optionnels
+    - [✓] ✅ 11.3.e : Migration des liens UI : remplacer `data-open-view="documents-list?category=..."` par `data-open-view="donnees?type=document&category=..."`
+    - [ ] 11.3.f : Gestion du retour arrière et du contexte utilisateur
+    - [ ] 11.3.g : Nettoyage et suppression des vues de listes redondantes (documents-list)
+### Phase 12 – Intégration Proactive & Vie Numérique
+- [✓] ✅ 12.1 : Indexation Globale & Onboarding Utilisateur
+    - [✓] ✅ 12.1.a : Complétion du profil utilisateur & préférences d'indexation.
+    - [✓] ✅ 12.1.b : Demande et sécurisation des permissions système (Accès stockage local récursif).
+    - [ ] 12.1.c : Mise en place du "Worker d'Indexation en Fond" (Background Sync)
+        - [✓] ✅ 12.1.c.1 : Interface du Worker & structure du cycle de vie
+        - [✓] ✅ 12.1.c.2 : Algorithme de parcours récursif des dossiers configurés
+        - [✓] ✅ 12.1.c.3 : Gestion par lots (Batching) pour préserver l'UI
+            - [✓] ✅ 12.1.c.3.a : Logique de partitionnement des fichiers en lots
+            - [✓] ✅ 12.1.c.3.b : Traitement asynchrone par lot (lecture, parsing, indexation)
+            - [✓] ✅ 12.1.c.3.c : Gestion de pause (yield) entre les lots
+        - [✓] ✅ 12.1.c.4 : Traitement sélectif (Skip fichiers existants & Filter système)
+        - [✓] ✅ 12.1.c.5 : Persistance (IndexedDB) & Feedback UI progressif
+            - [✓] ✅ 12.1.c.5.a : UI de progression (Toast/Progress Bar)
+            - [✓] ✅ 12.1.c.5.b : Hook de persistance IndexedDB
+            - [✓] ✅ 12.1.c.5.c : Intégration du worker dans l'Onboarding
+            - [✓] ✅ 12.1.c.5.d : Gestion des erreurs & Nettoyage
+    - [✓] ✅ 12.1.d : Gestion intelligente de la mémoire (Traitement par lots, saut des fichiers verrouillés/protected).
+    - [✓] ✅ 12.1.e : Retour utilisateur — Synthèse du "Ce qui a été trouvé" après le premier scan.
+- [ ] 12.2 : Recherche Sémantique & Visualisation Photos (Assistant Vie Numérique)
+    - [ ] 12.2.a : Extraction de métadonnées EXIF (dates/lieux sur les photos).
+    - [ ] 12.2.b : Moteur de recherche "Moments de vie" (langage naturel : "Photos de Lorena 2 ans").
+    - [ ] 12.2.c : Vue Galerie interactive + Timeline chronologique (Journal de bord).
+    - [ ] 12.2.d : Assistant proactif (notifications intelligentes sur les documents indexés).
 
 
 
