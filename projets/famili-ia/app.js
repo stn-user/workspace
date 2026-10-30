@@ -3,9 +3,10 @@ import { GoogleDriveClient } from "./google-drive.js";
 // Mock Capacitor pour le navigateur web (non disponible en local sans build)
 const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
-import { listLocalFiles, readFileContent, requestPermissions } from "./local-files.js";
+import { listLocalFiles, readFileContent } from "./local-files.js";
 import { loadFamilyState } from "./family-storage.js";
 import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember } from "./state.js";
+import { BackgroundSyncWorker } from "./background-sync.js";
 
 // Initialisation asynchrone de l'application
 (async () => {
@@ -13,7 +14,16 @@ import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, ge
   uploadedDocuments.push(...getDocuments());
   initEquipmentDialog();
   initAddMemberDialog();
-  // Reste de l'initialisation...
+
+  // Rendre la fonction de progression accessible aux callbacks
+window.updateScanProgressUI = updateScanProgressUI;
+
+  // Lancement du scan auto si activé dans les préférences
+  const user = getCurrentUser();
+  if (user && user.preferences && user.preferences.enableAutoScan) {
+    const worker = new BackgroundSyncWorker(user.preferences.scanDirectories || [], updateScanProgressUI);
+    worker.start();
+  }
 })();
 
 /**
@@ -424,6 +434,37 @@ function setDriveConnectionStatus(message, state) {
   driveConnectionStatus.textContent = message;
   if (state) driveConnectionStatus.dataset.state = state;
   else delete driveConnectionStatus.dataset.state;
+}
+
+/**
+ * Met à jour l'interface de progression du scan proactif (Phase 11.4.c.5.a)
+ */
+function updateScanProgressUI(progressInfo) {
+  const container = document.querySelector("#scan-progress-container");
+  const fill = document.querySelector("#scan-progress-fill");
+  const text = document.querySelector("#scan-progress-text");
+
+  if (!container || !fill || !text) return;
+
+  if (!progressInfo || progressInfo.status === 'idle') {
+    container.hidden = true;
+    return;
+  }
+
+  if (progressInfo.status === 'scanning') {
+    text.textContent = `Exploration de ${progressInfo.directory || 'dossiers'}...`;
+  } else if (progressInfo.status === 'indexing') {
+    fill.style.width = `${progressInfo.progress || 0}%`;
+    text.textContent = `Indexation : ${progressInfo.processed}/${progressInfo.total} fichiers`;
+
+    if (progressInfo.progress >= 100) {
+      setTimeout(() => {
+        container.hidden = true;
+        if (activeView === 'vos-donnees') renderDataInventory();
+        if (activeView === 'accueil') renderAccueilDashboard();
+      }, 3000);
+    }
+  }
 }
 
 function updateDriveConnectionActions() {

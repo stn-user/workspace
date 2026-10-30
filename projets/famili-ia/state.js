@@ -16,7 +16,9 @@ const defaultState = {
     city: 'Saint-Martin',
     preferences: {
       localAccess: true,
-      driveConnection: false
+      driveConnection: false,
+      enableAutoScan: false,
+      scanDirectories: []
     },
     privacy: {
       consentVersion: '1.0',

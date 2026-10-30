@@ -51,6 +51,43 @@
   --icon-lg: 48px;
 }
 
+/* Scan Progress Toast */
+.scan-progress-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  background: var(--color-surface);
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+#scan-progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  width: 0%;
+  transition: width var(--transition-fast);
+}
+
+#scan-progress-text {
+  font-size: 0.85rem;
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
 /* Icon Utilities */
 .icon {
   display: inline-flex;
@@ -2781,8 +2818,8 @@ body {
   cursor: pointer;
 }
 
-/* Floating Action Button (FAB) */
-.fab-add-document {
+/* Drop Zone / Drag & Drop styles */
+.drop-zone {
   position: fixed;
   bottom: 2rem;
   right: 2rem;

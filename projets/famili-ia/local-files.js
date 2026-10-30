@@ -133,7 +133,8 @@ async function readFileContent(fileBlob, filename) {
       textContent = await readPdfFile(fileBlob);
       break;
     case 'docx':
-      textContent = await readDocxFile(fileBlob);
+    case 'doc':
+      textContent = await readDocxFile(fileBlob).catch(() => "Fichier Word au format ancien (.doc). Veuillez l'enregistrer au format .docx pour une lecture optimale.");
       break;
     case 'xlsx':
     case 'xls':
@@ -235,40 +236,64 @@ async function listLocalFiles(directoryPath = "") {
     });
 
     const supportedExtensions = new Set(['txt', 'md', 'pdf', 'docx', 'xlsx', 'xls']);
-    const filePromises = files
-      .filter(file =>
-        !file.name.startsWith('.') &&  // Skip hidden files
-        supportedExtensions.has(getFileExtension(file.name))
-      )
-      .map(async file => {
+    const allFiles = [];
+
+    async function scanDirectory(dirPath) {
+      const { files } = await Filesystem.readdir({
+        path: dirPath,
+        directory: Filesystem.Directory.Documents
+      });
+
+      for (const file of files) {
+        if (file.name.startsWith('.')) continue; // Skip hidden
+
+        const fullPath = dirPath ? `${dirPath}/${file.name}` : file.name;
+
+        if (file.type === 'directory') {
+          // Récursion
+          await scanDirectory(fullPath);
+        } else if (supportedExtensions.has(getFileExtension(file.name))) {
+          allFiles.push({ name: file.name, path: fullPath });
+        }
+      }
+    }
+
+    await scanDirectory(directoryPath);
+
+    // Traitement par lots pour ne pas saturer la mémoire
+    const batchSize = 5;
+    const results = [];
+    for (let i = 0; i < allFiles.length; i += batchSize) {
+      const batch = allFiles.slice(i, i + batchSize);
+      const batchResults = await Promise.all(batch.map(async file => {
         try {
           const { data } = await Filesystem.readFile({
-            path: `${directoryPath}/${file.name}`,
+            path: file.path,
             directory: Filesystem.Directory.Documents
           });
 
-          // Convert base64 back to blob for processing
+          // Convert base64 back to blob
           const binaryString = atob(data);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
+          const bytes = new Uint8Array(binaryString.length);
+          for (let j = 0; j < binaryString.length; j++) bytes[j] = binaryString.charCodeAt(j);
 
+          // On retourne le blob "brut" sans extraction immédiate (évite les erreurs OCR sur PDF scannés en lot)
+          // L'extractiontexte se fera au moment de l'affichage ou via un bouton dédié
           return {
             name: file.name,
             extension: getFileExtension(file.name),
-            blob: new Blob([bytes], { type: `text/plain` }),
-            path: `${directoryPath}/${file.name}`
+            blob: new Blob([bytes], { type: `application/octet-stream` }),
+            path: file.path,
+            content: null // Contenu non extrait pour l'instant
           };
         } catch (error) {
-          console.warn(`Could not read file ${file.name}:`, error);
+          console.warn(`Erreur lors du stockage du fichier ${file.name}:`, error);
           return null;
         }
-      });
-
-    const results = await Promise.all(filePromises);
-    return results.filter(file => file !== null);
+      }));
+      results.push(...batchResults.filter(r => r !== null));
+    }
+    return results;
   } catch (error) {
     console.error("Error listing local files:", error);
     throw error;
@@ -285,13 +310,13 @@ async function requestPermissions() {
   }
 
   try {
-    // For Android, we might need to request READ_EXTERNAL_STORAGE
-    // This would typically be done via Capacitor plugins or native code
-    // For now, we'll assume permissions are handled at app level
-    return { granted: true };
+    // Utilisation du plugin @capacitor/filesystem pour demander les permissions
+    // Note: nécessite une configuration native côté Android (AndroidManifest.xml) et iOS (Info.plist)
+    const status = await Filesystem.requestPermissions();
+    return { granted: status.publicStorage === 'granted' || status.storage === 'granted' };
   } catch (error) {
     console.error("Error requesting permissions:", error);
-    throw error;
+    return { granted: false };
   }
 }
 
