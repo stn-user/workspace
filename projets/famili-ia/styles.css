@@ -2744,6 +2744,23 @@ body {
   gap: var(--space-md);
 }
 
+.option-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+.option-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
 .import-option {
   background: white;
   border: 1px solid var(--color-border);
@@ -2820,6 +2837,72 @@ body {
 
 /* Drop Zone / Drag & Drop styles */
 .drop-zone {
+  border: 2px dashed var(--color-border);
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.drop-zone.is-dragover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  transform: scale(1.01);
+}
+
+.drop-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(15, 113, 115, 0.1);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drop-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.drop-text {
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+  font-size: 1rem;
+}
+
+.drop-button {
+  background: var(--color-primary);
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+  transition: all var(--transition-fast);
+}
+
+.drop-button:hover {
+  background: var(--color-primary-dark);
+}
+
+.drop-formats {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* FAB Action Button */
+.fab-add-document {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
@@ -2837,11 +2920,6 @@ body {
   cursor: pointer;
   z-index: 1000;
   transition: all 0.2s ease;
-}
-
-.fab-add-document:hover {
-  background: var(--color-primary-dark);
-  transform: scale(1.05);
 }
 
 @media (max-width: 1024px) {
