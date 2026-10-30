@@ -1203,6 +1203,7 @@ window.addEventListener("popstate", (event) => {
     });
   } else {
     // Fallback to parsing the hash (for backward compatibility)
+    // This handles cases where hash-based navigation is used without pushState
     const { view, params } = parseHash();
     showView(view, { addHistory: false, params });
   }

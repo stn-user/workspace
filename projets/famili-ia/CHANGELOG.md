@@ -1,3 +1,14 @@
+## [11.3.0] - 2026-10-30 - Phase 11.3 : Gestion du Retour Arrière & Nettoyage Définitif
+### 🚀 Nouvelles Fonctionnalités & Polish (Phase 11.3)
+- **Gestion du retour arrière (11.3.f)** : Implémentation d'une gestion robuste de l'événement `popstate` dans `app.js` pour permettre un retour arrière propre dans l'historique de navigation après la consultation de documents par filtres.
+- **Nettoyage définitif (11.3.g)** : Suppression définitive de l'ancienne vue de liste redondante (`documents-list`) de `index.html`, désormais entièrement remplacée par la vue unifiée "Vos données".
+
+### 🛠 Corrections et Améliorations
+- Consolidation du routage par hachage (`parseHash` / `showView`) pour éviter les états orphelins lors de la navigation arrière.
+- Validation du build complet du projet (Vite).
+
+---
+
 ## [10.0.0] - 2026-10-28 - Phase 10 : Optimisation Mobile & Revue Documentaire
 ### 🚀 Nouvelles Fonctionnalités
 - **Revue Documentaire (Phase 10.4)** : Refonte structurelle complète, migration vers `/docs/`, création de `document-parser.js`, suppression des redondances, mise en place du processus de maintenance (CI, lint, revues PR).
