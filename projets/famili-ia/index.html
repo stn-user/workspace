@@ -6,6 +6,22 @@
   <meta name="theme-color" content="#f5f8ff">
   <meta name="description" content="Famili-IA : retrouvez vos documents familiaux facilement en toute confidentialité.">
   <title>Accueil | Famili-IA</title>
+  <style>
+    .onboarding-page-white {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #ffffff;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+  </style>
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.js"></script>
 </head>
@@ -16,6 +32,7 @@
         <img src="assets/Logo.svg" alt="Famili-IA" class="logo-lg app-logo">
       </a>
       <!-- <div class="demo-status"><span class="status-dot"></span><span id="demo-status-label">Prototype — données fictives</span></div> -->
+      <div id="demo-badge" class="demo-badge" hidden>Mode Démo</div>
       <button class="avatar avatar-small" type="button" data-demo-action aria-label="Profil de démonstration">S</button>
     </header>
 
@@ -42,20 +59,49 @@
       <div id="dashboard-content" hidden data-view="accueil" class="view-header-centered">
         <div class="view-titles">
           <p class="eyebrow">VOTRE ESPACE FAMILIAL</p>
-          <h1 id="dashboard-title">Bonjour Steve <span aria-hidden="true">👋</span></h1>
-          <p>Votre vie numérique, enfin retrouvée.</p>
+          <h1 id="dashboard-title">Bonjour <span id="dashboard-user-name"></span> <span aria-hidden="true">👋</span></h1>
+          <p id="dashboard-subtitle">Votre vie numérique, enfin retrouvée.</p>
+          <div id="demo-welcome-banner" class="demo-welcome-banner" hidden>
+            ✨ Bienvenue dans votre espace de démonstration !
+          </div>
         </div>
       </div>
 
       <section class="view dashboard-view" id="view-accueil" data-view="accueil" aria-labelledby="welcome-title">
+        <!-- Conteneur pour onboarding en mode page blanche -->
+        <section class="onboarding-page-white" id="onboarding-wizard" aria-labelledby="wizard-title" hidden>
+          <div class="wizard-step" id="step-0" aria-labelledby="step-0-title">
+            <div class="wizard-mark" aria-hidden="true">✦</div>
+            <h2 id="step-0-title">Bienvenue dans Famili-IA</h2>
+            <p>La souveraineté numérique est notre priorité : toutes vos données restent 100% sur votre appareil. Aucun serveur externe, aucune analyse dans le cloud. Vous seul avez le contrôle total.</p>
+            <button class="primary-button" type="button" data-wizard-next="1">Continuer &rarr;</button>
+          </div>
+
+          <div class="wizard-step" id="step-1" aria-labelledby="step-1-title" hidden>
+            <h2 id="step-1-title">Quelques informations</h2>
+            <p>Personnalisez votre expérience pour mieux gérer vos alertes.</p>
+            <input type="text" id="wizard-user-name" placeholder="Votre prénom" style="display:block; width:100%; margin-bottom:1rem; padding:0.5rem;">
+            <input type="text" id="wizard-user-city" placeholder="Votre ville / code postal" style="display:block; width:100%; margin-bottom:1rem; padding:0.5rem;">
+            <div style="display:flex; gap:1rem;">
+                <button class="secondary-button" type="button" data-wizard-prev="0">Retour</button>
+                <button class="primary-button" type="button" data-wizard-next="2">Continuer &rarr;</button>
+            </div>
+          </div>
+
+          <div class="wizard-step" id="step-2" aria-labelledby="step-2-title" hidden>
+            <h2 id="step-2-title">Comment démarrer ?</h2>
+            <p>Choisissez comment vous souhaitez commencer :</p>
+            <button class="primary-button" type="button" id="start-demo-mode">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Explorer la démo
+            </button>
+            <button class="secondary-button" type="button" id="start-scan-mode">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Lancer le Scan Intelligent
+            </button>
+          </div>
+        </section>
+
         <section class="welcome-panel" id="welcome-panel" aria-labelledby="welcome-title" hidden>
-          <div class="welcome-mark" aria-hidden="true">✦</div>
-          <p class="eyebrow">FAMILI-IA</p>
-          <h1 id="welcome-title">Vos documents, enfin faciles à retrouver.</h1>
-          <p class="welcome-copy">Ajoutez des documents depuis votre appareil ou choisissez une source disponible. Vous gardez le contrôle de chaque fichier.</p>
-          <button class="welcome-primary" type="button" data-open-source-dialog>Ajouter des documents <span aria-hidden="true">→</span></button>
-          <button class="welcome-secondary" id="explore-demo" type="button">Explorer la démo</button>
-          <p class="welcome-privacy"><span aria-hidden="true">◇</span> Les fichiers choisis sont traités sur cet appareil et restent en mémoire pour cette session.</p>
+          <!-- (Ancien contenu masqué/conservé pour backup temporaire) -->
         </section>
 
         <form class="search-form" id="quick-search-form" role="search" style="margin-bottom: var(--space-xl);">

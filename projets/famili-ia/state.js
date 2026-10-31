@@ -47,7 +47,8 @@ const defaultState = {
     { id: 'a4', title: 'Contrôle technique', detail: 'Vérifiez les documents du véhicule.', type: 'blue', docId: 'vehicule-ct', dueDate: '2027-01-20' },
     { id: 'a5', title: 'Facture électricité', detail: 'Paiement en attente.', type: 'muted', docId: 'facture-elec', dueDate: '2026-10-20' }
   ],
-  documents: []
+  documents: [],
+  isDemoMode: false
 };
 
 let state = { ...defaultState };
@@ -235,6 +236,50 @@ export async function addLog(action, details) {
 export async function resetState() {
   await purgeDatabase();
   state = { ...defaultState };
+  return state;
+}
+
+/**
+ * Définit l'état de mode démo (true/false).
+ * Permet d'activer/désactiver l'affichage des éléments "Mode Démo" (badge, message).
+ * @param {boolean} mode - true pour activer le mode démo, false pour le désactiver
+ */
+export function setDemoMode(mode) {
+  state.isDemoMode = mode;
+  return state.isDemoMode;
+}
+
+/**
+ * Initialise un foyer de démonstration complet dans l'état local.
+ * Utilisé par le bouton "Explorer la démo" (Phase 13.2.a)
+ */
+export async function initializeDemoState() {
+  // Réinitialiser d'abord pour partir sur une base propre
+  await resetState();
+
+  // 1. Membres de la famille fictifs
+  const demoMembers = [
+    { id: 'u1', name: 'Steve', role: 'Admin', avatar: 'S', access: 'full' },
+    { id: 'u2', name: 'Marie', role: 'Member', avatar: 'M', access: 'limited' }
+  ];
+  for (const m of demoMembers) await addFamilyMember(m);
+
+  // 2. Équipements fictifs
+  const demoEquipments = [
+    { id: 'eq-1', category: 'piscine', name: 'Piscine Extérieure', status: 'Bon état', docs: [] },
+    { id: 'eq-2', category: 'pompe', name: 'Pompe de filtration', status: 'À réviser', docs: [] }
+  ];
+  for (const e of demoEquipments) await addEquipment(e);
+
+  // 3. Alertes fictives
+  const demoAlerts = [
+    { id: 'a-1', title: 'Entretien Pompe', detail: 'Révision annuelle requise.', type: 'amber', docId: '', dueDate: '2026-11-30' }
+  ];
+  for (const a of demoAlerts) {
+    state.alerts.push(a);
+    await put('alerts', a);
+  }
+
   return state;
 }
 
