@@ -1,4 +1,19 @@
-## [11.3.0] - 2026-10-30 - Phase 11.3 : Gestion du Retour Arrière & Nettoyage Définitif
+## [13.2.0] - 2026-11-01 - Phase 13 : Refonte Complète du Onboarding (Expérience "Magique")
+### 🚀 Nouvelles Fonctionnalités & Refonte
+- **Refonte du flux d'accueil (13.1)** : Remplacement de l'accueil statique par un parcours "Wizard" (3 étapes) structuré pour expliquer la souveraineté numérique (0 serveur) et collecter les informations minimales (prénom, ville) pour la personnalisation du foyer.
+- **Mode Démo Interactif (13.2)** : Implémentation d'un mode de démonstration instantané ("Explorer la démo") avec injection automatique de documents fictifs.
+- **Visite Guidée Automatisée (13.2.c)** : Parcours interactif automatisé (6 étapes : Recherche, Maison, Alertes, Import, Famille, Vos données) pour présenter les fonctionnalités clés sans clic utilisateur initial.
+- **Enrichissement Pédagogique (13.2.c.5)** : Ajout d'explications contextuelles détaillées lors de la visite guidée (toasts pédagogiques).
+
+### 🛠 Corrections et Améliorations
+- **Validation Onboarding** : Ajout d'une validation bloquante (avec toast) sur l'étape 2 (nom/ville).
+- **Personnalisation** : Personnalisation dynamique du titre de l'étape 3 avec le prénom de l'utilisateur.
+- **Flux de retour** : Redirection automatique vers l'étape 3 du wizard à la fin du tour de démonstration.
+- **Correction UX** : Correction de fautes d'orthographe (13.2.b.5), bannissement des émojis au profit des icônes SVG.
+
+---
+
+
 ### 🚀 Nouvelles Fonctionnalités & Polish (Phase 11.3)
 - **Gestion du retour arrière (11.3.f)** : Implémentation d'une gestion robuste de l'événement `popstate` dans `app.js` pour permettre un retour arrière propre dans l'historique de navigation après la consultation de documents par filtres.
 - **Nettoyage définitif (11.3.g)** : Suppression définitive de l'ancienne vue de liste redondante (`documents-list`) de `index.html`, désormais entièrement remplacée par la vue unifiée "Vos données".
