@@ -6,8 +6,317 @@ const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 import { listLocalFiles, readFileContent } from "./local-files.js";
 import { loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, initializeDemoState, setDemoMode } from "./state.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
+
+/**
+ * Vérifie si l'onboarding est complet et retourne l'état.
+ * Gère le cas où localStorage serait indisponible.
+ * @returns {boolean} true si l'onboarding est complété, false sinon
+ */
+function isOnboardingComplete() {
+  try {
+    return localStorage.getItem(onboardingCompleteKey) === "true";
+  } catch (e) {
+    // localStorage unavailable - consider onboarding as not completed
+    return false;
+  }
+}
+
+/**
+ * Affiche ou masque le wizard d'onboarding en fonction de l'état actuel.
+ * Doit être appelé après que l'état de l'utilisateur soit connu.
+ * @param {boolean} [show=false] - Forcer l'affichage/masquage (optionnel)
+ */
+function manageOnboardingWizardVisibility(show = false) {
+  const wizard = document.querySelector("#onboarding-wizard");
+  if (!wizard) return;
+
+  const onboardingComplete = isOnboardingComplete();
+  // Afficher le wizard UNIQUEMENT si :
+  // 1. C'est la vue accueil ET
+  // 2. L'onboarding n'est pas terminé
+  const shouldShow = show || (!onboardingComplete && activeView === 'accueil');
+  wizard.hidden = !shouldShow;
+}
+
+/**
+ * Initialise le wizard d'onboarding (Phase 13.1).
+ * Configure les écouteurs d'événements et gère l'état initial.
+ * Supporte le mode page blanche (.onboarding-page-white) ou incrusté dans l'accueil.
+ */
+function initOnboardingWizard() {
+  const wizard = document.querySelector("#onboarding-wizard");
+  const steps = wizard ? wizard.querySelectorAll(".wizard-step") : [];
+  const userNameInput = document.querySelector("#wizard-user-name");
+  const userCityInput = document.querySelector("#wizard-user-city");
+  const startDemoMode = document.querySelector('#start-demo-mode');
+  const startScanMode = document.querySelector('#start-scan-mode');
+
+  // Masquer le wizard par défaut (la visibilité sera gérée par manageOnboardingWizardVisibility)
+  if (wizard) wizard.hidden = true;
+
+  // Détecter si on utilise le mode page blanche
+  const isWhitePageMode = document.querySelector('#onboarding-wizard.onboarding-page-white') !== null;
+
+  // Si l'onboarding est déjà complété, ne rien faire de plus
+  if (isOnboardingComplete()) {
+    return;
+  }
+
+  // Fonction pour afficher une étape
+  function showStep(stepIndex) {
+    if (steps.length === 0) return;
+    steps.forEach((step, idx) => {
+      step.hidden = idx !== stepIndex;
+    });
+  }
+
+  // Navigation entre les étapes
+  if (wizard) {
+    wizard.querySelectorAll('[data-wizard-next]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetStep = parseInt(btn.dataset.wizardNext);
+
+        // Sauvegarder les informations utilisateur avant de passer à l'étape 2
+        if (userNameInput && userCityInput && targetStep === 2) {
+          const name = userNameInput.value.trim();
+          const city = userCityInput.value.trim();
+
+          // Validation bloquante
+          if (!name || !city) {
+            showDemoNotice("Veuillez saisir votre prénom et votre ville pour continuer.");
+            return; // Bloque la navigation
+          }
+
+          // Mettre à jour l'état utilisateur
+          const user = getCurrentUser();
+          user.name = name;
+          user.city = city;
+
+          // Personnaliser l'écran 3 (étape index 2)
+          const step3Title = document.querySelector('#step-2 h2');
+          if (step3Title) {
+            step3Title.textContent = `Bonjour ${name}, comment souhaitez-vous démarrer ?`;
+          }
+
+          // Mettre à jour l'avatar si existant
+          const stateAvatar = document.querySelector('#profile-avatar, #dashboard-title strong');
+          if (stateAvatar) {
+            stateAvatar.textContent = name.charAt(0).toUpperCase();
+          }
+
+          if (document.querySelector('#view-profil')) {
+            const cityInput = document.querySelector('#edit-profile-city');
+            if (cityInput) cityInput.value = city;
+            const displayCity = document.querySelector('#display-city');
+            if (displayCity) displayCity.textContent = city;
+          }
+        }
+
+        showStep(targetStep);
+        manageOnboardingWizardVisibility(); // Mise à jour de la visibilité
+      });
+    });
+
+    wizard.querySelectorAll('[data-wizard-prev]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetStep = parseInt(btn.dataset.wizardPrev);
+        showStep(targetStep);
+        manageOnboardingWizardVisibility(); // Mise à jour de la visibilité
+      });
+    });
+  }
+
+  // Étape 3 : Choix de démarrage
+  if (startDemoMode) {
+    startDemoMode.addEventListener('click', async () => {
+      // Initialiser le foyer complet de démo
+      await initializeDemoState();
+      // Activer l'état mode démo pour afficher le badge et le message
+      setDemoMode(true);
+      // Injecter les 5 documents de référence
+      injectDemoDocuments();
+
+      completeOnboarding();
+      manageOnboardingWizardVisibility(); // Cacher le wizard après completion
+    });
+  }
+
+  if (startScanMode) {
+    startScanMode.addEventListener('click', () => {
+      // Lancer le mode scan intelligent avec progression UI
+      launchIntelligentScan();
+      manageOnboardingWizardVisibility(); // Cacher le wizard pour aller directement au dashboard
+    });
+  }
+
+  /**
+   * Lance le scan intelligent local (Phase 13.3.a)
+   * Utilise le BackgroundSyncWorker pour scanner les dossiersDocuments et Téléchargements
+   */
+  function launchIntelligentScan() {
+    const user = getCurrentUser();
+    if (!user || !user.preferences) {
+      showDemoNotice("Veuillez d'abord compléter votre profil dans l'étape précédente.");
+      return;
+    }
+
+    const scanDirectories = user.preferences.scanDirectories || ['/Documents', '/Downloads'];
+    const worker = new BackgroundSyncWorker(scanDirectories, updateScanProgressUI);
+
+    // Démarrer le scan avec affichage de la progression
+    worker.start();
+
+    // Afficher la barre de progression
+    const container = document.querySelector("#scan-progress-container");
+    if (container) {
+      container.hidden = false;
+    }
+
+    showDemoNotice("Scan intelligent démarré - Analyse des dossiers : " + scanDirectories.join(", "));
+  }
+
+  /**
+   * Injecte les 5 documents de référence de démonstration
+   * Utilisés par le bouton "Explorer la démo" du wizard d'onboarding
+   */
+  function injectDemoDocuments() {
+    // Prendre les 5 premiers documents du tableau documents (il y en a 12)
+    const demoDocs = documents.slice(0, 5);
+
+    // Les ajouter aux documents locaux en session
+    uploadedDocuments.push(...demoDocs.map(doc => ({
+      ...doc,
+      id: `demo-${doc.id}`,
+      isLocal: true,
+      driveDemo: true
+    })));
+
+    // Les ajouter à la state via addDocument
+    for (const doc of demoDocs) {
+      // Créer un objet document complet avec les métadonnées
+      const fullDoc = {
+        id: `demo-${doc.id}`,
+        name: doc.name,
+        type: doc.type,
+        date: doc.date,
+        keywords: doc.keywords,
+        summary: doc.summary,
+        content: doc.content,
+        isLocal: true,
+        driveDemo: true
+      };
+      uploadedDocuments.push(fullDoc);
+    }
+
+    // Mettre à jour l'interface
+    updateClearFilesButtonsVisibility();
+    updateGoogleDriveButton();
+    updateModeBanner();
+
+    const count = uploadedDocuments.length;
+    setFileStatus(`${demoDocs.length} document${demoDocs.length === 1 ? "" : "s"} fictif${demoDocs.length === 1 ? "" : "s"} ajouté${demoDocs.length === 1 ? "" : "s"} à la session.`, "success");
+
+    // Lancer la visite guidée automatisée
+    runGuidedTour();
+  }
+
+  /**
+   * Lance la visite guidée automatisée (Phase 13.2.c.1).
+   * Enchaîne les vues avec simulation d'actions : Recherche ➔ Maison ➔ Alertes ➔ Import ➔ Famille ➔ Vos données.
+   * À la fin, redirige automatiquement vers l'étape 3 de l'onboarding pour permettre le replay du demo ou l'utilisation du bouton scan intelligent.
+   */
+  async function runGuidedTour() {
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    document.body.classList.add('is-tour-active');
+
+    // Étape 1/6 : Recherche
+    showView("recherche", { params: { q: "" } });
+    showDemoNotice("Visite guidée (1/6) : Recherche intelligente");
+    await delay(1500);
+    showDemoNotice("L'IA analyse vos documents locaux sans quitter votre appareil.");
+
+    const searchInput = document.querySelector("#question");
+    if (searchInput) {
+        const query = "Où est la facture de la piscine ?";
+        for (let i = 0; i <= query.length; i++) {
+            searchInput.value = query.substring(0, i);
+            await delay(50);
+        }
+        search(query);
+    }
+    await delay(3000);
+
+    // Étape 2/6 : Maison
+    showView("maison");
+    showDemoNotice("Visite guidée (2/6) : Inventaire domestique");
+    await delay(1500);
+    showDemoNotice("Cliquez sur une catégorie pour filtrer automatiquement vos équipements.");
+    // Simuler le clic sur piscine
+    const piscineTab = document.querySelector('[data-house-category="piscine"]');
+    if (piscineTab) piscineTab.click();
+    await delay(3000);
+
+    // Étape 3/6 : Alertes
+    showView("alertes");
+    showDemoNotice("Visite guidée (3/6) : Alertes et échéances");
+    await delay(1500);
+    showDemoNotice("Gardez le contrôle sur vos garanties et contrats importants.");
+    // Simuler lecture alerte
+    const firstAlert = document.querySelector('[data-alert-card]');
+    if (firstAlert) firstAlert.classList.add('is-read');
+    await delay(3000);
+
+    // Étape 4/6 : Import
+    showView("importer");
+    showDemoNotice("Visite guidée (4/6) : Importation de documents");
+    await delay(1500);
+    showDemoNotice("Glissez vos documents ici, ils seront instantanément indexés.");
+    await delay(3000);
+
+    // Étape 5/6 : Famille
+    showView("famille");
+    showDemoNotice("Visite guidée (5/6) : Gestion des membres");
+    await delay(1500);
+    showDemoNotice("Ajoutez un membre pour partager l'accès aux documents de la famille.");
+    // Simuler l'ouverture du dialogue d'ajout
+    const addMemberBtn = document.querySelector('#add-member-btn'); // Note: This doesn't exist, I need to check how to add member
+    // Actually the app.js has initAddMemberDialog()
+    // Looking at the code, there's no visible add-member-btn in the family view, only member-list container
+    // Let's just use the notice.
+    await delay(3000);
+
+    // Étape 6/6 : Assistant IA (vue assistant)
+    showView("assistant");
+    showDemoNotice("Visite guidée (6/6) : Assistant IA");
+    await delay(1500);
+    showDemoNotice("Posez une question type, par exemple : 'Quelle est la garantie de ma pompe ?'");
+    const assistantInput = document.querySelector("#assistant-input");
+    if (assistantInput) assistantInput.value = "Quelle est la garantie de ma pompe ?";
+    await delay(3000);
+
+    document.body.classList.remove('is-tour-active');
+    showDemoNotice("Fin de la visite guidée. Vous avez maintenant le contrôle.");
+
+    // === Phase 13.2.c.6 : Retour automatique à l'écran d'accueil et à l'étape 3 onboarding ===
+    showView("accueil");
+
+    const wizardSteps = document.querySelectorAll('#onboarding-wizard .wizard-step');
+    if (wizardSteps.length >= 3) {
+      // Cacher toutes les étapes, puis afficher l'étape 3 (index 2)
+      wizardSteps.forEach((step, idx) => {
+        step.hidden = idx !== 2;
+      });
+      // Rendre le wizard visible
+      manageOnboardingWizardVisibility(true); // Forcer l'affichage
+    }
+  }
+
+  // Initialiser à l'étape 1
+  showStep(0);
+  manageOnboardingWizardVisibility(); // Rendre le wizard visible
+}
 
 // Initialisation asynchrone de l'application
 (async () => {
@@ -15,6 +324,13 @@ import { BackgroundSyncWorker } from "./background-sync.js";
   uploadedDocuments.push(...getDocuments());
   initEquipmentDialog();
   initAddMemberDialog();
+
+  // Initialiser l'onboarding wizard si ce n'est pas déjà fait
+  initOnboardingWizard();
+
+  // === Mise à jour de l'UI Mode Démo (Phase 13.2.b.3) ===
+  updateDemoModeUI();
+  updateSuggestionsUI();
 
   // Rendre la fonction de progression accessible aux callbacks
 window.updateScanProgressUI = updateScanProgressUI;
@@ -26,6 +342,45 @@ window.updateScanProgressUI = updateScanProgressUI;
     worker.start();
   }
 })();
+
+/**
+ * Met à jour l'affichage de l'interface en fonction du mode démo actif (Phase 13.2.b.3)
+ */
+function updateDemoModeUI() {
+  const isDemo = getFullState().isDemoMode;
+  const demoBadge = document.querySelector("#demo-badge");
+  const demoWelcomeBanner = document.querySelector("#demo-welcome-banner");
+
+  if (demoBadge) demoBadge.hidden = !isDemo;
+  if (demoWelcomeBanner) demoWelcomeBanner.hidden = !isDemo;
+}
+
+/**
+ * Met à jour les suggestions sur l'écran de recherche (Phase 13.2.c).
+ * En mode démo, affiche des suggestions liées aux documents fictifs.
+ * En mode normal, affiche les suggestions par défaut.
+ */
+function updateSuggestionsUI() {
+  const isDemo = getFullState().isDemoMode;
+  const suggestionsList = document.querySelector(".suggestion-list");
+  const suggestions = document.querySelectorAll(".suggestion");
+
+  if (!suggestionsList || !suggestions) return;
+
+  if (isDemo) {
+    // En mode démo, afficher les suggestions par défaut (qui font référence aux docs fictifs)
+    suggestionsList.hidden = false;
+    suggestions.forEach((suggestion, idx) => {
+      suggestion.hidden = false;
+    });
+  } else {
+    // En mode normal, masquer les suggestions ou les laisser tels quels
+    suggestionsList.hidden = true;
+    suggestions.forEach((suggestion) => {
+      suggestion.hidden = true;
+    });
+  }
+}
 
 /**
  * Met à jour la visibilité des boutons de gestion de fichiers en fonction de la vue actuelle et de la présence de fichiers.
@@ -735,10 +1090,6 @@ document.querySelector("#choose-local-files").addEventListener("click", () => {
 document.querySelector("#choose-local-files-native").addEventListener("click", async () => {
   sourceChoiceDialog.close();
   await loadLocalFilesNative();
-});
-document.querySelector("#explore-demo").addEventListener("click", () => {
-  completeOnboarding();
-  showView("recherche");
 });
 
 connectGoogleDriveButton.addEventListener("click", async () => {
@@ -1564,9 +1915,16 @@ function renderAccueilDashboard() {
 
   // Update dashboard greeting
   const greetingName = document.querySelector('#dashboard-title strong, #dashboard-title');
-  if (greetingName && greetingName.textContent?.includes('Bonjour')) {
-    // Icône d'étincelles ✨ pour marquer l'accueil
-    greetingName.innerHTML = `Bonjour ${user.name} <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-3px; margin-left:6px; color: var(--color-primary, #0f7173);"><path d="M12 0C12 6.627 17.373 12 24 12C17.373 12 12 17.373 12 24C12 17.373 6.627 12 0 12C6.627 12 12 6.627 12 0Z"/></svg>`;
+  if (greetingName) {
+    // Vérifier si le prénom est déjà connu (onboarding terminé ou sauté)
+    const userName = getCurrentUser().name;
+    if (userName) {
+      // Icône d'étincelles ✨ pour marquer l'accueil
+      greetingName.innerHTML = `Bonjour ${userName} <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-3px; margin-left:6px; color: var(--color-primary, #0f7173);"><path d="M12 0C12 6.627 17.373 12 24 12C17.373 12 12 17.373 12 24C12 17.373 6.627 12 0 12C6.627 12 12 6.627 12 0Z"/></svg>`;
+    } else {
+      // Pendant l'onboarding, afficher un message de bienvenue générique
+      greetingName.textContent = 'Bienvenue dans Famili-IA';
+    }
   }
 
   // Update stats grid with real data (preserving SVG icons)

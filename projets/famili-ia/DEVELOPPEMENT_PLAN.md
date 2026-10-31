@@ -89,24 +89,24 @@
     - [✓] ✅ 9.16.e : Adaptation CSS — Ajuster `styles.css` pour le nouveau menu (cibles tactiles, état actif, transition de la vue «Plus»).
 - [ ] 9.17 : **Amélioration Vue Importer & Actions Mobiles (Photo, Scan, Saisie manuelle)**
      - [✓] ✅ 9.17.a : Correction esthétique de la zone de glisser-déposer (ajustement de la taille de l'icône par rapport au cercle gris).
-    - [✓] ✅ 9.17.b : Implémentation du bouton "Prendre une photo" (utilisation de l'input file avec `capture="environment"` / `accept="image/*"` pour déclencher l'appareil photo du smartphone).
-    - [x] ✅ 9.17.c : Optimisation ou fusion du bouton "Scanner un document" — Fusionné avec le bouton "Capture" (un seul bouton pour photo/navigateur). Redondance éliminée, code simplifié.
-    - [x] ✅ 9.17.d : Implémentation du bouton "Saisir manuellement" (ouverture d'une modale ou d'un formulaire de saisie de texte libre, avec conversion et enregistrement automatique au format document dans l'application).
-    - [x] ✅ 9.17.d : Implémentation du bouton "Saisir manuellement" - Dialogue complet avec saisie titre, type et contenu, enregistrement automatique dans la base locale.
+     - [✓] ✅ 9.17.b : Implémentation du bouton "Prendre une photo" (utilisation de l'input file avec `capture="environment"` / `accept="image/*"` pour déclencher l'appareil photo du smartphone).
+     - [x] ✅ 9.17.c : Optimisation ou fusion du bouton "Scanner un document" — Fusionné avec le bouton "Capture" (un seul bouton pour photo/navigateur). Redondance éliminée, code simplifié.
+     - [x] ✅ 9.17.d : Implémentation du bouton "Saisir manuellement" (ouverture d'une modale ou d'un formulaire de saisie de texte libre, avec conversion et enregistrement automatique au format document dans l'application).
+     - [x] ✅ 9.17.d : Implémentation du bouton "Saisir manuellement" - Dialogue complet avec saisie titre, type et contenu, enregistrement automatique dans la base locale.
 - [ ] 9.18 : **Corrections Fonctionnelles & Expérience Utilisateur Import**
      - [✓] ✅ 9.18.a : Corriger le bouton "Annuler" dans le dialogue de saisie manuelle pour revenir à l'écran précédent (fermer le dialog et rétablir l'état précédent).
-    - [✓] ✅ 9.18.b : Étendre la gestion des types de documents au-delà des 4 types actuels (Facture, Garantie, Contrat, Notice, Quittance, Attestation, Ordonnance, Courrier, Certificat, Autre).
-    - [ ] 9.18.c : Réactiver la recherche et l'assistant intelligent sur les documents saisis manuellement (s'assurer que le texte extrait/entré est correctement indexé et recherchable).
-    - [x] ✅ 9.18.c.1 : Corriger `app.js` pour accepter .docx, .xlsx, .xls lors de l'import.
-        - [ ] 9.18.c.2 : Vérifier l'intégration des parsers (mammoth, sheetjs) dans `local-files.js`.
-        - [ ] 9.18.c.2 : Vérifier l'intégration des parsers (mammoth, sheetjs) dans `local-files.js`.
-        - [ ] 9.18.c.3 : Tester l'importation réelle des fichiers Word/Excel.
-        - [ ] 9.18.c.4 : Valider la recherche et l'assistant sur ces nouveaux formats.
-    - [ ] 9.18.d : Rendre la navigation vers les documents fonctionnelle depuis toutes les interfaces (Accueil, Alertes, Inventaire).
-        - [ ] 9.18.d.1 : Étendre `showView` pour gérer le paramètre `docId`.
-        - [ ] 9.18.d.2 : Mettre à jour les liens (Dashboard, Alertes, Inventaire) dans `index.html` pour transmettre les `docId` réels.
-        - [ ] 9.18.d.3 : Automatiser l'ouverture du `sourceDialog` lors de la navigation avec un `docId`.
-        - [ ] 9.18.d.4 : Vérifier la cohérence des données mockées entre le Dashboard et le lecteur de document.
+     - [✓] ✅ 9.18.b : Étendre la gestion des types de documents au-delà des 4 types actuels (Facture, Garantie, Contrat, Notice, Quittance, Attestation, Ordonnance, Courrier, Certificat, Autre).
+     - [ ] 9.18.c : Réactiver la recherche et l'assistant intelligent sur les documents saisis manuellement (s'assurer que le texte extrait/entré est correctement indexé et recherchable).
+     - [x] ✅ 9.18.c.1 : Corriger `app.js` pour accepter .docx, .xlsx, .xls lors de l'import.
+         - [ ] 9.18.c.2 : Vérifier l'intégration des parsers (mammoth, sheetjs) dans `local-files.js`.
+         - [ ] 9.18.c.2 : Vérifier l'intégration des parsers (mammoth, sheetjs) dans `local-files.js`.
+         - [ ] 9.18.c.3 : Tester l'importation réelle des fichiers Word/Excel.
+         - [ ] 9.18.c.4 : Valider la recherche et l'assistant sur ces nouveaux formats.
+     - [ ] 9.18.d : Rendre la navigation vers les documents fonctionnelle depuis toutes les interfaces (Accueil, Alertes, Inventaire).
+         - [ ] 9.18.d.1 : Étendre `showView` pour gérer le paramètre `docId`.
+         - [ ] 9.18.d.2 : Mettre à jour les liens (Dashboard, Alertes, Inventaire) dans `index.html` pour transmettre les `docId` réels.
+         - [ ] 9.18.d.3 : Automatiser l'ouverture du `sourceDialog` lors de la navigation avec un `docId`.
+         - [ ] 9.18.d.4 : Vérifier la cohérence des données mockées entre le Dashboard et le lecteur de document.
 
 ### Phase 11 – Monétisation, Expérience Utilisateur & Valeur Augmentée
 - [ ] 11.1 : Préparation modèle monétisation (état utilisateur & limites dynamiques)
@@ -136,121 +136,48 @@
             - [✓] ✅ 12.1.c.5.b : Hook de persistance IndexedDB
             - [✓] ✅ 12.1.c.5.c : Intégration du worker dans l'Onboarding
             - [✓] ✅ 12.1.c.5.d : Gestion des erreurs & Nettoyage
-    - [✓] ✅ 12.1.d : Gestion intelligente de la mémoire (Traitement par lots, saut des fichiers verrouillés/protected).
-    - [✓] ✅ 12.1.e : Retour utilisateur — Synthèse du "Ce qui a été trouvé" après le premier scan.
+        - [✓] ✅ 12.1.d : Gestion intelligente de la mémoire (Traitement par lots, saut des fichiers verrouillés/protected).
+        - [✓] ✅ 12.1.e : Retour utilisateur — Synthèse du "Ce qui a été trouvé" après le premier scan.
 - [ ] 12.2 : Recherche Sémantique & Visualisation Photos (Assistant Vie Numérique)
     - [ ] 12.2.a : Extraction de métadonnées EXIF (dates/lieux sur les photos).
     - [ ] 12.2.b : Moteur de recherche "Moments de vie" (langage naturel : "Photos de Lorena 2 ans").
     - [ ] 12.2.c : Vue Galerie interactive + Timeline chronologique (Journal de bord).
     - [ ] 12.2.d : Assistant proactif (notifications intelligentes sur les documents indexés).
 
-
-
-## 💡 Points d'amélioration stratégiques (pour un impact "disrupt")
-
-**Intelligence Contextuelle (Le "Killer Feature") :**
-L'app doit comprendre le contenu, pas seulement le stocker. Exemple : l'OCR existant devrait permettre une auto-classification intelligente — *"Ceci est une facture d'électricité de Janvier, je l'ajoute à la catégorie Maison"*. C'est le passage du stockage à l'assistance.
-
-**Transversalité (Recherche croisée & Sémantique) :**
-La capacité de recherche doit évoluer vers le sémantique. Il faut comprendre que "Ticket de caisse" = "Garantie", que deux factures similaires couvrent la même garantie, etc. Cela transforme l'outil d'un simple catalogue en véritable assistant de gestion.
-
-**Rétention & Aide à la décision :**
-L'app ne doit pas être un simple coffre-fort, mais un assistant proactif. Le système d'alertes actuel est un excellent début : il faut le renforcer avec des rappels intelligents (ex. : *"Attention, votre garantie expire dans 2 mois sur cet équipement"*).
-
-
-### 📐 Schéma Technique (Mermaid)
-*(Le diagramme d'architecture principal a été externalisé et mis à jour dans [`docs/architecture/mermaid/overview.mmd`](docs/architecture/mermaid/overview.mmd)).*
-
-```mermaid
-graph TD
-    %% Couches d'application
-    subgraph "Couche Presentation [UI]"
-        A[app.html / index.html]
-        B[app.js - showView / routing]
-        C[Views: accueil, recherche, maison, famille, alertes, detail, assistant, importer, profil, vos-données, plus]
-    end
-
-    subgraph "Couche État [state.js]"
-        D[state.js - IndexedDB & stockage local]
-        E[currentUser, family, homeEquipment, alerts, documents]
-    end
-
-    subgraph "Couche Logique [search-utils.js + local-files.js]"
-        F[search-utils.js - extraction mots-clés / normalisation]
-        G[local-files.js - lecture fichiers Capacitor / OCR / Docx / Xlsx]
-        H[moteur recherche - concaténation cloud + local]
-    end
-
-    subgraph "Intégrations Externes [Capacitor / Google Drive]"
-        I[Capacitor Filesystem - dossiers locaux]
-        J[Google Drive Picker - drive.file scope]
-        K[PDF.js / OCR / Mammoth / SheetJS - extraction]
-    end
-
-    %% Flux de données
-    A --> B
-    B --> C
-    C -->|user input| F
-    F --> H
-    H --> C
-    
-    %% Flux cloud
-    J -->|fichiers sélectionnés| K
-    K --> H
-    I --> K
-    
-    %% État
-    D -->|mise à jour| B
-    B -->|état courant| D
-    
-    %% Style
-    classDef ui fill:#e0f7fa,stroke:#0277bd,stroke-width:2px;
-    classDef state fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
-    classDef logic fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
-    classDef ext fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
-    
-    class A,B,C ui;
-    class D,E state;
-    class F,G,H logic;
-    class I,J,K ext;
-```
-
-
-### Phase 10 – Optimisation Mobile & Revue Documentaire
-- [✓] ✅ 10.1 : Menu – Rendre le menu opérationnel pour la vue smartphone
-- [✓] ✅ 10.2 : UI Recherche – Intégrer correctement le bouton "Rechercher" dans la barre sur mobile
-- [✓] ✅ 10.3 : Navigation – Optimiser la navigation sur la vue Accueil (réduction du scroll)
-- [ ] 10.4 : Revue documentaire – Vérifier et mettre à jour les schémas d'architecture et descriptions
-    - [✓] ✅ 10.4.a : Audit documentaire & suppression des redondances
-    - [✓] ✅ 10.4.b : Mise à jour des schémas Mermaid et intégration dans la nouvelle structure `/docs/`
-    - [✓] ✅ 10.4.c : Mise en place du processus de maintenance (CI, lint, revues PR)
-- [ ] 10.5 : Intelligence Contextuelle – Implémenter l'auto-classification intelligente via OCR (ex: catégorisation automatique des factures)
-    - [✓] ✅ 10.5.a : Définition du schéma d'extraction structuré (`DocumentContext`)
-    - [ ] 10.5.b : Implémentation de l'analyseur heuristique (`document-parser.js`)
-    - [✓] ✅ 10.5.c : Intégration du parser dans le flux de lecture (`local-files.js`)
-    - [✓] ✅ 10.5.d : Mise à jour du `state.js` pour la classification automatique
-    - [✓] ✅ 10.5.e : Tests de validation sur documents de test
-- [ ] 10.6 : Recherche Sémantique – Faire évoluer la recherche vers le sémantique (compréhension des synonymes et des relations entre documents)
-    - [✓] ✅ 10.6.a : Modélisation de la similarité locale (Pondération 40/20/20/10/10)
-    - [✓] ✅ 10.6.b : Mise à jour de `search-utils.js` pour intégrer le score sémantique
-    - [✓] ✅ 10.6.c : Implémentation des règles de correspondance avancées
-    - [✓] ✅ 10.6.d : Tests de similarité et ajustement de la pondération
-- [ ] 10.7 : Assistant Proactif – Renforcer le système d'alertes avec des rappels intelligents basés sur l'état des équipements (ex: expiration de garantie)
-    - [✓] ✅ 10.7.a : Configuration des seuils d'alerte (métier : 60j garantie, 30j assurance/facture)
-    - [✓] ✅ 10.7.b : Implémentation du moteur de génération d'alertes (`alert-engine.js`)
-    - [✓] ✅ 10.7.c : Liaison automatique Document-Alerte
-    - [ ] 10.7.d : Intégration UI Proactive (vue Accueil)
-    - [✓] ✅ 10.7.e : Tests de validation et mise à jour de la documentation technique
-
-### Phase 11 – Validation & Lancement
-- [ ] 11.1 : Tests utilisateurs complets
-- [ ] 11.2 : Mesure de la satisfaction utilisateur
-- [ ] 11.3 : Rapport final & lancement
-
-## 📌 Comment mettre à jour
-- Cochez la case `[✓]` lorsque la tâche est terminée.
-- Si une tâche est bloquée, ajoutez un commentaire après la case.
-- Maintenez le fichier à jour dans chaque branche ou commit important.
+### Phase 13 – Refonte Complète du Parcours Nouvel Utilisateur (Onboarding & Expérience "Magique")
+13.1 : Refonte du Flux d'Accueil en Mode "Wizard" (3 étapes fluides)
+13.1.a : Remplacer l'écran d'accueil statique actuel par un parcours d'introduction en étapes courtes pour lever les freins psychologiques. ✅ Terminé - Onboarding wizard implémenté avec succès : structure HTML, logique JavaScript, styles CSS, initialisation au démarrage, gestion de la visibilité selon l'état firstRun/onboardingComplete. Voir app.js modifications.
+13.1.b : Étape 1 — La Promesse & la Souveraineté : Expliquer clairement le principe "Zéro Serveur / 100% sur votre appareil" avant de demander la moindre action. ✅ Terminé — Message renforcé sur la souveraineté numérique et stylisation des boutons du wizard avec les classes unifiées (.primary-button / .secondary-button).
+13.1.c : Étape 2 — L'Identité du Foyer : Demander rapidement le prénom de l'utilisateur et sa ville/code postal (nécessaire pour personnaliser les alertes et contrats d'assurance dès le départ). ✅ Terminé — Champs de saisie ajoutés au wizard, stockage dans state.js et synchronisation affichage profil/accueil lors du passage à l'étape 3.
+13.1.d : Étape 3 — Le Choix d'Entrée : Proposer clairement une bifurcation entre l'essai immédiat (Démo) et l'utilisation réelle (Scan local). ✅ Terminé — Deux boutons d'action clairement identifiés avec les classes .primary-button / .secondary-button, implémentation de injectDemoDocuments() et launchIntelligentScan(), initialisation du foyer complet en mode démo ou démarrage du scan local progressif.
+13.2 : Implémentation du Mode Démo Interactif et Instantané ("Explorer la démo")
+13.2.a : Corriger le bouton "Explorer la démo" pour qu'il injecte instantanément les 5 documents fictifs de référence et initialise un foyer complet (équipements, alertes, membres). ✅ Terminé
+13.2.b : Implémenter le Mode Démo avec message de bienvenue contextualisé et badge visuel :
+    - [✓] ✅ 13.2.b.1 : Ajouter un badge visuel "Mode Démo" dans le `topbar` et un message de bienvenue dans le dashboard.
+    - [✓] ✅ 13.2.b.2 : Gérer l'état de ce mode dans `state.js` via une variable `isDemoMode` pour le rendu conditionnel.
+    - [✓] ✅ 13.2.b.3 : Afficher/masquer le badge dynamiquement selon cet état.
+    - [✓] ✅ 13.2.b.4 : Correction disposition wizard — Adapter le CSS `.wizard-step` pour que les étapes s'affichent verticalement (`flex-direction: column`) et centrées sur l'écran.
+    - [✓] ✅ 13.2.b.5 : Correction orthographique et cohérence du message — Correction de "Biencome" → "Bienvenue" dans `index.html` et affichage conditionnel du prénom dans le dashboard.
+    - [✓] ✅ 13.2.b.6 : Enrichissement de la visite guidée — Étendue à 6 étapes pour inclure l'importation de documents, la gestion des membres de la famille et la vue des données.
+13.2.c : Implémenter une visite guidée automatisée ("Mode Vidéo Interactive") :
+    - [✓] ✅ 13.2.c.1 : Enchaînement automatique (Recherche ➔ Maison ➔ Alertes ➔ Importer ➔ Famille ➔ Vos données) sans clic utilisateur après le lancement de la démo.
+    - [✓] ✅ 13.2.c.2 : Toasts de progression animés pour jalonner chaque étape (Étape 1/6 à 6/6).
+    - [✓] ✅ 13.2.c.3 : Restitution du contrôle à l'utilisateur à la fin du parcours.
+    - [✓] ✅ 13.2.c.4 : Simuler des actions réelles (saisie de recherche, import de fichier, ajout membre, suppression données) pendant le parcours.
+    - [✓] ✅ 13.2.b.7 : Onboarding sur page blanche (non inséré dans accueil) pour éviter affichage conditionnel prénom dashboard
+    - [✓] ✅ 13.2.b.8 : Bannir les émojis, n'utiliser que SVG icons (conformément CLAUDE.md) - étape 3 onboarding
+    - [✓] ✅ 13.2.c.5 : Enrichir démo avec explications fonctions : ajout membre écran Famille, lecture alerte écran dédié, changement équipement pour filtre auto, utilisation assistant-IA
+    - [✓] ✅ 13.2.c.6 : Retour automatique à l'étape 3 onboarding après fin démo (pour replay ou bouton scan intelligent)
+13.3 : Valorisation du Scan Proactif Local (Le "Moment Waouh")
+13.3.a : Mettre en avant le Scan Local Intelligent (basé sur le BackgroundSyncWorker et local-files.js) comme la méthode principale et naturelle d'intégration des documents.
+13.3.b : Créer une interface de progression visuelle engageante lors du premier scan (barre de progression animée, compteur de documents découverts en temps réel : "🔍 Analyse des dossiers Documents/Téléchargements...").
+13.3.c : Intégrer la classification automatique des fichiers trouvés (factures, garanties, photos) directement dans le dashboard à la fin du scan.
+13.4 : Synchronisation des États et Transition Fluide vers le Dashboard
+13.4.b : Prévoir un bouton de réinitialisation ou de "mode découverte" dans les paramètres (Profil / Vos données) pour pouvoir relâcher/tester l'onboarding à volonté.
+13.4.c : Gérer proprement la persistance de fin d'onboarding (localStorage / IndexedDB) pour qu'un utilisateur de retour ne voie plus l'assistant de configuration, mais accède directement à son tableau de bord.
+13.5 : Tests d'Ergonomie et Polish Mobile / Web
+13.5.a : Valider le parcours complet sur smartphone (responsive, cibles tactiles, fluidité des transitions d'étapes).
+13.5.b : Vérifier l'absence d'erreurs de console et la robustesse des flux asynchrones (notamment si l'utilisateur refuse l'accès aux dossiers locaux ou annule une étape).
 
 ## 🛠 Framework des Skills - Implémentation Structurée
 Cette section définit les skills techniques et domain spécifiques à mettre en place pour assurer la qualité, la cohérence UI et l'automatisation tout au long du projet Famili-IA.
