@@ -54,32 +54,67 @@
 /* Scan Progress Toast */
 .scan-progress-toast {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 300px;
+  bottom: 24px;
+  right: 24px;
+  width: 320px;
   background: var(--color-surface);
-  padding: 1rem;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  padding: 1.25rem;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   border: 1px solid var(--color-border);
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .progress-bar {
-  height: 8px;
-  background: var(--color-border);
+  height: 12px;
+  background: var(--color-primary-light);
   border-radius: var(--radius-full);
   overflow: hidden;
+  position: relative;
 }
 
 #scan-progress-fill {
   height: 100%;
-  background: var(--color-primary);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-cyan));
   width: 0%;
-  transition: width var(--transition-fast);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 10px rgba(9, 9, 11, 0.2);
+  position: relative;
+}
+
+#scan-progress-fill::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 #scan-progress-text {
@@ -1242,24 +1277,30 @@ body {
   width: 100vw;
   height: 100vh;
   background-color: #ffffff;
-  z-index: 1000;
+  z-index: 2000; /* Augmenté pour être au-dessus de tous les autres éléments */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 2rem;
+  touch-action: manipulation; /* Améliorer la réactivité tactile */
+  overflow-y: auto; /* Permettre le scroll sur petits écrans */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling iOS */
 }
 .onboarding-page-white .wizard-step {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.25rem;
+  justify-content: center;
+  gap: 1.5rem;
+  width: 100%;
 }
 .onboarding-page-white .wizard-step h2 {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--color-text);
   margin: 0;
+  text-align: center;
 }
 .onboarding-page-white .wizard-step p {
   color: var(--color-text-secondary);
@@ -1287,64 +1328,41 @@ body {
 .onboarding-page-white .wizard-step .secondary-button {
   padding: 0.875rem 1.5rem;
   font-size: 1rem;
-}
-
-/* Démo Mode Styles */
-.demo-badge {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: var(--color-amber);
-  color: var(--color-primary-dark);
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-  z-index: 10;
-}
-
-.demo-welcome-banner {
-  background: var(--color-amber);
-  color: var(--color-primary-dark);
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-md);
-  margin-top: var(--space-md);
-  font-size: 0.9rem;
-  font-weight: 500;
-  text-align: center;
-}
-  flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.wizard-step h2 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0;
-}
-
-.wizard-step p {
-  color: var(--color-text-secondary);
-  font-size: 1rem;
-  line-height: 1.6;
-  margin: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); /* Feedback visuel sur tap iOS */
+  cursor: pointer;
+  user-select: none; /* Éviter la sélection de texte au tap */
+  min-height: 44px; /* Taille minimale recommandée pour les cibles tactiles */
+  width: 100%;
   max-width: 440px;
 }
 
-.wizard-step input[type="text"] {
-  padding: 0.875rem 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
+/* Media query mobile pour l'onboarding */
+@media (max-width: 600px) {
+  .onboarding-page-white {
+    padding: 1rem;
+    justify-content: flex-start; /* Aligner en haut sur mobile */
+    padding-top: 10vh; /* Espace en haut */
+  }
 
-.wizard-step input[type="text"]:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(9, 9, 11, 0.08);
+  .onboarding-page-white .wizard-step {
+    gap: 1rem; /* Réduire l'espacement vertical */
+  }
+
+  .onboarding-page-white .wizard-step h2 {
+    font-size: 1.5rem; /* Réduire la taille du titre sur mobile */
+  }
+
+  .onboarding-page-white .wizard-step p {
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .onboarding-page-white .wizard-step .primary-button,
+  .onboarding-page-white .wizard-step .secondary-button {
+    padding: 1rem 1.5rem; /* Augmenter le padding tactile */
+    font-size: 1.05rem; /* Légèrement plus gros sur mobile */
+  }
 }
 
 /* --- VUE MAISON (Phase 9.9) - Vraies photos --- */

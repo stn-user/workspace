@@ -159,6 +159,7 @@
     - [✓] ✅ 13.2.b.4 : Correction disposition wizard — Adapter le CSS `.wizard-step` pour que les étapes s'affichent verticalement (`flex-direction: column`) et centrées sur l'écran.
     - [✓] ✅ 13.2.b.5 : Correction orthographique et cohérence du message — Correction de "Biencome" → "Bienvenue" dans `index.html` et affichage conditionnel du prénom dans le dashboard.
     - [✓] ✅ 13.2.b.6 : Enrichissement de la visite guidée — Étendue à 6 étapes pour inclure l'importation de documents, la gestion des membres de la famille et la vue des données.
+    - [✓] ✅ 13.2.b.9 : **Correctif Mobile Onboarding** — Résolution des blocages sur smartphone HTTP : race condition activeView, timeout initState(), fallback crypto.subtle, amélioration CSS mobile. Documentation complète créée (docs/ONBOARDING_ARCHITECTURE.md) + skill onboarding-guard.
 13.2.c : Implémenter une visite guidée automatisée ("Mode Vidéo Interactive") :
     - [✓] ✅ 13.2.c.1 : Enchaînement automatique (Recherche ➔ Maison ➔ Alertes ➔ Importer ➔ Famille ➔ Vos données) sans clic utilisateur après le lancement de la démo.
     - [✓] ✅ 13.2.c.2 : Toasts de progression animés pour jalonner chaque étape (Étape 1/6 à 6/6).
@@ -169,9 +170,9 @@
     - [✓] ✅ 13.2.c.5 : Enrichir démo avec explications fonctions : ajout membre écran Famille, lecture alerte écran dédié, changement équipement pour filtre auto, utilisation assistant-IA
     - [✓] ✅ 13.2.c.6 : Retour automatique à l'étape 3 onboarding après fin démo (pour replay ou bouton scan intelligent)
 13.3 : Valorisation du Scan Proactif Local (Le "Moment Waouh")
-13.3.a : Mettre en avant le Scan Local Intelligent (basé sur le BackgroundSyncWorker et local-files.js) comme la méthode principale et naturelle d'intégration des documents.
-13.3.b : Créer une interface de progression visuelle engageante lors du premier scan (barre de progression animée, compteur de documents découverts en temps réel : "🔍 Analyse des dossiers Documents/Téléchargements...").
-13.3.c : Intégrer la classification automatique des fichiers trouvés (factures, garanties, photos) directement dans le dashboard à la fin du scan.
+13.3.a : Mettre en avant le Scan Local Intelligent (basé sur le BackgroundSyncWorker et local-files.js) comme la méthode principale et naturelle d'intégration des documents. ✅ Terminé — Bouton principal dans le wizard d'onboarding, interface de progression et résumé de classification automatique intégrés.
+13.3.b : Créer une interface de progression visuelle engageante lors du premier scan (barre de progression animée, compteur de documents découverts en temps réel : "🔍 Analyse des dossiers Documents/Téléchargements..."). ✅ Terminé — Interface stylisée, animation fluide et barre de progression enrichie.
+13.3.c : Intégrer la classification automatique des fichiers trouvés (factures, garanties, photos) directement dans le dashboard à la fin du scan. ✅ Terminé — Interface de mise à jour dynamique ajoutée, persistance IndexedDB et affichage toast au terme du scan.
 13.4 : Synchronisation des États et Transition Fluide vers le Dashboard
 13.4.b : Prévoir un bouton de réinitialisation ou de "mode découverte" dans les paramètres (Profil / Vos données) pour pouvoir relâcher/tester l'onboarding à volonté.
 13.4.c : Gérer proprement la persistance de fin d'onboarding (localStorage / IndexedDB) pour qu'un utilisateur de retour ne voie plus l'assistant de configuration, mais accède directement à son tableau de bord.

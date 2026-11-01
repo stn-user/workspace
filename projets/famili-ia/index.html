@@ -59,7 +59,7 @@
       <div id="dashboard-content" hidden data-view="accueil" class="view-header-centered">
         <div class="view-titles">
           <p class="eyebrow">VOTRE ESPACE FAMILIAL</p>
-          <h1 id="dashboard-title">Bonjour <span id="dashboard-user-name"></span> <span aria-hidden="true">👋</span></h1>
+          <h1 id="dashboard-title">Bonjour <span id="dashboard-user-name"></span></h1>
           <p id="dashboard-subtitle">Votre vie numérique, enfin retrouvée.</p>
           <div id="demo-welcome-banner" class="demo-welcome-banner" hidden>
             ✨ Bienvenue dans votre espace de démonstration !
@@ -91,10 +91,10 @@
           <div class="wizard-step" id="step-2" aria-labelledby="step-2-title" hidden>
             <h2 id="step-2-title">Comment démarrer ?</h2>
             <p>Choisissez comment vous souhaitez commencer :</p>
-            <button class="primary-button" type="button" id="start-demo-mode">
+            <button class="secondary-button" type="button" id="start-demo-mode">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Explorer la démo
             </button>
-            <button class="secondary-button" type="button" id="start-scan-mode">
+            <button class="primary-button" type="button" id="start-scan-mode">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Lancer le Scan Intelligent
             </button>
           </div>
@@ -468,6 +468,7 @@
                 <input type="checkbox" id="pref-drive-conn">
               </div>
               <button class="text-button" type="button" data-open-view="vos-donnees" style="margin-top: 1rem;">Gérer mes données</button>
+              <button class="secondary-button" type="button" id="reset-onboarding-btn" style="margin-top: 1rem; width: 100%;">Relancer l'onboarding</button>
             </section>
           </section>
         </div>

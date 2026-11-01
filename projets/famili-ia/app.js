@@ -37,15 +37,44 @@ function manageOnboardingWizardVisibility(show = false) {
   // 1. C'est la vue accueil ET
   // 2. L'onboarding n'est pas terminé
   const shouldShow = show || (!onboardingComplete && activeView === 'accueil');
+
+  console.log('[DEBUG] manageOnboardingWizardVisibility:', {
+    show,
+    onboardingComplete,
+    activeView,
+    shouldShow,
+    wizardCurrentlyHidden: wizard.hidden
+  });
+
   wizard.hidden = !shouldShow;
 }
 
 /**
+ * ⚠️ FONCTION CRITIQUE - ONBOARDING
+ *
  * Initialise le wizard d'onboarding (Phase 13.1).
  * Configure les écouteurs d'événements et gère l'état initial.
  * Supporte le mode page blanche (.onboarding-page-white) ou incrusté dans l'accueil.
+ *
+ * ⚠️ DÉPENDANCES CRITIQUES - NE PAS APPELER AVANT :
+ * - uploadedDocuments (ligne ~574) : DOIT être déclaré
+ * - activeView (ligne ~1348) : DOIT être déclaré
+ * - getCurrentUser() (state.js) : DOIT être disponible
+ *
+ * ⚠️ ORDRE D'APPEL REQUIS :
+ * 1. Déclaration de toutes les variables globales
+ * 2. await initState() (chargement données depuis IndexedDB)
+ * 3. initOnboardingWizard() ← ICI SEULEMENT
+ *
+ * ⚠️ ERREUR CONNUE À ÉVITER :
+ * ReferenceError: Cannot access 'activeView' before initialization
+ * → Cause : Appel de cette fonction avant la ligne ~1348
+ *
+ * Voir documentation : docs/ONBOARDING_ARCHITECTURE.md
  */
 function initOnboardingWizard() {
+  console.log('[DEBUG] initOnboardingWizard - START');
+
   const wizard = document.querySelector("#onboarding-wizard");
   const steps = wizard ? wizard.querySelectorAll(".wizard-step") : [];
   const userNameInput = document.querySelector("#wizard-user-name");
@@ -53,14 +82,19 @@ function initOnboardingWizard() {
   const startDemoMode = document.querySelector('#start-demo-mode');
   const startScanMode = document.querySelector('#start-scan-mode');
 
-  // Masquer le wizard par défaut (la visibilité sera gérée par manageOnboardingWizardVisibility)
-  if (wizard) wizard.hidden = true;
+  console.log('[DEBUG] initOnboardingWizard - wizard found:', !!wizard);
+  console.log('[DEBUG] initOnboardingWizard - isOnboardingComplete:', isOnboardingComplete());
+  console.log('[DEBUG] initOnboardingWizard - activeView:', activeView);
+  console.log('[DEBUG] initOnboardingWizard - window.location.hash:', window.location.hash);
+  console.log('[DEBUG] initOnboardingWizard - isMobile:', /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
 
   // Détecter si on utilise le mode page blanche
   const isWhitePageMode = document.querySelector('#onboarding-wizard.onboarding-page-white') !== null;
 
   // Si l'onboarding est déjà complété, ne rien faire de plus
   if (isOnboardingComplete()) {
+    console.log('[DEBUG] initOnboardingWizard - onboarding already complete, exiting');
+    if (wizard) wizard.hidden = true;
     return;
   }
 
@@ -320,26 +354,58 @@ function initOnboardingWizard() {
 
 // Initialisation asynchrone de l'application
 (async () => {
-  await initState();
-  uploadedDocuments.push(...getDocuments());
-  initEquipmentDialog();
-  initAddMemberDialog();
+  console.log('[DEBUG] Async init - START');
+  console.log('[DEBUG] Async init - About to call initState()');
+  try {
+    // Ajouter un timeout de 5 secondes sur initState pour éviter le blocage infini
+    const initStatePromise = initState();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('initState() timeout after 5s')), 5000)
+    );
 
-  // Initialiser l'onboarding wizard si ce n'est pas déjà fait
-  initOnboardingWizard();
+    const stateResult = await Promise.race([initStatePromise, timeoutPromise]);
+    console.log('[DEBUG] Async init - initState done, result:', stateResult);
 
-  // === Mise à jour de l'UI Mode Démo (Phase 13.2.b.3) ===
-  updateDemoModeUI();
-  updateSuggestionsUI();
+    console.log('[DEBUG] Async init - About to load documents');
+    uploadedDocuments.push(...getDocuments());
+    console.log('[DEBUG] Async init - documents loaded, count:', uploadedDocuments.length);
 
-  // Rendre la fonction de progression accessible aux callbacks
-window.updateScanProgressUI = updateScanProgressUI;
+    console.log('[DEBUG] Async init - About to init dialogs');
+    initEquipmentDialog();
+    initAddMemberDialog();
+    console.log('[DEBUG] Async init - dialogs initialized');
 
-  // Lancement du scan auto si activé dans les préférences
-  const user = getCurrentUser();
-  if (user && user.preferences && user.preferences.enableAutoScan) {
-    const worker = new BackgroundSyncWorker(user.preferences.scanDirectories || [], updateScanProgressUI);
-    worker.start();
+    // Initialiser l'onboarding wizard si ce n'est pas déjà fait
+    console.log('[DEBUG] Async init - about to call initOnboardingWizard');
+    initOnboardingWizard();
+    console.log('[DEBUG] Async init - initOnboardingWizard called');
+
+    // === Mise à jour de l'UI Mode Démo (Phase 13.2.b.3) ===
+    console.log('[DEBUG] Async init - Updating demo mode UI');
+    updateDemoModeUI();
+    updateSuggestionsUI();
+
+    // Rendre la fonction de progression accessible aux callbacks
+    window.updateScanProgressUI = updateScanProgressUI;
+
+    // Lancement du scan auto si activé dans les préférences
+    const user = getCurrentUser();
+    if (user && user.preferences && user.preferences.enableAutoScan) {
+      const worker = new BackgroundSyncWorker(user.preferences.scanDirectories || [], updateScanProgressUI);
+      worker.start();
+    }
+    console.log('[DEBUG] Async init - COMPLETE');
+  } catch (error) {
+    console.error('[DEBUG] Async init - ERROR:', error);
+    console.error('[DEBUG] Async init - ERROR stack:', error.stack);
+    // IMPORTANT: Même en cas d'erreur, initialiser l'onboarding
+    console.log('[DEBUG] Async init - Fallback: initializing onboarding despite error');
+    try {
+      initOnboardingWizard();
+      console.log('[DEBUG] Async init - Fallback onboarding init successful');
+    } catch (e2) {
+      console.error('[DEBUG] Async init - Fallback onboarding init FAILED:', e2);
+    }
   }
 })();
 
@@ -1280,7 +1346,14 @@ const pageTitles = {
   plus: "Plus"
 };
 let toastTimeout;
-let activeView = "accueil";
+// Initialiser activeView dès le départ en parsant le hash
+let activeView = (() => {
+  const hash = window.location.hash.substring(1);
+  if (!hash || hash === '' || hash === '#') return 'accueil';
+  // Extraire la vue depuis le format #/view ou #view?params
+  const viewMatch = hash.match(/^\/?([^?]+)/);
+  return viewMatch ? viewMatch[1] : 'accueil';
+})();
 
 /**
  * Section de la barre basse (mobile) pour chaque vue.
@@ -3082,5 +3155,43 @@ function showAlertNotifications(alerts) {
   }
 }
 
+/**
+ * Réinitialise l'onboarding avec confirmation
+ */
+function resetOnboarding() {
+  console.log('[DEBUG] resetOnboarding - START');
+  console.log('[DEBUG] localStorage BEFORE remove:', localStorage.getItem("famili-ia-source-choice-complete"));
+
+  if (!confirm("Voulez-vous vraiment réinitialiser l'onboarding ?\n\nToutes vos préférences et votre progression seront effacées.")) {
+    console.log('[DEBUG] resetOnboarding - User cancelled');
+    return;
+  }
+
+  // Supprimer la clé localStorage
+  localStorage.removeItem("famili-ia-source-choice-complete");
+
+  console.log('[DEBUG] localStorage AFTER remove:', localStorage.getItem("famili-ia-source-choice-complete"));
+  console.log('[DEBUG] resetOnboarding - About to redirect and reload');
+
+  // Rediriger vers l'accueil avant de recharger
+  window.location.hash = '#accueil';
+
+  // Recharger la page
+  window.location.reload();
+}
+
+/**
+ * Attache le gestionnaire d'événement au bouton de réinitialisation de l'onboarding
+ */
+function initResetOnboardingButton() {
+  const resetBtn = document.querySelector('#reset-onboarding-btn');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', resetOnboarding);
+  }
+}
+
 // Démarrage du scheduler au chargement
 startAlertScheduler();
+
+// Initialiser le bouton de réinitialisation de l'onboarding
+initResetOnboardingButton();

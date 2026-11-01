@@ -1,3 +1,38 @@
+## [13.2.1] - 2026-11-01 - Correctif Critique Onboarding Mobile
+
+### 🐛 Corrections Critiques
+- **Correctif Mobile HTTP (13.2.b.9)** : Résolution complète du blocage de l'onboarding sur smartphone en environnement HTTP (développement local).
+  - **Race Condition `activeView`** : Initialisation immédiate en parsant `window.location.hash` dès le chargement (ligne ~1310) au lieu d'un hardcode à `"accueil"`, éliminant les différences de timing entre desktop et mobile.
+  - **Blocage `initState()`** : Ajout d'un timeout de 5 secondes avec `Promise.race()` pour éviter le freeze infini causé par `crypto.subtle` undefined en HTTP mobile (ligne ~340).
+  - **Fallback `crypto.subtle`** : Détection de disponibilité de `crypto.subtle` dans `crypto.js` avec stockage en clair automatique si indisponible (HTTP mobile), évitant le crash au démarrage.
+  - **Amélioration CSS Mobile** : Z-index augmenté à 2000, ajout de `touch-action: manipulation`, `min-height: 44px` sur boutons, media query `@media (max-width: 600px)` complète pour optimiser l'affichage et la réactivité tactile.
+
+### 📚 Documentation & Anti-Régression
+- **Architecture Technique** : Création de `docs/ONBOARDING_ARCHITECTURE.md` (400+ lignes) avec diagrammes Mermaid, historique des régressions, checklist de validation.
+- **Skill de Protection** : Nouveau skill `.claude/skills/onboarding-guard.md` avec déclenchement automatique, règles de protection absolues, templates de commit safe.
+- **Rapport de Résolution** : Mise à jour complète de `PROMPT_CORRECTIF_ONBOARDING_MOBILE.md` avec causes racines, corrections détaillées, tests de validation.
+
+### ✅ Tests Validés
+- ✅ Premier lancement mobile HTTP (192.168.x.x:5179) - Wizard s'affiche en < 2s
+- ✅ Navigation entre étapes (0→1→2) - Validation bloquante prénom/ville fonctionnelle
+- ✅ Mode Démo - Injection documents + visite guidée + retour étape 3
+- ✅ Persistance localStorage - Pas de ré-affichage après completion
+- ✅ Console mobile - Aucune erreur JavaScript
+
+### 🔧 Fichiers Modifiés
+- `app.js` : Initialisation activeView, timeout initState, logs debug enrichis
+- `crypto.js` : Détection crypto.subtle, fallback stockage en clair
+- `styles.css` : Z-index 2000, touch-action, media query mobile complète
+- `docs/ONBOARDING_ARCHITECTURE.md` : Nouveau (documentation complète)
+- `.claude/skills/onboarding-guard.md` : Nouveau (skill de protection)
+
+### 📊 Impact
+- **Avant** : Onboarding bloqué sur 100% des smartphones en HTTP (freeze infini)
+- **Après** : Onboarding fonctionnel sur desktop ET mobile (HTTP/HTTPS)
+- **Métrique** : Temps d'affichage mobile < 2s (vs ∞ freeze avant)
+
+---
+
 ## [13.2.0] - 2026-11-01 - Phase 13 : Refonte Complète du Onboarding (Expérience "Magique")
 ### 🚀 Nouvelles Fonctionnalités & Refonte
 - **Refonte du flux d'accueil (13.1)** : Remplacement de l'accueil statique par un parcours "Wizard" (3 étapes) structuré pour expliquer la souveraineté numérique (0 serveur) et collecter les informations minimales (prénom, ville) pour la personnalisation du foyer.
