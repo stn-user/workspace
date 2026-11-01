@@ -16,3 +16,11 @@ android/app/src/
 Thumbs.db
 *.tmp
 *.bak
+
+# Secrets et clés
+*.env
+*.env.local
+*.pem
+*.key
+google-services.json
+GoogleService-Info.plist
