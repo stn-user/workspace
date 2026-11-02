@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 android/app/build/
+tests/fixtures/photo-exif/device-corpus/
 
 # Fichiers temporaires et système
 .DS_Store

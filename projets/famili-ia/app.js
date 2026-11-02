@@ -8,7 +8,9 @@ const Filesystem = null;
 import { listLocalFiles, readFileContent } from "./local-files.js";
 import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, initializeDemoState, resetState, setDemoMode } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, initializeDemoState, resetState, setDemoMode } from "./state.js";
+import { redactPhotoLocationsForExport } from "./photo-metadata.js";
+import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
 import { getAlertsToNotify, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
 
@@ -954,12 +956,16 @@ async function loadLocalFiles(files) {
   }
 
   const oversizedFile = selectedFiles.find((file) => {
-    const maxFileSize = file.name.toLocaleLowerCase("fr").endsWith(".pdf") ? maxPdfFileSize : maxTextFileSize;
+    const lowerName = file.name.toLocaleLowerCase("fr");
+    const maxFileSize = lowerName.endsWith(".pdf")
+      ? maxPdfFileSize
+      : /\.(jpg|jpeg|png)$/i.test(lowerName) ? MAX_PHOTO_FILE_SIZE : maxTextFileSize;
     return file.size > maxFileSize;
   });
   if (oversizedFile) {
-    const isPdf = oversizedFile.name.toLocaleLowerCase("fr").endsWith(".pdf");
-    const limit = isPdf ? "10 Mo" : "1 Mo";
+    const lowerName = oversizedFile.name.toLocaleLowerCase("fr");
+    const hasLargeFileLimit = lowerName.endsWith(".pdf") || /\.(jpg|jpeg|png)$/i.test(lowerName);
+    const limit = hasLargeFileLimit ? "10 Mo" : "1 Mo";
     setFileStatus(`« ${oversizedFile.name} » dépasse la limite de ${limit}. Aucun fichier de cette sélection n'a été ajouté.`, "error");
     localFilesInput.value = "";
     return;
@@ -972,8 +978,11 @@ async function loadLocalFiles(files) {
   }
 
   try {
-    const loaded = await Promise.all(selectedFiles.map(async (file) => {
+    let metadataWarningCount = 0;
+    const loaded = [];
+    for (const [index, file] of selectedFiles.entries()) {
       const lowerName = file.name.toLocaleLowerCase("fr");
+      const id = `local-${Date.now()}-${index}-${file.name}`;
       const content = lowerName.endsWith(".pdf")
         ? await (await import("./document-reader.js")).readPdfFile(file)
         : lowerName.endsWith(".md")
@@ -981,9 +990,21 @@ async function loadLocalFiles(files) {
           : lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png")
             ? await (await import("./local-files.js")).readImageFile(file)
             : await file.text();
+      let photoMetadata;
+      if (/\.(jpg|jpeg|png)$/i.test(file.name)) {
+        const { extractPhotoMetadata } = await import("./photo-exif.js");
+        const extraction = await extractPhotoMetadata(file, id, {
+          includeLocation: getCurrentUser().privacy?.photoLocationConsent === true
+        });
+        photoMetadata = extraction.metadata;
+        if (extraction.issues.length > 0) {
+          metadataWarningCount += extraction.issues.length;
+          console.warn(`Métadonnées photo incomplètes pour ${file.name}:`, extraction.issues);
+        }
+      }
       const context = parseDocument(typeof content === "string" ? content : "", file.name);
-      return {
-        id: `local-${Date.now()}-${file.name}`,
+      loaded.push({
+        id,
         name: file.name,
         type: lowerName.endsWith(".pdf")
           ? "PDF"
@@ -999,9 +1020,10 @@ async function loadLocalFiles(files) {
         expiryDate: context.expiryDate,
         expiryDateEvidence: context.expiryDateEvidence,
         provider: context.provider,
-        isLocal: true
-      };
-    }));
+        isLocal: true,
+        ...(photoMetadata ? { photoMetadata } : {})
+      });
+    }
 
     uploadedDocuments.push(...loaded);
     for (const doc of loaded) {
@@ -1012,7 +1034,10 @@ async function loadLocalFiles(files) {
     updateModeBanner();
     completeOnboarding();
     const count = uploadedDocuments.length;
-    setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.`, "success");
+    const metadataNotice = metadataWarningCount > 0
+      ? ` Certaines métadonnées EXIF n'ont pas pu être lues (${metadataWarningCount} avertissement${metadataWarningCount === 1 ? "" : "s"}); les fichiers ont été importés sans les champs concernés.`
+      : "";
+    setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.${metadataNotice}`, metadataWarningCount > 0 ? "warning" : "success");
     sourceChoiceDialog.close();
     showView("recherche", { params: { q: "" } });
   } catch (error) {
@@ -1792,11 +1817,12 @@ function initProfileHandlers() {
   const saveBtn = document.querySelector("#save-profile");
   if (!saveBtn) return;
 
-  saveBtn.addEventListener("click", () => {
+  saveBtn.addEventListener("click", async () => {
     const newName = document.querySelector("#edit-name").value.trim();
     if (newName) {
       // Update current user in state
       const user = getCurrentUser();
+      user.privacy ??= {};
       user.name = newName;
       user.avatar = newName.charAt(0).toUpperCase();
 
@@ -1815,6 +1841,7 @@ function initProfileHandlers() {
       }
       user.privacy.telemetryEnabled = document.querySelector('#consent-telemetry').checked;
       user.privacy.dataSharingConsent = document.querySelector('#consent-sharing').checked;
+      const photoLocationConsent = document.querySelector("#consent-photo-gps").checked;
 
       // Update avatar display in profile
       const avatar = document.querySelector("#profile-avatar");
@@ -1827,7 +1854,24 @@ function initProfileHandlers() {
         renderAccueilDashboard();
       }
 
-      showDemoNotice(`Profil mis à jour : ${newName}`);
+      const status = document.querySelector("#profile-save-status");
+      try {
+        await updatePhotoLocationConsent(photoLocationConsent);
+        await updatePrivacyConsent({
+          telemetryEnabled: user.privacy.telemetryEnabled,
+          dataSharingConsent: user.privacy.dataSharingConsent
+        });
+        if (status) status.textContent = "Préférences enregistrées.";
+        showDemoNotice(`Profil mis à jour : ${newName}`);
+      } catch (error) {
+        console.error("Impossible d'enregistrer les préférences de confidentialité :", error);
+        const savedPrivacy = getCurrentUser().privacy || {};
+        document.querySelector("#consent-photo-gps").checked = savedPrivacy.photoLocationConsent === true;
+        document.querySelector("#consent-telemetry").checked = savedPrivacy.telemetryEnabled === true;
+        document.querySelector("#consent-sharing").checked = savedPrivacy.dataSharingConsent === true;
+        if (status) status.textContent = "Les préférences n'ont pas pu être enregistrées. Réessayez.";
+        showDemoNotice("Impossible d'enregistrer les préférences de confidentialité.");
+      }
     }
   });
 
@@ -1864,12 +1908,16 @@ function initProfileHandlers() {
       // Set checkboxes based on consent
       const telemetryCheckbox = document.querySelector('#consent-telemetry');
       const sharingCheckbox = document.querySelector('#consent-sharing');
+      const photoGpsCheckbox = document.querySelector("#consent-photo-gps");
 
       if (telemetryCheckbox && user.privacy) {
         telemetryCheckbox.checked = user.privacy.telemetryEnabled ?? false;
       }
       if (sharingCheckbox && user.privacy) {
         sharingCheckbox.checked = user.privacy.dataSharingConsent ?? false;
+      }
+      if (photoGpsCheckbox && user.privacy) {
+        photoGpsCheckbox.checked = user.privacy.photoLocationConsent === true;
       }
     });
   });
@@ -3132,7 +3180,7 @@ function initDataView(filters = {}) {
   const exportBtn = document.querySelector('#export-all-data');
   if (exportBtn) {
     exportBtn.addEventListener('click', () => {
-      const dataToExport = getFullState();
+      const dataToExport = redactPhotoLocationsForExport(getFullState());
       const dataStr = JSON.stringify(dataToExport, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -3141,7 +3189,7 @@ function initDataView(filters = {}) {
       a.download = 'famili-ia-data.json';
       a.click();
       URL.revokeObjectURL(url);
-      showDemoNotice('Données exportées vers famili-ia-data.json');
+      showDemoNotice('Données exportées vers famili-ia-data.json. Les coordonnées GPS des photos sont exclues par défaut.');
     });
   }
 
@@ -3149,7 +3197,7 @@ function initDataView(filters = {}) {
   const pdfExportBtn = document.querySelector('#export-pdf-data');
   if (pdfExportBtn) {
     pdfExportBtn.addEventListener('click', () => {
-      const dataToExport = getFullState();
+      const dataToExport = redactPhotoLocationsForExport(getFullState());
       const dataStr = JSON.stringify(dataToExport, null, 2);
       const pdfContent = generatePDF(dataStr);
       const blob = new Blob([pdfContent], { type: 'application/pdf' });
@@ -3159,7 +3207,7 @@ function initDataView(filters = {}) {
       a.download = 'famili-ia-data.pdf';
       a.click();
       URL.revokeObjectURL(url);
-      showDemoNotice('Rapport PDF généré : famili-ia-data.pdf');
+      showDemoNotice('Rapport PDF généré : famili-ia-data.pdf. Les coordonnées GPS des photos sont exclues par défaut.');
     });
   }
 

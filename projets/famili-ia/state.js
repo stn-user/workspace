@@ -4,6 +4,7 @@
 
 import { getAll, put, initDB, remove, purgeDatabase } from './db.js';
 import { getAlertLevelForDate, normalizeAlertNotificationPreferences, refreshAlerts } from './alert-engine.js';
+import { createPhotoMetadata, mergePhotoMetadata, normalizePhotoDocument } from './photo-metadata.js';
 
 export function reconcileDocumentAlerts(existingAlerts, generatedAlerts) {
   const generatedById = new Map(generatedAlerts.map(alert => [alert.id, alert]));
@@ -63,6 +64,7 @@ const defaultState = {
       consentVersion: '1.0',
       telemetryEnabled: false,
       dataSharingConsent: false,
+      photoLocationConsent: false,
       lastConsentDate: null
     }
   },
@@ -102,7 +104,21 @@ export async function initState() {
     const equipment = await getAll('equipment');
     const alerts = await getAll('alerts');
     const users = await getAll('users');
-    const documents = await getAll('documents');
+    const storedDocuments = await getAll('documents');
+    const documents = [];
+    for (const storedDocument of storedDocuments) {
+      try {
+        const document = normalizePhotoDocument(storedDocument);
+        if (storedDocument.photoMetadata
+          && storedDocument.photoMetadata.schemaVersion !== document.photoMetadata.schemaVersion) {
+          await put('documents', document);
+        }
+        documents.push(document);
+      } catch (error) {
+        console.error(`Métadonnées photo invalides pour le document ${storedDocument?.id ?? "inconnu"}:`, error);
+        documents.push(storedDocument);
+      }
+    }
 
     if (family.length > 0) state.family = family;
     else for (const m of defaultState.family) await put('family', m);
@@ -120,6 +136,10 @@ export async function initState() {
     else await put('users', defaultState.currentUser);
 
     state.documents = documents;
+    if (state.currentUser.privacy?.photoLocationConsent !== true
+      && documents.some(document => document.photoMetadata?.location?.status === "available")) {
+      await updatePhotoLocationConsent(false);
+    }
     await synchronizeDocumentAlerts(documents);
 
   } catch (e) {
@@ -200,6 +220,7 @@ export async function deleteEquipment(id) {
 }
 
 export async function addDocument(document) {
+  document = normalizePhotoDocument(document);
   const existingIndex = state.documents.findIndex(existing => existing.id === document.id);
   if (existingIndex === -1) state.documents.push(document);
   else state.documents[existingIndex] = document;
@@ -263,6 +284,36 @@ export async function updatePrivacyConsent(newPrivacySettings) {
   };
   await put('users', state.currentUser);
   return state.currentUser.privacy;
+}
+
+export async function updatePhotoLocationConsent(enabled) {
+  const photoLocationConsent = enabled === true;
+  if (photoLocationConsent) {
+    await updatePrivacyConsent({ photoLocationConsent: true });
+    return true;
+  }
+
+  const documentsWithLocation = state.documents.filter(
+    document => document.photoMetadata?.location?.status === "available"
+  );
+  if (!state.currentUser.privacy?.photoLocationConsent && documentsWithLocation.length === 0) return false;
+
+  for (const document of documentsWithLocation) {
+    const clearedMetadata = createPhotoMetadata(document.id, {
+      location: {
+        status: "cleared",
+        source: { kind: "user", field: "photoLocationConsentRevoked" }
+      }
+    });
+    const updatedDocument = {
+      ...document,
+      photoMetadata: mergePhotoMetadata(document.photoMetadata, clearedMetadata)
+    };
+    await put('documents', updatedDocument);
+    state.documents[state.documents.indexOf(document)] = updatedDocument;
+  }
+  await updatePrivacyConsent({ photoLocationConsent: false });
+  return false;
 }
 
 export async function addLog(action, details) {

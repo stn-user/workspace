@@ -9,6 +9,25 @@
 - Comparaison automatisée du lexical, du score par métadonnées et de l'approche hybride ; aucun modèle distant, embedding ni nouvelle dépendance n'a été ajouté. La recherche ne reçoit aucun quota ou verrouillage payant.
 - Sur le corpus synthétique, l'approche hybride obtient précision@3 88,9 %, rappel@3 100 %, MRR 0,778, exactitude factuelle 100 %, abstention correcte 100 % et couverture des sources 100 %. Mesure indicative sur données fictives uniquement.
 
+# [15.3.d] - 2026-11-02 - Confidentialité des métadonnées photo
+
+### 📷 Phase 15.3
+- Intégration du parseur EXIF `exifr` pour une extraction locale et limitée des métadonnées JPEG/PNG.
+- Ajout du consentement distinct GPS, désactivé par défaut ; son retrait supprime les coordonnées déjà enregistrées, sans modifier les photos originales.
+- Exclusion des coordonnées GPS des exports JSON/PDF par défaut ; les aperçus restent textuels et ne réembarquent pas les EXIF.
+- Ajout de diagnostics pour les métadonnées absentes, invalides et les erreurs d'extraction, avec conservation du fichier importé.
+- Tests du mapping EXIF, du consentement GPS et de l'expurgation des exports ; fixtures et mesures de corpus complétées en 15.3.e.
+
+# [15.3.e] - 2026-11-02 - Fixtures et mesures EXIF
+
+### 📷 Phase 15.3
+- Ajout de fixtures JPEG EXIF et de tests d'extraction réelle couvrant dates avec/sans fuseau, orientation, dimensions, GPS avec consentement, métadonnées absentes, valeurs malformées, JPEG/PNG invalides et limites de 10 Mio.
+- Correction de l'import `exifr` pour Node et lecture unique des octets en mémoire, utilisés aussi pour le hash, afin d'éviter `FileReader` et une copie de fichier supplémentaire ; extraction GPS uniquement avec consentement.
+- Ajout de `npm run benchmark:photo-exif` et d'une page de benchmark navigateur (`/tests/photo-exif-browser-benchmark.html`) pour mesurer temps, couverture attendue et mémoire sur les fixtures synthétiques, les images de démonstration et le corpus local.
+- Analyse de 15 photos réelles issues de trois groupes d'appareils : dates 15/15, orientations 15/15, offsets explicites 5/15, dimensions et modèle/appareil 10/15, zéro diagnostic. Aucun GPS n'a été lu.
+- Limite d'import et d'extraction photo portée de 1 à 10 Mio pour inclure ces exemples ; le chargement des fichiers sélectionnés est séquentiel afin de borner les buffers temporaires. Le corpus personnel est ignoré par Git.
+- Mesures indicatives consignées dans l'audit ; le profilage sur mobiles reste hors périmètre de cette validation.
+
 # [15.1.0] - 2026-11-02 - Fiabilisation des alertes
 
 ### 🔔 Phase 15.1
