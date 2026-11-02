@@ -70,7 +70,18 @@ async function readPdfFile(fileBlob) {
       const page = await pdf.getPage(pageNumber);
       const textContent = await page.getTextContent();
       const embeddedText = getEmbeddedPageText(textContent.items);
-      const pageText = embeddedText || await recognizePage(page);
+
+      // Sur le web (non-native), l'OCR n'est pas disponible. On se limite au texte embarqué.
+      let pageText;
+      if (embeddedText) {
+        pageText = embeddedText;
+      } else if (Capacitor.isNativePlatform()) {
+        // Seule l'application mobile peut faire de l'OCR sur les PDFs scannés
+        pageText = await recognizePage(page);
+      } else {
+        pageText = "[Texte extrait impossible sans OCR mobile - PDF scanné]";
+      }
+
       if (pageText) pageContents.push(`Page ${pageNumber}\n${pageText}`);
     }
     return pageContents.join("\n\n");
@@ -147,6 +158,9 @@ async function readFileContent(fileBlob, filename) {
     case 'jpg':
     case 'jpeg':
     case 'png':
+    case 'heic':
+    case 'heif':
+    case 'webp':
       textContent = await readImageFile(fileBlob);
       break;
     default:
@@ -219,23 +233,60 @@ async function readImageFile(fileBlob) {
 }
 
 /**
- * List files in a directory recursively (limited to supported extensions)
+ * Scans a directory using the File System Access API (Browser/Desktop).
+ */
+async function scanDirectoryWeb(dirHandle, path = "") {
+  const supportedExtensions = new Set(['txt', 'md', 'pdf', 'docx', 'xlsx', 'xls', 'jpg', 'jpeg', 'png', 'heic', 'heif', 'webp']);
+  const files = [];
+
+  for await (const entry of dirHandle.values()) {
+    const fullPath = path ? `${path}/${entry.name}` : entry.name;
+    if (entry.kind === 'directory') {
+      files.push(...(await scanDirectoryWeb(entry, fullPath)));
+    } else if (entry.kind === 'file' && supportedExtensions.has(getFileExtension(entry.name))) {
+      const file = await entry.getFile();
+      files.push({
+        name: entry.name,
+        extension: getFileExtension(entry.name),
+        blob: file,
+        path: fullPath,
+        content: null
+      });
+    }
+  }
+  return files;
+}
+
+/**
+ * List files in a directory recursively.
+ * Uses native Capacitor filesystem on mobile, or prompts for directory on web.
+ */
+/**
+ * List files in a directory recursively.
+ * Uses native Capacitor filesystem on mobile, or prompts for directory on web.
  */
 async function listLocalFiles(directoryPath = "") {
   try {
-    // On web, we can't access filesystem directly without user interaction
-    // This is primarily for native mobile apps
     if (!Capacitor.isNativePlatform()) {
-      // Return empty array on web - users must use file picker
+      // Use File System Access API to pick a directory
+      if ('showDirectoryPicker' in window) {
+        try {
+          const dirHandle = await window.showDirectoryPicker();
+          return await scanDirectoryWeb(dirHandle);
+        } catch (err) {
+          console.error("User cancelled or API not supported:", err);
+          return [];
+        }
+      }
       return [];
     }
 
     const { files } = await Filesystem.readdir({
       path: directoryPath,
-      directory: Filesystem.Directory.Documents // or Data depending on what we need
+      directory: Filesystem.Directory.Documents
     });
 
-    const supportedExtensions = new Set(['txt', 'md', 'pdf', 'docx', 'xlsx', 'xls']);
+    const supportedExtensions = new Set(['txt', 'md', 'pdf', 'docx', 'xlsx', 'xls', 'jpg', 'jpeg', 'png', 'heic', 'heif', 'webp']);
     const allFiles = [];
 
     async function scanDirectory(dirPath) {
@@ -250,7 +301,6 @@ async function listLocalFiles(directoryPath = "") {
         const fullPath = dirPath ? `${dirPath}/${file.name}` : file.name;
 
         if (file.type === 'directory') {
-          // Récursion
           await scanDirectory(fullPath);
         } else if (supportedExtensions.has(getFileExtension(file.name))) {
           allFiles.push({ name: file.name, path: fullPath });
@@ -260,7 +310,6 @@ async function listLocalFiles(directoryPath = "") {
 
     await scanDirectory(directoryPath);
 
-    // Traitement par lots pour ne pas saturer la mémoire
     const batchSize = 5;
     const results = [];
     for (let i = 0; i < allFiles.length; i += batchSize) {
@@ -272,19 +321,16 @@ async function listLocalFiles(directoryPath = "") {
             directory: Filesystem.Directory.Documents
           });
 
-          // Convert base64 back to blob
           const binaryString = atob(data);
           const bytes = new Uint8Array(binaryString.length);
           for (let j = 0; j < binaryString.length; j++) bytes[j] = binaryString.charCodeAt(j);
 
-          // On retourne le blob "brut" sans extraction immédiate (évite les erreurs OCR sur PDF scannés en lot)
-          // L'extractiontexte se fera au moment de l'affichage ou via un bouton dédié
           return {
             name: file.name,
             extension: getFileExtension(file.name),
             blob: new Blob([bytes], { type: `application/octet-stream` }),
             path: file.path,
-            content: null // Contenu non extrait pour l'instant
+            content: null
           };
         } catch (error) {
           console.warn(`Erreur lors du stockage du fichier ${file.name}:`, error);
@@ -299,6 +345,7 @@ async function listLocalFiles(directoryPath = "") {
     throw error;
   }
 }
+
 
 /**
  * Request permissions for file system access (Android/iOS)
@@ -321,7 +368,7 @@ async function requestPermissions() {
 }
 
 /**
- * Get accessible directories (Documents, Downloads)
+ * Get accessible directories (Documents, Downloads, Pictures, DCIM)
  */
 async function getAccessibleDirectories() {
   if (!Capacitor.isNativePlatform()) {
@@ -329,8 +376,8 @@ async function getAccessibleDirectories() {
   }
 
   try {
-    // List common directories we want to access
-    const directories = ['Documents', 'Download'];
+    // List common directories we want to access for comprehensive scanning
+    const directories = ['Documents', 'Download', 'Pictures', 'DCIM', 'Music'];
     const accessible = [];
 
     for (const dir of directories) {
@@ -355,6 +402,7 @@ async function getAccessibleDirectories() {
 
 export {
   listLocalFiles,
+  scanDirectoryWeb,
   readFileContent,
   readImageFile,
   requestPermissions,

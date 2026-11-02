@@ -1,8 +1,8 @@
 # Famili-IA – Plan de Développement
 
 ## 📊 Vue d'ensemble
-- **Phase actuelle** : Phase 9 – Homogénéisation UI & Polish
-- **Prochaine étape prioritaire** : Phase 10 – Optimisation Mobile & Revue Documentaire
+- **Phase actuelle** : Phase 14 – Refonte de la Vue "Vos Données" & Polish
+- **Prochaine étape prioritaire** : Finalisation et validation de la Phase 14
 
 ## 📋 Liste des étapes
 
@@ -119,6 +119,7 @@
     - [✓] ✅ 11.3.e : Migration des liens UI : remplacer `data-open-view="documents-list?category=..."` par `data-open-view="donnees?type=document&category=..."`
     - [ ] 11.3.f : Gestion du retour arrière et du contexte utilisateur
     - [ ] 11.3.g : Nettoyage et suppression des vues de listes redondantes (documents-list)
+
 ### Phase 12 – Intégration Proactive & Vie Numérique
 - [✓] ✅ 12.1 : Indexation Globale & Onboarding Utilisateur
     - [✓] ✅ 12.1.a : Complétion du profil utilisateur & préférences d'indexation.
@@ -145,90 +146,37 @@
     - [ ] 12.2.d : Assistant proactif (notifications intelligentes sur les documents indexés).
 
 ### Phase 13 – Refonte Complète du Parcours Nouvel Utilisateur (Onboarding & Expérience "Magique")
-13.1 : Refonte du Flux d'Accueil en Mode "Wizard" (3 étapes fluides)
-13.1.a : Remplacer l'écran d'accueil statique actuel par un parcours d'introduction en étapes courtes pour lever les freins psychologiques. ✅ Terminé - Onboarding wizard implémenté avec succès : structure HTML, logique JavaScript, styles CSS, initialisation au démarrage, gestion de la visibilité selon l'état firstRun/onboardingComplete. Voir app.js modifications.
-13.1.b : Étape 1 — La Promesse & la Souveraineté : Expliquer clairement le principe "Zéro Serveur / 100% sur votre appareil" avant de demander la moindre action. ✅ Terminé — Message renforcé sur la souveraineté numérique et stylisation des boutons du wizard avec les classes unifiées (.primary-button / .secondary-button).
-13.1.c : Étape 2 — L'Identité du Foyer : Demander rapidement le prénom de l'utilisateur et sa ville/code postal (nécessaire pour personnaliser les alertes et contrats d'assurance dès le départ). ✅ Terminé — Champs de saisie ajoutés au wizard, stockage dans state.js et synchronisation affichage profil/accueil lors du passage à l'étape 3.
-13.1.d : Étape 3 — Le Choix d'Entrée : Proposer clairement une bifurcation entre l'essai immédiat (Démo) et l'utilisation réelle (Scan local). ✅ Terminé — Deux boutons d'action clairement identifiés avec les classes .primary-button / .secondary-button, implémentation de injectDemoDocuments() et launchIntelligentScan(), initialisation du foyer complet en mode démo ou démarrage du scan local progressif.
-13.2 : Implémentation du Mode Démo Interactif et Instantané ("Explorer la démo")
-13.2.a : Corriger le bouton "Explorer la démo" pour qu'il injecte instantanément les 5 documents fictifs de référence et initialise un foyer complet (équipements, alertes, membres). ✅ Terminé
-13.2.b : Implémenter le Mode Démo avec message de bienvenue contextualisé et badge visuel :
-    - [✓] ✅ 13.2.b.1 : Ajouter un badge visuel "Mode Démo" dans le `topbar` et un message de bienvenue dans le dashboard.
-    - [✓] ✅ 13.2.b.2 : Gérer l'état de ce mode dans `state.js` via une variable `isDemoMode` pour le rendu conditionnel.
-    - [✓] ✅ 13.2.b.3 : Afficher/masquer le badge dynamiquement selon cet état.
-    - [✓] ✅ 13.2.b.4 : Correction disposition wizard — Adapter le CSS `.wizard-step` pour que les étapes s'affichent verticalement (`flex-direction: column`) et centrées sur l'écran.
-    - [✓] ✅ 13.2.b.5 : Correction orthographique et cohérence du message — Correction de "Biencome" → "Bienvenue" dans `index.html` et affichage conditionnel du prénom dans le dashboard.
-    - [✓] ✅ 13.2.b.6 : Enrichissement de la visite guidée — Étendue à 6 étapes pour inclure l'importation de documents, la gestion des membres de la famille et la vue des données.
-    - [✓] ✅ 13.2.b.9 : **Correctif Mobile Onboarding** — Résolution des blocages sur smartphone HTTP : race condition activeView, timeout initState(), fallback crypto.subtle, amélioration CSS mobile. Documentation complète créée (docs/ONBOARDING_ARCHITECTURE.md) + skill onboarding-guard.
-13.2.c : Implémenter une visite guidée automatisée ("Mode Vidéo Interactive") :
-    - [✓] ✅ 13.2.c.1 : Enchaînement automatique (Recherche ➔ Maison ➔ Alertes ➔ Importer ➔ Famille ➔ Vos données) sans clic utilisateur après le lancement de la démo.
-    - [✓] ✅ 13.2.c.2 : Toasts de progression animés pour jalonner chaque étape (Étape 1/6 à 6/6).
-    - [✓] ✅ 13.2.c.3 : Restitution du contrôle à l'utilisateur à la fin du parcours.
-    - [✓] ✅ 13.2.c.4 : Simuler des actions réelles (saisie de recherche, import de fichier, ajout membre, suppression données) pendant le parcours.
-    - [✓] ✅ 13.2.b.7 : Onboarding sur page blanche (non inséré dans accueil) pour éviter affichage conditionnel prénom dashboard
-    - [✓] ✅ 13.2.b.8 : Bannir les émojis, n'utiliser que SVG icons (conformément CLAUDE.md) - étape 3 onboarding
-    - [✓] ✅ 13.2.c.5 : Enrichir démo avec explications fonctions : ajout membre écran Famille, lecture alerte écran dédié, changement équipement pour filtre auto, utilisation assistant-IA
-    - [✓] ✅ 13.2.c.6 : Retour automatique à l'étape 3 onboarding après fin démo (pour replay ou bouton scan intelligent)
-13.3 : Valorisation du Scan Proactif Local (Le "Moment Waouh")
-13.3.a : Mettre en avant le Scan Local Intelligent (basé sur le BackgroundSyncWorker et local-files.js) comme la méthode principale et naturelle d'intégration des documents. ✅ Terminé — Bouton principal dans le wizard d'onboarding, interface de progression et résumé de classification automatique intégrés.
-13.3.b : Créer une interface de progression visuelle engageante lors du premier scan (barre de progression animée, compteur de documents découverts en temps réel : "🔍 Analyse des dossiers Documents/Téléchargements..."). ✅ Terminé — Interface stylisée, animation fluide et barre de progression enrichie.
-13.3.c : Intégrer la classification automatique des fichiers trouvés (factures, garanties, photos) directement dans le dashboard à la fin du scan. ✅ Terminé — Interface de mise à jour dynamique ajoutée, persistance IndexedDB et affichage toast au terme du scan.
-13.4 : Synchronisation des États et Transition Fluide vers le Dashboard
-13.4.b : Prévoir un bouton de réinitialisation ou de "mode découverte" dans les paramètres (Profil / Vos données) pour pouvoir relâcher/tester l'onboarding à volonté.
-13.4.c : Gérer proprement la persistance de fin d'onboarding (localStorage / IndexedDB) pour qu'un utilisateur de retour ne voie plus l'assistant de configuration, mais accède directement à son tableau de bord.
-13.5 : Tests d'Ergonomie et Polish Mobile / Web
-13.5.a : Valider le parcours complet sur smartphone (responsive, cibles tactiles, fluidité des transitions d'étapes).
-13.5.b : Vérifier l'absence d'erreurs de console et la robustesse des flux asynchrones (notamment si l'utilisateur refuse l'accès aux dossiers locaux ou annule une étape).
+- [✓] 13.1 : Refonte du Flux d'Accueil en Mode "Wizard" (3 étapes fluides)
+    - [✓] 13.1.a : Remplacer l'écran d'accueil statique actuel par un parcours d'introduction en étapes courtes pour lever les freins psychologiques.
+    - [✓] 13.1.b : Étape 1 — La Promesse & la Souveraineté : Expliquer clairement le principe "Zéro Serveur / 100% sur votre appareil".
+    - [✓] 13.1.c : Étape 2 — L'Identité du Foyer : Demander rapidement le prénom de l'utilisateur et sa ville/code postal.
+    - [✓] 13.1.d : Étape 3 — Le Choix d'Entrée : Proposer clairement une bifurcation entre l'essai immédiat (Démo) et l'utilisation réelle (Scan local).
+- [✓] 13.2 : Implémentation du Mode Démo Interactif et Instantané ("Explorer la démo")
+    - [✓] 13.2.a : Injection instantanée des documents de référence et initialisation du foyer complet.
+    - [✓] 13.2.b : Mode Démo contextualisé (badge, message, state.js, correctif mobile HTTP, etc.).
+    - [✓] 13.2.c : Visite guidée automatisée en 6 étapes (Recherche ➔ Maison ➔ Alertes ➔ Importer ➔ Famille ➔ Vos données).
+- [✓] 13.3 : Valorisation du Scan Proactif Local (Le "Moment Waouh")
+    - [✓] 13.3.a : Intégration du bouton principal de Scan Local Intelligent dans l'onboarding.
+    - [✓] 13.3.b : Interface de progression visuelle engageante lors du premier scan.
+    - [✓] 13.3.c : Classification automatique des fichiers trouvés.
+- [✓] 13.4 : Synchronisation des États et Transition Fluide vers le Dashboard
+- [✓] 13.5 : Tests d'Ergonomie et Polish Mobile / Web
+
+### Phase 14 – Refonte de la Vue "Vos Données" (Priorité : UX & Clarté)
+L'objectif est d'améliorer la visibilité, la gestion et la compréhension des données indexées localement.
+
+- [ ] **14.1 : Architecture & Navigation**
+    - [ ] 14.1.a : Nettoyage et consolidation des interfaces de gestion des données (remplacement des vues de listes redondantes).
+    - [ ] 14.1.b : Implémentation d'une vue "Vos Données" (`data-view`) unifiée, capable d'afficher les fichiers locaux et les sources (Drive/Simulé).
+    - [ ] 14.1.c : Intégration des filtres dynamiques basés sur le hash URL (`#/donnees?type=...&category=...`).
+
+- [ ] **14.2 : Expérience Utilisateur (UX)**
+    - [ ] 14.2.a (14.4) : Refonte visuelle — Aligner rigoureusement le rendu avec la charte graphique officielle (typography, cartes, espacement, tokens CSS de `styles.css`).
+    - [ ] 14.2.b (14.5) : Mise en place d'indicateurs visuels clairs pour chaque type de document, provenance et statut d'indexation.
+
+- [ ] **14.3 : Fonctionnalités & Sécurité**
+    - [ ] 14.3.a (14.6) : Action de nettoyage et de suppression (massive ou unitaire) sécurisée pour le stockage local (IndexedDB / File Access API).
+    - [ ] 14.3.b (14.7) : Rétro-compatibilité — S'assurer que le filtrage par chips fonctionne de manière fluide avec le moteur de recherche unifié.
 
 ## 🛠 Framework des Skills - Implémentation Structurée
-Cette section définit les skills techniques et domain spécifiques à mettre en place pour assurer la qualité, la cohérence UI et l'automatisation tout au long du projet Famili-IA.
-
-### ✅ Skills Techniques - État d'avancement
-| Skill | Statut | Description | Cas d'usage | Coché |
-|-------|--------|-------------|-------------|-------|
-| **update-config** | ✅ **Terminé** | settings.json créé avec attribution et permissions de base (`Bash(npm *)`, `Bash(git *)`, Read/Edit/Write) | Configuration de base, réduction prompts Capacitor, attribution git/pr | [x] |
-| **fewer-permission-prompts** | ✅ **Terminé** | Allowlist des appels natives problématiques - 5 règles prioritaires validées | Gestion READ_EXTERNAL_STORAGE, notifications, accès Capacitor | [x] |
-| **code-review** | ✅ **Terminé** | Qualité continue - revue medium effectuée, 4 findings identifiés et résolus | Détection régressions UI, respect charte graphique, standards architecture | [x] |
-| **simplify** | ✅ **Terminé** | Nettoyage périodique du code - corrections Finding A-D appliquées, event delegation, async state loading | Refactoring composants, optimisation selectors, réduction technical debt | [x] |
-
-### 🎯 Skills Domain Spécifiques
-| Skill | Portée | Description |
-|-------|--------|-------------|
-| **artifact-design** | UI/UX | Maintenir la charte graphique (#0f7173, #2563eb, #059669, etc.) lors des nouvelles vues/pages |
-| **workflow-authoring** | Automatisation | Workflows multi-étapes : lancement app, build Capacitor, tests de régression, génération rapports |
-| **dataviz** | Analytics | Visualisation données familiales, graphiques équipements, stats alertes, KPI dashboards |
-
-### Ordre d'Implémentation Recommandé
-1. **Phase 0 - Setup** : `update-config` → configuration de base des settings.json ✅ **Déjà fait** (fichier créé avec attribution + permissions Bash)
-2. **Phase 0 - Setup** : `fewer-permission-prompts` → allowlist des appels Capacitor critiques ✅ **Terminé** - 5 règles prioritaires validées et ajoutées à settings.json
-3. **Qualité & Correction** : `code-review` → revue de niveau medium effectuée, 4 findings identifiés et résolus ✅ **Terminé**
-   - Finding A résolu : bouton "ajouter membre" dans liste vide
-   - Finding B résolu : chemin fragile dans test-sanity.mjs
-   - Finding C résolu : listeners d'événements obsolètes supprimés
-   - Finding D résolu : persistance IndexedDB correcte
-4. **Qualité & Maintenance** : `simplify` → nettoyage effectué via corrections Finding A-D, delegation et async loading ✅ **Terminé**
-5. **Avant commit** : `code-review` + validation `artifact-design` (charte graphique) ✅ **Workflow intégré** - Dans la checklist anti-régression existante
-6. **Phase 10 (Lancement)** : `workflow-authoring` → scripts de test utilisateur automatisés ⏳ **Planification Phase 10** - Définir les workflows de test
-7. **Phase 10 (Lancement)** : `dataviz` → visualisations pour rapports satisfaction/utilisateurs ⏳ **Planification Phase 10** - Graphiques/KPI pour rapports
-
-### Intégration dans les Phases Existantes
-- **Phase 7-9** : `code-review` comme étape finale avant commit (checklist anti-régression déjà présente)
-- **Phase 8** (Sécurité) : Intégrer `security-review` dans la validation des consentements et chiffrement
-- **Phase 9** (UI Polish) : Valider `artifact-design` pour chaque nouvelle vue/ composant
-- **Toutes phases** : `fewer-permission-prompts` pour tout nouvel appel API native Capacitor
-
-### Checklist Compétences par Phase
-- **Avant tout commit** : ✅ `code-review` passé, ✅ `artifact-design` validé (si UI), ✅ `fewer-permission-prompts` à jour
-- **Findings code-review (Phase 7-9)** : 4 findings identifiés lors de la revue de niveau medium - **TOUS RÉSOLUS** ✅
-  1. [x] **Finding A** : app.js:1720 - Liste vide famille omet bouton "ajouter membre" → Corrigé : le bouton s'affiche toujours, même avec liste vide (return prématuré retiré)
-  2. [x] **Finding B** : test-sanity.mjs:9 - Chemin relatif fragile → Corrigé : `path.resolve('.')` au lieu de `path.resolve('projets/famili-ia')`
-  3. [x] **Finding C** : app.js:382 - Écouteurs d'événements sur éléments non-existent (filters chips) → Corrigé : supprimé listeners redondants `#filter-type, #filter-source`, la logique utilise maintenant `.chip.is-selected` dans `applyFilters()`
-  4. [x] **Finding D** : app.js:1679 - Mutation directe d'objet module importé → Corrigé : remplacement par `import().then(() => initFamilyFromSaved(savedFamily()))` avec méthode officielle state.js
-- **Règles de permission prioritaires (5 règles)** : Vérifier l'application des 5 règles ci-dessous dans `.claude/settings.json`
-  1. [x] `Read(src/**, *.js)` - Lectures fichiers source JS ✅ Validé
-  2. [x] `Edit(src/**, *.js)` - Modifications fichiers source JS ✅ Validé
-  3. [x] `Read(**) `** - Lectures générales ✅ Validé
-  4. [x] `Glob(**)` - Recherche globale de fichiers ✅ Validé
-  5. [x] `Bash(npm *)`, `Bash(git *)` - Commandes npm/git ✅ Validé
-- **Nouvelle feature** : Vérifier `update-config` si modification des permissions ou env vars
-- **Nouvelle visualisation** : Appliquer `dataviz` si dashboard/statistiques impliquées
+...

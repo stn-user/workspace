@@ -483,6 +483,48 @@
             <p>Contrôlez, exportez ou supprimez vos données locales en toute transparence.</p>
           </div>
         </div>
+
+        <!-- Synthèse chiffrée en haut -->
+        <div class="data-summary" style="margin: var(--space-lg) 0;">
+          <div class="grid grid--2-cols" style="gap: var(--space-md);">
+            <div>
+              <p class="summary-count" id="summary-total">0</p>
+              <p class="summary-label">Fichiers total</p>
+            </div>
+            <div>
+              <p class="summary-count" id="summary-local">0</p>
+              <p class="summary-label">Local</p>
+            </div>
+            <div>
+              <p class="summary-count" id="summary-drive">0</p>
+              <p class="summary-label">Drive</p>
+            </div>
+            <div>
+              <p class="summary-count" id="summary-demo">0</p>
+              <p class="summary-label">Démo</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtres contextuels -->
+        <div class="data-filters">
+          <div class="filter-chips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+            <button class="filter-chip ${!filters.type && !filters.category ? 'filter-chip--selected' : ''}" data-filter-type="tout" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); cursor: pointer; transition: var(--transition-fast); white-space: nowrap;">
+              Tout
+            </button>
+            ${['Facture', 'Garantie', 'Contrat', 'Notice'].map(type => `
+              <button class="filter-chip ${filters.type === type ? 'filter-chip--selected' : ''}" data-filter-type="${type}" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); cursor: pointer; transition: var(--transition-fast); white-space: nowrap;">
+                ${type}
+              </button>
+            `).join('')}
+            ${['Documents', 'Images', 'Médias'].map(cat => `
+              <button class="filter-chip ${filters.category === cat ? 'filter-chip--selected' : ''}" data-filter-category="${cat}" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); cursor: pointer; transition: var(--transition-fast); white-space: nowrap;">
+                ${cat}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
         <div class="data-inventory">
           <section class="panel">
             <div class="section-heading"><h2>Inventaire des fichiers</h2></div>

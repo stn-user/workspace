@@ -3,7 +3,7 @@
  * Gestion du cycle de vie du scan proactif (indexation en fond)
  */
 
-import { getAccessibleDirectories, listLocalFiles } from "./local-files.js";
+import { getAccessibleDirectories, listLocalFiles, scanDirectoryWeb } from "./local-files.js";
 import { getDocuments } from "./state.js";
 
 export class BackgroundSyncWorker {
@@ -53,14 +53,20 @@ export class BackgroundSyncWorker {
 
       try {
         if (typeof this.onProgress === 'function') {
-          this.onProgress({ status: 'scanning', directory: dir });
+          this.onProgress({ status: 'scanning', directory: typeof dir === 'object' ? dir.name : dir });
         }
 
-        // Utilisation de la logique récursive de local-files.js
-        const files = await listLocalFiles(dir);
+        // Si dir est un FileSystemDirectoryHandle (sélectionné par l'utilisateur sur le web)
+        let files = [];
+        if (typeof dir === 'object' && dir.kind === 'directory') {
+          files = await scanDirectoryWeb(dir);
+        } else {
+          // Utilisation de la logique récursive de local-files.js
+          files = await listLocalFiles(dir);
+        }
         allDiscoveredFiles.push(...files);
       } catch (error) {
-        console.warn(`Impossible de scanner le dossier ${dir}:`, error);
+        console.warn(`Impossible de scanner le dossier:`, error);
       }
     }
 
@@ -84,20 +90,24 @@ export class BackgroundSyncWorker {
 
       await Promise.all(batch.map(async (fileObj) => {
         try {
+          console.log(`Debug: Tentative de traitement du fichier -> ${fileObj.name}`);
           // 11.4.c.4 : Filtrage des fichiers déjà indexés & fichiers système
           if (!fileObj.name || fileObj.name.startsWith('.') || fileObj.name.toLowerCase() === 'thumbs.db') {
+            console.log(`Debug: Fichier système ignoré -> ${fileObj.name}`);
             return;
           }
 
           const documents = getDocuments();
           const existingDoc = documents.find(d => d.name === fileObj.name && d.sourceDir === fileObj.path);
           if (existingDoc) {
+            console.log(`Debug: Fichier déjà indexé ignoré -> ${fileObj.name}`);
             return;
           }
 
           const { readFileContent } = await import("./local-files.js");
           const { addDocument } = await import("./state.js");
 
+          console.log(`Debug: Lecture du contenu de -> ${fileObj.name}`);
           const parsed = await readFileContent(fileObj.blob, fileObj.name);
           const content = parsed.rawText;
           const type = parsed.context.type ? parsed.context.type.charAt(0).toUpperCase() + parsed.context.type.slice(1) : "Texte";
@@ -114,17 +124,18 @@ export class BackgroundSyncWorker {
             sourceDir: fileObj.path || "Background Sync"
           };
 
+          console.log(`Debug: Ajout effectif du document dans le state -> ${fileObj.name}`);
           await addDocument(newDoc);
           processedCount++;
         } catch (err) {
           // Gestion des fichiers protégés ou inaccessibles (11.4.d)
-          console.warn(`Skipping file (access denied or protected) : ${fileObj.name}`, err);
+          console.error(`Erreur critique sur le fichier ${fileObj.name}:`, err);
         }
       }));
 
       // Mise à jour de la progression après chaque lot (11.4.c.5.a)
       if (typeof this.onProgress === 'function') {
-        const percentage = Math.round((processedCount / totalFiles) * 100);
+        const percentage = totalFiles > 0 ? Math.round((processedCount / totalFiles) * 100) : 100;
         this.onProgress({
           status: 'indexing',
           progress: percentage,
@@ -138,12 +149,13 @@ export class BackgroundSyncWorker {
     }
 
     // Synthèse finale (11.4.e)
-    console.log(`Indexation proactive terminée : ${processedCount} documents traités.`);
+    console.log(`Indexation proactive terminée : ${processedCount} documents traités sur ${totalFiles}.`);
     if (typeof this.onProgress === 'function') {
       this.onProgress({
         status: 'completed',
         processed: processedCount,
-        total: totalFiles
+        total: totalFiles,
+        progress: 100
       });
     }
     return allDiscoveredFiles;

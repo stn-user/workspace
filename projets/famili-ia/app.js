@@ -189,7 +189,52 @@ function initOnboardingWizard() {
    * Lance le scan intelligent local (Phase 13.3.a)
    * Utilise le BackgroundSyncWorker pour scanner les dossiersDocuments et Téléchargements
    */
-  function launchIntelligentScan() {
+  async function launchIntelligentScan() {
+    // Si on est sur le web, demander de choisir un dossier manuellement
+    if (!Capacitor.isNativePlatform() && 'showDirectoryPicker' in window) {
+      try {
+        const dirHandle = await window.showDirectoryPicker();
+
+        // Passer le dirHandle au worker pour scan récursif
+        const worker = new BackgroundSyncWorker([dirHandle], updateScanProgressUI);
+        worker.start();
+
+        // S'assurer que la barre de progression est visible DÈS LE DÉPART
+        // et restera affichée pendant que le scan tourne en tâche de fond
+        const container = document.querySelector("#scan-progress-container");
+        const fill = document.querySelector("#scan-progress-fill");
+        const text = document.querySelector("#scan-progress-text");
+        if (container) {
+          container.hidden = false;
+          container.style.display = "block";
+          container.style.opacity = "1";
+          container.style.zIndex = "3000";
+        }
+        if (fill) fill.style.width = "0%";
+        if (text) text.textContent = "Initialisation du scan...";
+
+        showDemoNotice("Scan intelligent démarré sur le dossier choisi.");
+
+        // Rediriger vers la vue recherche pour laisser le scan tourner en fond
+        showView("recherche");
+
+        // S'assurer que la barre reste visible après le changement de vue
+        setTimeout(() => {
+          if (container) {
+            container.hidden = false;
+            container.style.display = "block";
+            container.style.opacity = "1";
+            container.style.zIndex = "3000";
+          }
+        }, 100);
+        return;
+      } catch (err) {
+        console.error("Sélection annulée :", err);
+        return;
+      }
+    }
+
+    // Comportement mobile/fallback original
     const user = getCurrentUser();
     if (!user || !user.preferences) {
       showDemoNotice("Veuillez d'abord compléter votre profil dans l'étape précédente.");
@@ -198,11 +243,8 @@ function initOnboardingWizard() {
 
     const scanDirectories = user.preferences.scanDirectories || ['/Documents', '/Downloads'];
     const worker = new BackgroundSyncWorker(scanDirectories, updateScanProgressUI);
-
-    // Démarrer le scan avec affichage de la progression
     worker.start();
 
-    // Afficher la barre de progression
     const container = document.querySelector("#scan-progress-container");
     if (container) {
       container.hidden = false;
