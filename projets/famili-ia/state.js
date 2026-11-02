@@ -5,6 +5,8 @@
 import { getAll, put, initDB, remove, purgeDatabase } from './db.js';
 import { getAlertLevelForDate, normalizeAlertNotificationPreferences, refreshAlerts } from './alert-engine.js';
 import { createPhotoMetadata, mergePhotoMetadata, normalizePhotoDocument } from './photo-metadata.js';
+import { normalizeOptionalBirthDate } from './family-members.js';
+import { isPhotoDocument, normalizePhotoAnnotations, removePhotoMemberAssociation } from './photo-annotations.js';
 
 export function reconcileDocumentAlerts(existingAlerts, generatedAlerts) {
   const generatedById = new Map(generatedAlerts.map(alert => [alert.id, alert]));
@@ -178,24 +180,61 @@ export function getDocuments() {
 }
 
 export async function addFamilyMember(member) {
-  state.family.push(member);
-  await put('family', member);
+  const normalizedMember = {
+    ...member,
+    birthDate: normalizeOptionalBirthDate(member.birthDate)
+  };
+  await put('family', normalizedMember);
+  state.family.push(normalizedMember);
   return state.family;
 }
 
 export async function updateFamilyMember(member) {
   const index = state.family.findIndex(m => m.id === member.id);
   if (index !== -1) {
-    state.family[index] = member;
-    await put('family', member);
+    const normalizedMember = {
+      ...member,
+      birthDate: normalizeOptionalBirthDate(member.birthDate)
+    };
+    await put('family', normalizedMember);
+    state.family[index] = normalizedMember;
   }
   return state.family;
 }
 
 export async function deleteFamilyMember(id) {
-  state.family = state.family.filter(m => m.id !== id);
+  const validMemberIds = state.family.filter(member => member.id !== id).map(member => member.id);
+  const updatedDocuments = [];
+  for (const document of state.documents) {
+    if (!isPhotoDocument(document) || !document.photoAnnotations?.personIds?.includes(id)) continue;
+    const photoAnnotations = removePhotoMemberAssociation(document.photoAnnotations, id, validMemberIds);
+    const updatedDocument = { ...document, photoAnnotations };
+    await put('documents', updatedDocument);
+    updatedDocuments.push(updatedDocument);
+  }
   await remove('family', id);
+  for (const updatedDocument of updatedDocuments) {
+    const index = state.documents.findIndex(document => document.id === updatedDocument.id);
+    if (index !== -1) state.documents[index] = updatedDocument;
+  }
+  state.family = state.family.filter(m => m.id !== id);
   return state.family;
+}
+
+export async function updatePhotoAnnotations(documentId, annotations) {
+  const index = state.documents.findIndex(document => document.id === documentId);
+  if (index === -1 || !isPhotoDocument(state.documents[index])) {
+    throw new TypeError("Le fichier photo à annoter est introuvable.");
+  }
+
+  const photoAnnotations = normalizePhotoAnnotations(
+    annotations,
+    state.family.map(member => member.id)
+  );
+  const updatedDocument = { ...state.documents[index], photoAnnotations };
+  await put('documents', updatedDocument);
+  state.documents[index] = updatedDocument;
+  return updatedDocument;
 }
 
 export async function addEquipment(equipment) {

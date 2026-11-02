@@ -404,7 +404,7 @@
             <p class="drop-text">Glissez un fichier ici</p>
             <label for="import-input" class="drop-button">Choisir un fichier</label>
             <input type="file" id="import-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
-            <p class="drop-formats">Formats acceptés : .txt, .md, .pdf, .jpg, .jpeg, .png, .docx, .xlsx, .xls (max 10 Mo)</p>
+            <p class="drop-formats">Formats acceptés : .txt, .md, .pdf, .jpg, .jpeg, .png, .docx, .xlsx, .xls. Indexation en arrière-plan avec progression, sans limite de nombre (10 Mo max par photo ou PDF, 1 Mo par autre fichier).</p>
           </div>
           <div class="import-library-note">
             <p>Retrouvez et gérez les fichiers importés dans votre inventaire central.</p>
@@ -429,7 +429,7 @@
               </span>
               <span>Dossier complet</span>
             </button>
-            <input type="file" id="folder-input" class="visually-hidden" webkitdirectory directory multiple>
+            <input type="file" id="folder-input" class="visually-hidden" webkitdirectory directory multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
             <button class="import-option" type="button" data-action="camera" id="btn-camera">
               <span class="option-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -450,6 +450,7 @@
               <span>Saisir manuellement</span>
             </button>
           </div>
+          <p class="drop-formats" id="folder-selection-help" hidden>Sur mobile, choisissez plusieurs fichiers dans le dossier de votre choix : la sélection de dossier complète n'est pas prise en charge par l'application.</p>
         </div>
       </section>
 
@@ -566,6 +567,27 @@
           </div>
         </div>
 
+        <section class="panel moments-life-search" aria-labelledby="moments-life-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="moments-life-title">Moments de vie</h2>
+              <p class="panel-subtitle">Retrouvez vos photos à partir des informations que vous avez ajoutées. La recherche et les corrections restent sur cet appareil.</p>
+            </div>
+          </div>
+          <form id="moments-life-search-form" class="moments-life-search-form">
+            <label for="moments-life-query">Que souhaitez-vous retrouver ?</label>
+            <div class="moments-life-search-controls">
+              <input id="moments-life-query" type="search" autocomplete="off" placeholder="Ex. : Les photos d’Alex quand il avait 2 ans">
+              <button class="primary-button" type="submit">Rechercher</button>
+          </div>
+          </form>
+          <p id="moments-life-search-status" role="status" aria-live="polite"></p>
+          <div id="moments-life-search-actions" class="moments-life-search-actions" hidden>
+              <button id="moments-life-correct-annotations" class="secondary-button" type="button">Vérifier ou corriger les annotations des photos</button>
+          </div>
+          <ol id="moments-life-search-results" class="moments-life-search-results" hidden></ol>
+        </section>
+
         <div class="data-filters">
           <h2 class="data-filters-heading">Affiner l’inventaire</h2>
           <div class="filter-chips" role="group" aria-label="Filtrer les fichiers">
@@ -678,12 +700,12 @@
     <div class="source-choice-list">
       <button class="source-choice" id="choose-local-files" type="button">
         <span class="source-choice-icon" aria-hidden="true">▤</span>
-        <span><strong>Sur cet appareil</strong><small>Choisir des fichiers TXT, Markdown, PDF, JPG, PNG. Les photos sont maintenant prises en charge.</small></span>
+        <span><strong>Sur cet appareil</strong><small>Choisir plusieurs fichiers TXT, Markdown, PDF, DOCX, XLSX ou photos. L'indexation s'effectue en arrière-plan avec une progression.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
       <button class="source-choice" id="choose-local-files-native" type="button">
         <span class="source-choice-icon" aria-hidden="true">💾</span>
-        <span><strong>Stockage local (mobile)</strong><small>Scanner les dossiers Documents et Téléchargements de l'application.</small></span>
+        <span><strong>Fichiers sur l'appareil (mobile)</strong><small>Choisir plusieurs fichiers dans le sélecteur de votre appareil. L'indexation s'effectue en arrière-plan avec une progression.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
       <button class="source-choice" id="connect-google-drive" type="button" disabled>
@@ -748,18 +770,59 @@
         <input type="text" id="member-name-input" required placeholder="Ex. : Marie" style="padding: 0.5rem; border: 1px solid var(--color-border, #ccc); border-radius: 4px;">
       </div>
       <div class="field" style="display: flex; flex-direction: column; gap: 0.25rem;">
+        <label for="member-birth-date-input" style="font-weight: 600; font-size: 0.9rem;">Date de naissance (facultative)</label>
+        <input type="date" id="member-birth-date-input" autocomplete="bday" style="padding: 0.5rem; border: 1px solid var(--color-border, #ccc); border-radius: 4px;">
+        <small>Enregistrée localement pour calculer l’âge sur demande. Elle n’est pas obligatoire.</small>
+      </div>
+      <div class="field" style="display: flex; flex-direction: column; gap: 0.25rem;">
         <label for="member-access-input" style="font-weight: 600; font-size: 0.9rem;">Accès</label>
         <select id="member-access-input" style="padding: 0.5rem; border: 1px solid var(--color-border, #ccc); border-radius: 4px;">
           <option value="limited">Accès limité</option>
           <option value="full">Accès complet</option>
         </select>
       </div>
+      <p id="member-form-status" role="status" aria-live="polite"></p>
       <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem;">
         <button class="danger-button" id="delete-member-btn" type="button" style="padding: 0.6rem 1rem; margin-bottom: 0;" hidden>Supprimer</button>
         <div style="display: flex; gap: 1rem; margin-left: auto;">
           <button class="secondary-button" id="cancel-add-member-dialog" type="button" style="padding: 0.6rem 1rem;">Annuler</button>
           <button class="primary-button" type="submit" style="padding: 0.6rem 1.25rem;">Enregistrer</button>
         </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="source-dialog" id="photo-annotations-dialog" aria-labelledby="photo-annotations-title">
+    <div class="dialog-header">
+      <div><p class="eyebrow">MOMENTS DE VIE</p><h2 id="photo-annotations-title">Associer cette photo</h2></div>
+      <button class="close-button" id="close-photo-annotations-dialog" type="button" aria-label="Fermer">×</button>
+    </div>
+    <p id="photo-annotations-file-name"></p>
+    <p>Choisissez vous-même les membres présents et ajoutez des événements. Famili-IA ne reconnaît ni ne déduit l’identité des personnes à partir des images.</p>
+    <form id="photo-annotations-form" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+      <input type="hidden" id="photo-annotations-document-id">
+      <fieldset>
+        <legend>Membres associés</legend>
+        <div id="photo-annotations-members"></div>
+      </fieldset>
+      <div class="field" style="display: flex; flex-direction: column; gap: 0.25rem;">
+        <label for="photo-event-tags-input" style="font-weight: 600; font-size: 0.9rem;">Événements (un par ligne)</label>
+        <textarea id="photo-event-tags-input" rows="3" maxlength="4096" placeholder="Ex. : anniversaire&#10;vacances"></textarea>
+      </div>
+      <div class="field" style="display: flex; flex-direction: column; gap: 0.25rem;">
+        <label for="photo-capture-date-override" style="font-weight: 600; font-size: 0.9rem;">Date locale de prise de vue corrigée (facultatif)</label>
+        <input id="photo-capture-date-override" type="datetime-local" step="1">
+        <small>Laissez vide pour conserver la date d'origine. Une correction est enregistrée comme saisie utilisateur, sans fuseau horaire supposé.</small>
+      </div>
+      <div class="field" style="display: flex; flex-direction: column; gap: 0.25rem;">
+        <label for="photo-place-input" style="font-weight: 600; font-size: 0.9rem;">Lieu (facultatif, saisi manuellement)</label>
+        <input type="text" id="photo-place-input" maxlength="120" placeholder="Ex. : Plage des Pins">
+        <small>Ce libellé est distinct des coordonnées GPS, qui ne sont pas utilisées par la recherche.</small>
+      </div>
+      <p id="photo-annotations-status" role="status" aria-live="polite"></p>
+      <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+        <button class="secondary-button" id="cancel-photo-annotations-dialog" type="button">Annuler</button>
+        <button class="primary-button" type="submit">Enregistrer les associations</button>
       </div>
     </form>
   </dialog>
@@ -788,11 +851,6 @@
   </dialog>
 
   <button class="fab-add-document" type="button" data-open-source-dialog aria-label="Ajouter un document">＋</button>
-
-  <div id="scan-progress-container" class="scan-progress-toast" hidden>
-    <div class="progress-bar"><div id="scan-progress-fill" style="width: 0%;"></div></div>
-    <p id="scan-progress-text">Analyse en cours...</p>
-  </div>
 
 </body>
 </html>

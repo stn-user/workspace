@@ -2837,6 +2837,111 @@ body {
   transition: background var(--transition-fast);
 }
 
+.data-file-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.data-file-annotations {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.moments-life-search {
+  margin-bottom: var(--space-lg);
+}
+
+.moments-life-search-form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.moments-life-search-form > label {
+  font-weight: 600;
+}
+
+.moments-life-search-controls {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.moments-life-search-controls input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+#moments-life-search-status {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-secondary);
+}
+
+.moments-life-search-actions {
+  margin-top: 0.75rem;
+}
+
+.moments-life-search-results {
+  display: grid;
+  gap: 0.65rem;
+  padding-left: 1.5rem;
+}
+
+.moments-life-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.moments-life-result strong {
+  overflow-wrap: anywhere;
+}
+
+.moments-life-result span {
+  grid-column: 1 / -1;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.moments-life-result .moments-life-confidence {
+  font-weight: 600;
+}
+
+.moments-life-confidence--high {
+  color: var(--color-green, #15803d) !important;
+}
+
+.moments-life-confidence--medium {
+  color: var(--color-amber) !important;
+}
+
+.moments-life-confidence--low {
+  color: var(--color-red, #b91c1c) !important;
+}
+
+.moments-life-result-actions {
+  grid-column: 1 / -1;
+  grid-row: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.moments-life-result button {
+  min-height: 44px;
+}
+
 .data-file-row:last-child {
   border-bottom: 0;
 }
@@ -3344,8 +3449,34 @@ body {
   }
 
   .data-view .data-file-open {
+    min-height: 40px;
+    padding: 0.45rem 0.6rem;
+  }
+
+  .data-file-actions {
     grid-column: 2;
     grid-row: 2;
+    flex-wrap: wrap;
+  }
+
+  .moments-life-search-controls {
+    flex-direction: column;
+  }
+
+  .moments-life-result {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .moments-life-result span,
+  .moments-life-result button {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .moments-life-result-actions {
+    grid-column: 1;
+    grid-row: auto;
+    justify-content: flex-start;
   }
 
   .data-inventory .danger-panel .secondary-button {

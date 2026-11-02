@@ -167,6 +167,96 @@ La hausse de la limite a conduit à traiter séquentiellement les fichiers séle
 
 Ces mesures sont indicatives sur cette machine, pas des seuils produit. Les quinze photos constituent un corpus réel limité à trois groupes d'appareils et ne couvrent pas toutes les variantes EXIF. Les tests Node et Chromium valident la couverture et le parcours Web ; les temps/mémoire sur appareils Android/iOS restent à mesurer avant tout engagement de performance mobile.
 
+### 15.4.a — jeu d'évaluation de la recherche « Moments de vie »
+
+Le jeu d'évaluation déterministe est dans `tests/moments-life-corpus.js` ; il ne contient ni image, ni donnée issue du corpus EXIF, ni coordonnée GPS. Il associe 12 fiches photo entièrement synthétiques à trois profils fictifs. Les associations de personnes et les libellés de lieux sont annotés comme des entrées volontaires (`personIds` et `place.source: "user"`), jamais déduits d'une image ou de coordonnées.
+
+Les 12 requêtes de référence couvrent :
+
+- personne seule et personne + période de prise de vue ;
+- âge à partir d'une date de naissance fournie, avec intervalle anniversaire inclusif au début et exclusif au troisième anniversaire ;
+- lieu saisi, événement et date locale avec fuseau inconnu ;
+- différence explicite entre année de prise de vue et année d'import ;
+- période saisonnière ambiguë nécessitant une précision ;
+- âge impossible à calculer faute de date de naissance ;
+- lieu sans résultat, et personne non associée à une photo dont la date seule correspond.
+
+Les seuils à appliquer lors de l'implémentation du moteur (15.4.b-d) sont :
+
+| Mesure | Cible |
+|---|---:|
+| Précision@5 et rappel@5 sur les requêtes à résultats annotés | ≥ 90 % chacun |
+| Rang réciproque moyen (MRR) sur les résultats attendus | ≥ 0,85 |
+| Exactitude des filtres déterministes de date de prise/import, âge, personne, lieu et événement, incluant les bornes calendaires | 100 % sur les cas dédiés |
+| Clarification correcte quand année ou date de naissance manque | 100 % |
+| Abstention correcte sur la requête sans résultat et zéro résultat non pertinent retourné | 100 % |
+
+Précisions de calcul : précision@5 et rappel@5 sont calculées pour chaque requête à résultats parmi les cinq premiers résultats, puis moyennées sur ces requêtes ; la précision d'une requête sans résultat vaut zéro. MRR est la moyenne du réciproque du rang du premier résultat pertinent, calculée sur les seules requêtes à résultats. Les requêtes d'ambiguïté et d'absence sont évaluées séparément et ne gonflent pas artificiellement les mesures de classement. Le contrôle structurel de `tests/moments-life-corpus.test.js` valide l'intégrité et la couverture du jeu, mais n'évalue pas encore un moteur de recherche. Ces données synthétiques ne sont pas un benchmark de qualité utilisateur ; enrichir et faire annoter le jeu avec consentement avant toute affirmation produit.
+
+### 15.4.b — interprétation locale et explicable des requêtes
+
+`moments-life-query.js` expose `interpretMomentsLifeQuery(query, { members, places, events })`, une fonction pure sans accès réseau ni lecture de photos. Les catalogues sont fournis par l'appelant depuis les données locales : membres avec leur date de naissance facultative, lieux dont la provenance doit être une saisie utilisateur, et événements avec libellé et alias explicites. La fonction renvoie `ready` avec des filtres et une explication par filtre, ou `clarification` avec les filtres déjà certains et une raison stable ; l'application de ces filtres et le classement sont traités en 15.4.d.
+
+- Les noms de membres sont reconnus par correspondance exacte insensible aux accents. Un nom absent n'est jamais inféré depuis une image ; plusieurs profils portant le même nom nécessitent une précision.
+- Une année seule correspond à la prise de vue par défaut ; les formulations d'import explicites ciblent l'année ou la date d'import. Les dates de prise de vue utilisent la date locale enregistrée et ne convertissent pas un fuseau inconnu.
+- Une formulation explicite de date de naissance produit un filtre de profil distinct. Une recherche « quand il/elle avait N ans » exige un membre résolu et une date de naissance valide, puis produit une borne d'anniversaire inclusive et une borne de fin exclusive. Pour une naissance le 29 février, l'anniversaire est ramené au 28 février les années non bissextiles.
+- Les saisons sont interprétées selon les mois météorologiques (mars–mai, juin–août, septembre–novembre, décembre–février) et exigent une année ; les intervalles sont semi-ouverts.
+- Les événements sont résolus uniquement via les libellés/alias passés au parseur. Les lieux utilisent seulement des libellés manuellement saisis ou explicitement demandés ; ce jalon ne lit ni n'interprète les coordonnées GPS.
+- Les dates calendaires invalides, les noms/lieux/événements ambigus, les informations manquantes et les requêtes sans filtre compréhensible ne sont pas convertis en réponses approximatives : le parseur signale une clarification.
+
+`tests/moments-life-query.test.js` compare les filtres produits aux 12 cas annotés de 15.4.a et vérifie en plus les années de naissance, les anniversaires bissextiles, les dates invalides, les ambiguïtés et la conservation des dates locales. Cette validation porte sur l'interprétation des requêtes, pas sur la qualité de classement ni sur l'interface ; elles sont traitées dans les étapes suivantes.
+
+### 15.4.c — associations manuelles photo, membres et événements
+
+La fiche membre existante peut maintenant conserver `birthDate` au format `AAAA-MM-JJ`, facultatif (`null` si non renseigné). Le formulaire applique une borne maximale au jour courant et `family-members.js` valide réellement les jours/mois, y compris les années bissextiles, pour les écritures venant d'autres appels. Aucun membre existant n'est forcé de fournir cette donnée.
+
+Dans « Vos données », les photos JPEG/PNG comportent une action « Associer ». L'utilisateur coche un ou plusieurs membres déjà enregistrés, ajoute des libellés d'événements (un par ligne) et peut saisir un lieu. La donnée persistée sur le document est distincte des métadonnées EXIF ; le lieu est optionnel et son origine doit être explicitement `user` :
+
+```js
+photoAnnotations: {
+  schemaVersion: 1,
+  personIds: ["id-membre"],
+  eventTags: ["anniversaire"],
+  placeLabel: "Plage des Pins",
+  placeSource: "user",
+  source: "user"
+}
+```
+
+`photo-annotations.js` valide la version, les références aux membres existants, les types, longueurs et doublons ; la source est normalisée en `user`. Modifier ou vider les associations est une action explicite du formulaire. Supprimer un membre retire ce membre de ses photos annotées et conserve les autres membres et événements. Les données restent dans les magasins IndexedDB `family` et `documents` existants, sans nouvelle migration de base de données.
+
+*L'exemple de structure ci-dessus inclut le lieu manuel ajouté pour la recherche 15.4.d ; les libellés de lieux ne proviennent jamais du GPS.*
+
+Aucun traitement d'image, détection de visage ou identification automatique n'est introduit. L'interface précise que la sélection est manuelle. Les dates de naissance et associations sont conservées localement avec les autres données d'application ; aucun média ni annotation n'est transmis à un service externe. Les tests `tests/family-members.test.js` et `tests/photo-annotations.test.js` valident les dates et les règles d'association ; ils complètent les tests du parseur, mais ne constituent pas encore un test navigateur de l'interface.
+
+### 15.4.d — recherche et classement déterministes par métadonnées
+
+`moments-life-search.js` applique les filtres de `interpretMomentsLifeQuery` à un ensemble de photos, membres et annotations locales. Tous les filtres sont combinés en AND : membre associé volontairement, dates locales de prise de vue, dates d'import, intervalle d'âge issu des anniversaires, événement et lieu saisi. Une métadonnée absente ou invalide ne satisfait pas un filtre de date. Les dates EXIF sont utilisées dans leur forme locale, sans conversion d'un offset nul/inconnu ; la date d'import n'est utilisée que si une valeur ISO persistée existe. Les nouveaux imports d'images enregistrent une date `importedAt`; les anciens fichiers sans cette donnée ne reçoivent pas de date rétroactive inventée.
+
+Un résultat doit satisfaire les critères interprétés ; les coordonnées GPS, noms de fichiers, contenu OCR, aperçu texte, embeddings et inférences faciales ne servent pas à récupérer ou classer une photo. Les photos correspondantes sont triées par date de prise de vue décroissante, puis date d'import décroissante et identifiant stable ; les dates de prise de vue absentes restent après celles disponibles. L'interface « Moments de vie » affiche un rang, les critères retenus, les dates locales/provenances disponibles et un accès à l'aperçu du document. Les requêtes ambiguës demandent une précision ; une requête interprétable sans correspondance s'abstient et annonce l'absence de résultat.
+
+`tests/moments-life-search.test.js` contrôle les filtres attendus sur les 12 requêtes de référence, l'exclusion des coordonnées GPS, le tri stable et les métriques calculées sur les résultats synthétiques :
+
+| Mesure | Résultat sur le corpus synthétique | Cible |
+|---|---:|---:|
+| Précision@5 (moyenne par requête) | 100 % | ≥ 90 % |
+| Rappel@5 (moyenne par requête) | 98,15 % | ≥ 90 % |
+| MRR | 100 % | ≥ 0,85 |
+| Clarification correcte | 100 % | 100 % |
+| Abstention sur absence de résultat | 100 % | 100 % |
+
+Le rappel n'est pas 100 % parce qu'une requête annotée a six photos pertinentes alors que la mesure @5 n'en peut retourner que cinq. Ces résultats vérifient l'implémentation contre un jeu synthétique défini en 15.4.a et ne prédisent pas la précision sur une photothèque réelle. Le classement actuel est chronologique, non appris, et ne prétend pas interpréter les synonymes d'événements au-delà des alias fournis. Aucun modèle/embedding ni dépendance n'a été ajouté. Le temps/mémoire sur appareils Android/iOS et le stockage d'une photothèque à l'échelle cible ne sont pas encore mesurés ; ces contrôles restent requis avant d'envisager une approche sémantique.
+
+### 15.4.e — provenance, confiance et corrections utilisateur
+
+Chaque résultat affiche les filtres exacts retenus et un contexte lisible : date locale de prise de vue, source de cette date, date d'import si connue, membres associés, événements et lieu saisis. Les dates absentes restent explicitement absentes. Une provenance EXIF ancienne, un fuseau inconnu et les associations sans origine vérifiable sont signalés ; les coordonnées GPS ne participent toujours pas à la recherche.
+
+Le niveau affiché (« élevé », « modéré » ou « à vérifier ») est une appréciation déterministe de la provenance des champs qui ont permis la correspondance, pas une probabilité ni un score de pertinence. Les associations manuelles reconnues comme saisies par l'utilisateur et les dates EXIF avec fuseau explicite sont de confiance élevée ; un fuseau inconnu ou une date issue de données anciennes réduit le niveau. Les filtres restent exacts et les données de faible provenance ne sont pas utilisées pour élargir les résultats.
+
+Depuis un résultat, l'utilisateur peut corriger membre, événement, lieu et date locale de prise de vue. Une date corrigée est stockée séparément de la valeur EXIF originale, porte une provenance utilisateur et n'impute aucun fuseau. Effacer le champ restaure l'utilisation de la date d'origine. En absence de résultat, un accès direct à l'inventaire des photos permet de compléter ou corriger leurs annotations ; la recherche en cours est rejouée après l'enregistrement.
+
+`tests/moments-life-search.test.js` couvre les cas sans résultat, les niveaux de confiance selon la provenance, la correction d'une association/date et le rerun local. `tests/photo-annotations.test.js` vérifie la validation calendaire et la normalisation des dates corrigées. Le test bloque `fetch` pendant les recherches : l'interpréteur et le moteur ne font aucun appel réseau. Les médias, GPS et requêtes demeurent locaux. Ces tests vérifient des règles de code synthétiques, pas la qualité de données d'une bibliothèque réelle.
+
 ## Hypothèses d'offres retenues pour la suite
 
 Les retours de l'utilisateur sont retenus comme hypothèses produit de travail, à réexaminer ultérieurement et non comme tarifs ou engagements définitivement validés :

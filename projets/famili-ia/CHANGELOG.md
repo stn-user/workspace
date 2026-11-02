@@ -1,3 +1,21 @@
+# [15.4.e] - 2026-11-02 - Résultats expliqués et corrections locales Moments de vie
+
+### 🖼️ Phase 15.4
+- Les résultats exposent les filtres exacts, les dates de prise de vue/import, leur provenance, le contexte d'associations saisies et les données manquantes ou incertaines.
+- Ajout d'un niveau de confiance explicable, fondé sur la provenance des champs (EXIF, saisie utilisateur, anciennes données) ; il décrit la qualité des sources, pas une probabilité statistique de pertinence.
+- Possibilité de corriger les associations et la date locale de prise de vue ; une correction datée est marquée comme saisie utilisateur, conserve les métadonnées EXIF originales et peut être effacée.
+- Les recherches sans résultat proposent d'accéder aux annotations des photos ; après une correction, la recherche en cours est rejouée localement.
+- Tests de non-régression sur provenance incertaine, correction utilisateur, bornes de date, résultats absents et absence d'appel réseau. Aucune photo, coordonnée GPS ou requête n'est envoyée à un service externe.
+
+# [15.4.d] - 2026-11-02 - Fiabilisation et indexation des imports locaux
+
+### 📱 Import local
+- Le bouton de scan de l'onboarding termine désormais l'onboarding et rend l'accueil accessible ; sur mobile, il ouvre le sélecteur natif multi-fichiers au lieu de scanner les dossiers privés de l'application.
+- Le bouton « Dossier complet » ouvre le sélecteur de dossier sur ordinateur et propose une sélection multiple de fichiers sur mobile.
+- Correction du gestionnaire manquant du bouton dossier, du double déclenchement du sélecteur dans la zone de dépôt et de la remise à zéro des sélections pour permettre de choisir à nouveau le même fichier.
+- Suppression du plafond arbitraire de fichiers locaux ; les sélections sont indexées par lots en arrière-plan avec une progression et un bilan des erreurs.
+- Les limites de taille par fichier restent inchangées ; la limite de 50 fichiers ne concerne désormais que les sélections Google Drive.
+
 # [15.2.0] - 2026-11-02 - Recherche documentaire sourcée
 
 ### 🔎 Phase 15.2
@@ -27,6 +45,42 @@
 - Analyse de 15 photos réelles issues de trois groupes d'appareils : dates 15/15, orientations 15/15, offsets explicites 5/15, dimensions et modèle/appareil 10/15, zéro diagnostic. Aucun GPS n'a été lu.
 - Limite d'import et d'extraction photo portée de 1 à 10 Mio pour inclure ces exemples ; le chargement des fichiers sélectionnés est séquentiel afin de borner les buffers temporaires. Le corpus personnel est ignoré par Git.
 - Mesures indicatives consignées dans l'audit ; le profilage sur mobiles reste hors périmètre de cette validation.
+
+# [15.4.d] - 2026-11-02 - Recherche déterministe Moments de vie
+
+### 🖼️ Phase 15.4
+- Ajout d'une recherche locale sur les seules métadonnées de prise de vue/import et les associations explicitement saisies : membres, événements et lieux manuels.
+- Classement déterministe des résultats par date de prise de vue la plus récente, puis date d'import et identifiant stable ; les dates absentes restent à la fin.
+- Ajout de l'interface de recherche dans « Vos données », avec état de clarification, absence de résultat, critères retenus, dates affichées sans conversion de fuseau et accès à l'aperçu du fichier.
+- Évaluation sur les 12 requêtes synthétiques : précision@5 100 %, rappel@5 98,15 %, MRR 100 %, clarification 100 % et abstention 100 %. Le rappel est une moyenne par requête ; un cas comporte six résultats pertinents, dont cinq visibles à la limite @5.
+- Aucun embedding, modèle sémantique, index vectoriel ou dépendance supplémentaire n'est ajouté. Aucun média, GPS, contenu de photo ou requête n'est envoyé à un service externe.
+- Les performances sur appareils Android/iOS cibles et le coût mémoire d'une photothèque réelle restent à mesurer avant toute décision d'ajouter un modèle.
+
+# [15.4.c] - 2026-11-02 - Associations photo volontaires
+
+### 🖼️ Phase 15.4
+- Ajout d'une date de naissance facultative au formulaire des membres de famille, avec validation stricte des dates calendaires et stockage local dans les fiches existantes.
+- Ajout d'une action « Associer » à l'inventaire des photos pour sélectionner explicitement des membres et saisir des événements et lieux ; les annotations versionnées conservent une provenance utilisateur.
+- Les membres associés à une photo sont vérifiés contre les membres existants ; les doublons d'événements sont normalisés et les entrées invalides signalées.
+- La suppression d'un membre retire ses associations photo tout en conservant les autres annotations.
+- Aucune détection de visage, identification automatique ou inférence d'identité n'est exécutée ; les données et images ne sont pas envoyées à un service externe.
+
+# [15.4.b] - 2026-11-02 - Interprétation locale des requêtes Moments de vie
+
+### 🖼️ Phase 15.4
+- Ajout d'un interpréteur local déterministe qui convertit les requêtes en filtres structurés et expose, pour chaque filtre, sa provenance textuelle et sa règle d'interprétation.
+- Distinction explicite entre dates de prise de vue (date locale, sans conversion d'un fuseau inconnu), dates d'import et dates de naissance ; les âges sont calculés depuis la date de naissance du membre avec borne anniversaire de fin exclusive.
+- Résolution des membres, lieux saisis par l'utilisateur et événements à partir de catalogues fournis localement ; les noms ambigus, saisons sans année, âges sans date de naissance et requêtes non interprétables demandent une précision.
+- Tests des 12 requêtes annotées, des filtres exacts, des années de naissance distinctes des années de prise de vue, des anniversaires bissextiles et des dates invalides.
+- Aucun média, GPS ni requête n'est envoyé à un service externe ; la recherche déterministe est décrite en 15.4.d.
+
+# [15.4.a] - 2026-11-02 - Jeu d'évaluation Moments de vie
+
+### 🖼️ Phase 15.4
+- Définition d'un corpus d'évaluation entièrement synthétique de 12 photos annotées et 3 profils fictifs, avec métadonnées de prise/import, personnes volontairement associées, événements et lieux saisis manuellement.
+- Ajout de 12 requêtes annotées couvrant personne, période, âge et borne anniversaire, lieu, événement, fuseau inconnu, date d'import distincte, ambiguïté et absence de résultat.
+- Fixation des cibles de qualité pour les prochaines étapes : précision@5 ≥ 90 %, rappel@5 ≥ 90 %, MRR ≥ 0,85, exactitude des filtres calendaires/âge à 100 %, clarification et abstention correctes à 100 %.
+- Aucun média réel, GPS ou donnée personnelle n'est inclus ; le jeu ne suppose aucune reconnaissance faciale.
 
 # [15.1.0] - 2026-11-02 - Fiabilisation des alertes
 

@@ -3,13 +3,15 @@
  * Gestion du cycle de vie du scan proactif (indexation en fond)
  */
 
-import { getAccessibleDirectories, listLocalFiles, scanDirectoryWeb } from "./local-files.js";
-import { getDocuments } from "./state.js";
+import { getAccessibleDirectories, listLocalFiles, readFileContent, scanDirectoryWeb } from "./local-files.js";
+import { addDocument, getCurrentUser, getDocuments } from "./state.js";
 
 export class BackgroundSyncWorker {
-  constructor(directories, onProgress) {
+  constructor(directories, onProgress, { files = null, onDocument = null } = {}) {
     this.directories = directories;
-    this.onProgress = onProgress; // Callback pour le feedback UI
+    this.files = files;
+    this.onProgress = onProgress;
+    this.onDocument = onDocument;
     this.isRunning = false;
     this.isPaused = false;
   }
@@ -20,12 +22,113 @@ export class BackgroundSyncWorker {
     console.log("Démarrage du scan proactif sur :", this.directories);
 
     try {
+      if (this.files) return await this.indexSelectedFiles(this.files);
       await this.runScanCycle();
     } catch (error) {
       console.error("Erreur critique durant le scan :", error);
+      this.onProgress?.({
+        status: 'error',
+        message: error instanceof Error ? error.message : "Erreur inattendue pendant l'indexation."
+      });
+      throw error;
     } finally {
       this.isRunning = false;
     }
+  }
+
+  async indexSelectedFiles(files) {
+    const batches = this.partitionFiles(files, 5);
+    const totalFiles = files.length;
+    let processed = 0;
+    let imported = 0;
+    let failed = 0;
+    let metadataWarnings = 0;
+
+    this.onProgress?.({
+      status: 'indexing',
+      progress: 0,
+      processed,
+      imported,
+      failed,
+      total: totalFiles
+    });
+
+    for (const batch of batches) {
+      if (!this.isRunning) break;
+
+      while (this.isPaused && this.isRunning) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      await Promise.all(batch.map(async (file) => {
+        if (!this.isRunning) return;
+
+        try {
+          const parsed = await readFileContent(file, file.name);
+          const id = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          let photoMetadata;
+          if (/\.(jpg|jpeg|png)$/i.test(file.name)) {
+            const { extractPhotoMetadata } = await import("./photo-exif.js");
+            const extraction = await extractPhotoMetadata(file, id, {
+              includeLocation: getCurrentUser().privacy?.photoLocationConsent === true
+            });
+            photoMetadata = extraction.metadata;
+            metadataWarnings += extraction.issues.length;
+            if (extraction.issues.length > 0) {
+              console.warn(`Métadonnées photo incomplètes pour ${file.name}:`, extraction.issues);
+            }
+          }
+
+          const extension = file.name.split('.').pop().toLowerCase();
+          const type = extension === "pdf" ? "PDF"
+            : extension === "md" ? "Markdown"
+            : ["jpg", "jpeg", "png"].includes(extension) ? "Image"
+            : "Texte";
+          const document = {
+            id,
+            name: file.name,
+            type,
+            date: "Session locale",
+            keywords: "",
+            summary: "",
+            content: parsed.rawText,
+            alertType: parsed.context.type,
+            expiryDate: parsed.context.expiryDate,
+            expiryDateEvidence: parsed.context.expiryDateEvidence,
+            provider: parsed.context.provider,
+            isLocal: true,
+            ...(file.webkitRelativePath ? { sourceDir: file.webkitRelativePath } : {}),
+            ...(photoMetadata ? { photoMetadata, importedAt: new Date().toISOString() } : {})
+          };
+
+          await addDocument(document);
+          this.onDocument?.(document);
+          imported += 1;
+        } catch (error) {
+          failed += 1;
+          console.error(`Erreur lors de l'indexation de ${file.name}:`, error);
+        } finally {
+          processed += 1;
+        }
+      }));
+
+      const progress = totalFiles > 0 ? Math.round((processed / totalFiles) * 100) : 100;
+      this.onProgress?.({
+        status: 'indexing',
+        progress,
+        processed,
+        imported,
+        failed,
+        metadataWarnings,
+        total: totalFiles
+      });
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    const status = processed === totalFiles ? 'completed' : 'stopped';
+    const result = { status, processed, imported, failed, metadataWarnings, total: totalFiles };
+    this.onProgress?.({ ...result, progress: totalFiles > 0 ? Math.round((processed / totalFiles) * 100) : 100 });
+    return result;
   }
 
   async runScanCycle() {
@@ -78,6 +181,8 @@ export class BackgroundSyncWorker {
 
     // 11.4.c.3.b & 11.4.c.3.c : Traitement par lots avec yield
     let processedCount = 0;
+    let importedCount = 0;
+    let failedCount = 0;
     const totalFiles = allDiscoveredFiles.length;
 
     for (let i = 0; i < batches.length; i++) {
@@ -97,15 +202,11 @@ export class BackgroundSyncWorker {
             return;
           }
 
-          const documents = getDocuments();
-          const existingDoc = documents.find(d => d.name === fileObj.name && d.sourceDir === fileObj.path);
+          const existingDoc = getDocuments().find(d => d.name === fileObj.name && d.sourceDir === fileObj.path);
           if (existingDoc) {
             console.log(`Debug: Fichier déjà indexé ignoré -> ${fileObj.name}`);
             return;
           }
-
-          const { readFileContent } = await import("./local-files.js");
-          const { addDocument } = await import("./state.js");
 
           console.log(`Debug: Lecture du contenu de -> ${fileObj.name}`);
           const parsed = await readFileContent(fileObj.blob, fileObj.name);
@@ -130,10 +231,12 @@ export class BackgroundSyncWorker {
 
           console.log(`Debug: Ajout effectif du document dans le state -> ${fileObj.name}`);
           await addDocument(newDoc);
-          processedCount++;
+          importedCount++;
         } catch (err) {
-          // Gestion des fichiers protégés ou inaccessibles (11.4.d)
+          failedCount++;
           console.error(`Erreur critique sur le fichier ${fileObj.name}:`, err);
+        } finally {
+          processedCount++;
         }
       }));
 
@@ -144,6 +247,8 @@ export class BackgroundSyncWorker {
           status: 'indexing',
           progress: percentage,
           processed: processedCount,
+          imported: importedCount,
+          failed: failedCount,
           total: totalFiles
         });
       }
@@ -153,13 +258,16 @@ export class BackgroundSyncWorker {
     }
 
     // Synthèse finale (11.4.e)
-    console.log(`Indexation proactive terminée : ${processedCount} documents traités sur ${totalFiles}.`);
+    const status = processedCount === totalFiles ? 'completed' : 'stopped';
+    console.log(`Indexation proactive terminée : ${importedCount} documents indexés sur ${totalFiles}.`);
     if (typeof this.onProgress === 'function') {
       this.onProgress({
-        status: 'completed',
+        status,
         processed: processedCount,
+        imported: importedCount,
+        failed: failedCount,
         total: totalFiles,
-        progress: 100
+        progress: totalFiles > 0 ? Math.round((processedCount / totalFiles) * 100) : 100
       });
     }
     return allDiscoveredFiles;

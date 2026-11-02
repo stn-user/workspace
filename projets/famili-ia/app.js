@@ -2,14 +2,13 @@
 import { buildSearchResponse, rankDocuments } from "./search-utils.js";
 import { GoogleDriveClient } from "./google-drive.js";
 import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
-// Mock Capacitor pour le navigateur web (non disponible en local sans build)
-const Capacitor = { isNativePlatform: () => false };
-const Filesystem = null;
-import { listLocalFiles, readFileContent } from "./local-files.js";
+import { Capacitor } from "@capacitor/core";
 import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, initializeDemoState, resetState, setDemoMode } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, updatePhotoAnnotations, initializeDemoState, resetState, setDemoMode } from "./state.js";
 import { redactPhotoLocationsForExport } from "./photo-metadata.js";
+import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
+import { searchMomentsLife } from "./moments-life-search.js";
 import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
 import { getAlertsToNotify, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
@@ -185,10 +184,8 @@ function initOnboardingWizard() {
   }
 
   if (startScanMode) {
-    startScanMode.addEventListener('click', () => {
-      // Lancer le mode scan intelligent avec progression UI
-      launchIntelligentScan();
-      manageOnboardingWizardVisibility(); // Cacher le wizard pour aller directement au dashboard
+    startScanMode.addEventListener('click', async () => {
+      await launchIntelligentScan();
     });
   }
 
@@ -202,8 +199,9 @@ function initOnboardingWizard() {
       try {
         const dirHandle = await window.showDirectoryPicker();
 
-        // Passer le dirHandle au worker pour scan récursif
-        startBackgroundScan([dirHandle]);
+        completeOnboarding();
+        manageOnboardingWizardVisibility();
+        showView("accueil");
 
         // S'assurer que la barre de progression est visible DÈS LE DÉPART
         // et restera affichée pendant que le scan tourne en tâche de fond
@@ -219,10 +217,8 @@ function initOnboardingWizard() {
         if (fill) fill.style.width = "0%";
         if (text) text.textContent = "Initialisation du scan...";
 
+        startBackgroundScan([dirHandle]);
         showDemoNotice("Scan intelligent démarré sur le dossier choisi.");
-
-        // Rediriger vers la vue recherche pour laisser le scan tourner en fond
-        showView("recherche");
 
         // S'assurer que la barre reste visible après le changement de vue
         setTimeout(() => {
@@ -235,27 +231,24 @@ function initOnboardingWizard() {
         }, 100);
         return;
       } catch (err) {
-        console.error("Sélection annulée :", err);
+        if (err?.name !== "AbortError") {
+          console.error("Impossible d'ouvrir le dossier sélectionné :", err);
+          showDemoNotice("Le dossier n'a pas pu être ouvert. Vous pouvez réessayer ou choisir la démo.");
+        }
         return;
       }
     }
 
-    // Comportement mobile/fallback original
-    const user = getCurrentUser();
-    if (!user || !user.preferences) {
-      showDemoNotice("Veuillez d'abord compléter votre profil dans l'étape précédente.");
+    if (!localFilesInput) {
+      showDemoNotice("Le sélecteur de fichiers n'est pas disponible dans cette version.");
       return;
     }
 
-    const scanDirectories = user.preferences.scanDirectories || ['/Documents', '/Downloads'];
-    startBackgroundScan(scanDirectories);
-
-    const container = document.querySelector("#scan-progress-container");
-    if (container) {
-      container.hidden = false;
-    }
-
-    showDemoNotice("Scan intelligent démarré - Analyse des dossiers : " + scanDirectories.join(", "));
+    completeOnboarding();
+    manageOnboardingWizardVisibility();
+    showView("accueil");
+    showDemoNotice("Choisissez les photos ou documents à analyser sur votre appareil.");
+    localFilesInput.click();
   }
 
   /**
@@ -422,6 +415,8 @@ function initOnboardingWizard() {
     console.log('[DEBUG] Async init - About to init dialogs');
     initEquipmentDialog();
     initAddMemberDialog();
+    initPhotoAnnotationsDialog();
+    initMomentsLifeSearch();
     console.log('[DEBUG] Async init - dialogs initialized');
 
     // Initialiser l'onboarding wizard si ce n'est pas déjà fait
@@ -622,7 +617,7 @@ const documents = [
 
 const driveDemoDocuments = documents.slice(0, 3);
 const uploadedDocuments = [];
-const maxFiles = 5;
+const maxDriveFiles = 50;
 const maxTextFileSize = 1024 * 1024;
 const maxPdfFileSize = 10 * 1024 * 1024;
 const maxPdfPages = 20;
@@ -874,33 +869,90 @@ function updateScanProgressUI(progressInfo) {
     return;
   }
 
+  container.hidden = false;
+  clearTimeout(scanProgressTimeout);
+
   if (progressInfo.status === 'scanning') {
+    fill.style.width = "0%";
     text.textContent = `Exploration de ${progressInfo.directory || 'dossiers'}...`;
   } else if (progressInfo.status === 'indexing') {
     fill.style.width = `${progressInfo.progress || 0}%`;
-    text.textContent = `Indexation : ${progressInfo.processed}/${progressInfo.total} fichiers`;
-
-    if (progressInfo.progress >= 100) {
-      setTimeout(() => {
-        container.hidden = true;
-        if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
-        if (activeView === 'accueil') renderAccueilDashboard();
-      }, 3000);
-    }
+    const imported = progressInfo.imported ?? progressInfo.processed;
+    const failures = progressInfo.failed ? ` · ${progressInfo.failed} échec${progressInfo.failed === 1 ? "" : "s"}` : "";
+    text.textContent = `Indexation : ${progressInfo.processed}/${progressInfo.total} traités · ${imported} indexés${failures}`;
+  } else if (progressInfo.status === 'completed') {
+    fill.style.width = "100%";
+    const failures = progressInfo.failed ? ` · ${progressInfo.failed} échec${progressInfo.failed === 1 ? "" : "s"}` : "";
+    text.textContent = `Indexation terminée : ${progressInfo.imported ?? progressInfo.processed}/${progressInfo.total} fichiers indexés${failures}`;
+    scanProgressTimeout = setTimeout(() => {
+      container.hidden = true;
+      if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
+      if (activeView === 'accueil') renderAccueilDashboard();
+    }, 5000);
+  } else if (progressInfo.status === 'stopped') {
+    fill.style.width = `${progressInfo.progress || 0}%`;
+    text.textContent = `Indexation interrompue : ${progressInfo.processed}/${progressInfo.total} fichiers traités.`;
+    scanProgressTimeout = setTimeout(() => { container.hidden = true; }, 5000);
+  } else if (progressInfo.status === 'error') {
+    text.textContent = `L'indexation a échoué : ${progressInfo.message}`;
+    scanProgressTimeout = setTimeout(() => { container.hidden = true; }, 7000);
   }
 }
 
-function startBackgroundScan(directories) {
-  const worker = new BackgroundSyncWorker(directories, updateScanProgressUI);
+let scanProgressTimeout;
+
+function trackBackgroundWorker(worker) {
   const scan = worker.start();
   activeScanWorkers.set(worker, scan);
   scan.then(
     () => activeScanWorkers.delete(worker),
     (error) => {
       activeScanWorkers.delete(worker);
-      console.error("Le scan local s’est terminé avec une erreur :", error);
+      console.error("Le traitement local s’est terminé avec une erreur :", error);
     }
   );
+  return scan;
+}
+
+function startBackgroundScan(directories) {
+  const worker = new BackgroundSyncWorker(directories, updateScanProgressUI);
+  trackBackgroundWorker(worker);
+  return worker;
+}
+
+function startBackgroundImport(files) {
+  const worker = new BackgroundSyncWorker([], updateScanProgressUI, {
+    files,
+    onDocument: (document) => uploadedDocuments.push(document)
+  });
+  const task = trackBackgroundWorker(worker);
+
+  completeOnboarding();
+  manageOnboardingWizardVisibility();
+  if (sourceChoiceDialog.open) sourceChoiceDialog.close();
+  showView("recherche", { params: { q: "" } });
+  setFileStatus(`${files.length} fichier${files.length === 1 ? "" : "s"} sélectionné${files.length === 1 ? "" : "s"}. Indexation locale démarrée en arrière-plan.`);
+
+  task.then((result) => {
+    updateClearFilesButtonsVisibility();
+    updateGoogleDriveButton();
+    updateModeBanner();
+    const count = uploadedDocuments.length;
+    const failedNotice = result.failed
+      ? ` ${result.failed} fichier${result.failed === 1 ? "" : "s"} n'ont pas pu être indexés.`
+      : "";
+    const stoppedNotice = result.status === "stopped" ? " L'indexation a été interrompue avant la fin." : "";
+    const metadataNotice = result.metadataWarnings
+      ? ` ${result.metadataWarnings} avertissement${result.metadataWarnings === 1 ? "" : "s"} sur les métadonnées photo.`
+      : "";
+    setFileStatus(
+      `${result.imported} fichier${result.imported === 1 ? "" : "s"} indexé${result.imported === 1 ? "" : "s"} en local. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.${failedNotice}${metadataNotice}${stoppedNotice}`,
+      result.failed || result.metadataWarnings || result.status === "stopped" ? "warning" : "success"
+    );
+  }).catch((error) => {
+    const reason = error instanceof Error ? error.message : "Erreur d'indexation non détaillée.";
+    setFileStatus(`L'indexation locale a échoué : ${reason}`, "error");
+  });
   return worker;
 }
 
@@ -915,8 +967,9 @@ function updateDriveConnectionActions() {
 }
 
 function updateGoogleDriveButton() {
+  const driveFileCount = uploadedDocuments.filter((file) => file.driveSource).length;
   if (connectGoogleDriveButton) {
-    connectGoogleDriveButton.disabled = !googleDriveReady || uploadedDocuments.length >= maxFiles;
+    connectGoogleDriveButton.disabled = !googleDriveReady || driveFileCount >= maxDriveFiles;
   }
   if (googleDriveChoiceDescription) {
     if (isNativePlatform) {
@@ -925,8 +978,8 @@ function updateGoogleDriveButton() {
       googleDriveChoiceDescription.textContent = "La connexion n'est pas configurée dans cette version web.";
     } else if (!googleDriveReady) {
       googleDriveChoiceDescription.textContent = "Connexion en cours de préparation…";
-    } else if (uploadedDocuments.length >= maxFiles) {
-      googleDriveChoiceDescription.textContent = "Limite de fichiers atteinte. Retirez-en pour en ajouter d'autres.";
+    } else if (driveFileCount >= maxDriveFiles) {
+      googleDriveChoiceDescription.textContent = `Limite de ${maxDriveFiles} fichiers Google Drive atteinte.`;
     } else {
       googleDriveChoiceDescription.textContent = "Connecter votre compte puis choisir les fichiers à consulter.";
     }
@@ -944,14 +997,14 @@ function openSourceChoices() {
   sourceChoiceDialog.showModal();
 }
 
-async function loadLocalFiles(files) {
+async function loadLocalFiles(files, sourceInput = localFilesInput) {
   const selectedFiles = [...files];
   if (selectedFiles.length === 0) return;
 
   const invalidFile = selectedFiles.find((file) => !/\.(txt|md|pdf|jpg|jpeg|png|docx|doc|xlsx|xls)$/i.test(file.name));
   if (invalidFile) {
-    setFileStatus(`« ${invalidFile.name} » n'est pas un fichier TXT, MD, PDF, JPG ou PNG. Aucun fichier de cette sélection n'a été ajouté.`, "error");
-    localFilesInput.value = "";
+    setFileStatus(`« ${invalidFile.name} » n'est pas dans un format pris en charge. Aucun fichier de cette sélection n'a été ajouté.`, "error");
+    if (sourceInput) sourceInput.value = "";
     return;
   }
 
@@ -967,184 +1020,12 @@ async function loadLocalFiles(files) {
     const hasLargeFileLimit = lowerName.endsWith(".pdf") || /\.(jpg|jpeg|png)$/i.test(lowerName);
     const limit = hasLargeFileLimit ? "10 Mo" : "1 Mo";
     setFileStatus(`« ${oversizedFile.name} » dépasse la limite de ${limit}. Aucun fichier de cette sélection n'a été ajouté.`, "error");
-    localFilesInput.value = "";
+    if (sourceInput) sourceInput.value = "";
     return;
   }
 
-  if (uploadedDocuments.length + selectedFiles.length > maxFiles) {
-    setFileStatus(`La limite est de ${maxFiles} fichiers locaux à la fois. Retirez les fichiers ajoutés ou choisissez une sélection plus petite.`, "error");
-    localFilesInput.value = "";
-    return;
-  }
-
-  try {
-    let metadataWarningCount = 0;
-    const loaded = [];
-    for (const [index, file] of selectedFiles.entries()) {
-      const lowerName = file.name.toLocaleLowerCase("fr");
-      const id = `local-${Date.now()}-${index}-${file.name}`;
-      const content = lowerName.endsWith(".pdf")
-        ? await (await import("./document-reader.js")).readPdfFile(file)
-        : lowerName.endsWith(".md")
-          ? await file.text()
-          : lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png")
-            ? await (await import("./local-files.js")).readImageFile(file)
-            : await file.text();
-      let photoMetadata;
-      if (/\.(jpg|jpeg|png)$/i.test(file.name)) {
-        const { extractPhotoMetadata } = await import("./photo-exif.js");
-        const extraction = await extractPhotoMetadata(file, id, {
-          includeLocation: getCurrentUser().privacy?.photoLocationConsent === true
-        });
-        photoMetadata = extraction.metadata;
-        if (extraction.issues.length > 0) {
-          metadataWarningCount += extraction.issues.length;
-          console.warn(`Métadonnées photo incomplètes pour ${file.name}:`, extraction.issues);
-        }
-      }
-      const context = parseDocument(typeof content === "string" ? content : "", file.name);
-      loaded.push({
-        id,
-        name: file.name,
-        type: lowerName.endsWith(".pdf")
-          ? "PDF"
-          : lowerName.endsWith(".md") ? "Markdown"
-          : lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png")
-            ? "Image"
-            : "Texte",
-        date: "Session locale",
-        keywords: "",
-        summary: "",
-        content,
-        alertType: context.type,
-        expiryDate: context.expiryDate,
-        expiryDateEvidence: context.expiryDateEvidence,
-        provider: context.provider,
-        isLocal: true,
-        ...(photoMetadata ? { photoMetadata } : {})
-      });
-    }
-
-    uploadedDocuments.push(...loaded);
-    for (const doc of loaded) {
-      await addDocument(doc);
-    }
-    updateClearFilesButtonsVisibility();
-    updateGoogleDriveButton();
-    updateModeBanner();
-    completeOnboarding();
-    const count = uploadedDocuments.length;
-    const metadataNotice = metadataWarningCount > 0
-      ? ` Certaines métadonnées EXIF n'ont pas pu être lues (${metadataWarningCount} avertissement${metadataWarningCount === 1 ? "" : "s"}); les fichiers ont été importés sans les champs concernés.`
-      : "";
-    setFileStatus(`${loaded.length} fichier${loaded.length === 1 ? "" : "s"} ajouté${loaded.length === 1 ? "" : "s"} localement. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.${metadataNotice}`, metadataWarningCount > 0 ? "warning" : "success");
-    sourceChoiceDialog.close();
-    showView("recherche", { params: { q: "" } });
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : "Erreur de lecture non détaillée.";
-    setFileStatus(`La sélection n'a pas pu être lue : ${reason} Aucun fichier de cette sélection n'a été ajouté.`, "error");
-  } finally {
-    localFilesInput.value = "";
-  }
-}
-
-/**
- * Load local files from native filesystem (Capacitor) - for mobile
- */
-async function loadLocalFilesNative() {
-  if (!Capacitor.isNativePlatform()) {
-    setFileStatus("Cette fonctionnalité n'est disponible que sur l'application mobile native.", "error");
-    return;
-  }
-
-  try {
-    // Request permissions first
-    const permResult = await requestPermissions();
-    if (!permResult.granted) {
-      setFileStatus("Permission refusée pour accéder aux fichiers locaux.", "error");
-      return;
-    }
-
-    setFileStatus("Recherche des fichiers locaux...", "success");
-
-    // Get accessible directories
-    const { getAccessibleDirectories } = await import("./local-files.js");
-    const directories = await getAccessibleDirectories();
-
-    if (directories.length === 0) {
-      setFileStatus("Aucun dossier accessible trouvé (Documents, Téléchargements).", "error");
-      return;
-    }
-
-    let allFiles = [];
-    for (const dir of directories) {
-      try {
-        const files = await listLocalFiles(dir);
-        allFiles.push(...files.map(f => ({ ...f, sourceDir: dir })));
-      } catch (error) {
-        console.warn(`Could not read directory ${dir}:`, error);
-      }
-    }
-
-    if (allFiles.length === 0) {
-      setFileStatus("Aucun fichier TXT, MD ou PDF trouvé dans les dossiers accessibles.", "error");
-      return;
-    }
-
-    // Limit to maxFiles
-    if (allFiles.length > maxFiles) {
-      allFiles = allFiles.slice(0, maxFiles);
-      setFileStatus(`Plus de ${maxFiles} fichiers trouvés. Seuls les ${maxFiles} premiers seront chargés.`, "warning");
-    }
-
-    // Process files
-    const loaded = await Promise.all(allFiles.map(async (file) => {
-      try {
-        const fileContent = await readFileContent(file.blob, file.name);
-        return {
-          id: `local-native-${Date.now()}-${file.name}`,
-          name: file.name,
-          type: file.extension === "pdf" ? "PDF" : file.extension === "md" ? "Markdown" : "Texte",
-          date: "Session locale",
-          keywords: "",
-          summary: "",
-          content: fileContent.rawText,
-          alertType: fileContent.context.type,
-          expiryDate: fileContent.context.expiryDate,
-          expiryDateEvidence: fileContent.context.expiryDateEvidence,
-          provider: fileContent.context.provider,
-          isLocal: true,
-          sourceDir: file.sourceDir
-        };
-      } catch (error) {
-        console.warn(`Failed to process ${file.name}:`, error);
-        return null;
-      }
-    }));
-
-    const validFiles = loaded.filter(f => f !== null);
-
-    if (validFiles.length === 0) {
-      setFileStatus("Aucun fichier n'a pu être lu correctement.", "error");
-      return;
-    }
-
-    uploadedDocuments.push(...validFiles);
-    for (const doc of validFiles) {
-      await addDocument(doc);
-    }
-    updateClearFilesButtonsVisibility();
-    updateGoogleDriveButton();
-    updateModeBanner();
-    completeOnboarding();
-    const count = uploadedDocuments.length;
-    setFileStatus(`${validFiles.length} fichier${validFiles.length === 1 ? "" : "s"} chargé${validFiles.length === 1 ? "" : "s"} depuis le stockage local. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.`, "success");
-    sourceChoiceDialog.close();
-    showView("recherche", { params: { q: "" } });
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : "Erreur de lecture non détaillée.";
-    setFileStatus(`Erreur lors du chargement des fichiers locaux : ${reason}`, "error");
-  }
+  startBackgroundImport(selectedFiles);
+  if (sourceInput) sourceInput.value = "";
 }
 
 function renderDrivePickerOptions() {
@@ -1175,9 +1056,9 @@ function renderDrivePickerOptions() {
 
 function updateDrivePickerCount() {
   const selectedCount = drivePickerList.querySelectorAll('input[name="drive-demo-file"]:checked:not(:disabled)').length;
-  const remainingCount = maxFiles - uploadedDocuments.length;
-  drivePickerStatus.textContent = `${selectedCount} sélectionné${selectedCount === 1 ? "" : "s"} · ${remainingCount} emplacement${remainingCount === 1 ? "" : "s"} disponible${remainingCount === 1 ? "" : "s"} dans cette session.`;
-  confirmDrivePickerButton.disabled = remainingCount === 0 || selectedCount === 0;
+  const remainingCount = driveDemoDocuments.length - uploadedDocuments.filter((document) => document.driveDemo).length;
+  drivePickerStatus.textContent = `${selectedCount} sélectionné${selectedCount === 1 ? "" : "s"} · ${remainingCount} exemple${remainingCount === 1 ? "" : "s"} encore disponible${remainingCount === 1 ? "" : "s"}.`;
+  confirmDrivePickerButton.disabled = selectedCount === 0;
 }
 
 if (googleDriveClient) {
@@ -1210,16 +1091,21 @@ document.querySelector("#choose-local-files").addEventListener("click", () => {
   localFilesInput.click();
 });
 
-document.querySelector("#choose-local-files-native").addEventListener("click", async () => {
+document.querySelector("#choose-local-files-native").addEventListener("click", () => {
   sourceChoiceDialog.close();
-  await loadLocalFilesNative();
+  localFilesInput.click();
 });
 
 connectGoogleDriveButton.addEventListener("click", async () => {
   sourceChoiceDialog.close();
-  const remainingCount = maxFiles - uploadedDocuments.length;
-  if (!googleDriveClient || remainingCount < 1) {
-    setDriveConnectionStatus("La limite de cinq fichiers par session est atteinte. Retirez des fichiers avant d'en choisir d'autres.", "error");
+  const driveFileCount = uploadedDocuments.filter((file) => file.driveSource).length;
+  const remainingCount = maxDriveFiles - driveFileCount;
+  if (!googleDriveClient) {
+    setDriveConnectionStatus("La connexion Google Drive n'est pas disponible dans cette version.", "error");
+    return;
+  }
+  if (remainingCount < 1) {
+    setDriveConnectionStatus(`La limite de ${maxDriveFiles} fichiers Google Drive est atteinte.`, "error");
     return;
   }
 
@@ -1289,11 +1175,6 @@ if (confirmDrivePickerButton && drivePickerList) {
     );
     if (selectedIds.size === 0) {
       drivePickerStatus.textContent = "Sélectionnez au moins un fichier fictif.";
-      return;
-    }
-
-    if (uploadedDocuments.length + selectedIds.size > maxFiles) {
-      drivePickerStatus.textContent = `La limite de ${maxFiles} fichiers par session serait dépassée.`;
       return;
     }
 
@@ -2686,6 +2567,14 @@ function renderFamilyMembers() {
   `;
 }
 
+function refreshUploadedDocumentsFromState() {
+  const storedDocuments = getDocuments();
+  for (let index = 0; index < uploadedDocuments.length; index += 1) {
+    const storedDocument = storedDocuments.find(document => document.id === uploadedDocuments[index].id);
+    if (storedDocument) uploadedDocuments[index] = storedDocument;
+  }
+}
+
 function initAddMemberDialog() {
   const dialog = document.querySelector('#add-member-dialog');
   const form = document.querySelector('#add-member-form');
@@ -2702,12 +2591,19 @@ function initAddMemberDialog() {
     deleteBtn.addEventListener('click', async () => {
       const id = document.querySelector('#member-id-input').value;
       if (id && confirm('Voulez-vous vraiment supprimer ce membre ?')) {
-        await deleteFamilyMember(id);
-        showDemoNotice('Membre supprimé');
-        dialog.close();
-        form.reset();
-        renderFamilyMembers();
-        attachAddMemberListener();
+        try {
+          await deleteFamilyMember(id);
+          refreshUploadedDocumentsFromState();
+          showDemoNotice('Membre supprimé');
+          dialog.close();
+          form.reset();
+          renderFamilyMembers();
+          attachAddMemberListener();
+          if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
+        } catch (error) {
+          console.error("Impossible de supprimer le membre :", error);
+          document.querySelector('#member-form-status').textContent = error.message;
+        }
       }
     });
   }
@@ -2717,23 +2613,37 @@ function initAddMemberDialog() {
     const id = document.querySelector('#member-id-input').value;
     const name = document.querySelector('#member-name-input').value;
     const access = document.querySelector('#member-access-input').value;
+    const birthDate = document.querySelector('#member-birth-date-input').value || null;
+    const status = document.querySelector('#member-form-status');
+    status.textContent = '';
 
-    if (id) {
-        // Edit existing
-        const member = { id, name, role: 'Member', avatar: name.charAt(0).toUpperCase(), access };
-        await updateFamilyMember(member);
+    try {
+      if (id) {
+        const existingMember = getFamilyMembers().find(member => member.id === id);
+        if (!existingMember) throw new Error("Ce membre n'existe plus.");
+        await updateFamilyMember({
+          ...existingMember,
+          name,
+          avatar: name.charAt(0).toUpperCase(),
+          access,
+          birthDate
+        });
         showDemoNotice(`Membre modifié : ${name}`);
-    } else {
-        // Add new
-        const newMember = {
+      } else {
+        await addFamilyMember({
           id: `u-${Date.now()}`,
           name,
           role: 'Member',
           avatar: name.charAt(0).toUpperCase(),
-          access
-        };
-        await addFamilyMember(newMember);
+          access,
+          birthDate
+        });
         showDemoNotice(`Membre ajouté : ${name}`);
+      }
+    } catch (error) {
+      console.error("Impossible d'enregistrer le membre :", error);
+      status.textContent = error.message;
+      return;
     }
 
     dialog.close();
@@ -2744,6 +2654,12 @@ function initAddMemberDialog() {
       updateManageMembersList();
     }
   });
+
+  const birthDateInput = document.querySelector('#member-birth-date-input');
+  if (birthDateInput) {
+    const today = new Date();
+    birthDateInput.max = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  }
 }
 
 // Add event listener to the add-member button after rendering
@@ -2777,9 +2693,10 @@ function openManageMembersModal() {
 
     modal.querySelector('#close-manage-members').addEventListener('click', () => modal.close());
     modal.querySelector('#open-add-member-from-manager').addEventListener('click', () => {
+      document.querySelector('#add-member-form').reset();
       document.querySelector('#member-id-input').value = '';
       document.querySelector('#delete-member-btn').hidden = true;
-      document.querySelector('#add-member-form').reset();
+      document.querySelector('#member-form-status').textContent = '';
       document.querySelector('#add-member-dialog').showModal();
     });
   }
@@ -2821,7 +2738,9 @@ function updateManageMembersList() {
       if (member) {
         document.querySelector('#member-id-input').value = member.id;
         document.querySelector('#member-name-input').value = member.name;
+        document.querySelector('#member-birth-date-input').value = member.birthDate || '';
         document.querySelector('#member-access-input').value = member.access;
+        document.querySelector('#member-form-status').textContent = '';
         document.querySelector('#delete-member-btn').hidden = false;
         document.querySelector('#add-member-dialog').showModal();
       }
@@ -2832,10 +2751,17 @@ function updateManageMembersList() {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
       if (confirm('Voulez-vous vraiment supprimer ce membre ?')) {
-        await deleteFamilyMember(id);
-        showDemoNotice('Membre supprimé');
-        updateManageMembersList();
-        renderFamilyMembers();
+        try {
+          await deleteFamilyMember(id);
+          refreshUploadedDocumentsFromState();
+          showDemoNotice('Membre supprimé');
+          updateManageMembersList();
+          renderFamilyMembers();
+          if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
+        } catch (error) {
+          console.error("Impossible de supprimer le membre :", error);
+          showDemoNotice(`Suppression impossible : ${error.message}`);
+        }
       }
     });
   });
@@ -2855,10 +2781,19 @@ function initFamilyView() {
 function initImportView() {
   const dropZone = document.querySelector('#drop-zone');
   const importInput = document.querySelector('#import-input');
+  const folderInput = document.querySelector('#folder-input');
+  const cameraInput = document.querySelector('#camera-input');
+  const folderSelectionHelp = document.querySelector('#folder-selection-help');
   const importOptions = document.querySelectorAll('.import-option');
-  if (!dropZone || !importInput || !importOptions) return;
+  if (!dropZone || !importInput || !folderInput || !cameraInput || !importOptions) return;
 
-  dropZone.addEventListener('click', () => importInput.click());
+  const isMobileDevice = Capacitor.isNativePlatform() || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (folderSelectionHelp) folderSelectionHelp.hidden = !isMobileDevice;
+
+  dropZone.addEventListener('click', (event) => {
+    if (event.target === importInput || event.target.closest('label[for="import-input"]')) return;
+    importInput.click();
+  });
 
   // Drag and drop handling
   ['dragenter', 'dragover'].forEach(eventName => {
@@ -2880,14 +2815,28 @@ function initImportView() {
   dropZone.addEventListener('drop', (e) => {
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      loadLocalFiles(files);
+      loadLocalFiles(files, importInput);
     }
   });
 
   importInput.addEventListener('change', (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      loadLocalFiles(files);
+      loadLocalFiles(files, importInput);
+    }
+  });
+
+  folderInput.addEventListener('change', (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      loadLocalFiles(files, folderInput);
+    }
+  });
+
+  cameraInput.addEventListener('change', (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      loadLocalFiles(files, cameraInput);
     }
   });
 
@@ -2904,16 +2853,18 @@ function initImportView() {
           break;
 
         case 'camera':
-          // Ouvrir le sélecteur de fichiers avec capture de la caméra arrière/env
-          if (Capacitor.isNativePlatform()) {
-            importInput.accept = 'image/*';
-            importInput.capture = 'environment';
+          cameraInput.click();
+          if (!isMobileDevice) {
+            showDemoNotice("La capture directe est disponible depuis un appareil mobile.");
+          }
+          break;
+
+        case 'folder':
+          if (isMobileDevice || !('webkitdirectory' in folderInput)) {
+            showDemoNotice("Sélectionnez plusieurs fichiers dans le dossier de votre choix.");
             importInput.click();
           } else {
-            // Fallback web : autoriser les images
-            importInput.accept = 'image/*';
-            importInput.click();
-            showDemoNotice("La prise de photo/scan depuis l'appareil est disponible sur l'application mobile.");
+            folderInput.click();
           }
           break;
 
@@ -3095,22 +3046,278 @@ function renderDataInventory(filters = {}) {
     date.className = 'data-file-date';
     date.textContent = doc.date || 'Session';
     meta.append(typeBadge, sourceBadge, indexBadge, date);
-    details.append(name, meta);
+    if (isPhotoDocument(doc)) {
+      const currentAnnotations = doc.photoAnnotations;
+      const memberIds = Array.isArray(currentAnnotations?.personIds) ? currentAnnotations.personIds : [];
+      const eventTags = Array.isArray(currentAnnotations?.eventTags) ? currentAnnotations.eventTags : [];
+      const memberNames = getFamilyMembers()
+        .filter(member => memberIds.includes(member.id))
+        .map(member => member.name);
+      const annotationSummary = document.createElement('p');
+      annotationSummary.className = 'data-file-annotations';
+      annotationSummary.textContent = [
+        memberNames.length ? `Membres : ${memberNames.join(', ')}` : '',
+        eventTags.length ? `Événements : ${eventTags.join(', ')}` : '',
+        currentAnnotations?.placeSource === 'user' && currentAnnotations.placeLabel
+          ? `Lieu : ${currentAnnotations.placeLabel}`
+          : ''
+      ].filter(Boolean).join(' · ') || 'Aucune association manuelle';
+      details.append(name, meta, annotationSummary);
+    } else {
+      details.append(name, meta);
+    }
     info.append(icon, details);
 
     const size = document.createElement('div');
     size.className = 'data-file-size';
     size.textContent = doc.content ? `${Math.round(doc.content.length / 1024)} Ko` : '—';
 
+    const actions = document.createElement('div');
+    actions.className = 'data-file-actions';
     const previewButton = document.createElement('button');
     previewButton.className = 'secondary-button data-file-open';
     previewButton.type = 'button';
     previewButton.textContent = 'Aperçu';
     previewButton.setAttribute('aria-label', `Consulter ${doc.name}`);
     previewButton.addEventListener('click', () => openSource(doc));
+    actions.append(previewButton);
 
-    row.append(info, size, previewButton);
+    if (isPhotoDocument(doc)) {
+      const associateButton = document.createElement('button');
+      associateButton.className = 'secondary-button data-file-open';
+      associateButton.type = 'button';
+      associateButton.textContent = 'Associer';
+      associateButton.setAttribute('aria-label', `Associer des membres ou événements à ${doc.name}`);
+      associateButton.addEventListener('click', () => {
+        try {
+          openPhotoAnnotationsDialog(doc);
+        } catch (error) {
+          console.error("Impossible d'ouvrir les associations de la photo :", error);
+          showDemoNotice(error.message);
+        }
+      });
+      actions.prepend(associateButton);
+    }
+    row.append(info, size, actions);
     dataList.append(row);
+  });
+}
+
+function getMomentsLifeClarificationMessage(reason) {
+  const messages = {
+    "empty-query": "Écrivez une recherche pour commencer.",
+    "unsupported-query": "Je ne peux pas interpréter cette recherche. Essayez un nom, une date, un lieu ou un événement annoté.",
+    "person-required": "Précisez le membre de la famille concerné.",
+    "person-ambiguous": "Plusieurs membres portent ce nom. Précisez lequel.",
+    "birth-date-required": "Renseignez d’abord une date de naissance pour ce membre, ou recherchez par date.",
+    "year-required": "Précisez l’année recherchée.",
+    "invalid-date": "La date indiquée n’existe pas. Vérifiez le jour, le mois et l’année.",
+    "place-ambiguous": "Plusieurs lieux correspondent. Précisez le libellé du lieu.",
+    "event-ambiguous": "Plusieurs événements correspondent. Précisez lequel.",
+    "season-ambiguous": "Précisez une seule saison."
+  };
+  return messages[reason] || "Une précision est nécessaire pour interpréter cette recherche.";
+}
+
+function initMomentsLifeSearch() {
+  const form = document.querySelector('#moments-life-search-form');
+  const input = document.querySelector('#moments-life-query');
+  const status = document.querySelector('#moments-life-search-status');
+  const results = document.querySelector('#moments-life-search-results');
+  const actions = document.querySelector('#moments-life-search-actions');
+  const correctAnnotationsButton = document.querySelector('#moments-life-correct-annotations');
+  if (!form || !input || !status || !results) return;
+
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    results.replaceChildren();
+    results.hidden = true;
+    if (actions) actions.hidden = true;
+
+    try {
+      const photos = mergeInventoryDocuments(uploadedDocuments, getDocuments())
+        .filter(isPhotoDocument);
+      const result = searchMomentsLife(input.value, {
+        photos,
+        members: getFamilyMembers()
+      });
+
+      if (result.status === 'clarification') {
+        status.textContent = getMomentsLifeClarificationMessage(result.clarificationReason);
+        return;
+      }
+      if (result.status === 'not-found') {
+        const criteria = result.explanations.map(item => item.phrase).filter(Boolean).join(', ');
+        status.textContent = `Aucune photo ne correspond à ces critères parmi les photos disponibles${criteria ? ` (filtres : ${criteria})` : ''}. Une date ou une association manquante peut expliquer l'absence de résultat.`;
+        if (actions) actions.hidden = false;
+        return;
+      }
+
+      const matchedPhrases = result.explanations.map(item => item.phrase).filter(Boolean);
+      status.textContent = `${result.results.length} photo${result.results.length === 1 ? '' : 's'} trouvée${result.results.length === 1 ? '' : 's'}. Filtres exacts : ${matchedPhrases.join(', ')}. Triées par date de prise de vue puis d'import ; aucune date manquante n'est inventée. La confiance décrit la provenance des données, pas une probabilité de pertinence.`;
+      for (const item of result.results) {
+        const row = document.createElement('li');
+        row.className = 'moments-life-result';
+        const title = document.createElement('strong');
+        title.textContent = `${item.rank}. ${item.photo.name || item.photo.originalName || 'Photo sans nom'}`;
+        row.append(title);
+
+        const details = [];
+        const override = item.photo.photoAnnotations?.captureDateOverride;
+        const captureMetadata = item.photo.photoMetadata?.captureDate;
+        const capturedAt = override?.localDateTime
+          ?? captureMetadata?.localDateTime
+          ?? item.photo.capturedAt?.localDateTime;
+        const captureSource = override
+          ? 'corrigée par vous'
+          : captureMetadata?.source?.kind === 'exif'
+            ? 'EXIF'
+            : captureMetadata?.source?.kind === 'legacy' || item.photo.capturedAt
+              ? 'ancienne donnée, source à vérifier'
+              : captureMetadata?.source?.kind === 'user' ? 'saisie utilisateur' : 'source inconnue';
+        if (capturedAt) {
+          const offset = override ? override.offsetMinutes : captureMetadata?.offsetMinutes;
+          details.push(`Prise de vue : ${capturedAt.slice(0, 10)} · ${captureSource}${offset == null ? ' · fuseau inconnu' : ''}`);
+        } else {
+          details.push('Prise de vue : date indisponible');
+        }
+        const importedAt = item.photo.importedAt;
+        details.push(importedAt ? `Importée dans Famili-IA : ${importedAt.slice(0, 10)}` : "Date d'import : indisponible");
+        const annotation = item.photo.photoAnnotations;
+        const memberNames = getFamilyMembers()
+          .filter(member => annotation?.personIds?.includes(member.id))
+          .map(member => member.name);
+        details.push(memberNames.length ? `Membres associés (saisie manuelle) : ${memberNames.join(', ')}` : 'Aucun membre associé manuellement');
+        if (annotation?.placeSource === 'user' && annotation.placeLabel) {
+          details.push(`Lieu saisi manuellement : ${annotation.placeLabel}`);
+        }
+        if (Array.isArray(annotation?.eventTags) && annotation.eventTags.length > 0) {
+          details.push(`Événements saisis manuellement : ${annotation.eventTags.join(', ')}`);
+        }
+        for (const detailText of details) {
+          const detail = document.createElement('span');
+          detail.textContent = detailText;
+          row.append(detail);
+        }
+        const confidence = document.createElement('span');
+        confidence.className = `moments-life-confidence moments-life-confidence--${item.confidence.level}`;
+        confidence.textContent = `Confiance ${item.confidence.label}${item.confidence.reasons.length ? ` · ${item.confidence.reasons.join(' ')}` : ''}`;
+        row.append(confidence);
+
+        const actions = document.createElement('div');
+        actions.className = 'moments-life-result-actions';
+        const openButton = document.createElement('button');
+        openButton.type = 'button';
+        openButton.className = 'secondary-button';
+        openButton.textContent = 'Aperçu';
+        openButton.setAttribute('aria-label', `Consulter ${item.photo.name || item.photo.originalName || 'la photo'}`);
+        openButton.addEventListener('click', () => openSource(item.photo));
+        const correctButton = document.createElement('button');
+        correctButton.type = 'button';
+        correctButton.className = 'secondary-button';
+        correctButton.textContent = 'Corriger les annotations';
+        correctButton.addEventListener('click', () => openPhotoAnnotationsDialog(item.photo));
+        actions.append(openButton, correctButton);
+        row.append(actions);
+        results.append(row);
+      }
+      results.hidden = result.results.length === 0;
+    } catch (error) {
+      console.error("La recherche Moments de vie a échoué :", error);
+      status.textContent = "La recherche a échoué. Vérifiez les données locales puis réessayez.";
+    }
+  });
+
+  correctAnnotationsButton?.addEventListener('click', () => {
+    showView('vos-donnees', { params: { category: 'Images' } });
+  });
+}
+
+function openPhotoAnnotationsDialog(photo) {
+  const dialog = document.querySelector('#photo-annotations-dialog');
+  const form = document.querySelector('#photo-annotations-form');
+  const membersContainer = document.querySelector('#photo-annotations-members');
+  const annotations = normalizePhotoAnnotations(
+    photo.photoAnnotations,
+    getFamilyMembers().map(member => member.id)
+  );
+  document.querySelector('#photo-annotations-document-id').value = photo.id;
+  document.querySelector('#photo-annotations-file-name').textContent = photo.name;
+  document.querySelector('#photo-event-tags-input').value = annotations.eventTags.join('\n');
+  document.querySelector('#photo-place-input').value = annotations.placeLabel || '';
+  document.querySelector('#photo-capture-date-override').value = annotations.captureDateOverride?.localDateTime || '';
+  document.querySelector('#photo-annotations-status').textContent = '';
+  membersContainer.replaceChildren();
+
+  const members = getFamilyMembers();
+  if (members.length === 0) {
+    const emptyState = document.createElement('p');
+    emptyState.textContent = "Ajoutez d'abord un membre dans l'espace Famille, ou associez seulement un événement.";
+    membersContainer.append(emptyState);
+  }
+  for (const member of members) {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'personIds';
+    checkbox.value = member.id;
+    checkbox.checked = annotations.personIds.includes(member.id);
+    label.append(checkbox, document.createTextNode(` ${member.name}`));
+    membersContainer.append(label);
+  }
+
+  form.dataset.documentName = photo.name;
+  dialog.showModal();
+}
+
+function initPhotoAnnotationsDialog() {
+  const dialog = document.querySelector('#photo-annotations-dialog');
+  const form = document.querySelector('#photo-annotations-form');
+  const cancelButton = document.querySelector('#cancel-photo-annotations-dialog');
+  const closeButton = document.querySelector('#close-photo-annotations-dialog');
+  if (!dialog || !form) return;
+
+  cancelButton.addEventListener('click', () => dialog.close());
+  closeButton.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', event => {
+    if (event.target === dialog) dialog.close();
+  });
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const status = document.querySelector('#photo-annotations-status');
+    const documentId = document.querySelector('#photo-annotations-document-id').value;
+    const personIds = [...form.querySelectorAll('input[name="personIds"]:checked')]
+      .map(checkbox => checkbox.value);
+    const eventTags = document.querySelector('#photo-event-tags-input').value
+      .split(/\r?\n/)
+      .map(tag => tag.trim())
+      .filter(Boolean);
+    const placeLabel = document.querySelector('#photo-place-input').value.trim();
+    const captureDateOverride = document.querySelector('#photo-capture-date-override').value;
+
+    status.textContent = '';
+    try {
+      const updatedDocument = await updatePhotoAnnotations(documentId, {
+        personIds,
+        eventTags,
+        placeLabel,
+        placeSource: placeLabel ? 'user' : null,
+        captureDateOverride: captureDateOverride || null
+      });
+      const uploadedIndex = uploadedDocuments.findIndex(document => document.id === documentId);
+      if (uploadedIndex !== -1) uploadedDocuments[uploadedIndex] = updatedDocument;
+      else uploadedDocuments.push(updatedDocument);
+      dialog.close();
+      renderDataInventory(parseHash().params);
+      const momentsSearchForm = document.querySelector('#moments-life-search-form');
+      if (momentsSearchForm && document.querySelector('#moments-life-query').value.trim()) {
+        momentsSearchForm.requestSubmit();
+      }
+      showDemoNotice(`Associations enregistrées pour ${updatedDocument.name}.`);
+    } catch (error) {
+      console.error("Impossible d'enregistrer les associations de la photo :", error);
+      status.textContent = error.message;
+    }
   });
 }
 
