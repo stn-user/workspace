@@ -1,3 +1,16 @@
+# [15.1.0] - 2026-11-02 - Fiabilisation des alertes
+
+### 🔔 Phase 15.1
+- Extraction d'échéances à partir de libellés explicites, dates françaises validées et conservation de l'extrait justificatif ; les dates ambiguës ou invalides ne déclenchent pas d'alerte automatique.
+- Centralisation des seuils par type de document, gestion des échéances dépassées et suppression des doublons lors des synchronisations IndexedDB.
+- Ajout des statuts d'alerte actifs, ignorés et terminés, avec réactivation ; affichage de la preuve textuelle issue du document.
+- Correction manuelle d'une échéance depuis son alerte, avec confirmation explicite, preuve éditoriale et nouvelle synchronisation.
+- Préférences locales des notifications : désactivation par catégorie, plafond quotidien, plages silencieuses, report d'une journée ou d'une semaine et réactivation anticipée.
+- Les notifications navigateur ne sont demandées qu'après action utilisateur, sont dédupliquées par échéance et n'affichent pas le titre ou le contenu du document. Elles sont vérifiées tant que l'application est ouverte.
+- Vérification de la qualité sur huit cas fictifs annotés : précision 100 %, rappel 100 %, preuves 100 %, zéro doublon et zéro répétition au second passage. Ce résultat synthétique ne prédit pas la qualité en production.
+- Étude des contraintes Web/PWA, iOS et Android ; les notifications locales planifiées et les notifications push distantes restent des évolutions distinctes, non activées par cette étape.
+- Ajout de tests sur les dates, seuils, sources, types de documents, préférences, reports, transitions de statut et métriques du corpus fictif.
+
 ## [14.0.7] - 2026-11-02 - Suppression sûre et filtres unifiés
 
 ### 🔒 Phase 14

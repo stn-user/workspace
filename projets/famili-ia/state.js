@@ -3,7 +3,45 @@
  */
 
 import { getAll, put, initDB, remove, purgeDatabase } from './db.js';
-import { generateAlertForDoc, refreshAlerts } from './alert-engine.js';
+import { getAlertLevelForDate, normalizeAlertNotificationPreferences, refreshAlerts } from './alert-engine.js';
+
+export function reconcileDocumentAlerts(existingAlerts, generatedAlerts) {
+  const generatedById = new Map(generatedAlerts.map(alert => [alert.id, alert]));
+  const generatedIds = new Set(generatedById.keys());
+  const previousDocumentAlerts = existingAlerts.filter(alert => (
+    alert.source === "document" || generatedIds.has(alert.id) || alert.id?.startsWith("alert-")
+  ));
+  const previousById = new Map(previousDocumentAlerts.map(alert => [alert.id, alert]));
+  const retainedAlerts = existingAlerts.filter(alert => !previousDocumentAlerts.includes(alert));
+
+  const synchronizedAlerts = generatedAlerts.map((alert) => {
+    const previous = previousById.get(alert.id);
+    if (!previous) return alert;
+    const sameDueDate = previous.dueDate === alert.dueDate;
+    return {
+      ...alert,
+      status: sameDueDate ? previous.status || alert.status : alert.status,
+      notificationSentFor: sameDueDate ? previous.notificationSentFor : undefined,
+      notificationSentAt: sameDueDate ? previous.notificationSentAt : undefined,
+      snoozedUntil: sameDueDate ? previous.snoozedUntil : undefined
+    };
+  });
+
+  return {
+    alerts: [...retainedAlerts, ...synchronizedAlerts],
+    alertsToRemove: previousDocumentAlerts.filter(alert => !generatedById.has(alert.id))
+  };
+}
+
+async function synchronizeDocumentAlerts(documents) {
+  const { alerts: synchronizedAlerts, alertsToRemove } = reconcileDocumentAlerts(
+    state.alerts,
+    refreshAlerts(documents)
+  );
+  for (const alert of alertsToRemove) await remove('alerts', alert.id);
+  for (const alert of synchronizedAlerts.filter(alert => alert.source === "document")) await put('alerts', alert);
+  state.alerts = synchronizedAlerts;
+}
 
 const defaultState = {
   currentUser: {
@@ -18,7 +56,8 @@ const defaultState = {
       localAccess: true,
       driveConnection: false,
       enableAutoScan: false,
-      scanDirectories: []
+      scanDirectories: [],
+      alertNotifications: normalizeAlertNotificationPreferences()
     },
     privacy: {
       consentVersion: '1.0',
@@ -72,20 +111,16 @@ export async function initState() {
     else for (const e of defaultState.homeEquipment) await put('equipment', e);
 
     if (alerts.length > 0) state.alerts = alerts;
-    else for (const a of defaultState.alerts) await put('alerts', a);
+    else {
+      state.alerts = [...defaultState.alerts];
+      for (const a of defaultState.alerts) await put('alerts', a);
+    }
 
     if (users.length > 0) state.currentUser = users[0];
     else await put('users', defaultState.currentUser);
 
-    if (documents.length > 0) {
-      state.documents = documents;
-      // Synchronisation proactive des alertes au démarrage
-      const dynamicAlerts = refreshAlerts(documents);
-      if (dynamicAlerts.length > 0) {
-        // Fusion des alertes dynamiques avec les alertes par défaut ou existantes
-        state.alerts = [...state.alerts, ...dynamicAlerts];
-      }
-    }
+    state.documents = documents;
+    await synchronizeDocumentAlerts(documents);
 
   } catch (e) {
     console.warn('Erreur lors de l\'initialisation IndexedDB, utilisation des valeurs par défaut:', e);
@@ -165,8 +200,9 @@ export async function deleteEquipment(id) {
 }
 
 export async function addDocument(document) {
-  // Le document reçu est déjà enrichi par le parser (DocumentContext)
-  state.documents.push(document);
+  const existingIndex = state.documents.findIndex(existing => existing.id === document.id);
+  if (existingIndex === -1) state.documents.push(document);
+  else state.documents[existingIndex] = document;
   await put('documents', document);
 
   // Logique de classification automatique
@@ -174,13 +210,7 @@ export async function addDocument(document) {
     console.log(`Auto-classification : Document ${document.originalName} classé (${document.type} - ${document.provider})`);
   }
 
-  // Liaison automatique Document-Alerte (Intelligence Proactive)
-  const newAlert = generateAlertForDoc(document);
-  if (newAlert) {
-    state.alerts.push(newAlert);
-    await put('alerts', newAlert);
-    console.log(`Assistant Proactif : Nouvelle alerte générée pour ${document.originalName}`);
-  }
+  await synchronizeDocumentAlerts(state.documents);
 
   return state.documents;
 }
@@ -188,6 +218,13 @@ export async function addDocument(document) {
 export async function deleteDocument(id) {
   state.documents = state.documents.filter(doc => doc.id !== id);
   await remove('documents', id);
+  const linkedAlert = state.alerts.find(alert => alert.docId === id && (
+    alert.source === "document" || alert.id === `alert-${id}`
+  ));
+  if (linkedAlert) {
+    state.alerts = state.alerts.filter(alert => alert.id !== linkedAlert.id);
+    await remove('alerts', linkedAlert.id);
+  }
   return state.documents;
 }
 
@@ -200,16 +237,22 @@ export async function updateAlert(alert) {
   return state.alerts;
 }
 
-export function calculateAlertType(dueDate, currentType) {
-  if (!dueDate) return currentType;
-  const dueDateObj = new Date(dueDate);
-  const today = new Date();
-  const diffTime = dueDateObj - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+export async function updateAlertNotificationPreferences(preferences) {
+  const alertNotifications = normalizeAlertNotificationPreferences(preferences);
+  state.currentUser.preferences = {
+    ...state.currentUser.preferences,
+    alertNotifications
+  };
+  await put('users', state.currentUser);
+  return alertNotifications;
+}
 
-  if (diffDays <= 0) return 'red';
-  if (diffDays <= 30) return 'amber';
-  return 'blue';
+export function calculateAlertType(dueDate, currentType, documentType) {
+  if (!dueDate) return currentType;
+  const level = getAlertLevelForDate(dueDate, documentType || "assurance");
+  if (level) return level;
+
+  return "muted";
 }
 
 export async function updatePrivacyConsent(newPrivacySettings) {

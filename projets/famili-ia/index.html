@@ -301,11 +301,40 @@
         </div>
         <div class="view-header-actions">
           <button class="text-button" id="mark-alerts-read" type="button">Tout marquer comme lu</button>
+          <button class="text-button" id="enable-alert-notifications" type="button">Activer les notifications</button>
         </div>
+        <p class="alert-notification-note">Les rappels du navigateur sont vérifiés lorsque Famili-IA est ouvert. Aucun détail de document n'apparaît dans la notification.</p>
+        <details class="alert-preferences">
+          <summary>Préférences des notifications</summary>
+          <form id="alert-notification-preferences">
+            <fieldset>
+              <legend>Ne pas notifier ces catégories</legend>
+              <label><input type="checkbox" data-disabled-category="garantie"> Garanties</label>
+              <label><input type="checkbox" data-disabled-category="assurance"> Assurances</label>
+              <label><input type="checkbox" data-disabled-category="facture"> Factures</label>
+              <label><input type="checkbox" data-disabled-category="entretien"> Entretiens</label>
+            </fieldset>
+            <label for="alert-max-per-day">Maximum de notifications par jour</label>
+            <select id="alert-max-per-day" name="maxPerDay">
+              <option value="1">1 par jour</option>
+              <option value="3">3 par jour</option>
+              <option value="5">5 par jour</option>
+            </select>
+            <label class="alert-quiet-toggle"><input type="checkbox" name="quietHoursEnabled"> Activer les plages silencieuses</label>
+            <div class="alert-quiet-hours">
+              <label for="alert-quiet-start">Début<input id="alert-quiet-start" name="quietStart" type="time" value="22:00"></label>
+              <label for="alert-quiet-end">Fin<input id="alert-quiet-end" name="quietEnd" type="time" value="08:00"></label>
+            </div>
+            <button class="alert-status-action" type="submit">Enregistrer les préférences</button>
+            <p id="alert-preferences-status" role="status" aria-live="polite"></p>
+          </form>
+        </details>
         <div class="alert-filter-tabs" aria-label="Filtrer les alertes">
           <button class="alert-filter-tab is-selected" type="button" data-filter="à-traiter">À traiter<span class="alert-badge">2</span></button>
           <button class="alert-filter-tab" type="button" data-filter="à-anticiper">À anticiper<span class="alert-badge">2</span></button>
           <button class="alert-filter-tab" type="button" data-filter="à-surveiller">À surveiller<span class="alert-badge">1</span></button>
+          <button class="alert-filter-tab" type="button" data-filter="reportées">Reportées<span class="alert-badge">0</span></button>
+          <button class="alert-filter-tab" type="button" data-filter="historique">Ignorées / terminées<span class="alert-badge">0</span></button>
         </div>
         <div class="alert-list" id="alert-list" aria-label="Alertes">
           <!-- Alertes seront générées dynamiquement par app.js -->

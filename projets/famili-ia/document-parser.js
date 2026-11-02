@@ -6,11 +6,28 @@
 // Schéma cible : DocumentContext
 // @typedef {Object} DocumentContext ... (défini dans la documentation)
 
+import { normalizeAlertDate } from "./alert-engine.js";
+
 const extractDate = (text) => {
     // Regex générique pour formats DD/MM/YYYY ou YYYY-MM-DD
     const dateRegex = /(\d{2}[\/\-]\d{2}[\/\-]\d{4})|(\d{4}[\-\/]\d{2}[\-\/]\d{2})/g;
     const match = text.match(dateRegex);
     return match ? match[0] : null;
+};
+
+const extractExpiryDate = (text) => {
+    const expiryLabels = /\b(fin de garantie|date d['’]?expiration|expiration|date d['’]?echeance|echeance|renouvellement|expire le|a regler avant|a payer avant|prochain entretien|entretien avant|controle avant|a effectuer avant)\b/;
+    const datePattern = /\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{1,2}\s+[a-zA-ZÀ-ÿ]+\s+\d{4})\b/i;
+
+    for (const line of text.split(/\r?\n/)) {
+        const normalizedLine = line.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
+        if (!expiryLabels.test(normalizedLine)) continue;
+        const match = line.match(datePattern);
+        const expiryDate = match ? normalizeAlertDate(match[0]) : null;
+        if (expiryDate) return { expiryDate, expiryDateEvidence: line.trim() };
+    }
+
+    return { expiryDate: null, expiryDateEvidence: null };
 };
 
 const extractAmount = (text) => {
@@ -24,23 +41,43 @@ const extractProvider = (text, providers) => {
     return providers.find(p => text.toLowerCase().includes(p.toLowerCase())) || null;
 };
 
+const normalizeForClassification = (text) => text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("fr");
+
 const detectors = [
     {
         type: 'facture',
         keywords: ['facture', 'ttc', 'total', 'paiement', 'tva'],
-        matchScore: 0,
         extract: (text) => ({
             amount: extractAmount(text),
             provider: extractProvider(text, ['EDF', 'Engie', 'Orange', 'SFR', 'Bouygues', 'Free']),
+            ...extractExpiryDate(text),
             category: 'maison'
         })
     },
     {
         type: 'garantie',
-        keywords: ['garantie', 'constructeur', 'panne', 'ans', 'contrat'],
-        matchScore: 0,
+        keywords: ['garantie', 'constructeur', 'panne', 'ans'],
         extract: (text) => ({
-            expiryDate: extractDate(text),
+            ...extractExpiryDate(text),
+            category: 'maison'
+        })
+    },
+    {
+        type: 'assurance',
+        keywords: ['assurance', 'assureur', 'prime', 'renouvellement', 'habitation'],
+        extract: (text) => ({
+            ...extractExpiryDate(text),
+            category: 'maison'
+        })
+    },
+    {
+        type: 'entretien',
+        keywords: ['entretien', 'maintenance', 'controle', 'revision'],
+        extract: (text) => ({
+            ...extractExpiryDate(text),
             category: 'maison'
         })
     }
@@ -49,14 +86,14 @@ const detectors = [
 export function parseDocument(text, filename) {
     let bestDetector = null;
     let highestScore = 0;
+    const normalizedText = normalizeForClassification(text);
 
     // 1. Calcul du score pour chaque détecteur
     detectors.forEach(detector => {
         let score = 0;
         detector.keywords.forEach(word => {
-            if (text.toLowerCase().includes(word.toLowerCase())) score++;
+            if (normalizedText.includes(normalizeForClassification(word))) score++;
         });
-        detector.matchScore = score;
         if (score > highestScore) {
             highestScore = score;
             bestDetector = detector;

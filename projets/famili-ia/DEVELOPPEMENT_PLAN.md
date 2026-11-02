@@ -1,8 +1,8 @@
 # Famili-IA – Plan de Développement
 
 ## 📊 Vue d'ensemble
-- **Phase actuelle** : Phase 14 – Refonte de la Vue "Vos Données" & Polish
-- **Prochaine étape prioritaire** : Finalisation et validation de la Phase 14
+- **Phase terminée** : Phase 14 – Refonte de la Vue "Vos Données" & Polish
+- **Prochaine phase planifiée** : Phase 15 – Assistant Vie Numérique & Préparation du modèle économique
 
 ## 📋 Liste des étapes
 
@@ -144,6 +144,7 @@
     - [ ] 12.2.b : Moteur de recherche "Moments de vie" (langage naturel : "Photos de Lorena 2 ans").
     - [ ] 12.2.c : Vue Galerie interactive + Timeline chronologique (Journal de bord).
     - [ ] 12.2.d : Assistant proactif (notifications intelligentes sur les documents indexés).
+    - Note : les travaux restant de cette sous-phase sont détaillés et replanifiés en 15.1 et 15.3 à 15.5 ; ils ne sont pas considérés comme réalisés.
 
 ### Phase 13 – Refonte Complète du Parcours Nouvel Utilisateur (Onboarding & Expérience "Magique")
 - [✓] 13.1 : Refonte du Flux d'Accueil en Mode "Wizard" (3 étapes fluides)
@@ -165,7 +166,7 @@
 ### Phase 14 – Refonte de la Vue "Vos Données" (Priorité : UX & Clarté)
 L'objectif est d'améliorer la visibilité, la gestion et la compréhension des données indexées localement.
 
-- [ ] **14.1 : Architecture & Navigation**
+- [✓] **14.1 : Architecture & Navigation**
     - [✓] ✅ 14.1.a : Nettoyage et consolidation des interfaces de gestion des données (remplacement des vues de listes redondantes par l'accès à l'inventaire central).
     - [✓] ✅ 14.1.b : Vue "Vos Données" (`data-view`) unifiée pour afficher les fichiers locaux et les sources (Drive/simulé), avec aperçu et dédoublonnage.
     - [✓] ✅ 14.1.c : Filtres dynamiques par hash URL, compatibilité avec les anciens liens catégorie et restauration de l’état via Retour navigateur.
@@ -177,6 +178,75 @@ L'objectif est d'améliorer la visibilité, la gestion et la compréhension des 
 - [✓] **14.3 : Fonctionnalités & Sécurité**
     - [✓] ✅ 14.3.a (14.6) : Suppression confirmée des données applicatives en IndexedDB et du foyer personnalisé en localStorage ; les scans actifs sont arrêtés et les fichiers sources restent intacts.
     - [✓] ✅ 14.3.b (14.7) : Filtres de type/provenance partagés avec la recherche unifiée et compatibilité des filtres d'inventaire/anciens liens vérifiée.
+
+### Phase 15 – Assistant Vie Numérique & Préparation du modèle économique
+Cette phase reprend les travaux encore ouverts de l'ancienne 12.2 et améliore les fonctions qui donnent une valeur régulière à Famili-IA, en commençant par un audit des capacités réelles. Le traitement des documents et photos reste local par défaut. Les offres Essentiel et Sérénité sont retenues comme hypothèses de travail fournies par l'utilisateur, à réexaminer plus tard ; le prix de 4,99 €/mois est un prix de test, pas un tarif définitif. La qualité de recherche utile ne sera pas artificiellement réservée à l'offre payante. Tout composant serveur, fournisseur de paiement ou accès natif spécifique est conditionné à une étude de faisabilité, de confidentialité et de conformité.
+
+#### 15.0 – Audit initial de l'intelligence produit
+- [✓] 15.0.a : Examiner l'implémentation, la documentation et les tests existants pour la recherche documentaire, les alertes domestiques et les photos ; consigner les capacités, écarts et limites dans [l'audit de la phase 15](docs/architecture/phase-15-intelligence-audit.md).
+- [✓] 15.0.b : Exécuter les tests ciblés existants et établir un ordre de priorité ainsi que les mesures de qualité à ajouter ; l'audit est un état statique initial, sans prétendre mesurer la précision sur un corpus réel.
+
+#### 15.1 – Alertes domestiques fiables et explicables
+- [✓] 15.1.a : Constituer des cas de test fictifs pour garanties, contrats, factures et entretiens ; préciser pour chaque alerte la source, la date, le niveau de confiance et le résultat attendu.
+- [✓] 15.1.b : Fiabiliser l'extraction et la validation des dates : distinguer échéance, date d'achat et autres dates, traiter les formats pris en charge et ne pas créer d'alerte sur une date invalide ou non explicitement libellée.
+- [✓] 15.1.c : Unifier les règles de seuil et d'affichage, dédupliquer les alertes et rendre leur synchronisation idempotente au démarrage et après ajout/suppression d'un document.
+- [✓] 15.1.d : Associer les alertes documentaires à un extrait source et à un niveau de confiance ; n'afficher ces preuves que lorsqu'elles existent.
+- [✓] 15.1.e : Définir et implémenter le cycle de vie réversible d'une alerte : active, ignorée ou terminée, avec réactivation et persistance.
+- [✓] 15.1.f : Ajouter la correction manuelle des dates (avec preuve et source confirmées), la désactivation des notifications par catégorie, le report réversible, un plafond quotidien et des plages silencieuses configurables.
+- [✓] 15.1.g : Demander la permission de notification seulement après une action explicite ; dédupliquer les notifications par échéance et ne pas exposer de détail documentaire sur l'écran verrouillé.
+- [✓] 15.1.h : Documenter les différences Web/PWA, push et notifications locales natives, les permissions et limites d'arrière-plan, ainsi que l'absence actuelle de service worker, de serveur push et du plugin Capacitor local dans [l'audit de la phase 15](docs/architecture/phase-15-intelligence-audit.md).
+- [✓] 15.1.i : Mesurer précision, échéances manquées, alertes sans preuve, doublons et répétitions sur un corpus fictif annoté de huit cas ; les résultats sont des tests de base synthétiques, pas une mesure de qualité en production, et aucune économie n'est revendiquée.
+
+#### 15.2 – Recherche documentaire pertinente et traçable
+- [ ] 15.2.a : Constituer un corpus local fictif et un jeu de requêtes réalistes (synonymes, formulations, fautes, questions factuelles, ambiguïtés et absence de réponse) avec résultats et extraits attendus.
+- [ ] 15.2.b : Mesurer la pertinence du classement, l'exactitude des faits extraits, l'abstention en l'absence de preuve, la traçabilité aux sources et les temps de réponse.
+- [ ] 15.2.c : Améliorer l'interprétation et le classement à partir des besoins observés ; comparer les approches lexicales, métadonnées et sémantiques locales avant d'ajouter un modèle ou une dépendance.
+- [ ] 15.2.d : Présenter les réponses factuelles avec document et extrait justificatif ; afficher clairement les incertitudes et ne pas inventer de réponse lorsque les documents ne la contiennent pas.
+- [ ] 15.2.e : Conserver une recherche documentaire gratuite réellement utile ; différencier Sérénité par la continuité du suivi, les rappels, la synchronisation et le partage, non par une dégradation volontaire des réponses.
+
+#### 15.3 – Photos : accès, extraction et stockage des métadonnées
+- [ ] 15.3.a : Décider du périmètre des sources par plateforme (sélection explicite de fichiers Web, sélecteur système, Capacitor/natif) et vérifier permissions, formats, limites, fonctionnement hors ligne et capacités réelles des API avant engagement produit.
+- [ ] 15.3.b : Choisir et évaluer un parseur EXIF compatible avec les dépendances, licences et cibles ; prendre en charge les formats retenus et les métadonnées utiles (date de prise de vue, orientation, dimensions, appareil facultatif, coordonnées GPS facultatives).
+- [ ] 15.3.c : Définir un schéma versionné lié au document/photo pour EXIF, date normalisée, fuseau inconnu, localisation et provenance de chaque donnée ; gérer les doublons, les métadonnées absentes/corrompues et les migrations.
+- [ ] 15.3.d : Traiter les photos sur l'appareil : demander un consentement distinct pour la localisation, permettre de l'omettre/effacer, ne pas transmettre les EXIF et réduire les métadonnées embarquées dans les aperçus/exportations lorsque cela est nécessaire.
+- [ ] 15.3.e : Ajouter des tests avec fixtures couvrant EXIF manquant, dates/fuseaux, rotations, GPS, fichiers invalides et tailles limites ; mesurer temps, mémoire et taux d'extraction sur un corpus représentatif.
+
+#### 15.4 – Recherche « Moments de vie »
+- [ ] 15.4.a : Définir les requêtes et le jeu d'évaluation (personne, période, âge, lieu facultatif, événements, formulations ambiguës et absence de résultat) et les critères mesurables de précision/rappel.
+- [ ] 15.4.b : Concevoir une interprétation locale et explicable des requêtes en filtres structurés ; distinguer date de prise de vue, date d'import et date de naissance, et demander une précision si nécessaire.
+- [ ] 15.4.c : Permettre l'association volontaire d'une photo à des membres/événements et la saisie facultative d'une date de naissance ; ne pas déduire l'identité d'une personne par reconnaissance faciale sans décision produit, consentement distinct et revue spécifique.
+- [ ] 15.4.d : Implémenter le classement et la recherche avec des métadonnées d'abord ; n'ajouter embeddings/modèle sémantique local qu'après comparaison mesurée avec une recherche déterministe, validation des performances sur appareils cibles et contrôle du stockage.
+- [ ] 15.4.e : Présenter résultats, provenance, filtres, contexte et niveau de confiance ; couvrir requêtes sans résultat, données incertaines, corrections utilisateur et tests de non-régression sans envoyer les requêtes/photos à un service externe.
+
+#### 15.5 – Galerie et timeline chronologique
+- [ ] 15.5.a : Concevoir les vues Galerie et Journal de bord, les états vides/chargement/erreur, les filtres par personne/date/lieu et le parcours depuis une photo vers son fichier d'origine.
+- [ ] 15.5.b : Générer des vignettes locales orientées correctement et optimiser le chargement (pagination/virtualisation, formats, caches bornés et libération mémoire) pour les grandes photothèques.
+- [ ] 15.5.c : Regrouper les images par jour/mois/événement à partir de dates fiables, en signalant les dates estimées et en évitant les changements silencieux de fuseau.
+- [ ] 15.5.d : Ajouter navigation clavier/tactile accessible, aperçu détaillé, sélection multiple et suppression des seules données Famili-IA, en préservant les originaux.
+- [ ] 15.5.e : Valider sur appareils et tailles de bibliothèque représentatifs : fluidité du défilement, mémoire, absence de débordement mobile, accessibilité et exactitude des liens vers les sources.
+
+#### 15.6 – Hypothèses d'offres et viabilité économique
+- [✓] 15.6.a : Consigner comme hypothèses de travail les offres Essentiel (gratuite, recherche locale et premières échéances) et Sérénité (rappels programmés, synchronisation/sauvegarde structurée, partage familial et suivi dans le temps), sans figer les fonctionnalités finales.
+- [ ] 15.6.b : Estimer le coût de revient par utilisateur et par offre (stockage, synchronisation, notifications, support, paiements, conformité et services tiers), en séparant coûts locaux et coûts serveur.
+- [ ] 15.6.c : Construire une matrice offre/fonctionnalité/coût, préserver les fonctions gratuites essentielles, et traiter 4,99 €/mois comme un prix de test uniquement.
+- [ ] 15.6.d : Réexaminer plus tard les bénéfices et hypothèses de prix au regard des retours, des coûts et des limites techniques ; cette validation ne bloque pas les améliorations produit de la phase.
+- [ ] 15.6.e : Définir les principes d'offre : limites compréhensibles, export et suppression accessibles, absence de vente des données personnelles, et décision documentée de poursuivre, modifier ou différer la monétisation.
+
+#### 15.7 – État utilisateur, droits d'accès et limites dynamiques
+- [ ] 15.7.a : Modéliser l'entitlement indépendant de l'interface : état anonyme/compte, offre, droits actifs, origine de l'achat, période de validité, renouvellement, grâce, expiration et révocation.
+- [ ] 15.7.b : Inventorier et centraliser les capacités et quotas configurables (nombre et taille de fichiers, stockage, traitements photo/OCR, membres, synchronisation et notifications) ; préciser pour chacun unité, fenêtre de remise à zéro, comportement hors ligne et message d'approche de limite.
+- [ ] 15.7.c : Définir comment l'entitlement suit l'utilisateur entre appareils et comment les membres d'un foyer partagent ou non les quotas, sans confondre abonnement, identité et autorisations familiales.
+- [ ] 15.7.d : Réaliser une étude d'architecture de facturation selon les canaux retenus (Web, Google Play, App Store) : règles des boutiques, validation de reçus, restauration d'achats, annulation, remboursement, taxes et exigences backend.
+- [ ] 15.7.e : Construire le socle technique des droits et des limites, avec configuration versionnée, vérification à chaque opération concernée, erreurs explicites, tolérance hors ligne bornée et tests de transition d'offre.
+- [ ] 15.7.f : Implémenter l'achat et la gestion d'abonnement uniquement après choix d'un fournisseur et validation du parcours légal/plateforme ; ne jamais embarquer de secret de facturation dans le client et vérifier les transactions côté serveur si le modèle choisi l'exige.
+- [ ] 15.7.g : Ajouter les vues d'offre, de quota, de mise à niveau, de restauration et de gestion/résiliation, ainsi que les parcours d'expiration, d'échec de paiement et de perte d'accès sans perte des données utilisateur.
+
+#### 15.8 – Préparation au lancement et jalons transverses
+- [ ] 15.8.a : Réaliser les revues sécurité, confidentialité et conformité : minimisation, consentements, droits d'accès, rétention, export/suppression, données de mineurs, achats et exigences applicables selon les régions.
+- [ ] 15.8.b : Documenter les limites techniques réelles par plateforme, les dépendances, les modes hors ligne, les procédures de restauration et les engagements de service éventuels.
+- [ ] 15.8.c : Préparer télémétrie minimale sans contenu de document, photo, requête ni coordonnées précises ; définir des métriques de qualité, conversion et coût que l'utilisateur peut comprendre et désactiver si applicable.
+- [ ] 15.8.d : Conduire un pilote progressif avec critères d'entrée/sortie, assistance, mécanisme de désactivation/retour arrière et suivi des incidents avant toute ouverture générale.
+- [ ] 15.8.e : Décider du lancement commercial uniquement si valeur utilisateur, faisabilité multiplateforme, coûts, conformité et qualité des résultats atteignent les seuils définis en 15.6.
 
 ## 🛠 Framework des Skills - Implémentation Structurée
 ...

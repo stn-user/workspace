@@ -2185,6 +2185,145 @@ body {
   line-height: 1.5;
 }
 
+.alert-evidence {
+  margin-top: 0.5rem !important;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--color-border);
+  font-size: 0.85rem !important;
+}
+
+.alert-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.alert-status-action {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface, white);
+  color: var(--color-text-secondary);
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.alert-status-action:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.alert-date-correction {
+  margin-top: 0.75rem;
+}
+
+.alert-date-correction form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.alert-date-correction label {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.alert-date-correction input {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+
+.alert-snooze-note {
+  margin-top: 0.5rem !important;
+  font-size: 0.85rem !important;
+}
+
+.alert-card.is-snoozed {
+  border-style: dashed;
+}
+
+.alert-notification-note {
+  margin: 0.5rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.alert-preferences {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface, white);
+}
+
+.alert-preferences > summary,
+.alert-date-correction > summary {
+  color: var(--color-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.alert-preferences form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.alert-preferences fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.alert-preferences fieldset label,
+.alert-quiet-toggle,
+.alert-quiet-hours label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.alert-preferences select,
+.alert-quiet-hours input {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--color-text);
+  font: inherit;
+}
+
+.alert-quiet-hours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.alert-quiet-hours label {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+#alert-preferences-status {
+  min-height: 1.25rem;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
 .alert-action {
   background: none;
   border: none;

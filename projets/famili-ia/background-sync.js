@@ -120,6 +120,10 @@ export class BackgroundSyncWorker {
             keywords: "",
             summary: parsed.context.summary || "",
             content: content,
+            alertType: parsed.context.type,
+            expiryDate: parsed.context.expiryDate,
+            expiryDateEvidence: parsed.context.expiryDateEvidence,
+            provider: parsed.context.provider,
             isLocal: true,
             sourceDir: fileObj.path || "Background Sync"
           };

@@ -6,8 +6,10 @@ import { countInventorySources, filterInventoryDocuments, filterSearchResultsByC
 const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 import { listLocalFiles, readFileContent } from "./local-files.js";
+import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, initializeDemoState, resetState, setDemoMode } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, initializeDemoState, resetState, setDemoMode } from "./state.js";
+import { getAlertsToNotify, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
 
 const activeScanWorkers = new Map();
@@ -413,6 +415,7 @@ function initOnboardingWizard() {
     uploadedDocuments.push(...getDocuments());
     console.log('[DEBUG] Async init - documents loaded, count:', uploadedDocuments.length);
     if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
+    startAlertScheduler();
 
     console.log('[DEBUG] Async init - About to init dialogs');
     initEquipmentDialog();
@@ -990,27 +993,36 @@ async function loadLocalFiles(files) {
   }
 
   try {
-    const loaded = await Promise.all(selectedFiles.map(async (file) => ({
-      id: `local-${Date.now()}-${file.name}`,
-      name: file.name,
-      type: file.name.toLocaleLowerCase("fr").endsWith(".pdf")
-        ? "PDF"
-        : file.name.toLocaleLowerCase("fr").endsWith(".md") ? "Markdown"
-        : file.name.toLocaleLowerCase("fr").endsWith(".jpg") || file.name.toLocaleLowerCase("fr").endsWith(".jpeg") || file.name.toLocaleLowerCase("fr").endsWith(".png")
-          ? "Image"
-          : "Texte",
-      date: "Session locale",
-      keywords: "",
-      summary: "",
-      content: file.name.toLocaleLowerCase("fr").endsWith(".pdf")
+    const loaded = await Promise.all(selectedFiles.map(async (file) => {
+      const lowerName = file.name.toLocaleLowerCase("fr");
+      const content = lowerName.endsWith(".pdf")
         ? await (await import("./document-reader.js")).readPdfFile(file)
-        : file.name.toLocaleLowerCase("fr").endsWith(".md")
+        : lowerName.endsWith(".md")
           ? await file.text()
-          : file.name.toLocaleLowerCase("fr").endsWith(".jpg") || file.name.toLocaleLowerCase("fr").endsWith(".jpeg") || file.name.toLocaleLowerCase("fr").endsWith(".png")
+          : lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png")
             ? await (await import("./local-files.js")).readImageFile(file)
-            : await file.text(),
-      isLocal: true
-    })));
+            : await file.text();
+      const context = parseDocument(typeof content === "string" ? content : "", file.name);
+      return {
+        id: `local-${Date.now()}-${file.name}`,
+        name: file.name,
+        type: lowerName.endsWith(".pdf")
+          ? "PDF"
+          : lowerName.endsWith(".md") ? "Markdown"
+          : lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png")
+            ? "Image"
+            : "Texte",
+        date: "Session locale",
+        keywords: "",
+        summary: "",
+        content,
+        alertType: context.type,
+        expiryDate: context.expiryDate,
+        expiryDateEvidence: context.expiryDateEvidence,
+        provider: context.provider,
+        isLocal: true
+      };
+    }));
 
     uploadedDocuments.push(...loaded);
     for (const doc of loaded) {
@@ -1084,7 +1096,7 @@ async function loadLocalFilesNative() {
     // Process files
     const loaded = await Promise.all(allFiles.map(async (file) => {
       try {
-        const content = await readFileContent(file.blob, file.name);
+        const fileContent = await readFileContent(file.blob, file.name);
         return {
           id: `local-native-${Date.now()}-${file.name}`,
           name: file.name,
@@ -1092,7 +1104,11 @@ async function loadLocalFilesNative() {
           date: "Session locale",
           keywords: "",
           summary: "",
-          content,
+          content: fileContent.rawText,
+          alertType: fileContent.context.type,
+          expiryDate: fileContent.context.expiryDate,
+          expiryDateEvidence: fileContent.context.expiryDateEvidence,
+          provider: fileContent.context.provider,
           isLocal: true,
           sourceDir: file.sourceDir
         };
@@ -1532,7 +1548,8 @@ function initializeViewWithParams(viewName, params) {
 function renderPlusBadges() {
   const counts = {
     alertes: getAlerts()
-      .map(a => ({ ...a, type: calculateAlertType(a.dueDate, a.type) }))
+      .filter(a => !a.status || a.status === "active")
+      .map(a => ({ ...a, type: calculateAlertType(a.dueDate, a.type, a.documentType) }))
       .filter(a => a.type === 'red' || a.type === 'amber').length,
     famille: getFamilyMembers().length,
     documents: getDocuments().length
@@ -2244,11 +2261,74 @@ function getAlertIcon(type) {
 function initAlertsView(params = {}) {
   const alertList = document.querySelector('#alert-list');
   if (!alertList) return;
+  const preferencesForm = document.querySelector("#alert-notification-preferences");
+  if (preferencesForm) {
+    const preferences = normalizeAlertNotificationPreferences(getCurrentUser().preferences?.alertNotifications);
+    preferencesForm.querySelectorAll("[data-disabled-category]").forEach(input => {
+      input.checked = preferences.disabledCategories.includes(input.dataset.disabledCategory);
+    });
+    preferencesForm.elements.namedItem("maxPerDay").value = String(preferences.maxPerDay);
+    preferencesForm.elements.namedItem("quietHoursEnabled").checked = preferences.quietHours.enabled;
+    preferencesForm.elements.namedItem("quietStart").value = preferences.quietHours.start;
+    preferencesForm.elements.namedItem("quietEnd").value = preferences.quietHours.end;
+    preferencesForm.onsubmit = async event => {
+      event.preventDefault();
+      const status = document.querySelector("#alert-preferences-status");
+      try {
+        await updateAlertNotificationPreferences({
+          disabledCategories: [...preferencesForm.querySelectorAll("[data-disabled-category]:checked")]
+            .map(input => input.dataset.disabledCategory),
+          maxPerDay: preferencesForm.elements.namedItem("maxPerDay").value,
+          quietHours: {
+            enabled: preferencesForm.elements.namedItem("quietHoursEnabled").checked,
+            start: preferencesForm.elements.namedItem("quietStart").value,
+            end: preferencesForm.elements.namedItem("quietEnd").value
+          }
+        });
+        if (status) status.textContent = "Préférences enregistrées sur cet appareil.";
+      } catch (error) {
+        console.error("Impossible d'enregistrer les préférences de notification.", error);
+        if (status) status.textContent = "Les préférences n'ont pas pu être enregistrées.";
+      }
+    };
+  }
+
+  const notificationButton = document.querySelector("#enable-alert-notifications");
+  if (notificationButton) {
+    const updateNotificationButton = () => {
+      if (!("Notification" in window)) {
+        notificationButton.textContent = "Notifications indisponibles";
+        notificationButton.disabled = true;
+      } else if (Notification.permission === "granted") {
+        notificationButton.textContent = "Notifications activées";
+        notificationButton.disabled = true;
+      } else if (Notification.permission === "denied") {
+        notificationButton.textContent = "Notifications bloquées dans le navigateur";
+        notificationButton.disabled = true;
+      } else {
+        notificationButton.textContent = "Activer les notifications";
+        notificationButton.disabled = false;
+      }
+    };
+
+    notificationButton.onclick = async () => {
+      if (!("Notification" in window) || Notification.permission !== "default") return;
+      try {
+        const permission = await Notification.requestPermission();
+        updateNotificationButton();
+        if (permission === "granted") await checkAlertsForExpiry();
+      } catch (error) {
+        console.error("Impossible d'activer les notifications d'échéance.", error);
+        showDemoNotice("L'activation des notifications a échoué. Vérifiez les permissions de votre navigateur.");
+      }
+    };
+    updateNotificationButton();
+  }
 
   // Add event listeners for filter tabs
   const tabs = document.querySelectorAll('.alert-filter-tab');
   tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
+    tab.onclick = () => {
       tabs.forEach(t => t.classList.remove('is-selected'));
       tab.classList.add('is-selected');
       renderAlerts(tab.dataset.filter);
@@ -2258,7 +2338,7 @@ function initAlertsView(params = {}) {
       if (window.location.hash !== hash) {
         window.history.pushState({ view: 'alertes', filter: tab.dataset.filter }, "", hash);
       }
-    });
+    };
   });
 
   // Render initial alerts (default: à-traiter)
@@ -2283,26 +2363,40 @@ function renderAlerts(filter) {
   const alertList = document.querySelector('#alert-list');
   if (!alertList) return;
 
-  const rawAlerts = getAlerts();
-  const alerts = rawAlerts.map(alert => ({ ...alert, type: calculateAlertType(alert.dueDate, alert.type) }));
-
-  // Logic mapping based on alert type/data
-  const filteredAlerts = alerts.filter(alert => {
-    if (filter === 'à-traiter') return alert.type === 'red';
-    if (filter === 'à-anticiper') return alert.type === 'amber';
-    if (filter === 'à-surveiller') return alert.type === 'blue' || alert.type === 'muted';
-    return true;
-  });
+  const alerts = getAlerts().map(alert => ({
+    ...alert,
+    status: alert.status || "active",
+    type: calculateAlertType(alert.dueDate, alert.type, alert.documentType)
+  }));
+  const activeAlerts = alerts.filter(alert => alert.status === "active");
+  const today = new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const snoozedAlerts = activeAlerts.filter(alert => alert.snoozedUntil && alert.snoozedUntil > todayIso);
+  const actionableAlerts = activeAlerts.filter(alert => !snoozedAlerts.includes(alert));
+  const filteredAlerts = filter === "historique"
+    ? alerts.filter(alert => alert.status !== "active")
+    : filter === "reportées"
+      ? snoozedAlerts
+      : actionableAlerts.filter(alert => {
+      if (filter === 'à-traiter') return alert.type === 'red';
+      if (filter === 'à-anticiper') return alert.type === 'amber';
+      if (filter === 'à-surveiller') return alert.type === 'blue' || alert.type === 'muted';
+      return true;
+    });
 
   // Update badges
   document.querySelectorAll('.alert-filter-tab').forEach(tab => {
     const f = tab.dataset.filter;
-    const count = alerts.filter(a => {
-      if (f === 'à-traiter') return a.type === 'red';
-      if (f === 'à-anticiper') return a.type === 'amber';
-      if (f === 'à-surveiller') return a.type === 'blue' || a.type === 'muted';
-      return false;
-    }).length;
+    const count = (f === "historique"
+      ? alerts.filter(a => a.status !== "active")
+      : f === "reportées"
+        ? snoozedAlerts
+        : actionableAlerts.filter(a => {
+        if (f === 'à-traiter') return a.type === 'red';
+        if (f === 'à-anticiper') return a.type === 'amber';
+        if (f === 'à-surveiller') return a.type === 'blue' || a.type === 'muted';
+        return false;
+      })).length;
     tab.querySelector('.alert-badge').textContent = count.toString();
   });
 
@@ -2311,22 +2405,52 @@ function renderAlerts(filter) {
     return;
   }
 
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+
   alertList.innerHTML = filteredAlerts.map(alert => {
     const iconSvg = getAlertIcon(alert.type);
+    const isSnoozed = alert.snoozedUntil && alert.snoozedUntil > todayIso;
+    const statusAction = alert.status !== "active"
+      ? '<button class="alert-status-action" type="button" data-alert-status="active">Réactiver</button>'
+      : isSnoozed
+        ? '<button class="alert-status-action" type="button" data-unsnooze>Réactiver maintenant</button>'
+        : '<button class="alert-status-action" type="button" data-alert-status="ignored">Ignorer</button><button class="alert-status-action" type="button" data-alert-status="resolved">Terminée</button><button class="alert-status-action" type="button" data-snooze-days="1">Reporter 1 jour</button><button class="alert-status-action" type="button" data-snooze-days="7">Reporter 7 jours</button>';
+    const dueDate = alert.dueDate
+      ? new Date(`${alert.dueDate}T00:00:00`).toLocaleDateString("fr-FR")
+      : "";
+    const sourceExcerpt = alert.sourceExcerpt
+      ? `<p class="alert-evidence"><strong>Source :</strong> ${escapeHtml(alert.sourceExcerpt)}</p>`
+      : "";
+    const snoozeNotice = isSnoozed
+      ? `<p class="alert-snooze-note">Reportée jusqu'au ${escapeHtml(new Date(`${alert.snoozedUntil}T00:00:00`).toLocaleDateString("fr-FR"))}.</p>`
+      : "";
+    const correctionForm = alert.source === "document" && alert.docId
+      ? `<details class="alert-date-correction"><summary>Corriger la date</summary><form data-alert-date-form><label>Date d'échéance confirmée<input type="date" name="dueDate" value="${escapeHtml(alert.dueDate)}" required></label><button class="alert-status-action" type="submit">Enregistrer la date</button></form></details>`
+      : "";
 
     return `
-      <article class="alert-card ${alert.type}" data-alert-card data-alert-id="${alert.id}">
-        <div class="alert-icon ${alert.type}">
+      <article class="alert-card ${escapeHtml(alert.type)}${isSnoozed ? " is-snoozed" : ""}" data-alert-card data-alert-id="${escapeHtml(alert.id)}">
+        <div class="alert-icon ${escapeHtml(alert.type)}">
           ${iconSvg}
         </div>
         <div class="alert-content">
           <div class="alert-header">
-            <strong>${alert.title}</strong>
-            ${alert.dueDate ? `<span class="alert-date">Échéance : ${alert.dueDate}</span>` : ''}
+            <strong>${escapeHtml(alert.title)}</strong>
+            ${dueDate ? `<span class="alert-date">Échéance : ${escapeHtml(dueDate)}</span>` : ''}
           </div>
-          <p>${alert.detail}</p>
+          <p>${escapeHtml(alert.detail)}</p>
+          ${sourceExcerpt}
+          ${snoozeNotice}
+          <div class="alert-status-actions">${statusAction}</div>
+          ${correctionForm}
         </div>
-        <button class="alert-action" type="button" data-open-view="vos-donnees?docId=${alert.docId}" aria-label="Voir le détail">›</button>
+        <button class="alert-action" type="button" data-open-view="vos-donnees?docId=${escapeHtml(encodeURIComponent(alert.docId || ""))}" aria-label="Voir le détail">›</button>
       </article>
     `;
   }).join('');
@@ -2336,7 +2460,7 @@ function renderAlerts(filter) {
     card.addEventListener("click", (e) => {
       // Si l'utilisateur clique sur le bouton d'action, on ne fait rien ici
       // et on laisse le gestionnaire du bouton (délégation globale) agir.
-      if (e.target.closest('.alert-action')) {
+      if (e.target.closest('button')) {
           return;
       }
 
@@ -2360,13 +2484,86 @@ function renderAlerts(filter) {
           const [key, value] = pair.split('=');
           if (key) params[key] = value ? decodeURIComponent(value) : '';
         });
+
       }
 
       showView(viewName, { addHistory: true, params });
     });
   });
 
-  // Handle alert action button navigation (Supprimé car géré par la délégation globale)
+  alertList.querySelectorAll("[data-alert-status]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const card = button.closest("[data-alert-card]");
+      const alert = getAlerts().find(item => item.id === card?.dataset.alertId);
+      if (!alert) return;
+
+      try {
+        const updatedAlert = { ...alert, status: button.dataset.alertStatus };
+        if (updatedAlert.status !== "active") delete updatedAlert.snoozedUntil;
+        await updateAlert(updatedAlert);
+        renderAlerts(filter);
+      } catch (error) {
+        console.error("Impossible de mettre à jour le statut de l'alerte.", error);
+        showDemoNotice("Le statut de cette alerte n'a pas pu être enregistré.");
+      }
+    });
+  });
+
+  alertList.querySelectorAll("[data-snooze-days], [data-unsnooze]").forEach(button => {
+    button.addEventListener("click", async event => {
+      event.stopPropagation();
+      const card = button.closest("[data-alert-card]");
+      const alert = getAlerts().find(item => item.id === card?.dataset.alertId);
+      if (!alert) return;
+      const updatedAlert = { ...alert };
+      if (button.hasAttribute("data-unsnooze")) {
+        delete updatedAlert.snoozedUntil;
+      } else {
+        const resumeDate = new Date();
+        resumeDate.setHours(0, 0, 0, 0);
+        resumeDate.setDate(resumeDate.getDate() + Number(button.dataset.snoozeDays));
+        updatedAlert.snoozedUntil = `${resumeDate.getFullYear()}-${String(resumeDate.getMonth() + 1).padStart(2, "0")}-${String(resumeDate.getDate()).padStart(2, "0")}`;
+      }
+      try {
+        await updateAlert(updatedAlert);
+        renderAlerts(filter);
+      } catch (error) {
+        console.error("Impossible de reporter cette alerte.", error);
+        showDemoNotice("Le report de cette alerte n'a pas pu être enregistré.");
+      }
+    });
+  });
+
+  alertList.querySelectorAll("[data-alert-date-form]").forEach(form => {
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const card = form.closest("[data-alert-card]");
+      const alert = getAlerts().find(item => item.id === card?.dataset.alertId);
+      const document = getDocuments().find(item => item.id === alert?.docId);
+      const dueDate = form.elements.namedItem("dueDate").value;
+      if (!alert || !document || !dueDate) {
+        showDemoNotice("Le document source de cette alerte est introuvable.");
+        return;
+      }
+
+      try {
+        const correctedDate = new Date(`${dueDate}T00:00:00`).toLocaleDateString("fr-FR");
+        await addDocument({
+          ...document,
+          alertType: alert.documentType || document.alertType || document.type,
+          expiryDate: dueDate,
+          expiryDateEvidence: `Échéance corrigée manuellement : ${correctedDate}`,
+          expiryDateSource: "user"
+        });
+        renderAlerts(filter);
+      } catch (error) {
+        console.error("Impossible d'enregistrer la correction de date.", error);
+        showDemoNotice("La date corrigée n'a pas pu être enregistrée.");
+      }
+    });
+  });
 }
 
 // Initialize family state from localStorage (if available)
@@ -2769,6 +2966,7 @@ function openManualEntryDialog() {
       return;
     }
 
+    const context = parseDocument(content || `Document saisi manuellement : ${title}`, `${title}.pdf`);
     // Créer un document factice mais complet
     const newDoc = {
       id: `manual-${Date.now()}`,
@@ -2778,6 +2976,10 @@ function openManualEntryDialog() {
       keywords: title.toLowerCase(),
       summary: content || "Document saisi manuellement",
       content: content || `Document saisi manuellement : ${title}`,
+      alertType: context.type,
+      expiryDate: context.expiryDate,
+      expiryDateEvidence: context.expiryDateEvidence,
+      provider: context.provider,
       isLocal: true,
       sourceDir: "Saisie manuelle"
     };
@@ -3248,72 +3450,48 @@ function getAssistantResponse(question) {
 }
 
 /**
- * Initialise le système de vérification d'alertes automatisé
- * Vérifie si des alertes arrivent à échéance (< 3 jours) et notifie l'utilisateur
+ * Initialise la vérification des échéances pendant que l'application est ouverte.
  */
+let notificationCheckInProgress = false;
+
 function startAlertScheduler() {
-  // Vérification immédiate au chargement
-  checkAlertsForExpiry();
-
-  // Puis toutes les 24 heures (86400000 ms)
-  setInterval(checkAlertsForExpiry, 86400000);
+  void checkAlertsForExpiry();
+  setInterval(() => void checkAlertsForExpiry(), 15 * 60 * 1000);
 }
 
 /**
- * Parcourt les alertes et vérifie lesquelles arrivent à moins de 3 jours
+ * Vérifie régulièrement les alertes pendant que la page reste active.
  */
-function checkAlertsForExpiry() {
-  const today = new Date();
-  const alerts = getAlerts();
-  const alertsToNotify = [];
-
-  alerts.forEach(alert => {
-    if (!alert.dueDate) return; // Sans date précise, on ne peut pas vérifier automatiquement
-
-    const dueDate = new Date(alert.dueDate);
-    const diffTime = Math.abs(dueDate - today);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    // Si l'échéance est dans moins de 3 jours (ou déjà dépassée)
-    if (diffDays <= 3 && diffDays >= 0) {
-      alertsToNotify.push(alert);
-    }
-  });
-
-  if (alertsToNotify.length > 0) {
-    showAlertNotifications(alertsToNotify);
-  }
-}
-
-/**
- * Affiche les notifications pour les alertes en cours
- * @param {Array} alerts - Array d'alertes à notifier
- */
-function showAlertNotifications(alerts) {
-  // Demander la permission si nécessaire
+async function checkAlertsForExpiry() {
   if (!('Notification' in window)) {
-    console.warn('Cette navigateur ne supporte pas les notifications');
+    console.warn('Ce navigateur ne prend pas en charge les notifications.');
     return;
   }
+  if (Notification.permission !== "granted" || notificationCheckInProgress) return;
 
-  if (Notification.permission === 'default') {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        alerts.forEach(alert => {
-          new Notification('ðŸ“… Famili-IA - Alerte', {
-            body: `${alert.title} : ${alert.detail}`,
-            icon: '/favicon.ico'
-          });
+  notificationCheckInProgress = true;
+  try {
+    for (const alert of getAlertsToNotify(
+      getAlerts(),
+      new Date(),
+      getCurrentUser().preferences?.alertNotifications
+    )) {
+      try {
+        new Notification("Famili-IA — échéance proche", {
+          body: "Une échéance approche. Ouvrez Famili-IA pour consulter les détails.",
+          icon: "/favicon.ico"
         });
+        await updateAlert({
+          ...alert,
+          notificationSentFor: alert.dueDate,
+          notificationSentAt: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error(`Impossible d'envoyer la notification de l'alerte ${alert.id}.`, error);
       }
-    });
-  } else if (Notification.permission === 'granted') {
-    alerts.forEach(alert => {
-      new Notification('ðŸ“… Famili-IA - Alerte', {
-        body: `${alert.title} : ${alert.detail}`,
-        icon: '/favicon.ico'
-      });
-    });
+    }
+  } finally {
+    notificationCheckInProgress = false;
   }
 }
 
@@ -3351,9 +3529,6 @@ function initResetOnboardingButton() {
     resetBtn.addEventListener('click', resetOnboarding);
   }
 }
-
-// Démarrage du scheduler au chargement
-startAlertScheduler();
 
 // Initialiser le bouton de réinitialisation de l'onboarding
 initResetOnboardingButton();
