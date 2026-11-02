@@ -1,13 +1,16 @@
 ﻿console.log("App script loaded");
 import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch, normalizeText } from "./search-utils.js";
 import { GoogleDriveClient } from "./google-drive.js";
+import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
 // Mock Capacitor pour le navigateur web (non disponible en local sans build)
 const Capacitor = { isNativePlatform: () => false };
 const Filesystem = null;
 import { listLocalFiles, readFileContent } from "./local-files.js";
-import { loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, initializeDemoState, setDemoMode } from "./state.js";
+import { clearFamilyState, loadFamilyState } from "./family-storage.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, initializeDemoState, resetState, setDemoMode } from "./state.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
+
+const activeScanWorkers = new Map();
 
 /**
  * Vérifie si l'onboarding est complet et retourne l'état.
@@ -196,8 +199,7 @@ function initOnboardingWizard() {
         const dirHandle = await window.showDirectoryPicker();
 
         // Passer le dirHandle au worker pour scan récursif
-        const worker = new BackgroundSyncWorker([dirHandle], updateScanProgressUI);
-        worker.start();
+        startBackgroundScan([dirHandle]);
 
         // S'assurer que la barre de progression est visible DÈS LE DÉPART
         // et restera affichée pendant que le scan tourne en tâche de fond
@@ -242,8 +244,7 @@ function initOnboardingWizard() {
     }
 
     const scanDirectories = user.preferences.scanDirectories || ['/Documents', '/Downloads'];
-    const worker = new BackgroundSyncWorker(scanDirectories, updateScanProgressUI);
-    worker.start();
+    startBackgroundScan(scanDirectories);
 
     const container = document.querySelector("#scan-progress-container");
     if (container) {
@@ -411,6 +412,7 @@ function initOnboardingWizard() {
     console.log('[DEBUG] Async init - About to load documents');
     uploadedDocuments.push(...getDocuments());
     console.log('[DEBUG] Async init - documents loaded, count:', uploadedDocuments.length);
+    if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
 
     console.log('[DEBUG] Async init - About to init dialogs');
     initEquipmentDialog();
@@ -433,8 +435,7 @@ function initOnboardingWizard() {
     // Lancement du scan auto si activé dans les préférences
     const user = getCurrentUser();
     if (user && user.preferences && user.preferences.enableAutoScan) {
-      const worker = new BackgroundSyncWorker(user.preferences.scanDirectories || [], updateScanProgressUI);
-      worker.start();
+      startBackgroundScan(user.preferences.scanDirectories || []);
     }
     console.log('[DEBUG] Async init - COMPLETE');
   } catch (error) {
@@ -816,23 +817,6 @@ function search(question) {
  * @param {Array} matches - Résultats de recherche bruts
  * @returns {Array} Résultats filtrés
  */
-// Filtres de configuration - centralisation des règles de filtrage
-const documentTypeFilters = {
-  Facture: doc => doc.type === 'Facture',
-  Garantie: doc => doc.type === 'Garantie',
-  Contrat: doc => doc.type === 'Contrat',
-  Notice: doc => doc.type === 'Notice',
-  PDF: doc => doc.type === 'PDF',
-  Texte: doc => doc.type === 'Texte' || doc.type === 'Markdown',
-  Markdown: doc => doc.type === 'Markdown'
-};
-
-const sourceFilters = {
-  local: doc => doc.isLocal && !doc.driveSource && !doc.driveDemo,
-  drive: doc => doc.driveSource,
-  demo: doc => doc.driveDemo || !doc.isLocal
-};
-
 function applyFilters(matches) {
   // Read active filter chips instead of select values
   const typeChip = document.querySelector('#filter-type-group .chip.is-selected');
@@ -841,30 +825,21 @@ function applyFilters(matches) {
   const typeFilter = typeChip?.dataset.filterType || '';
   const sourceFilter = sourceChip?.dataset.filterSource || '';
 
-  // Si aucun filtre actif, retourner les résultats tels quels
-  if (!typeFilter && !sourceFilter) {
-    return matches;
-  }
-
-  return matches.filter(result => {
-    const doc = result.document;
-
-    // Filtre par type de document - lookup dans l'objet de configuration
-    if (typeFilter && !(typeFilter in documentTypeFilters)) return false;
-    if (typeFilter && !documentTypeFilters[typeFilter](doc)) return false;
-
-    // Filtre par source - lookup dans l'objet de configuration
-    if (sourceFilter && !(sourceFilter in sourceFilters)) return false;
-    if (sourceFilter && !sourceFilters[sourceFilter](doc)) return false;
-
-    return true;
-  });
+  return filterSearchResultsByChips(matches, { type: typeFilter, source: sourceFilter });
 }
 
-// Gestion des filtres par chips (implémentation actuelle)
-// Les listeners directs sur #filter-type/#filter-source sont redondants
-// car les filtres sont des .chip dans des groupes .chip-group.
-// Voir applyFilters() qui lit .chip.is-selected dans les groupes dédiés.
+document.querySelectorAll('#filter-type-group .chip, #filter-source-group .chip').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    const group = chip.closest('#filter-type-group, #filter-source-group');
+    group.querySelectorAll('.chip').forEach((option) => {
+      const selected = option === chip;
+      option.classList.toggle('is-selected', selected);
+      option.setAttribute('aria-pressed', String(selected));
+    });
+
+    if (input.value.trim()) search(input.value);
+  });
+});
 
 // Gestion du bouton "Effacer les filtres" (Obsolète)
 const clearFiltersBtn = document.querySelector('#clear-filters');
@@ -924,11 +899,31 @@ function updateScanProgressUI(progressInfo) {
     if (progressInfo.progress >= 100) {
       setTimeout(() => {
         container.hidden = true;
-        if (activeView === 'vos-donnees') renderDataInventory();
+        if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
         if (activeView === 'accueil') renderAccueilDashboard();
       }, 3000);
     }
   }
+}
+
+function startBackgroundScan(directories) {
+  const worker = new BackgroundSyncWorker(directories, updateScanProgressUI);
+  const scan = worker.start();
+  activeScanWorkers.set(worker, scan);
+  scan.then(
+    () => activeScanWorkers.delete(worker),
+    (error) => {
+      activeScanWorkers.delete(worker);
+      console.error("Le scan local s’est terminé avec une erreur :", error);
+    }
+  );
+  return worker;
+}
+
+async function stopBackgroundScans() {
+  const scans = [...activeScanWorkers.entries()];
+  scans.forEach(([worker]) => worker.stop());
+  await Promise.all(scans.map(([, scan]) => scan));
 }
 
 function updateDriveConnectionActions() {
@@ -1424,23 +1419,9 @@ function parseHash() {
   const hash = window.location.hash.substring(1); // Remove leading '#'
   if (!hash) return { view: 'accueil', params: {} };
 
-  // Handle legacy format without slash (e.g., #accueil)
-  if (!hash.includes('/') && !hash.includes('?')) {
-    return { view: hash, params: {} };
-  }
-
-  let [path, queryString] = hash.split('?');
-  // Ensure path starts with a slash for consistency
-  if (!path.startsWith('/')) path = '/' + path;
-  const view = path.substring(1).split('/')[0]; // Get first segment as view
-
-  const params = {};
-  if (queryString) {
-    queryString.split('&').forEach(pair => {
-      const [key, value] = pair.split('=');
-      if (key) params[decodeURIComponent(key)] = decodeURIComponent(value || '');
-    });
-  }
+  const [path, queryString = ""] = hash.split('?');
+  const view = path.replace(/^\/+/, '').split('/')[0];
+  const params = Object.fromEntries(new URLSearchParams(queryString));
   return { view, params };
 }
 
@@ -2222,7 +2203,7 @@ function initEquipmentDetailView(eqId) {
   });
 }
 
-const initialView = window.location.hash.slice(1);
+const { view: initialView, params: initialParams } = parseHash();
 // Amélioration : détecter firstRun de manière robuste
 // Si localStorage n'est pas disponible (ex: mode debug/incognito), on considère ce n'est pas le first run
 let firstRun = false;
@@ -2239,8 +2220,10 @@ if (firstRun && initialView === 'accueil') {
 }
 document.querySelector("#dashboard-content").hidden = firstRun;
 document.querySelector("#view-accueil").setAttribute("aria-labelledby", firstRun ? "welcome-title" : "dashboard-title");
-showView(Object.hasOwn(pageTitles, initialView) ? initialView : "accueil", { addHistory: false });
-window.history.replaceState({ view: activeView }, "", `#${activeView}`);
+showView(Object.hasOwn(pageTitles, initialView) ? initialView : "accueil", {
+  addHistory: false,
+  params: initialParams
+});
 
 // Render dashboard on load (uniquement si ce n'est pas le premier RUN OU si on est déjà sur accueil)
 if (!firstRun || initialView === 'accueil') {
@@ -2563,7 +2546,7 @@ function openManageMembersModal() {
       </div>
       <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
         <div id="manage-members-list" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 300px; overflow-y: auto;"></div>
-        <button class="primary-button" id="open-add-member-from-manager" type="button" style="background: var(--color-primary, #0f7173); color: white; padding: 0.75rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">+ Ajouter un membre</button>
+        <button class="primary-button" id="open-add-member-from-manager" type="button" style="background: var(--color-primary, #171717); color: white; padding: 0.75rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">+ Ajouter un membre</button>
       </div>
     `;
     document.body.appendChild(modal);
@@ -2593,7 +2576,7 @@ function updateManageMembersList() {
     return `
       <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--color-surface-hover, #f8fafc); border: 1px solid var(--color-border, #e2e8f0); border-radius: 8px;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-primary-light, #e6f4f4); color: var(--color-primary, #0f7173); display: flex; align-items: center; justify-content: center; font-weight: 600;">${member.avatar}</div>
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-primary-light, #f1f1f1); color: var(--color-primary, #171717); display: flex; align-items: center; justify-content: center; font-weight: 600;">${member.avatar}</div>
           <div>
             <strong>${member.name}</strong> ${isCurrentUser ? '<span style="font-size: 0.75rem; background: #e2e8f0; padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.5rem;">Vous</span>' : ''}
             <div style="font-size: 0.8rem; color: var(--color-text-secondary, #64748b);">${member.access === 'full' ? 'Accès complet' : 'Accès limité'}</div>
@@ -2643,34 +2626,12 @@ function initFamilyView() {
 }
 
 /**
- /**
- * Render the list of imported files in the import view
- */
-function renderImportFileList() {
-  const container = document.querySelector('#import-file-list');
-  if (!container) return;
-
-  if (uploadedDocuments.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
-
-  container.innerHTML = `
-    <div style="font-weight: 600; margin-bottom: 0.5rem;">Fichiers importés (${uploadedDocuments.length}) :</div>
-    <ul style="list-style-type: disc; padding-left: 1.5rem; margin: 0;">
-      ${uploadedDocuments.map(doc => `<li>${doc.name} (${doc.type})</li>`).join('')}
-    </ul>
-  `;
-}
-
-/**
  * Initialize import view (drag & drop and file selection)
  */
 function initImportView() {
   const dropZone = document.querySelector('#drop-zone');
   const importInput = document.querySelector('#import-input');
   const importOptions = document.querySelectorAll('.import-option');
-  const importFileList = document.querySelector('#import-file-list');
   if (!dropZone || !importInput || !importOptions) return;
 
   dropZone.addEventListener('click', () => importInput.click());
@@ -2695,18 +2656,14 @@ function initImportView() {
   dropZone.addEventListener('drop', (e) => {
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      loadLocalFiles(files).then(() => {
-        renderImportFileList();
-      });
+      loadLocalFiles(files);
     }
   });
 
   importInput.addEventListener('change', (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      loadLocalFiles(files).then(() => {
-        renderImportFileList();
-      });
+      loadLocalFiles(files);
     }
   });
 
@@ -2828,7 +2785,6 @@ function openManualEntryDialog() {
     // Ajouter à la liste des documents locaux
     uploadedDocuments.push(newDoc);
     await addDocument(newDoc);
-    renderImportFileList();
 
     dialog.close();
     document.body.removeChild(dialog);
@@ -2842,7 +2798,6 @@ initAlertsView();
 initFamilyView();
 initProfileHandlers();
 initImportView();
-initDataView();
 initAssistantView();
 
 /**
@@ -2853,45 +2808,81 @@ function renderDataInventory(filters = {}) {
   const dataList = document.querySelector('#data-inventory-list');
   if (!dataList) return;
 
-  let docs = uploadedDocuments.length > 0 ? uploadedDocuments : documents;
+  const demoFallback = uploadedDocuments.length === 0 ? documents : [];
+  const allDocuments = mergeInventoryDocuments(demoFallback, uploadedDocuments);
+  const counts = countInventorySources(allDocuments);
+  document.querySelector('#summary-total').textContent = String(counts.total);
+  document.querySelector('#summary-local').textContent = String(counts.local);
+  document.querySelector('#summary-drive').textContent = String(counts.drive);
+  document.querySelector('#summary-demo').textContent = String(counts.demo);
 
-  // Appliquer les filtres si fournis
-  if (filters.category) {
-    docs = docs.filter(d => d.type === filters.category);
-  }
+  const docs = filterInventoryDocuments(allDocuments, filters);
 
   if (docs.length === 0) {
-    dataList.innerHTML = '<p class="empty-state">Aucun document trouvé pour ces critères.</p>';
+    dataList.replaceChildren();
+    const emptyState = document.createElement('p');
+    emptyState.className = 'empty-state';
+    emptyState.textContent = 'Aucun document trouvé pour ces critères.';
+    dataList.append(emptyState);
     return;
   }
 
-  dataList.innerHTML = docs.map(doc => {
-    let sourceIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`;
-    let sourceText = 'Démonstration';
+  dataList.replaceChildren();
+  docs.forEach((doc) => {
+    const source = getInventorySource(doc);
+    const sourceText = source === 'drive'
+      ? 'Google Drive'
+      : source === 'local'
+        ? doc.sourceDir && Capacitor.isNativePlatform() ? 'Stockage local' : 'Fichier local'
+        : doc.driveDemo ? 'Drive simulé' : 'Démonstration';
+    const row = document.createElement('div');
+    row.className = 'data-file-row';
 
-    if (doc.driveSource) {
-      sourceIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
-      sourceText = 'Google Drive';
-    } else if (doc.driveDemo) {
-      sourceText = 'Démo';
-    } else if (doc.isLocal) {
-      sourceIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>`;
-      sourceText = doc.sourceDir && Capacitor.isNativePlatform() ? 'Stockage local' : 'Fichier local';
-    }
+    const info = document.createElement('div');
+    info.className = 'data-file-info';
+    const icon = document.createElement('span');
+    icon.className = 'data-file-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>';
 
-    return `
-      <div class="data-file-row">
-        <div class="data-file-info">
-          <span class="icon icon-bg-blue icon-circle" style="--icon-size: 40px;">${sourceIcon}</span>
-          <div>
-            <div class="data-file-name">${doc.name}</div>
-            <div class="data-file-meta">${doc.type} · ${sourceText} · ${doc.date || 'Session'}</div>
-          </div>
-        </div>
-        <div class="data-file-size">${doc.content ? Math.round(doc.content.length / 1024) + ' Ko' : '—'}</div>
-      </div>
-    `;
-  }).join('');
+    const details = document.createElement('div');
+    details.className = 'data-file-details';
+    const name = document.createElement('div');
+    name.className = 'data-file-name';
+    name.textContent = doc.name;
+    const meta = document.createElement('div');
+    meta.className = 'data-file-meta';
+    const typeBadge = document.createElement('span');
+    typeBadge.className = `data-badge data-badge--type data-type-${getInventoryTypeKey(doc)}`;
+    typeBadge.textContent = doc.type || 'Document';
+    const sourceBadge = document.createElement('span');
+    sourceBadge.className = `data-badge data-badge--source data-source-${source}`;
+    sourceBadge.textContent = sourceText;
+    const indexStatus = getInventoryIndexStatus(doc);
+    const indexBadge = document.createElement('span');
+    indexBadge.className = `data-badge data-badge--index data-index-${indexStatus}`;
+    indexBadge.textContent = indexStatus === 'text' ? 'Texte indexé' : 'Métadonnées seules';
+    const date = document.createElement('span');
+    date.className = 'data-file-date';
+    date.textContent = doc.date || 'Session';
+    meta.append(typeBadge, sourceBadge, indexBadge, date);
+    details.append(name, meta);
+    info.append(icon, details);
+
+    const size = document.createElement('div');
+    size.className = 'data-file-size';
+    size.textContent = doc.content ? `${Math.round(doc.content.length / 1024)} Ko` : '—';
+
+    const previewButton = document.createElement('button');
+    previewButton.className = 'secondary-button data-file-open';
+    previewButton.type = 'button';
+    previewButton.textContent = 'Aperçu';
+    previewButton.setAttribute('aria-label', `Consulter ${doc.name}`);
+    previewButton.addEventListener('click', () => openSource(doc));
+
+    row.append(info, size, previewButton);
+    dataList.append(row);
+  });
 }
 
 /**
@@ -2901,6 +2892,61 @@ function renderDataInventory(filters = {}) {
 function initDataView(filters = {}) {
   renderDataInventory(filters);
 
+  const dataView = document.querySelector('#view-vos-donnees');
+  if (dataView && !dataView.dataset.filtersInitialized) {
+    dataView.dataset.filtersInitialized = 'true';
+    dataView.addEventListener('click', (event) => {
+      const chip = event.target.closest('[data-filter-type], [data-filter-category], [data-filter-clear]');
+      if (!chip) return;
+
+      const { params: currentFilters } = parseHash();
+      const nextFilters = { ...currentFilters };
+
+      if (chip.hasAttribute('data-filter-clear')) {
+        delete nextFilters.type;
+        delete nextFilters.category;
+      } else if (chip.dataset.filterType) {
+        const selectedType = chip.dataset.filterType;
+        if (selectedType === 'document') {
+          delete nextFilters.type;
+          delete nextFilters.category;
+        } else {
+          nextFilters.type = selectedType;
+        }
+        if (isInventoryDocumentType(nextFilters.category)) delete nextFilters.category;
+      } else if (chip.dataset.filterCategory) {
+        const selectedCategory = chip.dataset.filterCategory;
+        if (nextFilters.category?.toLocaleLowerCase('fr') === selectedCategory.toLocaleLowerCase('fr')) {
+          delete nextFilters.category;
+        } else {
+          nextFilters.category = selectedCategory;
+        }
+      }
+
+      showView('vos-donnees', { params: nextFilters });
+    });
+  }
+
+  const currentFilters = filters;
+  const selectedType = String(currentFilters.type || '').toLocaleLowerCase('fr');
+  const selectedCategory = String(currentFilters.category || '').toLocaleLowerCase('fr');
+  const legacyDocumentType = isInventoryDocumentType(currentFilters.category);
+  dataView?.querySelectorAll('[data-filter-type]').forEach((chip) => {
+    const chipType = chip.dataset.filterType.toLocaleLowerCase('fr');
+    const selected = chipType === 'document'
+      ? (!selectedType || selectedType === 'document') && !currentFilters.category
+      : selectedType === chipType || (legacyDocumentType && selectedCategory === chipType);
+    chip.classList.toggle('is-selected', selected);
+    chip.setAttribute('aria-pressed', String(selected));
+  });
+  dataView?.querySelectorAll('[data-filter-category]').forEach((chip) => {
+    const selected = selectedCategory === chip.dataset.filterCategory.toLocaleLowerCase('fr');
+    chip.classList.toggle('is-selected', selected);
+    chip.setAttribute('aria-pressed', String(selected));
+  });
+
+  if (dataView?.dataset.actionsInitialized) return;
+  if (dataView) dataView.dataset.actionsInitialized = 'true';
 
   const exportBtn = document.querySelector('#export-all-data');
   if (exportBtn) {
@@ -2937,13 +2983,87 @@ function initDataView(filters = {}) {
   }
 
   const purgeBtn = document.querySelector('#purge-all-data');
+  const purgeDialog = document.querySelector('#purge-confirmation');
+  const purgeStatus = document.querySelector('#purge-status');
+  const confirmPurgeBtn = document.querySelector('#confirm-purge');
+  const cancelPurgeBtn = document.querySelector('#cancel-purge');
+  const closePurgeBtn = document.querySelector('#close-purge-confirmation');
+  const closePurgeDialog = () => {
+    if (purgeDialog?.open) purgeDialog.close();
+  };
+
+  closePurgeBtn?.addEventListener('click', closePurgeDialog);
+  cancelPurgeBtn?.addEventListener('click', closePurgeDialog);
+  purgeDialog?.addEventListener('cancel', (event) => {
+    if (confirmPurgeBtn?.disabled) event.preventDefault();
+  });
+
   if (purgeBtn) {
     purgeBtn.addEventListener('click', () => {
-      clearSessionFiles();
-      renderDataInventory();
-      showDemoNotice('Toutes les données de la session ont été supprimées');
+      if (purgeStatus) {
+        purgeStatus.hidden = true;
+        purgeStatus.textContent = '';
+        purgeStatus.removeAttribute('data-state');
+      }
+      purgeDialog?.showModal();
     });
   }
+
+  confirmPurgeBtn?.addEventListener('click', async () => {
+    if (!purgeStatus || !confirmPurgeBtn) return;
+
+    confirmPurgeBtn.disabled = true;
+    if (cancelPurgeBtn) cancelPurgeBtn.disabled = true;
+    if (closePurgeBtn) closePurgeBtn.disabled = true;
+    purgeStatus.hidden = true;
+    const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
+
+    try {
+      await stopBackgroundScans();
+      await resetState();
+      if (!clearFamilyState()) {
+        throw new Error('Les données IndexedDB ont été supprimées, mais les données de famille dans le stockage du navigateur n’ont pas pu être effacées.');
+      }
+
+      uploadedDocuments.length = 0;
+      if (sourceDialog.open) sourceDialog.close();
+      if (localFilesInput) localFilesInput.value = '';
+      documentList.replaceChildren();
+      answerText.textContent = '';
+      resultCount.textContent = '';
+      results.hidden = true;
+      noResults.hidden = true;
+      updateClearFilesButtonsVisibility();
+      updateGoogleDriveButton();
+      updateModeBanner();
+      updateDemoModeUI();
+      renderDataInventory(parseHash().params);
+
+      let successMessage = 'Les données enregistrées par Famili-IA ont été supprimées.';
+      let googleRevocationFailed = false;
+      if (shouldRevokeGoogleAccess) {
+        try {
+          await googleDriveClient.revoke();
+        } catch (error) {
+          googleRevocationFailed = true;
+          successMessage += ` La révocation de l’autorisation Google n’a pas été confirmée : ${error.message}`;
+        }
+      }
+
+      purgeStatus.textContent = successMessage;
+      purgeStatus.dataset.state = googleRevocationFailed ? 'error' : 'success';
+      purgeStatus.hidden = false;
+      confirmPurgeBtn.textContent = 'Suppression terminée';
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (error) {
+      purgeStatus.textContent = `La suppression n’a pas pu être terminée : ${error.message}`;
+      purgeStatus.dataset.state = 'error';
+      purgeStatus.hidden = false;
+      confirmPurgeBtn.disabled = false;
+      if (cancelPurgeBtn) cancelPurgeBtn.disabled = false;
+      if (closePurgeBtn) closePurgeBtn.disabled = false;
+    }
+  });
 }
 
 /**

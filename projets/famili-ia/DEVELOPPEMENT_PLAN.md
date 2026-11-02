@@ -111,14 +111,14 @@
 ### Phase 11 – Monétisation, Expérience Utilisateur & Valeur Augmentée
 - [ ] 11.1 : Préparation modèle monétisation (état utilisateur & limites dynamiques)
 - [ ] 11.2 : Correction navigation dynamique (tabs Maison/Alertes)
-- [ ] 11.3 : Centralisation de la Navigation par Filtres (Vue "Vos données")
+- [✓] ✅ 11.3 : Centralisation de la Navigation par Filtres (Vue "Vos données")
     - [✓] ✅ 11.3.a : Audit complet des points d'accès existants (Dashboard, Alertes, Famille)
-    - [✓] ✅ 11.3.b : Définition du protocole de filtrage par URL (ex: `#/donnees?type=X&category=Y`)
-    - [✓] ✅ 11.3.c : Refactorisation de `showView` dans `app.js` pour traiter la redirection vers `#/donnees` avec paramètres
+    - [✓] ✅ 11.3.b : Définition du protocole de filtrage par URL (ex: `#/vos-donnees?type=X&category=Y`)
+    - [✓] ✅ 11.3.c : Refactorisation de `showView` dans `app.js` pour traiter la navigation vers `#/vos-donnees` avec paramètres
     - [✓] ✅ 11.3.d : Généralisation de `renderDataInventory()` pour supporter les filtres optionnels
-    - [✓] ✅ 11.3.e : Migration des liens UI : remplacer `data-open-view="documents-list?category=..."` par `data-open-view="donnees?type=document&category=..."`
-    - [ ] 11.3.f : Gestion du retour arrière et du contexte utilisateur
-    - [ ] 11.3.g : Nettoyage et suppression des vues de listes redondantes (documents-list)
+    - [✓] ✅ 11.3.e : Migration des liens UI vers la vue unifiée `vos-donnees` avec filtres transmis dans l’URL.
+    - [✓] ✅ 11.3.f : Gestion du retour arrière et du contexte utilisateur via l’historique navigateur (`popstate`).
+    - [✓] ✅ 11.3.g : Suppression de l’ancienne vue de liste redondante `documents-list`.
 
 ### Phase 12 – Intégration Proactive & Vie Numérique
 - [✓] ✅ 12.1 : Indexation Globale & Onboarding Utilisateur
@@ -166,17 +166,17 @@
 L'objectif est d'améliorer la visibilité, la gestion et la compréhension des données indexées localement.
 
 - [ ] **14.1 : Architecture & Navigation**
-    - [ ] 14.1.a : Nettoyage et consolidation des interfaces de gestion des données (remplacement des vues de listes redondantes).
-    - [ ] 14.1.b : Implémentation d'une vue "Vos Données" (`data-view`) unifiée, capable d'afficher les fichiers locaux et les sources (Drive/Simulé).
-    - [ ] 14.1.c : Intégration des filtres dynamiques basés sur le hash URL (`#/donnees?type=...&category=...`).
+    - [✓] ✅ 14.1.a : Nettoyage et consolidation des interfaces de gestion des données (remplacement des vues de listes redondantes par l'accès à l'inventaire central).
+    - [✓] ✅ 14.1.b : Vue "Vos Données" (`data-view`) unifiée pour afficher les fichiers locaux et les sources (Drive/simulé), avec aperçu et dédoublonnage.
+    - [✓] ✅ 14.1.c : Filtres dynamiques par hash URL, compatibilité avec les anciens liens catégorie et restauration de l’état via Retour navigateur.
 
-- [ ] **14.2 : Expérience Utilisateur (UX)**
-    - [ ] 14.2.a (14.4) : Refonte visuelle — Aligner rigoureusement le rendu avec la charte graphique officielle (typography, cartes, espacement, tokens CSS de `styles.css`).
-    - [ ] 14.2.b (14.5) : Mise en place d'indicateurs visuels clairs pour chaque type de document, provenance et statut d'indexation.
+- [✓] **14.2 : Expérience Utilisateur (UX)**
+    - [✓] ✅ 14.2.a (14.4) : Refonte visuelle de « Vos données » alignée sur les tokens de marque partagés, les cartes de synthèse, la hiérarchie responsive et la charte mise à jour.
+    - [✓] ✅ 14.2.b (14.5) : Badges visuels pour le type, la provenance et la couverture d'indexation (texte indexé ou métadonnées seules).
 
-- [ ] **14.3 : Fonctionnalités & Sécurité**
-    - [ ] 14.3.a (14.6) : Action de nettoyage et de suppression (massive ou unitaire) sécurisée pour le stockage local (IndexedDB / File Access API).
-    - [ ] 14.3.b (14.7) : Rétro-compatibilité — S'assurer que le filtrage par chips fonctionne de manière fluide avec le moteur de recherche unifié.
+- [✓] **14.3 : Fonctionnalités & Sécurité**
+    - [✓] ✅ 14.3.a (14.6) : Suppression confirmée des données applicatives en IndexedDB et du foyer personnalisé en localStorage ; les scans actifs sont arrêtés et les fichiers sources restent intacts.
+    - [✓] ✅ 14.3.b (14.7) : Filtres de type/provenance partagés avec la recherche unifiée et compatibilité des filtres d'inventaire/anciens liens vérifiée.
 
 ## 🛠 Framework des Skills - Implémentation Structurée
 ...

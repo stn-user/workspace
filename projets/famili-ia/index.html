@@ -161,6 +161,31 @@
           </button>
         </form>
 
+        <section class="search-filters" aria-label="Filtres de recherche">
+          <div class="search-filter-row">
+            <span class="search-filter-label">Type</span>
+            <div class="filter-chips" id="filter-type-group" role="group" aria-label="Filtrer par type de document">
+              <button class="chip is-selected" type="button" data-filter-type="" aria-pressed="true">Tous</button>
+              <button class="chip" type="button" data-filter-type="Facture" aria-pressed="false">Facture</button>
+              <button class="chip" type="button" data-filter-type="Garantie" aria-pressed="false">Garantie</button>
+              <button class="chip" type="button" data-filter-type="Contrat" aria-pressed="false">Contrat</button>
+              <button class="chip" type="button" data-filter-type="Notice" aria-pressed="false">Notice</button>
+              <button class="chip" type="button" data-filter-type="PDF" aria-pressed="false">PDF</button>
+              <button class="chip" type="button" data-filter-type="Texte" aria-pressed="false">Texte</button>
+              <button class="chip" type="button" data-filter-type="Image" aria-pressed="false">Image</button>
+            </div>
+          </div>
+          <div class="search-filter-row">
+            <span class="search-filter-label">Provenance</span>
+            <div class="filter-chips" id="filter-source-group" role="group" aria-label="Filtrer par provenance">
+              <button class="chip is-selected" type="button" data-filter-source="" aria-pressed="true">Toutes</button>
+              <button class="chip" type="button" data-filter-source="local" aria-pressed="false">Local</button>
+              <button class="chip" type="button" data-filter-source="drive" aria-pressed="false">Google Drive</button>
+              <button class="chip" type="button" data-filter-source="demo" aria-pressed="false">Démonstration</button>
+            </div>
+          </div>
+        </section>
+
         <section class="suggestions" aria-labelledby="suggestions-title">
           <div class="section-heading"><h2 id="suggestions-title">Essayez une question</h2></div>
           <div class="suggestion-list">
@@ -352,8 +377,9 @@
             <input type="file" id="import-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
             <p class="drop-formats">Formats acceptés : .txt, .md, .pdf, .jpg, .jpeg, .png, .docx, .xlsx, .xls (max 10 Mo)</p>
           </div>
-          <div id="import-file-list" style="margin-top: 1rem; font-size: 0.9rem; color: var(--color-text-secondary);">
-            <!-- Liste des fichiers importés -->
+          <div class="import-library-note">
+            <p>Retrouvez et gérez les fichiers importés dans votre inventaire central.</p>
+            <button class="text-button" type="button" data-open-view="vos-donnees">Consulter « Vos données »</button>
           </div>
           <div class="import-options">
             <button class="import-option active" type="button" data-action="drag-drop">
@@ -475,66 +501,63 @@
       </section>
 
       <section class="view data-view" id="view-vos-donnees" data-view="vos-donnees" aria-labelledby="data-title" hidden>
-        <div class="view-header-centered">
-          <div class="brand-mark" aria-hidden="true" style="margin-bottom: 1rem; width: auto; background: transparent;"><img src="assets/LogoReduit.svg" alt="Logo Famili-IA" class="logo-md app-logo"></div>
+        <header class="data-page-header">
           <div class="view-titles">
-            <p class="eyebrow">SOUVERAINETÉ NUMÉRIQUE</p>
+            <p class="eyebrow">VOTRE ESPACE NUMÉRIQUE</p>
             <h1 id="data-title">Vos données</h1>
-            <p>Contrôlez, exportez ou supprimez vos données locales en toute transparence.</p>
+            <p>Consultez les fichiers locaux, les sources Google Drive et les exemples fictifs, avec leur provenance.</p>
+          </div>
+          <div class="data-privacy-note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span>Vos fichiers restent sous votre contrôle</span>
+          </div>
+        </header>
+
+        <div class="data-summary" aria-label="Résumé des fichiers">
+          <div class="data-stat-card data-stat-card--total">
+            <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span>
+            <span class="data-stat-copy"><strong id="summary-total">0</strong><span class="data-stat-label">Fichiers visibles</span></span>
+          </div>
+          <div class="data-stat-card data-stat-card--local">
+            <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="8" rx="2"/><rect x="3" y="13" width="18" height="8" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg></span>
+            <span class="data-stat-copy"><strong id="summary-local">0</strong><span class="data-stat-label">Fichiers locaux</span></span>
+          </div>
+          <div class="data-stat-card data-stat-card--drive">
+            <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 11h18"/></svg></span>
+            <span class="data-stat-copy"><strong id="summary-drive">0</strong><span class="data-stat-label">Sources Drive</span></span>
+          </div>
+          <div class="data-stat-card data-stat-card--demo">
+            <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 9v4m0 3h.01"/></svg></span>
+            <span class="data-stat-copy"><strong id="summary-demo">0</strong><span class="data-stat-label">Exemples fictifs</span></span>
           </div>
         </div>
 
-        <!-- Synthèse chiffrée en haut -->
-        <div class="data-summary" style="margin: var(--space-lg) 0;">
-          <div class="grid grid--2-cols" style="gap: var(--space-md);">
-            <div>
-              <p class="summary-count" id="summary-total">0</p>
-              <p class="summary-label">Fichiers total</p>
-            </div>
-            <div>
-              <p class="summary-count" id="summary-local">0</p>
-              <p class="summary-label">Local</p>
-            </div>
-            <div>
-              <p class="summary-count" id="summary-drive">0</p>
-              <p class="summary-label">Drive</p>
-            </div>
-            <div>
-              <p class="summary-count" id="summary-demo">0</p>
-              <p class="summary-label">Démo</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Filtres contextuels -->
         <div class="data-filters">
-          <div class="filter-chips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-            <button class="filter-chip ${!filters.type && !filters.category ? 'filter-chip--selected' : ''}" data-filter-type="tout" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); cursor: pointer; transition: var(--transition-fast); white-space: nowrap;">
-              Tout
-            </button>
-            ${['Facture', 'Garantie', 'Contrat', 'Notice'].map(type => `
-              <button class="filter-chip ${filters.type === type ? 'filter-chip--selected' : ''}" data-filter-type="${type}" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); cursor: pointer; transition: var(--transition-fast); white-space: nowrap;">
-                ${type}
-              </button>
-            `).join('')}
-            ${['Documents', 'Images', 'Médias'].map(cat => `
-              <button class="filter-chip ${filters.category === cat ? 'filter-chip--selected' : ''}" data-filter-category="${cat}" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); cursor: pointer; transition: var(--transition-fast); white-space: nowrap;">
-                ${cat}
-              </button>
-            `).join('')}
+          <h2 class="data-filters-heading">Affiner l’inventaire</h2>
+          <div class="filter-chips" role="group" aria-label="Filtrer les fichiers">
+            <button class="chip filter-chip" type="button" data-filter-type="document" aria-pressed="false">Tout</button>
+            <button class="chip filter-chip" type="button" data-filter-type="Facture" aria-pressed="false">Facture</button>
+            <button class="chip filter-chip" type="button" data-filter-type="Garantie" aria-pressed="false">Garantie</button>
+            <button class="chip filter-chip" type="button" data-filter-type="Contrat" aria-pressed="false">Contrat</button>
+            <button class="chip filter-chip" type="button" data-filter-type="Notice" aria-pressed="false">Notice</button>
+            <button class="chip filter-chip" type="button" data-filter-category="Documents" aria-pressed="false">Documents</button>
+            <button class="chip filter-chip" type="button" data-filter-category="Images" aria-pressed="false">Images</button>
+            <button class="chip filter-chip" type="button" data-filter-category="Médias" aria-pressed="false">Médias</button>
           </div>
         </div>
 
         <div class="data-inventory">
           <section class="panel">
-            <div class="section-heading"><h2>Inventaire des fichiers</h2></div>
-            <div class="data-list" id="data-inventory-list">
+            <div class="section-heading">
+              <h2>Inventaire des fichiers</h2>
+            </div>
+            <div class="data-list" id="data-inventory-list" aria-live="polite">
               <!-- Liste des fichiers indexés -->
             </div>
           </section>
           <section class="panel danger-panel">
-            <div class="section-heading"><h2>Actions critiques</h2></div>
-            <p>Ces actions sont irréversibles et supprimeront toutes les données de la session actuelle.</p>
+            <div class="section-heading"><h2>Gestion des données</h2></div>
+            <p>La suppression efface les données enregistrées par Famili-IA sur cet appareil. Les fichiers d’origine de vos dossiers ou de Google Drive ne sont pas supprimés.</p>
             <button class="danger-button" type="button" id="purge-all-data">Supprimer toutes mes données</button>
             <button class="secondary-button" type="button" id="export-all-data">Exporter mes données (JSON)</button>
             <button class="secondary-button" type="button" id="export-pdf-data">Exporter le rapport (PDF)</button>
@@ -596,6 +619,20 @@
     <p class="dialog-meta" id="dialog-meta"></p>
     <p class="dialog-content" id="dialog-content"></p>
     <div class="dialog-notice"><span aria-hidden="true">ⓘ</span><span id="dialog-notice-text">Ceci est un contenu d'exemple inventé pour le prototype.</span></div>
+  </dialog>
+
+  <dialog class="source-dialog purge-dialog" id="purge-confirmation" aria-labelledby="purge-confirmation-title" aria-describedby="purge-confirmation-description">
+    <div class="dialog-header">
+      <div><p class="eyebrow">SUPPRESSION LOCALE</p><h2 id="purge-confirmation-title">Supprimer les données Famili-IA ?</h2></div>
+      <button class="close-button" id="close-purge-confirmation" type="button" aria-label="Fermer">×</button>
+    </div>
+    <p id="purge-confirmation-description">Cette action effacera les données enregistrées par Famili-IA dans cette application, dont les documents copiés en mémoire locale et les données de foyer dans IndexedDB.</p>
+    <p class="purge-safety-note">Les fichiers d’origine dans vos dossiers ou sur Google Drive ne seront pas supprimés. Les exemples fictifs intégrés resteront disponibles.</p>
+    <p class="purge-status" id="purge-status" role="status" aria-live="polite" hidden></p>
+    <div class="purge-actions">
+      <button class="secondary-button" id="cancel-purge" type="button">Annuler</button>
+      <button class="danger-button" id="confirm-purge" type="button">Supprimer mes données</button>
+    </div>
   </dialog>
 
   <dialog class="source-dialog source-choice-dialog" id="source-choice-dialog" aria-labelledby="source-choice-title">

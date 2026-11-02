@@ -92,10 +92,10 @@ Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour r
   - Chip filtre (type, source) : filtrage inline
 
 ### 3. Importer
-- **Contenu** : zone de drop / bouton parcourir, sélecteur Google Drive, liste des fichiers importés avec statut (extraction OK / OCR / erreurs).
+- **Contenu** : zone de drop / bouton parcourir, sélecteur Google Drive, accès à l'inventaire central « Vos données ».
 - **Interactions** :
-  - Sélection fichiers → lecture + classification auto → update liste
-  - Tap fichier importé → aperçu + «Assigner à un équipement» (option)
+  - Sélection fichiers → lecture + classification auto → retour au parcours de recherche
+  - Gestion et consultation des fichiers importés depuis « Vos données »
   - Bouton fin de flux : «Retour à l'accueil»
   - État d'erreur explicit par fichier (pas d'échec silencieux)
 
@@ -141,10 +141,13 @@ Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour r
   - Lien vers «Vos données»
 
 ### 10. Vos données (issue du menu «Plus»)
-- **Contenu** : inventaire (documents, stockage), historique des recherches, export.
+- **Contenu** : inventaire unifié des fichiers locaux, sources Google Drive sélectionnées et exemples fictifs, avec leur provenance et des compteurs par source.
+- **Présentation** : en-tête éditorial aligné à gauche, repère de confidentialité, cartes de synthèse par source, filtres dans une surface dédiée, inventaire principal et panneau de gestion séparé. Chaque fichier porte des badges de type, provenance et couverture d'indexation (« Texte indexé » ou « Métadonnées seules »). Sur mobile, les compteurs passent en grille 2×2, les filtres défilent horizontalement et les badges reviennent à la ligne.
 - **Interactions** :
-  - «Exporter (JSON)» / «Tout effacer» → modale de **confirmation explicite** (destruction irréversible)
-  - Tap document → aperçu
+  - «Exporter (JSON)» / «Tout effacer» → modale de **confirmation explicite** (destruction irréversible) ; la purge vise IndexedDB et les données de foyer Famili-IA, arrête les scans actifs et ne supprime jamais les fichiers originaux du dossier choisi ni ceux de Google Drive
+  - Tap «Aperçu» sur un document → aperçu de son contenu
+  - Chips de type et catégorie → filtres partageables dans l’URL, restaurés avec Retour navigateur
+  - Les filtres de type et de provenance de la recherche réutilisent les mêmes règles que l'inventaire
 
 ### 11. Écran «Plus» *(nouveauté 9.16)*
 - **Contenu** : liste des 5 destinations (voir ci-dessus) avec badges.
@@ -202,7 +205,7 @@ graph TD
     PLUS --> VD
     PRO -->|lien| VD
 
-    classDef bottomfill:#e6f4f4,stroke:#0f7173,stroke-width:2px;
+    classDef bottomfill:#f1f1f1,stroke:#171717,stroke-width:2px;
     classDef sub fill:#fff3e0,stroke:#d97706,stroke-width:2px;
     class ACC,REC,IMP,MAI,PLUS bottom;
     class DET,AL,FAM,AS,PRO,VD sub;

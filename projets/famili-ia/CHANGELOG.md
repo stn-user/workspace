@@ -1,3 +1,70 @@
+## [14.0.7] - 2026-11-02 - Suppression sûre et filtres unifiés
+
+### 🔒 Phase 14
+- **14.3.a** : Ajout d'une confirmation explicite avant purge d'IndexedDB et des données familiales locales ; les scans en cours sont arrêtés avant la suppression et les fichiers sources restent intacts.
+- Les erreurs de purge et de révocation Google sont signalées à l'utilisateur ; la suppression entraîne un rechargement propre de l'application.
+- **14.3.b** : Rétablissement des chips visibles de type/provenance dans la recherche et centralisation de leurs règles avec l'inventaire ; maintien des anciens liens de filtres partageables par URL.
+- Ajout de tests sur la confirmation, la purge IndexedDB, la préservation des exemples et le filtrage combiné.
+
+---
+
+## [14.0.6] - 2026-11-02 - Indicateurs de l'inventaire de données
+
+### ✨ Phase 14
+- **14.2.b** : Ajout de badges distincts pour le type de document, sa provenance et sa couverture d'indexation.
+- L'état différencie le texte indexé des documents disponibles uniquement par leurs métadonnées, sans présenter les métadonnées seules comme une indexation complète.
+- Ajout de tests unitaires et navigateur pour les indicateurs et leur affichage responsive.
+
+---
+
+## [14.0.5] - 2026-11-02 - Identité monochrome noir et blanc
+
+### 🎨 Interface
+- Adoption d'une palette de marque noire et blanche, avec des dégradés discrets sur les surfaces et les éléments principaux.
+- Harmonisation du panneau « Gestion des données » avec les surfaces monochromes, tout en conservant le bouton de suppression en rouge.
+- Conservation des couleurs sémantiques pour les alertes, erreurs et états fonctionnels.
+- Mise à jour des fallbacks de couleur, de la charte UI et de la maquette mobile.
+
+---
+
+## [14.0.4] - 2026-11-02 - Refonte visuelle de « Vos données »
+
+### 🎨 Phase 14
+- **14.2.a** : Recomposition de la page avec en-tête éditorial, repère de confidentialité, synthèse en cartes, filtres hiérarchisés, inventaire et panneau d'actions distinct.
+- Mise en cohérence des tokens CSS partagés avec la palette de marque teal et ajout de tokens de surfaces réutilisables.
+- Adaptation responsive : grille de compteurs mobile, filtres défilants, lignes de fichiers réorganisées et panneaux empilés.
+- Validation visuelle desktop/mobile, cibles tactiles de 44px et absence de débordement horizontal sur petit écran.
+- Mise à jour de la charte UI et de la maquette mobile.
+
+---
+
+## [14.0.3] - 2026-11-02 - Filtres URL de l’inventaire
+
+### ✨ Phase 14
+- **14.1.c** : Les filtres de type et catégorie de « Vos données » sont appliqués à l’inventaire et reflétés dans le hash `#/vos-donnees`.
+- Prise en charge des anciens liens `type=document&category=Facture`, des ouvertures directes/rafraîchissements et du retour navigateur.
+- Ajout de tests unitaires de filtrage et d’un test navigateur couvrant les filtres et l’historique.
+
+---
+
+## [14.0.2] - 2026-11-02 - Inventaire unifié des documents
+
+### ✨ Phase 14
+- **14.1.b** : La vue « Vos données » réunit les fichiers ajoutés localement, les fichiers Google Drive sélectionnés et les documents fictifs utilisés en l'absence de fichiers ajoutés.
+- Les documents sont dédoublonnés par identifiant, les compteurs par provenance reflètent l'inventaire et chaque ligne permet d'ouvrir l'aperçu du document.
+- Ajout de tests ciblés sur la fusion et la classification des sources.
+
+---
+
+## [14.0.1] - 2026-11-02 - Consolidation des interfaces de gestion des données
+
+### ✨ Phase 14
+- **14.1.a** : Remplacement de la liste de fichiers redondante dans l'écran Importer par un accès à l'inventaire central « Vos données ».
+- Mise à jour de la maquette mobile pour refléter le parcours unifié de consultation et de gestion des fichiers.
+- Confirmation de la suppression antérieure de la vue `documents-list` dans le cadre de la phase 11.3.g.
+
+---
+
 ## [13.2.1] - 2026-11-01 - Correctif Critique Onboarding Mobile
 
 ### 🐛 Corrections Critiques

@@ -19,10 +19,17 @@ Famili-IA est une application de gestion de documents familiaux et d'équipement
 Pour maintenir la cohérence visuelle, suivez ces règles basées sur les maquettes officielles :
 
 ### Couleurs & Thèmes
-**Couleurs de marque principales :**
-- **Primaire (Teal) :** `#0f7173` - Logo, liens, éléments interactifs
-- **Primaire Sombre :** `#0c5e5f` - États hover
-- **Primaire Clair :** `#e6f4f4` - Fonds légers
+**Couleurs de marque principales (tokens CSS dans `styles.css`) :**
+- **Primaire (Noir) :** `#171717` - Logo, liens, éléments interactifs
+- **Primaire Sombre :** `#000000` - États hover et contraste fort
+- **Primaire Clair :** `#f1f1f1` - Fonds légers
+- **Fond général :** `#f6f6f6`, avec un dégradé blanc subtil dans la zone de contenu
+- **Surface :** `#ffffff`
+- **Texte principal :** `#171717`
+- **Texte secondaire :** `#525252`
+- **Bordure :** `#e5e5e5`
+
+Les surfaces utilisent des dégradés discrets de blanc vers gris clair ; réserver le dégradé noir/gris aux actions principales et aux mises en avant. Les couleurs sémantiques restent réservées aux états (succès, alerte, erreur) et aux catégories qui en ont besoin.
 
 **Palette de couleurs sémantiques (Cartes stats & Icônes) :**
 - **Bleu :** `#2563eb` - Documents, infos générales
@@ -34,12 +41,10 @@ Pour maintenir la cohérence visuelle, suivez ces règles basées sur les maquet
 - **Cyan :** `#0891b2` - Technique, imprimantes
 
 **Couleurs neutres :**
-- **Fond :** `#f8fafc`
-- **Surface :** `#ffffff`
-- **Texte :** `#0f172a`
-- **Texte Secondaire :** `#475569`
-- **Texte Muted :** `#94a3b8`
-- **Bordure :** `#e2e8f0`
+- **Texte Muted :** `#737373`
+- **Surface teintée :** `#f5f5f5`
+- **Surface de succès :** `#ecfdf5`
+- **Surface d'action destructive :** `#fff7f7`
 
 ### Typographie
 - **Police :** Fontes système (`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto`)
@@ -48,6 +53,10 @@ Pour maintenir la cohérence visuelle, suivez ces règles basées sur les maquet
 ### Espacement & Layout
 - **Unité de base :** `1rem` = 16px
 - **Rayon de bordure (Border Radius) :** `8px` (petits), `12px` (cartes standard), `16px` (panneaux), `24px` (modales).
+- **Surfaces :** cartes blanches avec bordure neutre et ombre discrète ; réserver les fonds teintés aux accents, états ou groupes d'information.
+- **Badges d'inventaire :** afficher séparément le type, la provenance et l'état de couverture d'indexation ; distinguer « Texte indexé » de « Métadonnées seules » et permettre le retour à la ligne sur mobile.
+- **Hiérarchie :** privilégier une page à largeur de lecture maîtrisée, une synthèse chiffrée lisible, puis le contenu principal et ses actions secondaires.
+- **Mobile :** conserver des cibles tactiles d'au moins `44px`, autoriser le défilement horizontal des filtres lorsque nécessaire et empiler les colonnes sous `900px`.
 
 ### Icônes & Visuels
 **Style des Icônes :**
@@ -78,7 +87,7 @@ Pour maintenir la cohérence visuelle, suivez ces règles basées sur les maquet
 - [ ] **Structure des modules** : `state.js`, `app.js`, `search-utils.js`, `local-files.js` sont présents et exportent les fonctions attendues.
 - [ ] **Documentation à jour** : Les schémas Mermaid ([overview.mmd](docs/architecture/mermaid/overview.mmd)) et fichiers techniques ([integration.md](docs/architecture/integration.md)) reflètent les changements récents.
 - [ ] **Pas de fichiers orphelins** : Aucun fichier `.bak`, `.tmp`, ou backup à la racine du projet ou dans `projets/famili-ia/`.
-- [ ] **Respect des tokens CSS** : Les couleurs utilisées respectent la charte (`#0f7173`, `#2563eb`, `#059669`, etc.) et sont définies dans les variables CSS.
+- [ ] **Respect des tokens CSS** : Les couleurs de marque respectent la palette monochrome (`#171717`, `#f6f6f6`, dégradés blancs) ; les couleurs sémantiques sont définies dans les variables CSS.
 - [ ] **Navigation hash** : `parseHash()` gère correctement `#/view` et `#view` sans régression.
 - [ ] **Capacitor safety** : `Capacitor.isNativePlatform()` vérifié avant tout appel API native.
 - [ ] **Interface de recherche** : La barre de recherche et les résultats s'affichent correctement sur desktop et mobile.
