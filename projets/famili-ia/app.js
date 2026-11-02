@@ -1,5 +1,5 @@
 ﻿console.log("App script loaded");
-import { detectQuestionIntent, extractExactFact, getIntentKeywords, getQuestionTerms, getSearchMatch, normalizeText } from "./search-utils.js";
+import { buildSearchResponse, rankDocuments } from "./search-utils.js";
 import { GoogleDriveClient } from "./google-drive.js";
 import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
 // Mock Capacitor pour le navigateur web (non disponible en local sans build)
@@ -577,8 +577,8 @@ const documents = [
     type: "Facture",
     date: "4 mars 2023",
     keywords: "piscine facture paiement prix payé cout installation montant",
-    summary: "La facture d'installation de la piscine indique un montant total de 8 900 â‚¬ TTC, réglé le 4 mars 2023.",
-    content: "AQUA JARDIN — FACTURE NÂ° AJ-2023-0318\nDate : 4 mars 2023\nObjet : Installation d'une piscine familiale\nMontant total : 8 900 â‚¬ TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
+    summary: "La facture d'installation de la piscine indique un montant total de 8 900 euros TTC, réglé le 4 mars 2023.",
+    content: "AQUA JARDIN — FACTURE\nNuméro de facture : AJ-2023-0318\nDate : 4 mars 2023\nObjet : Installation d'une piscine familiale\nMontant total : 8 900 euros TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
   },
   {
     id: "piscine-garantie",
@@ -595,8 +595,8 @@ const documents = [
     type: "Facture",
     date: "10 février 2025",
     keywords: "bambu lab a1 imprimante facture numéro référence achat prix coût montant",
-    summary: "La facture de la Bambu Lab A1 porte le numéro BL-2025-10482. Le montant indiqué est de 449 â‚¬ TTC.",
-    content: "BAMBU STORE — FACTURE NÂ° BL-2025-10482\nDate : 10 février 2025\nArticle : Imprimante Bambu Lab A1\nMontant : 449 â‚¬ TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
+    summary: "La facture de la Bambu Lab A1 porte le numéro BL-2025-10482. Le montant indiqué est de 449 euros TTC.",
+    content: "BAMBU STORE — FACTURE\nNuméro de facture : BL-2025-10482\nDate : 10 février 2025\nArticle : Imprimante Bambu Lab A1\nMontant : 449 euros TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
   },
   {
     id: "habitation-contrat",
@@ -605,7 +605,7 @@ const documents = [
     date: "1 janvier 2025",
     keywords: "contrat assurance habitation échéance termine fin renouvellement date",
     summary: "Le contrat d'assurance habitation arrive à échéance le 31 décembre 2025. La reconduction est prévue à cette date, sauf résiliation.",
-    content: "ASSURANCE DEMO — CONTRAT HABITATION NÂ° HAB-2025-7204\nDate d'effet : 1er janvier 2025\nÉchéance annuelle : 31 décembre 2025\nReconduction : tacite, sauf résiliation\n\nExemple fictif créé pour le prototype Famili-IA."
+    content: "ASSURANCE DEMO — CONTRAT HABITATION\nNuméro de contrat : HAB-2025-7204\nDate d'effet : 1er janvier 2025\nÉchéance annuelle : 31 décembre 2025\nReconduction : tacite, sauf résiliation\n\nExemple fictif créé pour le prototype Famili-IA."
   },
   {
     id: "maison-notice",
@@ -676,36 +676,9 @@ function updateModeBanner() {
   }
 }
 
-function getQueryTerms(question) {
-  return getQuestionTerms(question);
-}
-
 function findDocuments(question) {
-  const terms = getQueryTerms(question);
-  if (terms.length === 0) return [];
-
   const searchableDocuments = uploadedDocuments.length > 0 ? uploadedDocuments : documents;
-  return searchableDocuments
-    .map((document) => {
-      const content = document.content || "";
-      const searchable = normalizeText(`${document.name} ${document.type} ${document.keywords} ${content}`);
-      const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-      const exactFact = document.isLocal ? extractExactFact(question, lines) : null;
-      const factKeywords = exactFact ? getIntentKeywords(detectQuestionIntent(question)).join(" ") : "";
-      const searchableWithIntent = `${searchable} ${factKeywords}`;
-      const match = getSearchMatch(question, searchableWithIntent);
-      const excerpt = lines
-        .map((line) => ({ line, matches: terms.filter((term) => normalizeText(line).includes(term)).length }))
-        .filter((line) => line.matches > 0)
-        .sort((a, b) => b.matches - a.matches || a.line.length - b.line.length)
-        .slice(0, 3)
-        .map(({ line }) => line.length > 280 ? `${line.slice(0, 277)}...` : line)
-        .join(" … ");
-      return { document, score: match.score, matchedTerms: match.matchedTerms.length, excerpt, exactFact };
-    })
-    .filter((result) => result.matchedTerms > 0 && result.score >= 0.6)
-    .sort((a, b) => b.score - a.score || b.matchedTerms - a.matchedTerms)
-    .slice(0, 3);
+  return rankDocuments(question, searchableDocuments);
 }
 
 function addTextElement(parent, tagName, className, text) {
@@ -718,7 +691,7 @@ function addTextElement(parent, tagName, className, text) {
 
 function renderDocuments(matches) {
   documentList.replaceChildren();
-  matches.forEach(({ document: sourceDocument }) => {
+  matches.forEach(({ document: sourceDocument, evidence, confidence }) => {
     const card = document.createElement("article");
     card.className = "document-card";
 
@@ -741,6 +714,12 @@ function renderDocuments(matches) {
             : "Fichier local · non transmis"
           : "Exemple fictif";
     addTextElement(info, "p", "document-meta", `${sourceDocument.type} · ${sourceDocument.date} · ${origin}`);
+    if (evidence) {
+      const shortEvidence = evidence.length > 280 ? `${evidence.slice(0, 277)}...` : evidence;
+      addTextElement(info, "p", "search-evidence", `Extrait : « ${shortEvidence} »`);
+    }
+    const confidenceClass = confidence === "élevé" ? "high" : confidence === "moyen" ? "medium" : "low";
+    addTextElement(info, "p", `search-confidence search-confidence--${confidenceClass}`, `Correspondance ${confidence}`);
     card.append(info);
 
     const button = addTextElement(card, "button", "source-button", "Voir l'extrait");
@@ -800,16 +779,16 @@ function search(question) {
   if (filteredMatches.length === 0) return;
 
   const bestMatch = filteredMatches[0];
-  answerLabel.textContent = bestMatch.document.isLocal
-    ? bestMatch.exactFact
-      ? "INFORMATION EXTRAITE DU FICHIER — SANS IA"
-      : "EXTRAIT CORRESPONDANT AU MOT-CLÉ — SANS IA"
-    : "RÉPONSE SIMULÉE À PARTIR DES DOCUMENTS FICTIFS";
-  answerText.textContent = bestMatch.document.isLocal
-    ? bestMatch.exactFact
-      ? `Dans « ${bestMatch.document.name} », ${bestMatch.exactFact}`
-      : `Extrait du fichier « ${bestMatch.document.name} » : « ${bestMatch.excerpt} »`
-    : bestMatch.document.summary;
+  const response = buildSearchResponse(filteredMatches);
+  answerLabel.textContent = response.label;
+  answerLabel.dataset.status = response.status;
+  answerText.textContent = response.answer;
+  const resultEyebrow = document.querySelector("#results .eyebrow");
+  if (resultEyebrow) {
+    resultEyebrow.textContent = filteredMatches.every(match => !match.document.isLocal && !match.document.driveSource)
+      ? "RÉSULTATS LOCAUX — EXEMPLES FICTIFS"
+      : "RÉSULTATS LOCAUX — SOURCES SÉLECTIONNÉES";
+  }
   resultCount.textContent = `${filteredMatches.length} ${filteredMatches.length === 1 ? "document trouvé" : "documents trouvés"}`;
   renderDocuments(filteredMatches);
   results.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -3386,10 +3365,9 @@ function initAssistantView() {
 function addUserMessage(text, container) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'chat-message user';
-  msgDiv.innerHTML = `
-    <div class="chat-avatar">S</div>
-    <div class="chat-bubble">${text}</div>
-  `;
+  const avatar = addTextElement(msgDiv, "div", "chat-avatar", "S");
+  avatar.setAttribute("aria-hidden", "true");
+  addTextElement(msgDiv, "div", "chat-bubble", text);
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
 }
@@ -3400,10 +3378,9 @@ function addUserMessage(text, container) {
 function addAIMessage(text, container) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'chat-message ai';
-  msgDiv.innerHTML = `
-    <div class="chat-avatar">âœ¦</div>
-    <div class="chat-bubble">${text}</div>
-  `;
+  const avatar = addTextElement(msgDiv, "div", "chat-avatar", "✦");
+  avatar.setAttribute("aria-hidden", "true");
+  addTextElement(msgDiv, "div", "chat-bubble", text);
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
 }
@@ -3417,36 +3394,12 @@ function getAssistantResponse(question) {
   if (!trimmed) return "Posez une question pour obtenir une réponse.";
 
   const matches = findDocuments(trimmed);
-  if (matches.length === 0) {
-    return "Je n'ai pas trouvé de document correspondant à votre question. Essayez de reformuler ou d'ajouter des documents.";
-  }
-
-  const bestMatch = matches[0];
-  const doc = bestMatch.document;
-
-  let answerText;
-  if (doc.isLocal) {
-    if (bestMatch.exactFact) {
-      answerText = `Dans « ${doc.name} », ${bestMatch.exactFact}`;
-    } else {
-      answerText = `Extrait du fichier « ${doc.name} » : « ${bestMatch.excerpt} »`;
-    }
-  } else {
-    answerText = doc.summary;
-  }
-
-  let sourceInfo = '';
-  if (doc.driveSource) {
-    sourceInfo = ' (Source : Google Drive)';
-  } else if (doc.driveDemo) {
-    sourceInfo = ' (Source : Démonstration)';
-  } else if (doc.isLocal) {
-    sourceInfo = doc.sourceDir && Capacitor.isNativePlatform() ? ' (Source : Stockage local)' : ' (Source : Fichier local)';
-  } else {
-    sourceInfo = ' (Source : Démonstration)';
-  }
-
-  return answerText + sourceInfo;
+  const response = buildSearchResponse(matches);
+  const citations = matches.slice(0, 2).map(match => {
+    const excerpt = match.evidence ? ` — « ${match.evidence} »` : "";
+    return `Source : ${match.document.name} (${match.provenance})${excerpt}`;
+  }).join("\n");
+  return `${response.answer}\n${citations}`;
 }
 
 /**

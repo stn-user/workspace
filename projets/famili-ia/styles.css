@@ -1823,10 +1823,20 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.answer-label[data-status="ambiguous"],
+.answer-label[data-status="fact-not-found"] {
+  color: var(--color-amber);
+}
+
+.answer-label[data-status="supported"] {
+  color: var(--color-green, #15803d);
+}
+
 .answer-text {
   font-size: 1rem;
   line-height: 1.6;
   color: var(--color-text);
+  white-space: pre-line;
 }
 
 .source-heading {
@@ -1887,6 +1897,7 @@ body {
 
 .document-info {
   flex: 1;
+  min-width: 0;
 }
 
 .document-name {
@@ -1900,6 +1911,34 @@ body {
   font-size: 0.85rem;
   color: var(--color-text-secondary);
   margin: 0;
+}
+
+.search-evidence {
+  margin: 0.5rem 0 0;
+  padding-left: 0.65rem;
+  border-left: 2px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.search-confidence {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.search-confidence--high {
+  color: var(--color-green, #15803d);
+}
+
+.search-confidence--medium {
+  color: var(--color-amber);
+}
+
+.search-confidence--low {
+  color: var(--color-text-muted);
 }
 
 .source-button {

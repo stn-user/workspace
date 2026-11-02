@@ -198,11 +198,11 @@ Cette phase reprend les travaux encore ouverts de l'ancienne 12.2 et améliore l
 - [✓] 15.1.i : Mesurer précision, échéances manquées, alertes sans preuve, doublons et répétitions sur un corpus fictif annoté de huit cas ; les résultats sont des tests de base synthétiques, pas une mesure de qualité en production, et aucune économie n'est revendiquée.
 
 #### 15.2 – Recherche documentaire pertinente et traçable
-- [ ] 15.2.a : Constituer un corpus local fictif et un jeu de requêtes réalistes (synonymes, formulations, fautes, questions factuelles, ambiguïtés et absence de réponse) avec résultats et extraits attendus.
-- [ ] 15.2.b : Mesurer la pertinence du classement, l'exactitude des faits extraits, l'abstention en l'absence de preuve, la traçabilité aux sources et les temps de réponse.
-- [ ] 15.2.c : Améliorer l'interprétation et le classement à partir des besoins observés ; comparer les approches lexicales, métadonnées et sémantiques locales avant d'ajouter un modèle ou une dépendance.
-- [ ] 15.2.d : Présenter les réponses factuelles avec document et extrait justificatif ; afficher clairement les incertitudes et ne pas inventer de réponse lorsque les documents ne la contiennent pas.
-- [ ] 15.2.e : Conserver une recherche documentaire gratuite réellement utile ; différencier Sérénité par la continuité du suivi, les rappels, la synchronisation et le partage, non par une dégradation volontaire des réponses.
+- [✓] 15.2.a : Constituer un corpus local fictif de sept documents et neuf requêtes réalistes (synonymes, fautes, questions factuelles, ambiguïté et absence de réponse), avec résultats et extraits attendus dans `tests/search-corpus.js`.
+- [✓] 15.2.b : Mesurer précision/rappel à 3 résultats, MRR, exactitude des faits, abstention correcte, réponses non étayées, couverture des sources et temps moyen sur le corpus annoté.
+- [✓] 15.2.c : Comparer le classement lexical seul, le score pondéré par métadonnées et le classement hybride à synonymes locaux ; retenir le classement déterministe hybride, sans embeddings, modèle distant ni nouvelle dépendance.
+- [✓] 15.2.d : Présenter les réponses factuelles avec document et extrait justificatif ; afficher l'incertitude en cas de résultats contradictoires, et s'abstenir si un fait ou une preuve manque.
+- [✓] 15.2.e : Maintenir les mêmes capacités de recherche pour tous les utilisateurs, sans quota fonctionnel ni verrouillage payant ; conserver la différenciation Sérénité pour la continuité, les rappels, la synchronisation et le partage.
 
 #### 15.3 – Photos : accès, extraction et stockage des métadonnées
 - [ ] 15.3.a : Décider du périmètre des sources par plateforme (sélection explicite de fichiers Web, sélecteur système, Capacitor/natif) et vérifier permissions, formats, limites, fonctionnement hors ligne et capacités réelles des API avant engagement produit.

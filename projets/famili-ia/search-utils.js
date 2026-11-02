@@ -84,9 +84,33 @@ const genericSearchTerms = new Set([
   "montant", "payer", "paiement", "pdf", "prix", "total"
 ]);
 
+const localSynonyms = new Map([
+  ["bassin", ["piscine"]],
+  ["piscine", ["bassin"]],
+  ["cout", ["prix", "montant", "tarif"]],
+  ["prix", ["cout", "montant", "tarif"]],
+  ["montant", ["prix", "cout", "tarif"]],
+  ["tarif", ["prix", "cout", "montant"]],
+  ["pompe", ["moteur"]],
+  ["moteur", ["pompe"]],
+  ["garantie", ["couverture"]],
+  ["couverture", ["garantie"]],
+  ["entretien", ["maintenance", "revision"]],
+  ["maintenance", ["entretien", "revision"]],
+  ["revision", ["entretien", "maintenance"]],
+  ["renouvellement", ["reconduction"]],
+  ["reconduction", ["renouvellement"]],
+  ["rincer", ["rincage"]],
+  ["rincage", ["rincer"]]
+]);
+
+const documentTypeTerms = new Set([
+  "assurance", "contrat", "facture", "garantie", "notice", "entretien", "maintenance", "document"
+]);
+
 const factLabels = {
   amount: ["montant total", "total a payer", "montant", "prix", "cout", "tarif", "somme", "total"],
-  date: ["fin de garantie", "date de fin", "date d echeance", "echeance", "date d achat", "date d effet", "date de debut", "date", "expiration"],
+  date: ["fin de garantie", "date de fin", "date d echeance", "echeance", "date d achat", "date d effet", "date de debut", "expiration"],
   duration: ["duree de garantie", "duree", "periode de garantie"],
   frequency: ["frequence", "periodicite", "tous les", "toutes les", "chaque"],
   identifier: ["numero de facture", "numero", "reference", "identifiant", "ref"]
@@ -173,6 +197,269 @@ export function getSearchMatch(question, searchableText, hasUploadedDocuments = 
   }
 
   return { matchedTerms, score: finalScore };
+}
+
+function getExpandedTerms(term) {
+  return [term, ...(localSynonyms.get(term) ?? [])];
+}
+
+function getEvidenceExcerpt(question, lines) {
+  const intent = detectQuestionIntent(question);
+  const terms = getQuestionTerms(question)
+    .filter(term => !genericSearchTerms.has(term) && !Object.values(intentTerms).some(words => words.has(term)));
+  return lines
+    .map(line => ({
+      line,
+      matches: terms.reduce((count, term) => count + Number(
+        getExpandedTerms(term).some(expanded => normalizeText(line).split(/\s+/).includes(expanded))
+      ), 0),
+      labelPriority: intent ? getLabelPriority(line, factLabels[intent]) : -1
+    }))
+    .filter(({ matches, labelPriority }) => matches > 0 || labelPriority >= 0)
+    .sort((left, right) => (
+      Number(right.labelPriority >= 0) - Number(left.labelPriority >= 0)
+      || left.labelPriority - right.labelPriority
+      || right.matches - left.matches
+      || left.line.length - right.line.length
+    ))[0]
+    ?.line ?? null;
+}
+
+function getProvenance(document) {
+  if (document.driveSource) return "Google Drive · copie temporaire locale";
+  if (document.driveDemo) return "Sélection Drive simulée · document fictif";
+  if (document.isLocal) return document.sourceDir ? "Stockage local" : "Fichier local";
+  return "Démonstration · document fictif";
+}
+
+function getMetadataTokens(document) {
+  const metadata = [
+    document.name,
+    document.type,
+    document.category,
+    document.provider,
+    document.keywords,
+    ...(Array.isArray(document.tags) ? document.tags : [])
+  ].filter(Boolean).join(" ");
+  return new Set(normalizeText(metadata).split(/\s+/).filter(Boolean));
+}
+
+function getContentTokens(document) {
+  return new Set(normalizeText(document.content || "").split(/\s+/).filter(Boolean));
+}
+
+function getSearchConfidence(score, exactFact, ambiguous) {
+  if (ambiguous) return "incertain";
+  if (score >= 0.72 && exactFact) return "élevé";
+  if (score >= 0.55) return "moyen";
+  return "faible";
+}
+
+/**
+ * Ranks documents locally using explicit metadata, lexical matches, and a small
+ * auditable French synonym map. It abstains unless the query names a subject.
+ */
+export function rankDocuments(question, documents, { limit = 3, strategy = "hybrid" } = {}) {
+  const intent = detectQuestionIntent(question);
+  const queryTerms = getQuestionTerms(question);
+  const intentWords = intentTerms[intent] ?? new Set();
+  const subjectTerms = queryTerms.filter(term => (
+    !genericSearchTerms.has(term)
+    && !documentTypeTerms.has(term)
+    && !intentWords.has(term)
+  ));
+  if (subjectTerms.length === 0) return [];
+
+  const ranked = documents.map(document => {
+    const lines = String(document.content || "")
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+    const metadataTokens = getMetadataTokens(document);
+    const contentTokens = getContentTokens(document);
+    const equivalentsFor = term => strategy === "hybrid" ? getExpandedTerms(term) : [term];
+    const matchedTerms = subjectTerms.filter(term => {
+      const equivalents = equivalentsFor(term);
+      return [...metadataTokens, ...contentTokens].some(candidate => (
+        equivalents.some(equivalent => isCloseTermMatch(equivalent, [candidate]))
+      ));
+    });
+    if (matchedTerms.length !== subjectTerms.length) return null;
+
+    const metadataCoverage = matchedTerms.filter(term => (
+      equivalentsFor(term).some(equivalent => [...metadataTokens].some(candidate => isCloseTermMatch(equivalent, [candidate])))
+    )).length / subjectTerms.length;
+    const contentCoverage = matchedTerms.length / subjectTerms.length;
+    const typeCoverage = queryTerms.some(term => documentTypeTerms.has(term) && metadataTokens.has(term)) ? 0.1 : 0;
+    const exactFact = lines.length > 0 ? extractExactFact(question, lines) : null;
+    const evidence = exactFact || getEvidenceExcerpt(question, lines);
+    const type = normalizeText(document.type || "");
+    const intentTypeGroups = {
+      amount: ["facture", "contrat"],
+      date: ["garantie", "assurance", "contrat", "facture", "entretien"],
+      duration: ["garantie", "notice", "contrat"],
+      frequency: ["notice", "entretien"],
+      identifier: ["facture", "contrat"]
+    };
+    const compatibleTypes = intentTypeGroups[intent] || [];
+    const typePrior = compatibleTypes.includes(type) ? 0.1 : 0;
+    const baseScore = (metadataCoverage * 0.55) + (contentCoverage * 0.35) + typeCoverage + typePrior + (exactFact ? 0.1 : 0);
+    const strategyScore = strategy === "lexical"
+      ? matchedTerms.length / subjectTerms.length
+      : strategy === "metadata"
+        ? (metadataCoverage * 0.55) + (contentCoverage * 0.35) + typeCoverage + (exactFact ? 0.1 : 0)
+        : baseScore;
+    const score = Math.min(1, compatibleTypes.length > 0 && !compatibleTypes.includes(type) ? strategyScore * 0.5 : strategyScore);
+    return {
+      document,
+      score,
+      matchedTerms,
+      exactFact,
+      evidence,
+      provenance: getProvenance(document),
+      intent
+    };
+  }).filter(result => result && result.score >= 0.5).sort((left, right) => (
+    right.score - left.score
+    || right.matchedTerms.length - left.matchedTerms.length
+    || String(left.document.name).localeCompare(String(right.document.name), "fr")
+  ));
+
+  const ambiguousFacts = new Set();
+  const displayedResults = ranked.slice(0, limit);
+  for (let left = 0; left < displayedResults.length; left += 1) {
+    if (!displayedResults[left].exactFact) continue;
+    for (let right = left + 1; right < displayedResults.length; right += 1) {
+      if (
+        displayedResults[right].exactFact
+        && displayedResults[left].exactFact !== displayedResults[right].exactFact
+        && Math.abs(displayedResults[left].score - displayedResults[right].score) < 0.08
+      ) {
+        ambiguousFacts.add(displayedResults[left].document.id);
+        ambiguousFacts.add(displayedResults[right].document.id);
+      }
+    }
+  }
+  return ranked.slice(0, limit).map((result, index) => ({
+    ...result,
+    ambiguous: ambiguousFacts.has(result.document.id),
+    confidence: getSearchConfidence(result.score, result.exactFact, ambiguousFacts.has(result.document.id)),
+    answerStatus: ambiguousFacts.has(result.document.id)
+      ? "ambiguous"
+      : intent && !result.exactFact
+        ? "fact-not-found"
+        : "supported"
+  }));
+}
+
+export function buildSearchResponse(results) {
+  if (results.length === 0) {
+    return {
+      status: "not-found",
+      label: "AUCUNE SOURCE CORRESPONDANTE",
+      answer: "Je n'ai pas trouvé de document correspondant. Essayez de préciser l'équipement, le contrat ou le sujet recherché."
+    };
+  }
+
+  const best = results[0];
+  const ambiguousResults = results.filter(result => result.ambiguous);
+  if (ambiguousResults.length > 1) {
+    const sources = ambiguousResults
+      .slice(0, 2)
+      .map(result => `« ${result.document.name} »`)
+      .join(" et ");
+    return {
+      status: "ambiguous",
+      label: "PLUSIEURS SOURCES — VÉRIFICATION NÉCESSAIRE",
+      answer: `Plusieurs documents contiennent des informations différentes pour cette question (${sources}). Je ne peux pas retenir une réponse unique sans vérification.`
+    };
+  }
+
+  if (best.answerStatus === "fact-not-found") {
+    const evidence = best.evidence ? ` L'extrait rapproché est : « ${best.evidence} ».` : "";
+    return {
+      status: "fact-not-found",
+      label: "INFORMATION NON CONFIRMÉE",
+      answer: `Je n'ai pas trouvé de preuve suffisante pour répondre à cette question dans « ${best.document.name} ». Consultez la source avant de conclure.${evidence}`
+    };
+  }
+
+  if (best.exactFact) {
+    return {
+      status: "supported",
+      label: "RÉPONSE APPUYÉE PAR UN EXTRAIT",
+      answer: `Dans « ${best.document.name} », ${best.exactFact}`
+    };
+  }
+
+  return {
+    status: "excerpt",
+    label: "EXTRAIT PERTINENT — À VÉRIFIER DANS LE DOCUMENT",
+    answer: best.evidence
+      ? `Dans « ${best.document.name} », l'extrait correspondant est : « ${best.evidence} ».`
+      : `« ${best.document.name} » correspond au sujet recherché, mais aucun extrait textuel vérifiable n'est disponible.`
+  };
+}
+
+export function evaluateSearchCorpus(cases, documents, { limit = 3, strategy = "hybrid" } = {}) {
+  const startedAt = performance.now();
+  let retrievedRelevant = 0;
+  let relevantResults = 0;
+  let totalRelevant = 0;
+  let reciprocalRankTotal = 0;
+  let factualAnswersCorrect = 0;
+  let correctAbstentions = 0;
+  let abstentionCases = 0;
+  let unsupportedAnswers = 0;
+  let sourcedResults = 0;
+  let resultCount = 0;
+
+  for (const searchCase of cases) {
+    const results = rankDocuments(searchCase.query, documents, { limit, strategy });
+    const expectedIds = new Set(searchCase.expectedIds);
+    totalRelevant += expectedIds.size;
+    const relevantRank = results.findIndex(result => expectedIds.has(result.document.id));
+    if (relevantRank !== -1) {
+      retrievedRelevant += 1;
+      reciprocalRankTotal += 1 / (relevantRank + 1);
+    }
+    relevantResults += results.filter(result => expectedIds.has(result.document.id)).length;
+
+    if (searchCase.expectedFact !== undefined) {
+      const answer = results.find(result => expectedIds.has(result.document.id)) || results[0];
+      if (searchCase.expectedFact !== null) {
+        if (answer?.exactFact === searchCase.expectedFact && answer.evidence && answer.answerStatus === "supported") {
+          factualAnswersCorrect += 1;
+        } else {
+          unsupportedAnswers += 1;
+        }
+      } else {
+        abstentionCases += 1;
+        const correctlyAbstained = searchCase.expectedStatus === "ambiguous"
+          ? answer?.answerStatus === "ambiguous"
+          : !answer || answer.answerStatus !== "supported";
+        if (correctlyAbstained) correctAbstentions += 1;
+        else unsupportedAnswers += 1;
+      }
+    }
+
+    resultCount += results.length;
+    sourcedResults += results.filter(result => result.evidence && result.provenance).length;
+  }
+
+  const elapsedMs = performance.now() - startedAt;
+  const expectedFactCases = cases.filter(searchCase => searchCase.expectedFact !== undefined && searchCase.expectedFact !== null).length;
+  return {
+    precisionAtK: resultCount ? relevantResults / resultCount : 0,
+    recallAtK: totalRelevant ? relevantResults / totalRelevant : 0,
+    meanReciprocalRank: cases.length ? reciprocalRankTotal / cases.length : 0,
+    factAccuracy: expectedFactCases ? factualAnswersCorrect / expectedFactCases : 1,
+    correctAbstentionRate: abstentionCases ? correctAbstentions / abstentionCases : 1,
+    unsupportedAnswerCount: unsupportedAnswers,
+    sourceCoverage: resultCount ? sourcedResults / resultCount : 0,
+    elapsedMs,
+    averageLatencyMs: cases.length ? elapsedMs / cases.length : 0
+  };
 }
 
 export function getIntentKeywords(intent) {

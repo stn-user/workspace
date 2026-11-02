@@ -129,3 +129,28 @@ Le test automatisé `tests/alert-quality.test.js` contient huit cas synthétique
 | Répétitions au second passage après enregistrement de l'envoi | 0 |
 
 Ce petit corpus est une régression déterministe, construite à partir de cas fictifs ; il ne représente ni la diversité des documents réels ni les performances en production. Les seuils et libellés de preuve devront être réévalués sur un corpus plus large et annoté indépendamment avant toute promesse de fiabilité ou d'économies.
+
+## Recherche documentaire — implémentation et première évaluation (15.2)
+
+Le moteur principal est désormais `rankDocuments` dans `search-utils.js`. Il reste entièrement local et déterministe :
+
+- Les termes significatifs de la requête doivent tous être retrouvés, avec tolérance aux fautes déjà prévue et un petit dictionnaire de synonymes français modifiable et auditable.
+- Les noms, types, fournisseurs, catégories, mots-clés et texte sont pris en compte ; les métadonnées ont un poids supérieur au corps du texte, et le type du document sert de signal selon l'intention factuelle.
+- Les questions génériques sans sujet identifiable s'abstiennent. Les réponses factuelles sont extraites du contenu, pas du résumé. Une date générique n'est pas assimilée à une échéance.
+- Les résultats exposent la provenance, un extrait choisi en fonction de l'intention et un niveau de correspondance. Les faits absents et les réponses contradictoires sont explicitement signalés.
+- Aucun embedding, service externe, modèle génératif ou nouvelle dépendance n'a été ajouté. Le dictionnaire de synonymes est un rapprochement lexical déterministe, pas une compréhension sémantique générale.
+- Les questions et contenus affichés dans l'assistant sont insérés comme texte, sans interprétation HTML.
+
+### Corpus et comparaison
+
+`tests/search-corpus.js` combine trois fichiers d'exemple existants et quatre documents synthétiques, soit sept documents au total. Neuf requêtes couvrent montant, garantie/date, entretien/fréquence, synonymes, faute, documents contradictoires, fait absent et sujet sans correspondance. Les faits attendus sont des lignes précises ; les demandes ambiguës attendent une abstention.
+
+Sur Node.js/Windows, une exécution de `evaluateSearchCorpus` a donné les résultats suivants. La précision@3 est calculée de façon agrégée sur les documents retournés ; les temps sont une mesure ponctuelle et varient avec la machine et la charge.
+
+| Approche locale | Précision@3 | Rappel@3 | MRR | Exactitude factuelle | Abstention correcte | Réponses non étayées | Couverture de source | Temps moyen/requête |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Lexicale (sans synonymes) | 85,7 % | 75 % | 0,556 | 80 % | 100 % | 1 | 100 % | env. 24 ms |
+| Métadonnées pondérées (sans synonymes) | 85,7 % | 75 % | 0,556 | 80 % | 100 % | 1 | 100 % | env. 2,5 ms |
+| Hybride déterministe (métadonnées + synonymes) | 88,9 % | 100 % | 0,778 | 100 % | 100 % | 0 | 100 % | env. 1,7 ms |
+
+Cette évaluation distingue une recherche lexicale améliorée d'une vraie recherche sémantique : aucune représentation vectorielle n'a été comparée. Le résultat favorise le petit corpus choisi et sert seulement de seuil de non-régression. Avant d'utiliser ces valeurs comme indicateur produit, il faut élargir le corpus, faire annoter les requêtes et documents indépendamment, et mesurer les performances sur appareils cibles. La recherche ne comporte pas de quotas ou de capacités dégradées liés à l'offre.

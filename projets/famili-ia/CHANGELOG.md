@@ -1,3 +1,14 @@
+# [15.2.0] - 2026-11-02 - Recherche documentaire sourcée
+
+### 🔎 Phase 15.2
+- Constitution d'un corpus local fictif de sept documents et neuf requêtes avec synonymes, fautes de frappe, faits, ambiguïtés et absences de preuve.
+- Remplacement du classement trop permissif par un classement local qui exige une correspondance des termes de sujet, pondère les métadonnées et utilise un dictionnaire de synonymes explicite.
+- Réponses factuelles produites à partir du texte source, jamais du seul résumé ; chaque résultat expose son extrait, sa provenance et son niveau de correspondance.
+- Abstention explicite quand le fait demandé ou une source vérifiable manque ; détection des réponses contradictoires pour demander une vérification plutôt que choisir arbitrairement.
+- Affichage sécurisé des messages de recherche et de l'assistant avec `textContent`, sans interpréter le contenu des documents ou la question comme du HTML.
+- Comparaison automatisée du lexical, du score par métadonnées et de l'approche hybride ; aucun modèle distant, embedding ni nouvelle dépendance n'a été ajouté. La recherche ne reçoit aucun quota ou verrouillage payant.
+- Sur le corpus synthétique, l'approche hybride obtient précision@3 88,9 %, rappel@3 100 %, MRR 0,778, exactitude factuelle 100 %, abstention correcte 100 % et couverture des sources 100 %. Mesure indicative sur données fictives uniquement.
+
 # [15.1.0] - 2026-11-02 - Fiabilisation des alertes
 
 ### 🔔 Phase 15.1
