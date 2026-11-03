@@ -2854,6 +2854,31 @@ body {
   margin-bottom: var(--space-lg);
 }
 
+.moments-life-grouping-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.moments-life-grouping-controls[hidden] {
+  display: none;
+}
+
+.moments-life-grouping-controls label {
+  font-weight: 600;
+}
+
+.moments-life-grouping-controls select {
+  min-height: 44px;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface, #fff);
+  color: var(--color-text);
+}
+
 .moments-life-search-form {
   display: grid;
   gap: 0.5rem;
@@ -2886,6 +2911,48 @@ body {
   margin-top: 0.75rem;
 }
 
+.moments-life-selection-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface, #fff);
+}
+
+.moments-life-photo-select,
+.photo-select-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.moments-life-photo-select {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.moments-life-photo-select input,
+.photo-select-page input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+.moments-life-photo-select span {
+  grid-column: auto;
+  color: inherit;
+  font-size: inherit;
+}
+
 .moments-life-search-results {
   display: grid;
   gap: 0.65rem;
@@ -2902,8 +2969,62 @@ body {
   border-radius: var(--radius-md);
 }
 
+.moments-life-timeline-group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.moments-life-timeline-group > h3 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0;
+  background: var(--color-surface, #fff);
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.moments-life-timeline-entries {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.moments-life-timeline-group--undated > h3 {
+  color: var(--color-text-secondary);
+}
+
+.moments-life-result--with-thumbnail {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+
+.moments-life-result--with-thumbnail .moments-life-photo-select {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.moments-life-thumbnail {
+  grid-column: 1;
+  grid-row: 2 / span 2;
+  display: block;
+  width: 96px;
+  height: 80px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-hover, #f8fafc);
+  object-fit: contain;
+}
+
 .moments-life-result strong {
+  grid-column: 1 / -1;
   overflow-wrap: anywhere;
+}
+
+.moments-life-result--with-thumbnail strong {
+  grid-column: 2;
 }
 
 .moments-life-result span {
@@ -2940,6 +3061,99 @@ body {
 
 .moments-life-result button {
   min-height: 44px;
+}
+
+.moments-life-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.moments-life-pagination[hidden],
+.moments-life-pagination button[hidden] {
+  display: none;
+}
+
+.photo-detail-dialog,
+.photo-delete-dialog {
+  width: min(100% - 2rem, 42rem);
+}
+
+.photo-detail-image {
+  display: block;
+  width: 100%;
+  max-height: min(55vh, 32rem);
+  margin: 0 auto 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-hover, #f8fafc);
+  object-fit: contain;
+}
+
+.photo-detail-no-preview {
+  padding: 2rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-hover, #f8fafc);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.photo-detail-description {
+  color: var(--color-text-secondary);
+}
+
+.photo-detail-metadata {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.7fr) minmax(0, 1.3fr);
+  gap: 0.6rem 1rem;
+  margin: 1rem 0;
+}
+
+.photo-detail-metadata dt {
+  font-weight: 600;
+}
+
+.photo-detail-metadata dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.moments-life-selection-toolbar button {
+  min-height: 44px;
+}
+
+.photo-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.photo-detail-actions button,
+.photo-delete-dialog .purge-actions button {
+  min-height: 44px;
+}
+
+.photo-detail-dialog .close-button,
+.photo-delete-dialog .close-button {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-delete-status[data-state="error"] {
+  color: var(--color-red, #b91c1c);
+}
+
+.moments-life-pagination span {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 .data-file-row:last-child {
@@ -3477,6 +3691,15 @@ body {
     grid-column: 1;
     grid-row: auto;
     justify-content: flex-start;
+  }
+
+  .photo-detail-metadata {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .photo-detail-metadata dd {
+    margin-bottom: 0.5rem;
   }
 
   .data-inventory .danger-panel .secondary-button {

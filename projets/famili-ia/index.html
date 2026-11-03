@@ -582,10 +582,31 @@
           </div>
           </form>
           <p id="moments-life-search-status" role="status" aria-live="polite"></p>
+          <div id="moments-life-grouping-controls" class="moments-life-grouping-controls" hidden>
+            <label for="moments-life-grouping">Regrouper les photos</label>
+            <select id="moments-life-grouping">
+              <option value="day">Par jour</option>
+              <option value="month">Par mois</option>
+              <option value="event">Par événement</option>
+            </select>
+          </div>
           <div id="moments-life-search-actions" class="moments-life-search-actions" hidden>
               <button id="moments-life-correct-annotations" class="secondary-button" type="button">Vérifier ou corriger les annotations des photos</button>
           </div>
+          <div id="moments-life-selection-toolbar" class="moments-life-selection-toolbar" role="group" aria-label="Actions sur les photos sélectionnées" hidden>
+            <label class="photo-select-page">
+              <input id="moments-life-select-page" type="checkbox">
+              Sélectionner la page
+            </label>
+            <span id="moments-life-selection-status" role="status" aria-live="polite">Aucune photo sélectionnée</span>
+            <button id="moments-life-delete-selected" class="danger-button" type="button" disabled>Supprimer la sélection</button>
+          </div>
           <ol id="moments-life-search-results" class="moments-life-search-results" hidden></ol>
+          <nav id="moments-life-pagination" class="moments-life-pagination" aria-label="Pages des résultats photo">
+            <button id="moments-life-previous-page" class="secondary-button" type="button" hidden>Photos précédentes</button>
+            <span id="moments-life-page-status" aria-live="polite"></span>
+            <button id="moments-life-next-page" class="secondary-button" type="button" hidden>Photos suivantes</button>
+          </nav>
         </section>
 
         <div class="data-filters">
@@ -825,6 +846,35 @@
         <button class="primary-button" type="submit">Enregistrer les associations</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog class="source-dialog photo-detail-dialog" id="photo-detail-dialog" aria-labelledby="photo-detail-title" aria-describedby="photo-detail-description">
+    <div class="dialog-header">
+      <div><p class="eyebrow">MOMENTS DE VIE</p><h2 id="photo-detail-title">Détail de la photo</h2></div>
+      <button class="close-button" id="close-photo-detail" type="button" aria-label="Fermer le détail de la photo">×</button>
+    </div>
+    <img id="photo-detail-image" class="photo-detail-image" alt="" hidden>
+    <p id="photo-detail-no-preview" class="photo-detail-no-preview" hidden>Aucun aperçu n’est disponible pour cette photo.</p>
+    <p id="photo-detail-description" class="photo-detail-description">Cet aperçu est une vignette locale. Famili-IA ne conserve pas le fichier original et ne peut pas le rouvrir depuis ici ; supprimer ces données de l’application ne supprime pas le fichier à son emplacement d’origine.</p>
+    <dl id="photo-detail-metadata" class="photo-detail-metadata"></dl>
+    <div class="photo-detail-actions">
+      <button id="photo-detail-edit-annotations" class="secondary-button" type="button">Corriger les annotations</button>
+      <button id="photo-detail-close-action" class="primary-button" type="button">Fermer</button>
+    </div>
+  </dialog>
+
+  <dialog class="source-dialog photo-delete-dialog" id="photo-delete-confirmation" aria-labelledby="photo-delete-title" aria-describedby="photo-delete-description">
+    <div class="dialog-header">
+      <div><p class="eyebrow">SUPPRESSION LOCALE</p><h2 id="photo-delete-title">Supprimer les photos sélectionnées ?</h2></div>
+      <button class="close-button" id="close-photo-delete" type="button" aria-label="Fermer la confirmation">×</button>
+    </div>
+    <p id="photo-delete-description">Les vignettes, métadonnées et annotations sélectionnées seront supprimées de Famili-IA.</p>
+    <p class="purge-safety-note">Les fichiers originaux ne seront pas supprimés de votre appareil ni de leur emplacement d’origine.</p>
+    <p id="photo-delete-status" class="photo-delete-status" role="status" aria-live="polite" hidden></p>
+    <div class="purge-actions">
+      <button class="secondary-button" id="cancel-photo-delete" type="button">Annuler</button>
+      <button class="danger-button" id="confirm-photo-delete" type="button">Supprimer de Famili-IA</button>
+    </div>
   </dialog>
 
   <dialog class="source-dialog" id="onboarding-scan-dialog" aria-labelledby="onboarding-scan-title">

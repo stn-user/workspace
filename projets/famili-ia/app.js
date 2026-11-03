@@ -10,10 +10,14 @@ import { redactPhotoLocationsForExport } from "./photo-metadata.js";
 import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
 import { searchMomentsLife } from "./moments-life-search.js";
 import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
+import { getPhotoThumbnailDataUrl } from "./photo-thumbnails.js";
+import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline } from "./photo-timeline.js";
 import { getAlertsToNotify, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
 
 const activeScanWorkers = new Map();
+let suspendPhotoThumbnailRendering = () => {};
+let resumePhotoThumbnailRendering = () => {};
 
 /**
  * Vérifie si l'onboarding est complet et retourne l'état.
@@ -416,6 +420,7 @@ function initOnboardingWizard() {
     initEquipmentDialog();
     initAddMemberDialog();
     initPhotoAnnotationsDialog();
+    initPhotoDetailsDialog();
     initMomentsLifeSearch();
     console.log('[DEBUG] Async init - dialogs initialized');
 
@@ -719,9 +724,9 @@ function renderDocuments(matches) {
     addTextElement(info, "p", `search-confidence search-confidence--${confidenceClass}`, `Correspondance ${confidence}`);
     card.append(info);
 
-    const button = addTextElement(card, "button", "source-button", "Voir l'extrait");
+    const button = addTextElement(card, "button", "source-button", isPhotoDocument(sourceDocument) ? "Détail photo" : "Voir l'extrait");
     button.type = "button";
-    button.addEventListener("click", () => openSource(sourceDocument));
+    button.addEventListener("click", () => openDocumentPreview(sourceDocument));
     documentList.append(card);
   });
 }
@@ -757,6 +762,90 @@ function openSource(document) {
   }
   dialogContent.textContent = document.content;
   sourceDialog.showModal();
+}
+
+function openDocumentPreview(document) {
+  if (isPhotoDocument(document)) openPhotoDetailsDialog(document);
+  else openSource(document);
+}
+
+let currentPhotoDetail = null;
+
+function openPhotoDetailsDialog(photo) {
+  const dialog = document.querySelector('#photo-detail-dialog');
+  const image = document.querySelector('#photo-detail-image');
+  const noPreview = document.querySelector('#photo-detail-no-preview');
+  const title = document.querySelector('#photo-detail-title');
+  const metadata = document.querySelector('#photo-detail-metadata');
+  if (!dialog || !image || !noPreview || !title || !metadata) return;
+
+  currentPhotoDetail = photo;
+  title.textContent = photo.name || photo.originalName || 'Photo sans nom';
+  metadata.replaceChildren();
+
+  const thumbnailDataUrl = getPhotoThumbnailDataUrl(photo.photoThumbnail);
+  image.hidden = !thumbnailDataUrl;
+  noPreview.hidden = Boolean(thumbnailDataUrl);
+  if (thumbnailDataUrl) {
+    image.alt = `Aperçu de ${photo.name || photo.originalName || 'la photo'}`;
+    image.src = thumbnailDataUrl;
+  } else {
+    image.removeAttribute('src');
+    image.alt = '';
+  }
+
+  const dateInfo = getPhotoTimelineDateInfo(photo);
+  const annotations = photo.photoAnnotations;
+  const memberNames = getFamilyMembers()
+    .filter(member => annotations?.personIds?.includes(member.id))
+    .map(member => member.name);
+  const eventTags = annotations?.eventTags ?? photo.eventTags ?? [];
+  const details = [
+    ['Prise de vue', getTimelineDateLabel(dateInfo)],
+    ['Importée dans Famili-IA', photo.importedAt?.slice(0, 10) || 'Date indisponible'],
+    ['Personnes associées', memberNames.length ? memberNames.join(', ') : 'Aucune association manuelle'],
+    ['Événements', Array.isArray(eventTags) && eventTags.length
+      ? eventTags.filter(tag => typeof tag === 'string').join(', ')
+      : 'Aucun événement associé'],
+    ['Lieu', annotations?.placeSource === 'user' && annotations.placeLabel
+      ? `${annotations.placeLabel} (saisi manuellement)`
+      : 'Aucun lieu saisi']
+  ];
+  for (const [label, value] of details) {
+    const term = document.createElement('dt');
+    term.textContent = label;
+    const description = document.createElement('dd');
+    description.textContent = value;
+    metadata.append(term, description);
+  }
+  dialog.showModal();
+}
+
+function closePhotoDetailsDialog() {
+  const dialog = document.querySelector('#photo-detail-dialog');
+  const image = document.querySelector('#photo-detail-image');
+  if (dialog?.open) dialog.close();
+  image?.removeAttribute('src');
+  if (image) image.alt = '';
+  currentPhotoDetail = null;
+}
+
+function initPhotoDetailsDialog() {
+  const dialog = document.querySelector('#photo-detail-dialog');
+  document.querySelector('#close-photo-detail')?.addEventListener('click', closePhotoDetailsDialog);
+  document.querySelector('#photo-detail-close-action')?.addEventListener('click', closePhotoDetailsDialog);
+  dialog?.addEventListener('close', () => {
+    const image = document.querySelector('#photo-detail-image');
+    image?.removeAttribute('src');
+    if (image) image.alt = '';
+    currentPhotoDetail = null;
+  });
+  document.querySelector('#photo-detail-edit-annotations')?.addEventListener('click', () => {
+    if (!currentPhotoDetail) return;
+    const photo = currentPhotoDetail;
+    closePhotoDetailsDialog();
+    openPhotoAnnotationsDialog(photo);
+  });
 }
 
 function search(question) {
@@ -883,7 +972,10 @@ function updateScanProgressUI(progressInfo) {
   } else if (progressInfo.status === 'completed') {
     fill.style.width = "100%";
     const failures = progressInfo.failed ? ` · ${progressInfo.failed} échec${progressInfo.failed === 1 ? "" : "s"}` : "";
-    text.textContent = `Indexation terminée : ${progressInfo.imported ?? progressInfo.processed}/${progressInfo.total} fichiers indexés${failures}`;
+    const thumbnailWarnings = progressInfo.thumbnailWarnings
+      ? ` · ${progressInfo.thumbnailWarnings} vignette${progressInfo.thumbnailWarnings === 1 ? "" : "s"} indisponible${progressInfo.thumbnailWarnings === 1 ? "" : "s"}`
+      : "";
+    text.textContent = `Indexation terminée : ${progressInfo.imported ?? progressInfo.processed}/${progressInfo.total} fichiers indexés${failures}${thumbnailWarnings}`;
     scanProgressTimeout = setTimeout(() => {
       container.hidden = true;
       if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
@@ -945,9 +1037,12 @@ function startBackgroundImport(files) {
     const metadataNotice = result.metadataWarnings
       ? ` ${result.metadataWarnings} avertissement${result.metadataWarnings === 1 ? "" : "s"} sur les métadonnées photo.`
       : "";
+    const thumbnailNotice = result.thumbnailWarnings
+      ? ` ${result.thumbnailWarnings} vignette${result.thumbnailWarnings === 1 ? "" : "s"} photo non générée${result.thumbnailWarnings === 1 ? "" : "s"}.`
+      : "";
     setFileStatus(
-      `${result.imported} fichier${result.imported === 1 ? "" : "s"} indexé${result.imported === 1 ? "" : "s"} en local. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.${failedNotice}${metadataNotice}${stoppedNotice}`,
-      result.failed || result.metadataWarnings || result.status === "stopped" ? "warning" : "success"
+      `${result.imported} fichier${result.imported === 1 ? "" : "s"} indexé${result.imported === 1 ? "" : "s"} en local. ${count} fichier${count === 1 ? "" : "s"} disponible${count === 1 ? "" : "s"} dans cette session.${failedNotice}${metadataNotice}${thumbnailNotice}${stoppedNotice}`,
+      result.failed || result.metadataWarnings || result.thumbnailWarnings || result.status === "stopped" ? "warning" : "success"
     );
   }).catch((error) => {
     const reason = error instanceof Error ? error.message : "Erreur d'indexation non détaillée.";
@@ -1339,7 +1434,7 @@ function initializeViewWithParams(viewName, params) {
     const doc = [...documents, ...uploadedDocuments].find(d => d.id === docId);
     if (doc) {
       // Petit délai pour laisser la vue s'afficher proprement avant d'ouvrir la modale
-      setTimeout(() => openSource(doc), 150);
+      setTimeout(() => openDocumentPreview(doc), 150);
     }
   }
 
@@ -1453,6 +1548,7 @@ function renderPlusBadges() {
 function showView(name, { addHistory = true, params = {} } = {}) {
   console.log("showView called for:", name);
   if (!Object.hasOwn(pageTitles, name)) return;
+  if (name !== "vos-donnees") suspendPhotoThumbnailRendering();
 
   // Gestion spéciale : Si un document est demandé, l'ouvrir dans le sourceDialog
   if (params.docId) {
@@ -1460,7 +1556,7 @@ function showView(name, { addHistory = true, params = {} } = {}) {
     if (document) {
       // Construire un événement ou appeler la logique d'ouverture directement
       // On ouvre le dialog source avec ce document
-      openSource(document);
+      openDocumentPreview(document);
       // Si on voulait aussi naviguer vers la vue recherche, on pourrait le faire ici
       // mais pour l'instant on se concentre sur l'ouverture du document
       return; // Arrêter le chargement normal de la vue
@@ -1504,6 +1600,7 @@ function showView(name, { addHistory = true, params = {} } = {}) {
       view.setAttribute('hidden', 'true');
     }
   });
+  if (name === "vos-donnees") resumePhotoThumbnailRendering();
 
   navigationButtons.forEach((button) => {
     const isActive = button.dataset.nav === name;
@@ -2119,7 +2216,7 @@ function initEquipmentDetailView(eqId) {
     btn.addEventListener('click', () => {
       const docId = btn.dataset.docId;
       const doc = [...documents, ...uploadedDocuments].find(d => d.id === docId);
-      if (doc) openSource(doc);
+      if (doc) openDocumentPreview(doc);
     });
   });
 
@@ -3074,15 +3171,18 @@ function renderDataInventory(filters = {}) {
 
     const actions = document.createElement('div');
     actions.className = 'data-file-actions';
+    const isPhoto = isPhotoDocument(doc);
     const previewButton = document.createElement('button');
     previewButton.className = 'secondary-button data-file-open';
     previewButton.type = 'button';
-    previewButton.textContent = 'Aperçu';
-    previewButton.setAttribute('aria-label', `Consulter ${doc.name}`);
-    previewButton.addEventListener('click', () => openSource(doc));
+    previewButton.textContent = isPhoto ? 'Détail' : 'Aperçu';
+    previewButton.setAttribute('aria-label', isPhoto ? `Voir le détail de ${doc.name}` : `Consulter ${doc.name}`);
+    previewButton.addEventListener('click', () => {
+      openDocumentPreview(doc);
+    });
     actions.append(previewButton);
 
-    if (isPhotoDocument(doc)) {
+    if (isPhoto) {
       const associateButton = document.createElement('button');
       associateButton.className = 'secondary-button data-file-open';
       associateButton.type = 'button';
@@ -3124,14 +3224,226 @@ function initMomentsLifeSearch() {
   const input = document.querySelector('#moments-life-query');
   const status = document.querySelector('#moments-life-search-status');
   const results = document.querySelector('#moments-life-search-results');
+  const pagination = document.querySelector('#moments-life-pagination');
+  const groupingControls = document.querySelector('#moments-life-grouping-controls');
+  const groupingSelect = document.querySelector('#moments-life-grouping');
+  const previousPageButton = document.querySelector('#moments-life-previous-page');
+  const nextPageButton = document.querySelector('#moments-life-next-page');
+  const pageStatus = document.querySelector('#moments-life-page-status');
   const actions = document.querySelector('#moments-life-search-actions');
   const correctAnnotationsButton = document.querySelector('#moments-life-correct-annotations');
+  const selectionToolbar = document.querySelector('#moments-life-selection-toolbar');
+  const selectPageCheckbox = document.querySelector('#moments-life-select-page');
+  const selectionStatus = document.querySelector('#moments-life-selection-status');
+  const deleteSelectedButton = document.querySelector('#moments-life-delete-selected');
+  const deleteDialog = document.querySelector('#photo-delete-confirmation');
+  const deleteDescription = document.querySelector('#photo-delete-description');
+  const deleteStatus = document.querySelector('#photo-delete-status');
+  const confirmDeleteButton = document.querySelector('#confirm-photo-delete');
+  const selectedPhotoIds = new Set();
   if (!form || !input || !status || !results) return;
+
+  const pageSize = 24;
+  let photoResults = [];
+  let currentPage = 0;
+  let thumbnailObserver = null;
+
+  function getCurrentPageResults() {
+    const start = currentPage * pageSize;
+    return photoResults.slice(start, start + pageSize);
+  }
+
+  function updateSelectionUI() {
+    const currentPageIds = getCurrentPageResults().map(item => item.photo.id);
+    const selectedOnPage = currentPageIds.filter(id => selectedPhotoIds.has(id)).length;
+    if (selectionToolbar) selectionToolbar.hidden = photoResults.length === 0;
+    if (selectPageCheckbox) {
+      selectPageCheckbox.checked = currentPageIds.length > 0 && selectedOnPage === currentPageIds.length;
+      selectPageCheckbox.indeterminate = selectedOnPage > 0 && selectedOnPage < currentPageIds.length;
+      selectPageCheckbox.disabled = currentPageIds.length === 0;
+    }
+    if (selectionStatus) {
+      const count = selectedPhotoIds.size;
+      selectionStatus.textContent = count === 0
+        ? 'Aucune photo sélectionnée'
+        : `${count} photo${count === 1 ? '' : 's'} sélectionnée${count === 1 ? '' : 's'}`;
+    }
+    if (deleteSelectedButton) deleteSelectedButton.disabled = selectedPhotoIds.size === 0;
+    results.querySelectorAll('[data-photo-select]').forEach(checkbox => {
+      checkbox.checked = selectedPhotoIds.has(checkbox.value);
+    });
+  }
+
+  function observeThumbnail(image) {
+    if (image.hasAttribute('src') || !image.dataset.thumbnail) return;
+    if (thumbnailObserver) thumbnailObserver.observe(image);
+    else image.src = image.dataset.thumbnail;
+  }
+
+  function suspendThumbnails() {
+    thumbnailObserver?.disconnect();
+    thumbnailObserver = null;
+    results.querySelectorAll('img[data-thumbnail]').forEach(image => image.removeAttribute('src'));
+  }
+
+  function resumeThumbnails() {
+    if (document.querySelector('#view-vos-donnees')?.hidden) return;
+    thumbnailObserver?.disconnect();
+    thumbnailObserver = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.src = entry.target.dataset.thumbnail;
+          thumbnailObserver.unobserve(entry.target);
+        }
+      }, { rootMargin: '160px' })
+      : null;
+    results.querySelectorAll('img[data-thumbnail]').forEach(observeThumbnail);
+  }
+
+  function clearResults() {
+    suspendThumbnails();
+    results.replaceChildren();
+    results.hidden = true;
+    photoResults = [];
+    currentPage = 0;
+    if (previousPageButton) previousPageButton.hidden = true;
+    if (nextPageButton) nextPageButton.hidden = true;
+    if (pageStatus) pageStatus.textContent = '';
+    if (pagination) pagination.hidden = true;
+    if (groupingControls) groupingControls.hidden = true;
+    selectedPhotoIds.clear();
+    if (selectPageCheckbox) {
+      selectPageCheckbox.checked = false;
+      selectPageCheckbox.indeterminate = false;
+    }
+    updateSelectionUI();
+  }
+
+  function openPhotoDeleteConfirmation() {
+    if (!deleteDialog || !deleteDescription || !deleteStatus || selectedPhotoIds.size === 0) return;
+    deleteDescription.textContent = `${selectedPhotoIds.size} photo${selectedPhotoIds.size === 1 ? '' : 's'} et leurs vignettes, métadonnées et annotations seront supprimées de Famili-IA.`;
+    deleteStatus.hidden = true;
+    deleteStatus.textContent = '';
+    deleteStatus.removeAttribute('data-state');
+    deleteDialog.showModal();
+  }
+
+  function renderPhotoResult(item) {
+    const row = document.createElement('li');
+    row.className = 'moments-life-result';
+    const selectionLabel = document.createElement('label');
+    selectionLabel.className = 'moments-life-photo-select';
+    const selectionCheckbox = document.createElement('input');
+    selectionCheckbox.type = 'checkbox';
+    selectionCheckbox.value = item.photo.id;
+    selectionCheckbox.dataset.photoSelect = '';
+    selectionCheckbox.checked = selectedPhotoIds.has(item.photo.id);
+    selectionCheckbox.setAttribute('aria-label', `Sélectionner ${item.photo.name || item.photo.originalName || 'la photo'} pour suppression`);
+    const selectionCopy = document.createElement('span');
+    selectionCopy.textContent = 'Sélectionner';
+    selectionLabel.append(selectionCheckbox, selectionCopy);
+    row.append(selectionLabel);
+
+    const thumbnailDataUrl = getPhotoThumbnailDataUrl(item.photo.photoThumbnail);
+    if (thumbnailDataUrl) {
+      row.classList.add('moments-life-result--with-thumbnail');
+      const thumbnail = document.createElement('img');
+      thumbnail.className = 'moments-life-thumbnail';
+      thumbnail.alt = `Aperçu de ${item.photo.name || item.photo.originalName || 'la photo'}`;
+      thumbnail.loading = 'lazy';
+      thumbnail.decoding = 'async';
+      thumbnail.dataset.thumbnail = thumbnailDataUrl;
+      row.append(thumbnail);
+    }
+
+    const title = document.createElement('strong');
+    title.textContent = `${item.rank}. ${item.photo.name || item.photo.originalName || 'Photo sans nom'}`;
+    row.append(title);
+
+    const dateInfo = getPhotoTimelineDateInfo(item.photo);
+    const details = [getTimelineDateLabel(dateInfo)];
+    const importedAt = item.photo.importedAt;
+    details.push(importedAt ? `Importée dans Famili-IA : ${importedAt.slice(0, 10)}` : "Date d'import : indisponible");
+    const annotation = item.photo.photoAnnotations;
+    const memberNames = getFamilyMembers()
+      .filter(member => annotation?.personIds?.includes(member.id))
+      .map(member => member.name);
+    details.push(memberNames.length ? `Membres associés (saisie manuelle) : ${memberNames.join(', ')}` : 'Aucun membre associé manuellement');
+    if (annotation?.placeSource === 'user' && annotation.placeLabel) {
+      details.push(`Lieu saisi manuellement : ${annotation.placeLabel}`);
+    }
+    const eventTags = annotation?.eventTags ?? item.photo.eventTags ?? [];
+    if (Array.isArray(eventTags) && eventTags.length > 0) {
+      details.push(`Événements saisis : ${eventTags.filter(tag => typeof tag === 'string').join(', ')}`);
+    }
+    for (const detailText of details) {
+      const detail = document.createElement('span');
+      detail.textContent = detailText;
+      row.append(detail);
+    }
+
+    const confidence = document.createElement('span');
+    confidence.className = `moments-life-confidence moments-life-confidence--${item.confidence.level}`;
+    confidence.textContent = `Confiance ${item.confidence.label}${item.confidence.reasons.length ? ` · ${item.confidence.reasons.join(' ')}` : ''}`;
+    row.append(confidence);
+
+    const actions = document.createElement('div');
+    actions.className = 'moments-life-result-actions';
+    const openButton = document.createElement('button');
+    openButton.type = 'button';
+    openButton.className = 'secondary-button';
+    openButton.textContent = 'Détail';
+    openButton.setAttribute('aria-label', `Voir le détail de ${item.photo.name || item.photo.originalName || 'la photo'}`);
+    openButton.addEventListener('click', () => openPhotoDetailsDialog(item.photo));
+    const correctButton = document.createElement('button');
+    correctButton.type = 'button';
+    correctButton.className = 'secondary-button';
+    correctButton.textContent = 'Corriger les annotations';
+    correctButton.addEventListener('click', () => openPhotoAnnotationsDialog(item.photo));
+    actions.append(openButton, correctButton);
+    row.append(actions);
+    return row;
+  }
+
+  function renderResultsPage() {
+    suspendThumbnails();
+    results.replaceChildren();
+    const start = currentPage * pageSize;
+    const pageResults = photoResults.slice(start, start + pageSize);
+    const groups = groupPhotosForTimeline(pageResults, groupingSelect?.value || "day");
+    for (const group of groups) {
+      const groupItem = document.createElement('li');
+      groupItem.className = `moments-life-timeline-group moments-life-timeline-group--${group.kind}`;
+      const heading = document.createElement('h3');
+      heading.textContent = group.label;
+      groupItem.append(heading);
+      const entries = document.createElement('ol');
+      entries.className = 'moments-life-timeline-entries';
+      for (const entry of group.entries) {
+        entries.append(renderPhotoResult(entry.result));
+      }
+      groupItem.append(entries);
+      results.append(groupItem);
+    }
+
+    const pageCount = Math.ceil(photoResults.length / pageSize);
+    results.hidden = pageResults.length === 0;
+    if (previousPageButton) previousPageButton.hidden = currentPage === 0;
+    if (nextPageButton) nextPageButton.hidden = currentPage >= pageCount - 1;
+    if (pageStatus) pageStatus.textContent = pageCount > 1 ? `Page ${currentPage + 1} sur ${pageCount}` : '';
+    if (pagination) pagination.hidden = pageCount <= 1;
+    if (groupingControls) groupingControls.hidden = photoResults.length === 0;
+    updateSelectionUI();
+    resumeThumbnails();
+  }
+
+  suspendPhotoThumbnailRendering = suspendThumbnails;
+  resumePhotoThumbnailRendering = resumeThumbnails;
 
   form.addEventListener('submit', event => {
     event.preventDefault();
-    results.replaceChildren();
-    results.hidden = true;
+    clearResults();
     if (actions) actions.hidden = true;
 
     try {
@@ -3155,77 +3467,105 @@ function initMomentsLifeSearch() {
 
       const matchedPhrases = result.explanations.map(item => item.phrase).filter(Boolean);
       status.textContent = `${result.results.length} photo${result.results.length === 1 ? '' : 's'} trouvée${result.results.length === 1 ? '' : 's'}. Filtres exacts : ${matchedPhrases.join(', ')}. Triées par date de prise de vue puis d'import ; aucune date manquante n'est inventée. La confiance décrit la provenance des données, pas une probabilité de pertinence.`;
-      for (const item of result.results) {
-        const row = document.createElement('li');
-        row.className = 'moments-life-result';
-        const title = document.createElement('strong');
-        title.textContent = `${item.rank}. ${item.photo.name || item.photo.originalName || 'Photo sans nom'}`;
-        row.append(title);
-
-        const details = [];
-        const override = item.photo.photoAnnotations?.captureDateOverride;
-        const captureMetadata = item.photo.photoMetadata?.captureDate;
-        const capturedAt = override?.localDateTime
-          ?? captureMetadata?.localDateTime
-          ?? item.photo.capturedAt?.localDateTime;
-        const captureSource = override
-          ? 'corrigée par vous'
-          : captureMetadata?.source?.kind === 'exif'
-            ? 'EXIF'
-            : captureMetadata?.source?.kind === 'legacy' || item.photo.capturedAt
-              ? 'ancienne donnée, source à vérifier'
-              : captureMetadata?.source?.kind === 'user' ? 'saisie utilisateur' : 'source inconnue';
-        if (capturedAt) {
-          const offset = override ? override.offsetMinutes : captureMetadata?.offsetMinutes;
-          details.push(`Prise de vue : ${capturedAt.slice(0, 10)} · ${captureSource}${offset == null ? ' · fuseau inconnu' : ''}`);
-        } else {
-          details.push('Prise de vue : date indisponible');
-        }
-        const importedAt = item.photo.importedAt;
-        details.push(importedAt ? `Importée dans Famili-IA : ${importedAt.slice(0, 10)}` : "Date d'import : indisponible");
-        const annotation = item.photo.photoAnnotations;
-        const memberNames = getFamilyMembers()
-          .filter(member => annotation?.personIds?.includes(member.id))
-          .map(member => member.name);
-        details.push(memberNames.length ? `Membres associés (saisie manuelle) : ${memberNames.join(', ')}` : 'Aucun membre associé manuellement');
-        if (annotation?.placeSource === 'user' && annotation.placeLabel) {
-          details.push(`Lieu saisi manuellement : ${annotation.placeLabel}`);
-        }
-        if (Array.isArray(annotation?.eventTags) && annotation.eventTags.length > 0) {
-          details.push(`Événements saisis manuellement : ${annotation.eventTags.join(', ')}`);
-        }
-        for (const detailText of details) {
-          const detail = document.createElement('span');
-          detail.textContent = detailText;
-          row.append(detail);
-        }
-        const confidence = document.createElement('span');
-        confidence.className = `moments-life-confidence moments-life-confidence--${item.confidence.level}`;
-        confidence.textContent = `Confiance ${item.confidence.label}${item.confidence.reasons.length ? ` · ${item.confidence.reasons.join(' ')}` : ''}`;
-        row.append(confidence);
-
-        const actions = document.createElement('div');
-        actions.className = 'moments-life-result-actions';
-        const openButton = document.createElement('button');
-        openButton.type = 'button';
-        openButton.className = 'secondary-button';
-        openButton.textContent = 'Aperçu';
-        openButton.setAttribute('aria-label', `Consulter ${item.photo.name || item.photo.originalName || 'la photo'}`);
-        openButton.addEventListener('click', () => openSource(item.photo));
-        const correctButton = document.createElement('button');
-        correctButton.type = 'button';
-        correctButton.className = 'secondary-button';
-        correctButton.textContent = 'Corriger les annotations';
-        correctButton.addEventListener('click', () => openPhotoAnnotationsDialog(item.photo));
-        actions.append(openButton, correctButton);
-        row.append(actions);
-        results.append(row);
-      }
-      results.hidden = result.results.length === 0;
+      photoResults = result.results;
+      renderResultsPage();
     } catch (error) {
       console.error("La recherche Moments de vie a échoué :", error);
       status.textContent = "La recherche a échoué. Vérifiez les données locales puis réessayez.";
+      clearResults();
     }
+  });
+
+  previousPageButton?.addEventListener('click', () => {
+    if (currentPage === 0) return;
+    currentPage -= 1;
+    renderResultsPage();
+  });
+  nextPageButton?.addEventListener('click', () => {
+    if ((currentPage + 1) * pageSize >= photoResults.length) return;
+    currentPage += 1;
+    renderResultsPage();
+  });
+  selectPageCheckbox?.addEventListener('change', () => {
+    for (const item of getCurrentPageResults()) {
+      if (selectPageCheckbox.checked) selectedPhotoIds.add(item.photo.id);
+      else selectedPhotoIds.delete(item.photo.id);
+    }
+    updateSelectionUI();
+  });
+  results.addEventListener('change', event => {
+    const checkbox = event.target.closest('[data-photo-select]');
+    if (!checkbox) return;
+    if (checkbox.checked) selectedPhotoIds.add(checkbox.value);
+    else selectedPhotoIds.delete(checkbox.value);
+    updateSelectionUI();
+  });
+  deleteSelectedButton?.addEventListener('click', openPhotoDeleteConfirmation);
+
+  const closeDeleteDialog = () => {
+    if (confirmDeleteButton?.disabled) return;
+    if (deleteDialog?.open) deleteDialog.close();
+  };
+  document.querySelector('#close-photo-delete')?.addEventListener('click', closeDeleteDialog);
+  document.querySelector('#cancel-photo-delete')?.addEventListener('click', closeDeleteDialog);
+  deleteDialog?.addEventListener('cancel', event => {
+    if (confirmDeleteButton?.disabled) event.preventDefault();
+  });
+  confirmDeleteButton?.addEventListener('click', async () => {
+    if (selectedPhotoIds.size === 0 || !deleteStatus || !confirmDeleteButton) return;
+    confirmDeleteButton.disabled = true;
+    const cancelButton = document.querySelector('#cancel-photo-delete');
+    const closeButton = document.querySelector('#close-photo-delete');
+    if (cancelButton) cancelButton.disabled = true;
+    if (closeButton) closeButton.disabled = true;
+    deleteStatus.hidden = true;
+
+    let deletedCount = 0;
+    const failed = [];
+    for (const id of [...selectedPhotoIds]) {
+      const photo = photoResults.find(item => item.photo.id === id)?.photo;
+      if (!photo || !isPhotoDocument(photo)) {
+        selectedPhotoIds.delete(id);
+        continue;
+      }
+      try {
+        await deleteDocument(id);
+        const uploadedIndex = uploadedDocuments.findIndex(document => document.id === id);
+        if (uploadedIndex !== -1) uploadedDocuments.splice(uploadedIndex, 1);
+        selectedPhotoIds.delete(id);
+        photoResults = photoResults.filter(item => item.photo.id !== id);
+        deletedCount += 1;
+      } catch (error) {
+        console.error(`Impossible de supprimer la photo ${id} des données Famili-IA :`, error);
+        failed.push(error instanceof Error ? error.message : 'Erreur inattendue');
+      }
+    }
+
+    currentPage = Math.min(currentPage, Math.max(0, Math.ceil(photoResults.length / pageSize) - 1));
+    renderResultsPage();
+    if (deletedCount > 0) {
+      status.textContent = `${deletedCount} photo${deletedCount === 1 ? '' : 's'} supprimée${deletedCount === 1 ? '' : 's'} de Famili-IA. Les fichiers originaux sont préservés.`;
+    }
+    if (failed.length > 0) {
+      deleteStatus.textContent = `${deletedCount} photo${deletedCount === 1 ? '' : 's'} supprimée${deletedCount === 1 ? '' : 's'} ; ${failed.length} suppression${failed.length === 1 ? '' : 's'} a échoué. ${failed.join(' ')}`;
+      deleteStatus.dataset.state = 'error';
+      deleteStatus.hidden = false;
+      confirmDeleteButton.disabled = false;
+      if (cancelButton) cancelButton.disabled = false;
+      if (closeButton) closeButton.disabled = false;
+      updateSelectionUI();
+      return;
+    }
+
+    deleteDialog.close();
+    confirmDeleteButton.disabled = false;
+    if (cancelButton) cancelButton.disabled = false;
+    if (closeButton) closeButton.disabled = false;
+  });
+
+  groupingSelect?.addEventListener('change', () => {
+    currentPage = 0;
+    renderResultsPage();
   });
 
   correctAnnotationsButton?.addEventListener('click', () => {
@@ -3405,6 +3745,11 @@ function initDataView(filters = {}) {
   if (pdfExportBtn) {
     pdfExportBtn.addEventListener('click', () => {
       const dataToExport = redactPhotoLocationsForExport(getFullState());
+      dataToExport.documents = dataToExport.documents.map(document => {
+        const exportedDocument = { ...document };
+        delete exportedDocument.photoThumbnail;
+        return exportedDocument;
+      });
       const dataStr = JSON.stringify(dataToExport, null, 2);
       const pdfContent = generatePDF(dataStr);
       const blob = new Blob([pdfContent], { type: 'application/pdf' });

@@ -43,6 +43,7 @@ export class BackgroundSyncWorker {
     let imported = 0;
     let failed = 0;
     let metadataWarnings = 0;
+    let thumbnailWarnings = 0;
 
     this.onProgress?.({
       status: 'indexing',
@@ -50,6 +51,8 @@ export class BackgroundSyncWorker {
       processed,
       imported,
       failed,
+      metadataWarnings,
+      thumbnailWarnings,
       total: totalFiles
     });
 
@@ -67,6 +70,7 @@ export class BackgroundSyncWorker {
           const parsed = await readFileContent(file, file.name);
           const id = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
           let photoMetadata;
+          let photoThumbnail;
           if (/\.(jpg|jpeg|png)$/i.test(file.name)) {
             const { extractPhotoMetadata } = await import("./photo-exif.js");
             const extraction = await extractPhotoMetadata(file, id, {
@@ -76,6 +80,13 @@ export class BackgroundSyncWorker {
             metadataWarnings += extraction.issues.length;
             if (extraction.issues.length > 0) {
               console.warn(`Métadonnées photo incomplètes pour ${file.name}:`, extraction.issues);
+            }
+            try {
+              const { generatePhotoThumbnail } = await import("./photo-thumbnails.js");
+              photoThumbnail = await generatePhotoThumbnail(file);
+            } catch (error) {
+              thumbnailWarnings += 1;
+              console.warn(`Vignette indisponible pour ${file.name}:`, error);
             }
           }
 
@@ -98,7 +109,8 @@ export class BackgroundSyncWorker {
             provider: parsed.context.provider,
             isLocal: true,
             ...(file.webkitRelativePath ? { sourceDir: file.webkitRelativePath } : {}),
-            ...(photoMetadata ? { photoMetadata, importedAt: new Date().toISOString() } : {})
+            ...(photoMetadata ? { photoMetadata, importedAt: new Date().toISOString() } : {}),
+            ...(photoThumbnail ? { photoThumbnail } : {})
           };
 
           await addDocument(document);
@@ -120,13 +132,14 @@ export class BackgroundSyncWorker {
         imported,
         failed,
         metadataWarnings,
+        thumbnailWarnings,
         total: totalFiles
       });
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     const status = processed === totalFiles ? 'completed' : 'stopped';
-    const result = { status, processed, imported, failed, metadataWarnings, total: totalFiles };
+    const result = { status, processed, imported, failed, metadataWarnings, thumbnailWarnings, total: totalFiles };
     this.onProgress?.({ ...result, progress: totalFiles > 0 ? Math.round((processed / totalFiles) * 100) : 100 });
     return result;
   }
@@ -183,6 +196,7 @@ export class BackgroundSyncWorker {
     let processedCount = 0;
     let importedCount = 0;
     let failedCount = 0;
+    let thumbnailWarnings = 0;
     const totalFiles = allDiscoveredFiles.length;
 
     for (let i = 0; i < batches.length; i++) {
@@ -212,6 +226,16 @@ export class BackgroundSyncWorker {
           const parsed = await readFileContent(fileObj.blob, fileObj.name);
           const content = parsed.rawText;
           const type = parsed.context.type ? parsed.context.type.charAt(0).toUpperCase() + parsed.context.type.slice(1) : "Texte";
+          let photoThumbnail;
+          if (/\.(jpg|jpeg|png)$/i.test(fileObj.name)) {
+            try {
+              const { generatePhotoThumbnail } = await import("./photo-thumbnails.js");
+              photoThumbnail = await generatePhotoThumbnail(fileObj.blob);
+            } catch (error) {
+              thumbnailWarnings += 1;
+              console.warn(`Vignette indisponible pour ${fileObj.name}:`, error);
+            }
+          }
 
           const newDoc = {
             id: `proactive-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -226,7 +250,8 @@ export class BackgroundSyncWorker {
             expiryDateEvidence: parsed.context.expiryDateEvidence,
             provider: parsed.context.provider,
             isLocal: true,
-            sourceDir: fileObj.path || "Background Sync"
+            sourceDir: fileObj.path || "Background Sync",
+            ...(photoThumbnail ? { photoThumbnail, importedAt: new Date().toISOString() } : {})
           };
 
           console.log(`Debug: Ajout effectif du document dans le state -> ${fileObj.name}`);
@@ -249,6 +274,7 @@ export class BackgroundSyncWorker {
           processed: processedCount,
           imported: importedCount,
           failed: failedCount,
+          thumbnailWarnings,
           total: totalFiles
         });
       }
@@ -266,6 +292,7 @@ export class BackgroundSyncWorker {
         processed: processedCount,
         imported: importedCount,
         failed: failedCount,
+        thumbnailWarnings,
         total: totalFiles,
         progress: totalFiles > 0 ? Math.round((processedCount / totalFiles) * 100) : 100
       });

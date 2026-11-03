@@ -276,14 +276,14 @@ export async function addDocument(document) {
 }
 
 export async function deleteDocument(id) {
-  state.documents = state.documents.filter(doc => doc.id !== id);
   await remove('documents', id);
+  state.documents = state.documents.filter(doc => doc.id !== id);
   const linkedAlert = state.alerts.find(alert => alert.docId === id && (
     alert.source === "document" || alert.id === `alert-${id}`
   ));
   if (linkedAlert) {
-    state.alerts = state.alerts.filter(alert => alert.id !== linkedAlert.id);
     await remove('alerts', linkedAlert.id);
+    state.alerts = state.alerts.filter(alert => alert.id !== linkedAlert.id);
   }
   return state.documents;
 }
