@@ -225,17 +225,56 @@ Cette phase reprend les travaux encore ouverts de l'ancienne 12.2 et améliore l
 - [✓] 15.5.d : Ajouter navigation clavier/tactile accessible, aperçu détaillé, sélection multiple et suppression des seules données Famili-IA, en préservant les originaux ; documenter les limites et choix dans [la conception Galerie et Journal de bord](docs/architecture/phase-15-photo-gallery-design.md).
 - [✓] 15.5.e : Valider le parcours sur tailles d'écran représentatives et une bibliothèque de 1 000 photos ; vérifier défilement/pagination, limites mémoire de rendu, débordement mobile, accessibilité clavier et exactitude des aperçus ; consigner les résultats et limites matérielles dans [la conception Galerie et Journal de bord](docs/architecture/phase-15-photo-gallery-design.md).
 
-#### 15.5bis – Refonte de la démo guidée et valorisation des points forts
-L'objectif est de transformer la visite guidée existante en une démonstration courte et visuelle, qui relie chaque bénéfice à une preuve visible dans l'application. Les données de démonstration restent fictives et les fonctions présentées doivent correspondre aux capacités réellement disponibles.
+#### 15.5bis – Plan de Développement Ultra-Détaillé : Parcours Utilisateur Famili-IA (Cible 8 Écrans & Multi-Support)
+L'objectif est de repositionner Famili-IA comme le **point d'accès universel et souverain** permettant de rechercher et retrouver un document ou une photo où qu'elle se trouve (Local, Fichiers, Cloud Google Drive/Dropbox, Photos). Le parcours d'onboarding et de démonstration est restructuré autour d'une séquence cible en 8 écrans avec le moteur de recherche universel au centre de l'expérience (« Que recherchez-vous ? »).
 
-- [ ] 15.5bis.a : Auditer le parcours actuel, les vues et interactions démontrables, les données fictives et les messages affichés ; distinguer explicitement ce qui est simulé, traité localement ou indisponible, puis retenir trois ou quatre bénéfices prioritaires plutôt qu'un passage obligatoire par tous les onglets.
-- [ ] 15.5bis.b : Concevoir le scénario et son storyboard selon un fil « besoin → action → preuve → bénéfice » : accroche sur le foyer de démonstration, recherche avec document et extrait justificatif, équipement et informations associées, alerte avec sa source et son niveau de confiance, puis choix entre exploration libre et parcours avec ses propres fichiers. Garder les vues secondaires en exploration libre si elles ne renforcent pas le récit ; n'ajouter la Galerie/Timeline qu'après sa réalisation et sa validation en 15.5.
-- [ ] 15.5bis.c : Concevoir un spotlight sur les éléments ciblés (arrière-plan atténué, zone mise en évidence, transition vers l'onglet ou le composant), avec zoom ponctuel lorsque cela aide à lire un détail ; préserver le contexte, le défilement et les interactions, sans recourir à des captures figées susceptibles de diverger de l'interface réelle.
-- [ ] 15.5bis.d : Remplacer la phrase discrète en bas d'écran par une carte explicative proche de la zone ciblée : titre orienté bénéfice, explication simple et, si utile, preuve ou action à observer. Définir une hiérarchie visuelle et un positionnement adaptatif qui ne masque ni le contenu ni la source.
-- [ ] 15.5bis.e : Définir les commandes et le rythme de la visite : continuer, revenir, quitter, relancer, passer la démo ou explorer librement ; garder des transitions brèves, laisser le temps de lire et ne pas imposer de son.
-- [ ] 15.5bis.f : Valider l'accessibilité et le responsive : navigation clavier et lecteur d'écran, ordre de focus, contraste, cibles tactiles, sortie toujours accessible et respect de `prefers-reduced-motion` ; adapter le spotlight, le zoom et la carte aux petits écrans.
-- [ ] 15.5bis.g : Implémenter la visite sur les vues existantes avec des points d'ancrage robustes, sans dupliquer l'interface ni perturber le routage, l'historique navigateur ou l'état de la démo ; conserver les parcours d'entrée et de sortie actuels et signaler clairement les limites de la démonstration.
-- [ ] 15.5bis.h : Tester le scénario complet, les transitions, la sortie et la relance, les petits écrans et l'absence d'un point d'ancrage ; vérifier manuellement sur mobile et desktop que les bénéfices prioritaires ont une preuve visible, qu'aucun contenu essentiel n'est masqué et que les données fictives ne peuvent être prises pour des données réelles.
+- [ ] **15.5bis.a – Écran 1 & 2 : Bienvenue & Personnalisation Légère (Zero Friction)**
+  - Concevoir l'Écran 1 (Bienvenue) autour de la promesse « Retrouvez tout ce qui compte, où que cela se trouve », avec bouton unique « Découvrir Famili-IA » et rappel de souveraineté local-first (zéro serveur).
+  - Concevoir l'Écran 2 (Personnalisation) : saisie d'un prénom uniquement (facultatif), sans mot de passe, ni formulaire familial complexe, ni demande de téléversement initiale.
+  - *Critères d'acceptation* : Bouton "Découvrir" ≥ 48x48px sur mobile/tablette/web ; absence totale de formulaire lourd ; stockage local immédiat du prénom (optionnel).
+  - *Tests associés* : Test d'affichage et de réactivité tactile sur Web (1920px), Tablette (768px), Mobile (390px).
+
+- [ ] **15.5bis.b – Écran 3 & 4 : Choix du Parcours & Démo Universelle Multi-Sources**
+  - Concevoir l'Écran 3 (Choix du parcours) : distinction nette entre la découverte immédiate via le Mode Démo et la connexion directe de ses propres sources.
+  - Concevoir l'Écran 4 (Résultats de la démo) : démonstration interactive avec 3 questions préremplies (ex: « Retrouve la facture de ma piscine »), simulant la recherche universelle instantanée dans plusieurs sources (Téléphone, Ordinateur, Cloud, Photos) sans inscription obligatoire.
+  - *Critères d'acceptation* : 3 questions préremplies cliquables ; affichage des résultats avec badges de provenance (Démo, Google Drive, Local) ; aucun accès aux données personnelles lors de la démo.
+  - *Tests associés* : Test du clic sur chaque question de démo et vérification du rendu des résultats fictifs.
+
+- [ ] **15.5bis.c – Écran 5 : Connecteur Multi-Sources & Statuts de Disponibilité**
+  - Concevoir l'Écran 5 (Choix des sources) : sélection des espaces à interconnecter (Google Drive, Dropbox, Fichiers locaux, Photos, Import manuel).
+  - Spécifier et afficher un statut de disponibilité explicite par source : *Connectée* (Recherche opérationnelle), *Partiellement indexée* (Certains contenus), *À connecter* (Source non autorisée), *Synchronisation nécessaire*.
+  - *Critères d'acceptation* : Tuiles de sources interactives ; affichage dynamique du statut de disponibilité de chaque connecteur ; principe d'une connexion à la fois pour obtenir une première victoire.
+  - *Tests associés* : Test de sélection des sources et vérification des états de disponibilité.
+
+- [ ] **15.5bis.d – Écran 6 : Première Recherche Réelle (Preuve par l'Exemple)**
+  - Concevoir l'Écran 6 (Première recherche personnelle) : invite l'utilisateur à poser une question réelle sur ses propres documents/photos connectés.
+  - Affichage clair de la provenance du document, du résumé/extrait factuel et de l'accès direct au fichier source sans duplication inutile.
+  - *Critères d'acceptation* : Saisie de recherche réelle fonctionnelle ; affichage de la provenance (💾 Local / ☁️ Drive) ; ouverture du fichier source ou aperçu local sans erreur.
+  - *Tests associés* : Test de recherche sur documents réels importés ou connectés.
+
+- [ ] **15.5bis.e – Écran 7 : Accueil Personnalisé - Moteur de Recherche Universel au Centre**
+  - Refondre la vue Accueil (`#view-accueil`) pour placer la zone de recherche universelle au premier plan (« Que recherchez-vous ? »).
+  - Intégrer les tuiles d'accès direct par type de source (Téléphone, Ordinateur, Cloud, Photos, Documents) et le résumé dynamique du foyer.
+  - *Critères d'acceptation* : Barre de recherche universelle en haut/centre de l'accueil ; grille de sources responsive (Web, Tablette, Mobile) ; affichage correct des compteurs et statistiques du foyer.
+  - *Tests associés* : Test de navigation et de rendu responsive de la vue Accueil.
+
+- [ ] **15.5bis.f – Écran 8 : Centre d'Alertes Proactives & Échéances Domestiques**
+  - Structurer l'Écran 8 (Centre d'alertes) : consolidation des rappels proactifs (garanties, révisions, factures à traiter/anticiper) avec traçabilité vers le document source et acquittement rapide.
+  - *Critères d'acceptation* : Tri des alertes par niveau d'urgence ; lien direct vers le document justificatif ; actions d'acquittement ou de report fonctionnelles.
+  - *Tests associés* : Test de filtrage et d'acquittement des alertes.
+
+- [ ] **15.5bis.g – Ergonomie, Commandes & Accessibilité Responsive**
+  - Assurer une navigation fluide entre les 8 écrans (boutons Continuer, Précédent, Explorer, Quitter).
+  - Adapter le layout sur mobile et desktop, assurer un niveau de contraste suffisant, la navigation clavier ARIA et le respect strict de `prefers-reduced-motion`.
+  - *Critères d'acceptation* : Cibles tactiles ≥ 48x48px ; zéro débordement horizontal sur mobile (390px) et tablette (768px) ; attributs ARIA complets.
+  - *Tests associés* : Tests Playwright multi-viewport (390px, 768px, 1280px) et vérification des flux d'accessibilité.
+
+- [ ] **15.5bis.h – Validation Technique & Sanitation (Zéro Serveur / Non-Régression)**
+  - Valider l'étanchéité des données (zéro fuite cloud, 100% indexation locale IndexedDB).
+  - Exécuter la suite complète de tests unitaires et de sanitation pour garantir l'absence de régression.
+  - *Critères d'acceptation* : 100% des tests passants (`node --test` et Playwright) ; persistance locale vérifiée.
+  - *Tests associés* : Exécution des scripts de test automatisés du projet.
+
 
 #### 15.6 – Hypothèses d'offres et viabilité économique
 - [✓] 15.6.a : Consigner comme hypothèses de travail les offres Essentiel (gratuite, recherche locale et premières échéances) et Sérénité (rappels programmés, synchronisation/sauvegarde structurée, partage familial et suivi dans le temps), sans figer les fonctionnalités finales.

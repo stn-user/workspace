@@ -88,9 +88,9 @@ function initOnboardingWizard() {
   const wizard = document.querySelector("#onboarding-wizard");
   const steps = wizard ? wizard.querySelectorAll(".wizard-step") : [];
   const userNameInput = document.querySelector("#wizard-user-name");
-  const userCityInput = document.querySelector("#wizard-user-city");
   const startDemoMode = document.querySelector('#start-demo-mode');
   const startScanMode = document.querySelector('#start-scan-mode');
+  const startOnboarding = document.querySelector('#start-onboarding');
 
   console.log('[DEBUG] initOnboardingWizard - wizard found:', !!wizard);
   console.log('[DEBUG] initOnboardingWizard - isOnboardingComplete:', isOnboardingComplete());
@@ -119,43 +119,41 @@ function initOnboardingWizard() {
   // Navigation entre les étapes
   if (wizard) {
     wizard.querySelectorAll('[data-wizard-next]').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async (e) => {
         const targetStep = parseInt(btn.dataset.wizardNext);
 
-        // Sauvegarder les informations utilisateur avant de passer à l'étape 2
-        if (userNameInput && userCityInput && targetStep === 2) {
+        // Sauvegarder les informations utilisateur avant de passer à l'étape 2 (choix du parcours)
+        // Étape 1 -> Saisie prénom optionnel
+        if (userNameInput && targetStep === 2) {
           const name = userNameInput.value.trim();
-          const city = userCityInput.value.trim();
 
-          // Validation bloquante
-          if (!name || !city) {
-            showDemoNotice("Veuillez saisir votre prénom et votre ville pour continuer.");
-            return; // Bloque la navigation
+          // Le prénom est optionnel, pas de validation bloquante
+          if (name) {
+            // Mettre à jour l'état utilisateur
+            const user = getCurrentUser();
+            if (user) {
+              user.name = name;
+              // Mettre à jour l'avatar si existant
+              const stateAvatar = document.querySelector('#profile-avatar, #dashboard-title strong');
+              if (stateAvatar) {
+                stateAvatar.textContent = name.charAt(0).toUpperCase();
+              }
+            }
+
+            // Personnaliser l'écran 3 (étape index 2) avec le prénom
+            const greetingSpan = document.querySelector('#wizard-user-greeting');
+            if (greetingSpan) {
+              greetingSpan.textContent = name;
+            }
           }
+        }
 
-          // Mettre à jour l'état utilisateur
-          const user = getCurrentUser();
-          user.name = name;
-          user.city = city;
-
-          // Personnaliser l'écran 3 (étape index 2)
-          const step3Title = document.querySelector('#step-2 h2');
-          if (step3Title) {
-            step3Title.textContent = `Bonjour ${name}, comment souhaitez-vous démarrer ?`;
-          }
-
-          // Mettre à jour l'avatar si existant
-          const stateAvatar = document.querySelector('#profile-avatar, #dashboard-title strong');
-          if (stateAvatar) {
-            stateAvatar.textContent = name.charAt(0).toUpperCase();
-          }
-
-          if (document.querySelector('#view-profil')) {
-            const cityInput = document.querySelector('#edit-profile-city');
-            if (cityInput) cityInput.value = city;
-            const displayCity = document.querySelector('#display-city');
-            if (displayCity) displayCity.textContent = city;
-          }
+        // Étape 2 -> Aller à l'étape 3 (démonstration)
+        // Initialiser le foyer de démo
+        if (targetStep === 3) {
+          await initializeDemoState();
+          setDemoMode(true);
+          injectDemoDocuments();
         }
 
         showStep(targetStep);
@@ -172,26 +170,80 @@ function initOnboardingWizard() {
     });
   }
 
+  // Bouton "Découvrir Famili-IA" - va de l'écran 1 à l'écran 2
+  if (startOnboarding) {
+    startOnboarding.addEventListener('click', () => {
+      showStep(1);
+      manageOnboardingWizardVisibility();
+    });
+  }
+
+  // Bouton "Continuer sans prénom" - saute directement à l'étape 2
+  const skipPersonalization = document.querySelector('#skip-personalization');
+  if (skipPersonalization) {
+    skipPersonalization.addEventListener('click', () => {
+      showStep(2);
+      manageOnboardingWizardVisibility();
+    });
+  }
+
   // Étape 3 : Choix de démarrage
   if (startDemoMode) {
-    startDemoMode.addEventListener('click', async () => {
+    startDemoMode.addEventListener('click', async (e) => {
+      e.preventDefault();
+      
+      // Sauvegarder le prénom s'il a été saisi (facultatif)
+      if (userNameInput) {
+        const name = userNameInput.value.trim();
+        if (name) {
+          const user = getCurrentUser();
+          if (user) user.name = name;
+        }
+      }
+
       // Initialiser le foyer complet de démo
       await initializeDemoState();
       // Activer l'état mode démo pour afficher le badge et le message
       setDemoMode(true);
-      // Injecter les 5 documents de référence
+      // Injecter les documents de référence
       injectDemoDocuments();
-
-      completeOnboarding();
-      manageOnboardingWizardVisibility(); // Cacher le wizard après completion
+      
+      // Aller sur l'Écran 4 (step-3) - Démonstration interactive
+      showStep(3);
     });
   }
 
   if (startScanMode) {
     startScanMode.addEventListener('click', async () => {
+      // Sauvegarder le prénom s'il a été saisi (facultatif)
+      if (userNameInput) {
+        const name = userNameInput.value.trim();
+        if (name) {
+          const user = getCurrentUser();
+          if (user) user.name = name;
+        }
+      }
+
       await launchIntelligentScan();
     });
   }
+
+  // Écouteur pour retourner au choix du parcours depuis l'Écran 4
+  const backToStep2 = document.getElementById('back-to-step-2');
+  if (backToStep2) {
+    backToStep2.addEventListener('click', () => {
+      showStep(2);
+    });
+  }
+
+  // Écouteurs pour les questions de démo préremplies (Écran 4)
+  const demoQuestions = document.querySelectorAll('.demo-question');
+  demoQuestions.forEach(button => {
+    button.addEventListener('click', async (e) => {
+      const questionType = e.currentTarget.dataset.demoQuestion;
+      await handleDemoQuestion(questionType);
+    });
+  })
 
   /**
    * Lance le scan intelligent local (Phase 13.3.a)
@@ -4068,9 +4120,204 @@ function resetOnboarding() {
 
   // Rediriger vers l'accueil avant de recharger
   window.location.hash = '#accueil';
+}
 
-  // Recharger la page
-  window.location.reload();
+/**
+ * Gère les questions de démo préremplies (Écran 4)
+ * Affiche les résultats avec les badges de provenance appropriés
+ * @param {string} questionType - Le type de question ('facture-piscine', 'garantie-pompe', 'photos-aaron')
+ */
+async function handleDemoQuestion(questionType) {
+  console.log('[DEBUG] handleDemoQuestion:', questionType);
+  
+  // Masquer les questions et afficher les résultats
+  const demoQuestionsSection = document.querySelector('.demo-questions');
+  const backButton = document.getElementById('back-to-step-2');
+  
+  if (demoQuestionsSection) {
+    demoQuestionsSection.style.display = 'none';
+  }
+  if (backButton) {
+    backButton.style.display = 'block';
+  }
+  
+  // Obtenir le conteneur de résultats de la démo
+  const resultsContainer = document.querySelector('#demo-results');
+  const documentList = document.querySelector('#demo-document-list');
+  const resultsEyebrow = document.getElementById('results-eyebrow');
+  const answerTitle = document.getElementById('answer-title');
+  const resultCount = document.getElementById('result-count');
+  
+  if (!resultsContainer) {
+    console.error('[DEBUG] Container #demo-results not found');
+    return;
+  }
+  
+  // Charger les données de démo selon le type de question
+  let results = [];
+  let headingText = '';
+  let sourceLabel = 'Démo';
+  
+  switch (questionType) {
+    case 'demo-walkthrough':
+      // Afficher les questions de démo dans l'écran 4 (step-3)
+      if (demoQuestionsSection) {
+        demoQuestionsSection.style.display = 'flex';
+      }
+      if (resultsContainer) {
+        resultsContainer.style.display = 'none';
+      }
+      if (backButton) {
+        backButton.style.display = 'none';
+      }
+      // Faire défiler vers le haut pour voir les questions
+      wizard?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    case 'facture-piscine':
+      results = getDemoResultsFacturePiscine();
+      headingText = 'Facture de piscine';
+      sourceLabel = '☁️ Drive';
+      break;
+    case 'garantie-pompe':
+      results = getDemoResultsGarantiePompe();
+      headingText = 'Échéance garantie pompe';
+      sourceLabel = '☁️ Drive';
+      break;
+    case 'photos-aaron':
+      results = getDemoResultsPhotosAaron();
+      headingText = 'Photos familiales';
+      sourceLabel = '💾 Local';
+      break;
+    default:
+      console.warn('[DEBUG] Unknown question type:', questionType);
+      results = [];
+      headingText = 'Résultats';
+  }
+  
+  // Mettre à jour l'entête des résultats
+  if (resultsEyebrow) resultsEyebrow.textContent = `🔍 Recherche universelle — ${sourceLabel}`;
+  if (answerTitle) answerTitle.textContent = headingText;
+  if (resultCount) resultCount.textContent = `${results.length} ${results.length === 1 ? 'résultat trouvé' : 'résultats trouvés'}`;
+  
+  // Vider et remplacer le contenu de la liste de documents
+  if (documentList) {
+    documentList.innerHTML = '';
+    results.forEach(result => {
+      const resultElement = createResultElement(result);
+      documentList.appendChild(resultElement);
+    });
+  }
+  
+  // Scroll vers les résultats
+  resultsContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  
+  // Activer le mode démo
+  setDemoMode(true);
+}
+
+/**
+ * Crée un élément de résultat HTML pour les données de démo
+ * @param {Object} result - Les données du résultat
+ * @returns {HTMLElement}
+ */
+function createResultElement(result) {
+  const div = document.createElement('div');
+  div.className = 'result-card';
+  div.style.cssText = `
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--gradient-surface);
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+  `;
+  
+  // Badge de provenance
+  const badge = document.createElement('span');
+  badge.className = `provenance-badge ${result.source === 'Drive' ? 'drive' : 'local'}`;
+  badge.innerHTML = `${result.source === 'Drive' ? '☁️' : '💾'} ${result.source}`;
+  
+  // Titre
+  const title = document.createElement('h3');
+  title.className = 'result-title';
+  title.style.margin = '0 0 0.5rem 0';
+  title.textContent = result.title;
+  
+  // Contenu
+  const content = document.createElement('p');
+  content.className = 'result-content';
+  content.style.margin = '0 0 0.75rem 0';
+  content.style.color = 'var(--color-text-secondary)';
+  content.style.fontSize = '0.9rem';
+  content.textContent = result.content;
+  
+  // Footer avec date
+  const dateEl = document.createElement('small');
+  dateEl.style.color = 'var(--color-text-muted)';
+  dateEl.style.fontSize = '0.75rem';
+  dateEl.textContent = result.date;
+  
+  div.appendChild(badge);
+  div.appendChild(document.createTextNode(' '));
+  div.appendChild(title);
+  div.appendChild(document.createElement('br'));
+  div.appendChild(content);
+  div.appendChild(document.createElement('br'));
+  div.appendChild(dateEl);
+  
+  return div;
+}
+
+/**
+ * Résultats démo pour la question "Retrouve la facture de ma piscine"
+ */
+function getDemoResultsFacturePiscine() {
+  return [{
+    id: 'facture-piscine',
+    title: 'Facture - Installation piscine.pdf',
+    content: 'Facture d\'installation d\'une piscine familiale. Le montant total indiqué est de 8 900 euros TTC, réglé le 4 mars 2023.',
+    date: '4 mars 2023',
+    source: 'Drive',
+    provenance: 'Démo'
+  }];
+}
+
+/**
+ * Résultats démo pour la question "Quand est-ce que je dois payer la garantie du pompe ?"
+ */
+function getDemoResultsGarantiePompe() {
+  return [{
+    id: 'garantie-pompe',
+    title: 'Garantie - Pompe piscine.pdf',
+    content: 'La garantie de la pompe Hayward Modèle 2022 est valide jusqu\'au 4 mai 2028. Échéance : 4 mai 2028.',
+    date: '12 avril 2023',
+    source: 'Drive',
+    provenance: 'Démo'
+  }];
+}
+
+/**
+ * Résultats démo pour la question "Montre-moi les photos de Aaron"
+ */
+function getDemoResultsPhotosAaron() {
+  return [
+    {
+      id: 'photo-aaron-1',
+      title: 'Aaron - Vacances d\'été 2023',
+      content: 'Photo de famille prise aujourd\'hui. Filtre appliqué : couleurs vives.',
+      date: '15 juillet 2023',
+      source: 'Local',
+      provenance: 'Démo'
+    },
+    {
+      id: 'photo-aaron-2',
+      title: 'Aaron - À l\'école',
+      content: 'Photo scolaire d\'Aaron avec sa nouvelle uniforme.',
+      date: '3 octobre 2023',
+      source: 'Local',
+      provenance: 'Démo'
+    }
+  ];
 }
 
 /**

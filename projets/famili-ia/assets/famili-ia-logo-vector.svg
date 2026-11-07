@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="544" height="392" viewBox="0 0 544 392" role="img" aria-labelledby="title desc">
+  <title id="title">Famili-IA</title>
+  <desc id="desc">Logo Famili-IA : une maison bleue associée à une étoile scintillante, au-dessus du nom Famili-IA en bleu nuit.</desc>
+
+  <g fill="none" stroke="#2865F5" stroke-width="17" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Maison -->
+    <path d="M177 153 L177 286 Q177 300 191 300 L248 300"/>
+    <path d="M177 153 L256 77 Q267 66 278 77 L355 153"/>
+    <path d="M355 153 L371 169"/>
+    <!-- Étoile / éclat -->
+    <path d="M274 224
+             C302 216 319 199 326 171
+             C332 198 348 216 376 224
+             C348 232 332 250 326 279
+             C319 250 302 232 274 224 Z"/>
+  </g>
+
+  <text x="31" y="366"
+        fill="#102B70"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="70"
+        font-weight="600"
+        letter-spacing="-2.5">Famili-IA</text>
+</svg>

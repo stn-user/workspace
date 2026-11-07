@@ -70,32 +70,114 @@
       <section class="view dashboard-view" id="view-accueil" data-view="accueil" aria-labelledby="welcome-title">
         <!-- Conteneur pour onboarding en mode page blanche -->
         <section class="onboarding-page-white" id="onboarding-wizard" aria-labelledby="wizard-title" hidden>
+          <!-- Écran 1 : Accueil de l'onboarding -->
           <div class="wizard-step" id="step-0" aria-labelledby="step-0-title">
-            <div class="wizard-mark" aria-hidden="true">✦</div>
-            <h2 id="step-0-title">Bienvenue dans Famili-IA</h2>
-            <p>La souveraineté numérique est notre priorité : toutes vos données restent 100% sur votre appareil. Aucun serveur externe, aucune analyse dans le cloud. Vous seul avez le contrôle total.</p>
-            <button class="primary-button" type="button" data-wizard-next="1">Continuer &rarr;</button>
+            <img src="assets/famili-ia-logo.svg" alt="Famili-IA" class="logo-lg app-logo" style="margin-bottom: 2rem; width: auto;">
+            <h2 id="step-0-title">Retrouvez tout, où que cela se trouve.</h2>
+            <p>Vos documents, photos et informations dans une seule application, grâce à l'IA.</p>
+          <img src="assets/famili-ia-accueil.svg" alt="Illustration Famili-IA" style="width: 180px; height: auto; margin: 2rem 0; display: block; margin-left: auto; margin-right: auto;">
+          <div style="margin-top: 2rem; text-align: center;">
+            <button class="primary-button onboarding-primary-button" type="button" id="start-onboarding" style="margin-bottom: 1rem;">Découvrir Famili-IA &rarr;</button>
           </div>
-
-          <div class="wizard-step" id="step-1" aria-labelledby="step-1-title" hidden>
-            <h2 id="step-1-title">Quelques informations</h2>
-            <p>Personnalisez votre expérience pour mieux gérer vos alertes.</p>
-            <input type="text" id="wizard-user-name" placeholder="Votre prénom" style="display:block; width:100%; margin-bottom:1rem; padding:0.5rem;">
-            <input type="text" id="wizard-user-city" placeholder="Votre ville / code postal" style="display:block; width:100%; margin-bottom:1rem; padding:0.5rem;">
-            <div style="display:flex; gap:1rem;">
-                <button class="secondary-button" type="button" data-wizard-prev="0">Retour</button>
-                <button class="primary-button" type="button" data-wizard-next="2">Continuer &rarr;</button>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem; color: #666;">
+              <img src="assets/icons/lock-closed.svg" alt="Cadenas verrouillé" width="16" height="16" style="flex-shrink: 0;">
+              <span>Vos données restent privées</span>
             </div>
           </div>
 
+          <!-- Écran 2 : Personnalisation -->
+          <div class="wizard-step" id="step-1" aria-labelledby="step-1-title" hidden>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+              <button class="onboarding-back-btn" type="button" data-wizard-prev="0" aria-label="Retour">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+              </button>
+              <span style="font-size: 0.95rem; font-weight: 500; color: var(--color-text-secondary);">Découvrir Famili-IA</span>
+            </div>
+            
+            <h2 id="step-1-title">Comment pouvons-nous vous nommer ?</h2>
+            <p>Votre prénom nous permettra de personnaliser votre expérience.</p>
+            <input type="text" id="wizard-user-name" placeholder="Votre prénom" style="display:block; width:100%; margin-bottom:1rem; padding:0.5rem;">
+            <button class="primary-button onboarding-primary-button" type="button" data-wizard-next="2" style="width:100%;">Continuer &rarr;</button>
+            <button class="text-button" type="button" id="skip-personalization" style="margin-top: 1rem;">Passer cette étape</button>
+          </div>
+
+          <!-- Écran 3 : Découverte Famili-IA -->
           <div class="wizard-step" id="step-2" aria-labelledby="step-2-title" hidden>
-            <h2 id="step-2-title">Comment démarrer ?</h2>
-            <p>Choisissez comment vous souhaitez commencer :</p>
-            <button class="secondary-button" type="button" id="start-demo-mode">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Explorer la démo
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+              <button class="onboarding-back-btn" type="button" data-wizard-prev="1" aria-label="Retour">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+              </button>
+              <span style="font-size: 0.95rem; font-weight: 500; color: var(--color-text-secondary);">Découvrir Famili-IA</span>
+            </div>
+            
+            <h2 id="step-2-title" style="font-size: 1.5rem; font-weight: 700; line-height: 1.35; margin-bottom: 1.5rem; color: var(--color-text); text-align: left;">Bonjour <span id="wizard-user-greeting"></span>, souhaitez-vous lancer une recherche intelligente pour retrouver vos documents ?</h2>
+            
+            <!-- Card 1 : Découvrir avec un exemple -->
+            <button class="onboarding-option-card" type="button" data-wizard-next="3">
+              <div style="background: linear-gradient(135deg, #2563eb, #7c3aed); width: 48px; height: 48px; min-width: 48px; border-radius: var(--radius-md, 12px); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v14l4 4 4-4V2"></path></svg>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
+                  <span class="badge recommended" style="background: #ecfdf5; color: #059669; font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: var(--radius-full); border: 1px solid rgba(5, 150, 105, 0.2);">Recommandé</span>
+                  <span style="color: #7c3aed; font-size: 0.75rem; font-weight: 600;">Environ 1 minute</span>
+                </div>
+                <div style="font-size: 1.05rem; font-weight: 700; color: var(--color-text); margin-bottom: 0.25rem;">Découvrir avec un exemple</div>
+                <div style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.45;">Explorez une maison déjà organisée : recherche, alertes, documents fictifs</div>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; color: var(--color-text-muted); align-self: center;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+              </div>
             </button>
-            <button class="primary-button" type="button" id="start-scan-mode">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Lancer le Scan Intelligent
+            
+            <!-- Card 2 : Créer mon espace personnel -->
+            <button class="onboarding-option-card" type="button" id="start-scan-mode">
+              <div style="background: var(--surface-tint, #f5f5f5); width: 48px; height: 48px; min-width: 48px; border-radius: var(--radius-md, 12px); display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-border);">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 1.05rem; font-weight: 700; color: var(--color-text); margin-bottom: 0.25rem;">Créer mon espace personnel</div>
+                <div style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.45;">Commencer à organiser vos propres documents</div>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; color: var(--color-text-muted); align-self: center;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+              </div>
+            </button>
+          </div>
+
+          <!-- Écran 4 : Résultats de la démo -->
+          <div class="wizard-step" id="step-3" aria-labelledby="step-3-title" hidden>
+            <h2 id="step-3-title">Démonstration universelle multi-sources</h2>
+            <p class="demo-intro">Explorez l'application avec 3 questions préremplies. Aucun accès à vos données personnelles.</p>
+            
+            <div class="demo-questions">
+              <button class="demo-question" type="button" data-demo-question="facture-piscine">
+                <span class="question-icon">☁️</span>
+                <span class="question-text">Retrouve la facture de ma piscine</span>
+              </button>
+              <button class="demo-question" type="button" data-demo-question="garantie-pompe">
+                <span class="question-icon">☁️</span>
+                <span class="question-text">Quand est-ce que je dois payer la garantie du pompe ?</span>
+              </button>
+              <button class="demo-question" type="button" data-demo-question="photos-aaron">
+                <span class="question-icon">💾</span>
+                <span class="question-text">Montre-moi les photos de Aaron</span>
+              </button>
+            </div>
+            
+            <section class="results" id="demo-results" aria-live="polite" aria-atomic="true">
+              <div class="results-heading">
+                <div>
+                  <p class="eyebrow" id="results-eyebrow"></p>
+                  <h2 id="answer-title"></h2>
+                </div>
+                <span class="result-count" id="result-count"></span>
+              </div>
+              <div class="document-list" id="demo-document-list"></div>
+            </section>
+            
+            <button class="secondary-button" type="button" id="back-to-step-2" style="display: none;">
+              Retour au choix du parcours
             </button>
           </div>
         </section>
