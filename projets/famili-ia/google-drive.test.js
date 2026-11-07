@@ -87,6 +87,100 @@ test("reads only the file returned by Picker and keeps its text in the session r
     else globalThis.window = previousWindow;
     globalThis.fetch = previousFetch;
   });
+
+  const client = new GoogleDriveClient({ apiKey: "test-api-key", appId: "123456", clientId: "test-client-id" });
+  client.tokenClient = {
+    callback: null,
+    requestAccessToken() {
+      this.callback({ access_token: "memory-only-token", scope: googleDriveScope });
+    }
+  };
+
+  const files = await client.pickFiles(1);
+  assert.equal(files.length, 1);
+  assert.equal(files[0].id, "drive-picker-selected-id");
+  assert.equal(files[0].name, selectedDocument.name);
+  assert.equal(files[0].content, "Montant total : 42 euros");
+  assert.equal(files[0].driveSource, true);
+  assert.equal(requests.length, 2);
+  assert.ok(requests.every(({ url }) => url.pathname === "/drive/v3/files/picker-selected-id"));
+  assert.equal(requests[0].url.searchParams.get("fields"), "id,name,mimeType,size,modifiedTime");
+  assert.equal(requests[1].url.searchParams.get("alt"), "media");
+  assert.ok(requests.every(({ authorization }) => authorization === "Bearer memory-only-token"));
+});
+
+test("returns an empty selection when Picker is cancelled without reading files", async (t) => {
+  const previousWindow = globalThis.window;
+  globalThis.window = {
+    google: { accounts: { oauth2: { hasGrantedAllScopes: () => true } } }
+  };
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  });
+  const client = new GoogleDriveClient({ apiKey: "test-api-key", appId: "123456", clientId: "test-client-id" });
+  client.tokenClient = {
+    requestAccessToken() {
+      this.callback({ access_token: "memory-only-token", scope: googleDriveScope });
+    }
+  };
+  client.openPicker = async () => [];
+  client.readSelectedFile = () => {
+    throw new Error("Un fichier ne doit pas être lu après annulation");
+  };
+
+  assert.deepEqual(await client.pickFiles(1), []);
+});
+
+test("rejects a missing Drive scope before opening Picker", async (t) => {
+  const previousWindow = globalThis.window;
+  globalThis.window = {
+    google: { accounts: { oauth2: { hasGrantedAllScopes: () => false } } }
+  };
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  });
+  const client = new GoogleDriveClient({ apiKey: "test-api-key", appId: "123456", clientId: "test-client-id" });
+  client.tokenClient = {
+    requestAccessToken() {
+      this.callback({ access_token: "memory-only-token", scope: "" });
+    }
+  };
+  client.openPicker = () => {
+    throw new Error("Picker ne doit pas s'ouvrir sans autorisation");
+  };
+
+  await assert.rejects(client.pickFiles(1), /autorisation minimale Google Drive/);
+  assert.equal(client.hasAccessToken, false);
+});
+
+test("revokes the active token and reports a provider rejection", async (t) => {
+  const previousWindow = globalThis.window;
+  let response = { successful: true };
+  let revokedToken;
+  globalThis.window = {
+    google: { accounts: { oauth2: {
+      revoke(token, callback) {
+        revokedToken = token;
+        callback(response);
+      }
+    } } }
+  };
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  });
+  const client = new GoogleDriveClient({ apiKey: "test-api-key", appId: "123456", clientId: "test-client-id" });
+  client.accessToken = "memory-only-token";
+  await client.revoke();
+  assert.equal(revokedToken, "memory-only-token");
+  assert.equal(client.hasAccessToken, false);
+
+  response = { successful: false };
+  client.accessToken = "memory-only-token";
+  await assert.rejects(client.revoke(), /Google n’a pas confirmé la révocation/);
+  assert.equal(client.hasAccessToken, false);
 });
 
 test("rejects PDF larger than 10MB", async (t) => {

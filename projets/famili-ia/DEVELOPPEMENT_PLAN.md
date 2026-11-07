@@ -2,7 +2,7 @@
 
 ## 📊 Vue d'ensemble
 - **Phase terminée** : Phase 14 – Refonte de la Vue "Vos Données" & Polish
-- **Prochaine phase planifiée** : Phase 15 – Assistant Vie Numérique & Préparation du modèle économique
+- **Phase en cours** : Phase 15 – Assistant Vie Numérique, recherche multi-sources & préparation du modèle économique
 
 ## 📋 Liste des étapes
 
@@ -225,55 +225,119 @@ Cette phase reprend les travaux encore ouverts de l'ancienne 12.2 et améliore l
 - [✓] 15.5.d : Ajouter navigation clavier/tactile accessible, aperçu détaillé, sélection multiple et suppression des seules données Famili-IA, en préservant les originaux ; documenter les limites et choix dans [la conception Galerie et Journal de bord](docs/architecture/phase-15-photo-gallery-design.md).
 - [✓] 15.5.e : Valider le parcours sur tailles d'écran représentatives et une bibliothèque de 1 000 photos ; vérifier défilement/pagination, limites mémoire de rendu, débordement mobile, accessibilité clavier et exactitude des aperçus ; consigner les résultats et limites matérielles dans [la conception Galerie et Journal de bord](docs/architecture/phase-15-photo-gallery-design.md).
 
-#### 15.5bis – Plan de Développement Ultra-Détaillé : Parcours Utilisateur Famili-IA (Cible 8 Écrans & Multi-Support)
-L'objectif est de repositionner Famili-IA comme le **point d'accès universel et souverain** permettant de rechercher et retrouver un document ou une photo où qu'elle se trouve (Local, Fichiers, Cloud Google Drive/Dropbox, Photos). Le parcours d'onboarding et de démonstration est restructuré autour d'une séquence cible en 8 écrans avec le moteur de recherche universel au centre de l'expérience (« Que recherchez-vous ? »).
+#### 15.5bis – Recherche et indexation intelligentes multi-sources
 
-- [ ] **15.5bis.a – Écran 1 & 2 : Bienvenue & Personnalisation Légère (Zero Friction)**
-  - Concevoir l'Écran 1 (Bienvenue) autour de la promesse « Retrouvez tout ce qui compte, où que cela se trouve », avec bouton unique « Découvrir Famili-IA » et rappel de souveraineté local-first (zéro serveur).
-  - Concevoir l'Écran 2 (Personnalisation) : saisie d'un prénom uniquement (facultatif), sans mot de passe, ni formulaire familial complexe, ni demande de téléversement initiale.
-  - *Critères d'acceptation* : Bouton "Découvrir" ≥ 48x48px sur mobile/tablette/web ; absence totale de formulaire lourd ; stockage local immédiat du prénom (optionnel).
-  - *Tests associés* : Test d'affichage et de réactivité tactile sur Web (1920px), Tablette (768px), Mobile (390px).
+**Cible produit :** faire de Famili-IA le point d'accès permettant de rechercher et retrouver des documents et photos répartis sur les appareils et services autorisés, sans devoir connaître leur emplacement. Toutes les sources ci-dessous font partie de la cible : leur réalisation doit être tentée et planifiée, mais leur mise en production dépend des API, permissions, validations fournisseur et capacités des plateformes. Une source indisponible ne doit jamais être présentée comme opérationnelle.
 
-- [ ] **15.5bis.b – Écran 3 & 4 : Choix du Parcours & Démo Universelle Multi-Sources**
-  - Concevoir l'Écran 3 (Choix du parcours) : distinction nette entre la découverte immédiate via le Mode Démo et la connexion directe de ses propres sources.
-  - Concevoir l'Écran 4 (Résultats de la démo) : démonstration interactive avec 3 questions préremplies (ex: « Retrouve la facture de ma piscine »), simulant la recherche universelle instantanée dans plusieurs sources (Téléphone, Ordinateur, Cloud, Photos) sans inscription obligatoire.
-  - *Critères d'acceptation* : 3 questions préremplies cliquables ; affichage des résultats avec badges de provenance (Démo, Google Drive, Local) ; aucun accès aux données personnelles lors de la démo.
-  - *Tests associés* : Test du clic sur chaque question de démo et vérification du rendu des résultats fictifs.
+L'index doit exploiter les métadonnées et le contenu effectivement accessibles afin de classer les éléments, retrouver leur source et leur date, conserver des extraits ou faits utiles et alimenter les alertes. Il ne peut pas déduire le contenu jamais accessible. La couverture, la fraîcheur et les incertitudes sont visibles. Les originaux restent dans leur source, sauf import ou copie explicitement choisi ; index, extraits et vignettes sont eux-mêmes des données personnelles dont la conservation, la suppression et la synchronisation doivent être expliquées.
 
-- [ ] **15.5bis.c – Écran 5 : Connecteur Multi-Sources & Statuts de Disponibilité**
-  - Concevoir l'Écran 5 (Choix des sources) : sélection des espaces à interconnecter (Google Drive, Dropbox, Fichiers locaux, Photos, Import manuel).
-  - Spécifier et afficher un statut de disponibilité explicite par source : *Connectée* (Recherche opérationnelle), *Partiellement indexée* (Certains contenus), *À connecter* (Source non autorisée), *Synchronisation nécessaire*.
-  - *Critères d'acceptation* : Tuiles de sources interactives ; affichage dynamique du statut de disponibilité de chaque connecteur ; principe d'une connexion à la fois pour obtenir une première victoire.
-  - *Tests associés* : Test de sélection des sources et vérification des états de disponibilité.
+Le traitement et l'index sont locaux par défaut ; toute synchronisation ou transmission à un service externe exige une décision d'architecture et une information distinctes. Les acquis de 15.1 à 15.5 sont réutilisés et leurs statuts restent inchangés. Les parcours existants sont à préserver ou à migrer explicitement et à tester.
 
-- [ ] **15.5bis.d – Écran 6 : Première Recherche Réelle (Preuve par l'Exemple)**
-  - Concevoir l'Écran 6 (Première recherche personnelle) : invite l'utilisateur à poser une question réelle sur ses propres documents/photos connectés.
-  - Affichage clair de la provenance du document, du résumé/extrait factuel et de l'accès direct au fichier source sans duplication inutile.
-  - *Critères d'acceptation* : Saisie de recherche réelle fonctionnelle ; affichage de la provenance (💾 Local / ☁️ Drive) ; ouverture du fichier source ou aperçu local sans erreur.
-  - *Tests associés* : Test de recherche sur documents réels importés ou connectés.
+##### 15.5bis.0 – Cadrage de la recherche universelle
+- [ ] **15.5bis.0.a** : Décrire les scénarios prioritaires : facture dont l'emplacement est inconnu, garantie et échéance, contrat et fait précis, photos par date/personne/lieu/événement et recherche simultanée dans plusieurs sources.
+- [ ] **15.5bis.0.b** : Définir les niveaux de couverture : non accessible, métadonnées seules, contenu partiel et contenu analysé ; distinguer la couverture effective de la simple autorisation d'accès.
+- [ ] **15.5bis.0.c** : Définir les états et comportements d'une source déconnectée, inaccessible, partiellement indexée ou obsolète, ainsi que l'information montrée dans les résultats.
+- [ ] **15.5bis.0.d** : Établir une matrice par source et plateforme : lecture, recherche, mise à jour, accès à l'original, formats, permissions, limites et statut d'implémentation ; revérifier les études fournisseur avant intégration.
+- **Validation :** les scénarios et la matrice distinguent ce qui existe, ce qui est prévu et ce qui dépend d'une autorisation ou d'une faisabilité non confirmée.
 
-- [ ] **15.5bis.e – Écran 7 : Accueil Personnalisé - Moteur de Recherche Universel au Centre**
-  - Refondre la vue Accueil (`#view-accueil`) pour placer la zone de recherche universelle au premier plan (« Que recherchez-vous ? »).
-  - Intégrer les tuiles d'accès direct par type de source (Téléphone, Ordinateur, Cloud, Photos, Documents) et le résumé dynamique du foyer.
-  - *Critères d'acceptation* : Barre de recherche universelle en haut/centre de l'accueil ; grille de sources responsive (Web, Tablette, Mobile) ; affichage correct des compteurs et statistiques du foyer.
-  - *Tests associés* : Test de navigation et de rendu responsive de la vue Accueil.
+##### 15.5bis.1 – Architecture commune des sources
+- [ ] **15.5bis.1.a** : Définir une interface de connecteur couvrant connexion, autorisation, découverte, lecture des métadonnées et du contenu accessible, ouverture de l'original, suivi des changements, déconnexion et révocation.
+- [ ] **15.5bis.1.b** : Modéliser fournisseur, compte ou appareil, périmètre autorisé, capacités et état ; utiliser un identifiant stable par élément distinct de son nom et de son emplacement.
+- [ ] **15.5bis.1.c** : Gérer pagination, quotas, erreurs explicites, reconnexion et reprise après interruption ; isoler les défaillances d'une source des autres.
+- [ ] **15.5bis.1.d** : Concevoir le socle avec un premier connecteur réel afin de permettre l'ajout d'autres sources sans réécrire la recherche.
+- **Validation :** tests d'un connecteur fictif couvrant autorisation, pagination, erreurs, reprise, modification et révocation ; documentation des capacités effectives de chaque adaptateur.
 
-- [ ] **15.5bis.f – Écran 8 : Centre d'Alertes Proactives & Échéances Domestiques**
-  - Structurer l'Écran 8 (Centre d'alertes) : consolidation des rappels proactifs (garanties, révisions, factures à traiter/anticiper) avec traçabilité vers le document source et acquittement rapide.
-  - *Critères d'acceptation* : Tri des alertes par niveau d'urgence ; lien direct vers le document justificatif ; actions d'acquittement ou de report fonctionnelles.
-  - *Tests associés* : Test de filtrage et d'acquittement des alertes.
+##### 15.5bis.2 – Modèle d'index intelligent
+- [ ] **15.5bis.2.a** : Définir une fiche d'index commune documents/photos compatible avec les données existantes : identité, source, emplacement, type, dates, classification, couverture et dernière vérification.
+- [ ] **15.5bis.2.b** : Conserver la provenance des champs : métadonnée fournisseur, contenu extrait, saisie ou correction utilisateur, estimation ou classification automatique ; distinguer création, modification, prise de vue, achat et échéance.
+- [ ] **15.5bis.2.c** : Associer les faits importants à une preuve ou un extrait lorsqu'ils existent ; afficher l'incertitude et ne pas présenter une estimation comme un fait certain.
+- [ ] **15.5bis.2.d** : Versionner le schéma et migrer les données IndexedDB existantes ; définir la conservation et la suppression des extraits, liens et vignettes.
+- [ ] **15.5bis.2.e** : Détecter les doublons exacts lorsque l'empreinte est disponible et proposer les rapprochements incertains sans fusion automatique ; préserver associations et corrections manuelles lors des réindexations.
+- **Validation :** tests de migration, réindexation, doublons, changement de nom, suppression et révocation ; supprimer l'index Famili-IA ne supprime pas l'original.
 
-- [ ] **15.5bis.g – Ergonomie, Commandes & Accessibilité Responsive**
-  - Assurer une navigation fluide entre les 8 écrans (boutons Continuer, Précédent, Explorer, Quitter).
-  - Adapter le layout sur mobile et desktop, assurer un niveau de contraste suffisant, la navigation clavier ARIA et le respect strict de `prefers-reduced-motion`.
-  - *Critères d'acceptation* : Cibles tactiles ≥ 48x48px ; zéro débordement horizontal sur mobile (390px) et tablette (768px) ; attributs ARIA complets.
-  - *Tests associés* : Tests Playwright multi-viewport (390px, 768px, 1280px) et vérification des flux d'accessibilité.
+##### 15.5bis.3 – Pipeline d'analyse et de classification
+- [ ] **15.5bis.3.a** : Construire le pipeline découverte → lecture → extraction → classification → indexation → alertes éventuelles, en réutilisant les traitements existants lorsque leurs capacités sont vérifiées.
+- [ ] **15.5bis.3.b** : Vérifier et compléter l'extraction texte, PDF, Word, Excel et l'OCR des scans/photos de documents sur les plateformes retenues ; signaler les formats illisibles et conserver un résultat partiel utile.
+- [ ] **15.5bis.3.c** : Extraire type de document, émetteur, dates, montants, équipements, échéances et extraits pertinents avec leur provenance ; réutiliser les métadonnées photo et annotations volontaires de 15.3 et 15.4.
+- [ ] **15.5bis.3.d** : Comparer règles explicables, OCR et modèles locaux sur un corpus annoté avant de retenir un modèle supplémentaire ; mesurer intérêt, stockage, confidentialité et performance. Une analyse distante éventuelle nécessite une décision et une information distinctes.
+- [ ] **15.5bis.3.e** : Traiter les fichiers progressivement avec pause, reprise, limitation mémoire et priorité configurable aux éléments récents ou utiles.
+- **Validation :** corpus fictif de documents natifs, PDF scannés, images, fichiers incomplets et formats non pris en charge ; mesurer classification, extraction, couverture, erreurs et temps. Profiler sur appareils cibles avant toute promesse mobile. Les personnes, lieux et scènes ne sont pas déduits des seules métadonnées : toute analyse supplémentaire est conçue et évaluée séparément.
 
-- [ ] **15.5bis.h – Validation Technique & Sanitation (Zéro Serveur / Non-Régression)**
-  - Valider l'étanchéité des données (zéro fuite cloud, 100% indexation locale IndexedDB).
-  - Exécuter la suite complète de tests unitaires et de sanitation pour garantir l'absence de régression.
-  - *Critères d'acceptation* : 100% des tests passants (`node --test` et Playwright) ; persistance locale vérifiée.
-  - *Tests associés* : Exécution des scripts de test automatisés du projet.
+##### 15.5bis.4 – Fichiers locaux et appareils
+- [ ] **15.5bis.4.a – Web et ordinateur** : améliorer la sélection de fichiers/dossiers compatibles, l'actualisation des périmètres autorisés et la reprise après perte de permission ; ne pas supposer un accès à tout l'ordinateur.
+- [ ] **15.5bis.4.b – Compagnon ordinateur** : étudier un composant local complémentaire si le navigateur ne permet pas la couverture ou la régularité visées ; documenter permissions, sécurité, distribution et faisabilité avant de l'implémenter.
+- [ ] **15.5bis.4.c – Android** : étudier et intégrer les sélecteurs système et modules natifs nécessaires aux fichiers et photos autorisés, à l'accès persistant et à l'ouverture des originaux ; vérifier les limites d'arrière-plan sur appareils réels.
+- [ ] **15.5bis.4.d – iOS** : créer et configurer une cible avant toute annonce native ; étudier sélecteurs de documents et photothèque, puis tester sur appareil les éléments locaux et fournis par iCloud.
+- **Validation :** sélection, autorisation refusée ou révoquée, fichier déplacé, fonctionnement hors ligne et réouverture de la source, sur les plateformes effectivement prises en charge.
+
+##### 15.5bis.5 – Google Drive
+- [ ] **15.5bis.5.a** : Consolider et vérifier le parcours de sélection explicite, les permissions et les formats réellement lisibles ; indexer les métadonnées et contenus autorisés, y compris les exports nécessaires aux formats Google compatibles.
+- [ ] **15.5bis.5.b** : Étudier et prototyper l'accès étendu lorsque la cible le justifie ; préparer les justificatifs, schémas de flux, vérifications et estimations de coûts applicables.
+- [ ] **15.5bis.5.c** : Gérer pagination, quotas, modifications, révocation et fichiers devenus inaccessibles.
+- **Validation :** tests sur données fictives ; distinguer fichiers choisis et accès étendu. Aucun accès étendu en production avant les autorisations requises. Voir [l'étude Google Drive](ETUDE_GOOGLE_DRIVE.md).
+
+##### 15.5bis.6 – OneDrive
+- [ ] **15.5bis.6.a** : Concevoir l'authentification, les permissions et la lecture via l'API officielle ; étudier séparément les comptes personnels et professionnels/scolaires.
+- [ ] **15.5bis.6.b** : Indexer les métadonnées et contenus accessibles ; gérer fichiers déplacés, modifiés, supprimés ou inaccessibles, expiration de session et reprise.
+- [ ] **15.5bis.6.c** : Vérifier le périmètre réellement accordé, y compris lorsque l'interface utilise un sélecteur ; le présenter fidèlement à l'utilisateur.
+- **Validation :** tests sur comptes et données fictifs couvrant pagination, refus, expiration, déconnexion et reprise.
+
+##### 15.5bis.7 – Dropbox
+- [ ] **15.5bis.7.a** : Implémenter connexion et lecture via l'API officielle ; étudier les niveaux d'accès et l'accès élargi lorsque justifié.
+- [ ] **15.5bis.7.b** : Indexer les métadonnées et contenus accessibles ; gérer changements, suppressions, quotas, erreurs réseau et déconnexion.
+- [ ] **15.5bis.7.c** : Préparer les démarches d'approbation applicables à la production.
+- **Validation :** tests avec fichiers et comptes fictifs, révocation et suppression des données indexées selon le choix utilisateur.
+
+##### 15.5bis.8 – Photos et services Apple / Google
+- [ ] **15.5bis.8.a – Google Photos** : étudier sélection et données accessibles, demander confirmation de l'éligibilité du cas d'usage, puis concevoir un connecteur limité aux usages autorisés ; traiter l'expiration des accès et le retour à la source lorsque possible. Ne pas présumer un accès à toute la bibliothèque ni autoriser la production sans confirmation.
+- [ ] **15.5bis.8.b – Photos sur appareils Apple** : étudier l'accès natif à la photothèque autorisée, limité ou complet selon le choix utilisateur ; distinguer fichier local et original à récupérer depuis iCloud, indexer les éléments accessibles et signaler les indisponibilités.
+- [ ] **15.5bis.8.c – iCloud Drive** : intégrer la sélection des documents accessibles par les mécanismes Apple compatibles ; réexaminer l'existence d'une API officielle plus large sans dépendre d'un accès tiers complet non établi.
+- **Validation :** tests d'autorisation limitée, refusée et révoquée, de médias distants indisponibles et de réouverture ; réexaminer avant livraison [l'étude de faisabilité des clouds](ETUDE_FAISABILITE_CLOUDS.md) et [l'intégration photo](docs/architecture/integration.md).
+
+##### 15.5bis.9 – Recherche réellement multi-sources
+- [ ] **15.5bis.9.a** : Interroger l'index commun et afficher ensemble documents et photos pertinents ; filtrer par source, type, date, personne, lieu et couverture.
+- [ ] **15.5bis.9.b** : Afficher nom, type, source, emplacement disponible, date et sa nature, extrait ou raison de correspondance et état d'accès à l'original ; expliquer les sources incomplètes, obsolètes ou indisponibles.
+- [ ] **15.5bis.9.c** : Regrouper les doublons possibles sans masquer leurs sources ; ouvrir l'original lorsque possible ou expliquer la marche à suivre.
+- [ ] **15.5bis.9.d** : Réutiliser la recherche documentaire traçable et « Moments de vie » ; comparer les améliorations sur un corpus multi-sources annoté et maintenir la recherche utile pour tous, conformément à 15.2.e.
+- **Validation :** une requête retourne des résultats de deux connecteurs opérationnels ; les faits ont une preuve ou entraînent une abstention explicite. Mesurer précision, rappel, qualité des extraits et temps ; tester source indisponible et index périmé.
+
+##### 15.5bis.10 – Alertes issues des sources indexées
+- [ ] **15.5bis.10.a** : Alimenter le moteur d'alertes existant avec les faits accessibles des différents connecteurs, en conservant source et extrait justificatif ; ne pas créer d'alerte certaine sur une date ambiguë ou non vérifiable.
+- [ ] **15.5bis.10.b** : Réévaluer les alertes à la modification, disparition ou perte d'accès d'un document ; signaler une source indisponible ou un index ancien.
+- [ ] **15.5bis.10.c** : Préserver corrections, reports et choix utilisateur lors des synchronisations et réindexations.
+- **Validation :** tests de dates ambiguës, échéances détectées, modifications, doublons entre sources et révocations ; aucune correction manuelle perdue silencieusement.
+
+##### 15.5bis.11 – Démonstration et parcours d'accueil
+- [ ] **15.5bis.11.a** : Placer « Que recherchez-vous ? » au premier plan de l'accueil ; proposer bienvenue et prénom facultatif, sans formulaire lourd ni compte obligatoire tant que la source choisie n'en exige pas.
+- [ ] **15.5bis.11.b** : Proposer une démo interactive sans permission ni accès aux données personnelles : facture de piscine, photos de vacances et contrat d'assurance ; identifier explicitement chaque résultat et chaque source simulés.
+- [ ] **15.5bis.11.c** : Expliquer les données indexées et le devenir des originaux ; permettre de connecter une première source réelle puis d'en ajouter d'autres, et lancer une première recherche personnelle avec provenance et accès à l'original lorsque possible.
+- [ ] **15.5bis.11.d** : Afficher des états dérivés de la situation réelle : à connecter, indexation en cours, disponible, partielle ou action nécessaire ; prévoir refus, échec, retour et reprise sans bloquer le parcours.
+- [ ] **15.5bis.11.e** : Préserver les compteurs et accès utiles au foyer et aux alertes ; assurer navigation clavier, ARIA, contrastes et respect de `prefers-reduced-motion`.
+- **Validation :** les trois questions fonctionnent sans données personnelles ; tests Playwright des transitions, permissions refusées et recherche réelle sur données de test. Vérifier cibles tactiles ≥ 48 × 48 px, absence de débordement horizontal à 390 et 768 px et rendu à 1280 et 1920 px.
+
+##### 15.5bis.12 – Recherche et synchronisation multi-appareils
+- [ ] **15.5bis.12.a** : Comparer index séparés, synchronisation chiffrée, recherche entre appareils autorisés et synchronisation via un espace choisi ; documenter faisabilité, coûts, confidentialité et disponibilité.
+- [ ] **15.5bis.12.b** : Choisir l'architecture et préciser les données circulant : métadonnées, extraits, miniatures, annotations ou index ; informer l'utilisateur et recueillir son choix avant synchronisation.
+- [ ] **15.5bis.12.c** : Concevoir association et révocation des appareils, chiffrement et protection des données, conflits, mode hors ligne et propagation des suppressions ; ne pas transférer automatiquement originaux ou jetons.
+- [ ] **15.5bis.12.d** : Implémenter la solution retenue après validation de son architecture et de ses risques.
+- **Validation :** tests multi-appareils, hors ligne, conflit, révocation et suppression ; ne pas prétendre rechercher sur un autre appareil sans mécanisme actif et périmètre accessible.
+
+##### 15.5bis.13 – Confidentialité, sécurité et préparation du pilote
+- [ ] **15.5bis.13.a** : Documenter par source les données lues, extraites, conservées, synchronisées et supprimées, leurs destinataires et durées ; protéger les jetons, l'index et les transferts sans embarquer de secrets client.
+- [ ] **15.5bis.13.b** : Prévoir déconnexion, révocation et choix de suppression des données indexées, ainsi qu'export, restauration et erreurs explicites ; ne jamais supprimer les originaux sans action distincte.
+- [ ] **15.5bis.13.c** : Examiner données familiales, photos et données de mineurs ; tester l'isolation des comptes et foyers si le partage est introduit.
+- [ ] **15.5bis.13.d** : Réaliser les vérifications fournisseur, sécurité et conformité avant pilote sur données réelles ; préparer critères d'entrée/sortie, assistance et retour arrière en coordination avec 15.8.
+- **Validation :** tests unitaires et d'intégration ciblés, puis suites de non-régression du projet (`node --test` et Playwright) avant livraison ; vérifier les flux réseau et la persistance selon l'architecture retenue, sans supposer que toutes les sources fonctionnent hors ligne ou sans serveur.
+
+##### Ordre de réalisation indicatif
+1. **V1 – Démontrer :** démo multi-sources fictive, recherche centrale et cadrage du modèle commun.
+2. **V2 – Retrouver réellement :** index intelligent et recherche unifiée sur fichiers locaux et une première source cloud opérationnelle.
+3. **V3 – Étendre les clouds :** Google Drive, OneDrive et Dropbox, avec états et couverture propres à chaque connecteur.
+4. **V4 – Étendre aux photos et appareils :** parcours Android et Apple, photothèques autorisées et services photo compatibles avec les règles fournisseurs.
+5. **V5 – Relier les appareils :** recherche ou synchronisation multi-appareils selon l'architecture choisie et activée par l'utilisateur.
+6. **V6 – Piloter et lancer :** validation de la qualité, sécurité, coûts, permissions et expérience.
+
+Ces versions ordonnent les livraisons sans réduire la cible ; engager tôt les études natives et les démarches fournisseur, qui peuvent être longues ou bloquantes. La première recherche personnelle précède la décision de monétisation : les sections 15.6 et 15.7 restent à instruire, en préservant une recherche gratuite réellement utile, ainsi que l'accès, l'export et la suppression des données en cas de changement d'offre.
 
 
 #### 15.6 – Hypothèses d'offres et viabilité économique

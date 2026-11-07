@@ -62,6 +62,8 @@
   --icon-sm: 24px;
   --icon-md: 40px;
   --icon-lg: 48px;
+}
+
 /* Onboarding Primary Button */
 .onboarding-primary-button {
   background: var(--onboarding-button-bg);
