@@ -1,6 +1,6 @@
 # Modèle d'index multi-sources — 15.5bis.2
 
-**Statut : expérimental, en mémoire uniquement.** Ce modèle n'est pas branché à l'application ni aux sources réelles ; aucun schéma persistant ou mécanisme de migration n'est défini.
+**Statut : expérimental, en mémoire uniquement.** Une recherche par nom utilise les métadonnées des documents locaux et Drive déjà présents dans l'application. Aucun schéma persistant de cet index ou mécanisme de migration n'est défini.
 
 ## Forme et validation
 
@@ -71,7 +71,15 @@ Une fiche absente d'une découverte, même vide ou incomplète, reste conservée
 
 Avant toute migration, il faudra examiner les données réellement stockées, choisir la clé et la stabilité des identités par source, définir la conversion des dates et provenances manquantes, versionner et tester migration et retour arrière, et fixer les politiques de conservation et suppression des extraits. Il faudra également définir la conservation des annotations et corrections lors des réindexations.
 
-Aucune persistance, migration, recherche intégrée à l'application, déduplication par empreinte, synchronisation ou réindexation de sources réelles n'est réalisée ici. Supprimer une future fiche d'index ne devra pas supprimer l'original.
+Aucune persistance de l'index commun, migration, déduplication par empreinte, synchronisation ni découverte générale de sources réelles n'est réalisée ici. Supprimer une fiche d'index ne supprime pas l'original.
+
+## Parcours expérimental local et Drive dans l'application
+
+`IndexSession.syncDocuments(documents)` reconstruit les fiches de métadonnées à partir de l'instantané des documents locaux et Drive déjà présents dans l'application, sans lecture de fichier ni nouvel appel Drive. Les exemples de démonstration sont exclus. L'identité est la paire source (`local` ou `drive`) et identifiant applicatif ; les identifiants locaux sont ceux des documents importés, pas une garantie de réidentification du fichier original. Les identifiants répétés pour une même source utilisent la dernière entrée de l'instantané. Les entrées invalides interrompent la mise à jour sans remplacer l'état précédent.
+
+Le rapprochement conserve les corrections de nom en mémoire lorsque la même identité reste présente ; les éléments absents de l'instantané applicatif sont retirés de cet index, sans suppression des originaux. Une absence ne signifie pas que le fournisseur a supprimé un fichier. `getAllRecords`, `getRecordsBySource`, `updateRecord` et `search` travaillent sur des copies ou résultats indépendants. Les corrections de l'index ne sont pas exposées dans l'interface ni persistées.
+
+L'interface expérimentale recherche les noms uniquement et indique la source, la couverture métadonnées et la correspondance. Les documents déjà stockés sont repris au démarrage ; les imports, suppressions et la purge actualisent les résultats. Cet index n'interroge ni Drive ni les dossiers après sélection, ne vérifie pas l'accès actuel aux originaux et ne couvre pas l'ensemble d'un appareil ou d'un compte. Les parcours applicatifs existants peuvent lire et conserver les contenus choisis dans IndexedDB, indépendamment de cet index de métadonnées.
 
 ## Recherche expérimentale dans l'index commun 15.5bis.9
 

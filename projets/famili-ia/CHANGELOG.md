@@ -5,8 +5,10 @@
 - Cadrage de la cible multi-sources, scénarios fictifs, états et limites des sources, et proposition de contrat de connecteurs.
 - Ajout de modules autonomes en mémoire : niveaux de couverture, découverte paginée fictive, modèle d'index avec provenance et preuves, rapprochement préservant les corrections, et recherche traçable avec contexte des sources.
 - Adaptateur expérimental de métadonnées des fichiers déjà sélectionnés par Google Drive, sans extension des permissions ni raccordement au parcours de production.
+- Session Drive expérimentale en mémoire reliant sélection explicite, rapprochement et recherche ; aucune persistance ni intégration à l'interface.
+- Recherche expérimentale par nom dans les métadonnées locales et Drive déjà présentes dans l'application, avec source et limites explicites ; aucun nouvel accès Drive ni nouvelle persistance de l'index.
 - Prototypes de propositions d'échéances et d'extraction restrictive à partir de texte déjà extrait, sans création d'alerte.
-- Tests fictifs ciblés. Ces composants ne sont pas raccordés à l'interface ni à IndexedDB ; aucune migration, recherche multi-sources opérationnelle ou nouveau connecteur réel n'est annoncée.
+- Tests fictifs ciblés. L'index expérimental est reconstruit en mémoire depuis les documents applicatifs ; aucune migration, synchronisation des sources ou nouveau connecteur réel n'est annoncée.
 
 # [15.4.e] - 2026-11-02 - Résultats expliqués et corrections locales Moments de vie
 

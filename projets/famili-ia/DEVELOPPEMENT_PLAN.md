@@ -233,15 +233,25 @@ L'index doit exploiter les métadonnées et le contenu effectivement accessibles
 
 Le traitement et l'index sont locaux par défaut ; toute synchronisation ou transmission à un service externe exige une décision d'architecture et une information distinctes. Les acquis de 15.1 à 15.5 sont réutilisés et leurs statuts restent inchangés. Les parcours existants sont à préserver ou à migrer explicitement et à tester.
 
+**Suivi des lots 15.5bis** — les cases ci-dessous ne sont cochées que lorsque l'ensemble de leurs critères est satisfait.
+
+| Lot | Références | Statut | Réalisé et limites / restant |
+|---|---|---|---|
+| Cadrage et contrat | 15.5bis.0, 15.5bis.1.a–c | Partiel | Scénarios, niveaux de couverture, états et contrat cible définis ; connecteur fictif et orchestration paginée expérimentaux. La matrice doit être actualisée et les capacités réelles et la reprise par fournisseur restent à valider. |
+| Index commun expérimental | 15.5bis.2, 15.5bis.9 | Partiel | Fiches en mémoire, provenance, preuves, rapprochement et recherche ; aucune migration, persistance de l'index ni déduplication complète. |
+| Échéances expérimentales | 15.5bis.3, 15.5bis.10 | Partiel | Extraction restrictive et propositions en mémoire ; ni pipeline général ni raccordement au moteur d'alertes. |
+| Premier parcours local + Drive | 15.5bis.1.d, 15.5bis.2.a–c, 15.5bis.5.a, 15.5bis.9.a–b | Partiel | Recherche expérimentale par nom sur les documents présents dans l'application, avec source et couverture métadonnées. Pas de découverte générale, contenu indexé commun, accès à l'original vérifié ni validation OAuth réelle de ce parcours ; les deux sources ne constituent pas encore deux connecteurs complets. |
+| Autres sources et parcours cible | 15.5bis.4, .6–.8, .11–.13 | À faire | Intégrations, autorisations, disponibilité, confidentialité et validations propres à chaque plateforme. |
+
 ##### 15.5bis.0 – Cadrage de la recherche universelle
-- [ ] **15.5bis.0.a** : Décrire les scénarios prioritaires : facture dont l'emplacement est inconnu, garantie et échéance, contrat et fait précis, photos par date/personne/lieu/événement et recherche simultanée dans plusieurs sources.
-- [ ] **15.5bis.0.b** : Définir les niveaux de couverture : non accessible, métadonnées seules, contenu partiel et contenu analysé ; distinguer la couverture effective de la simple autorisation d'accès.
-- [ ] **15.5bis.0.c** : Définir les états et comportements d'une source déconnectée, inaccessible, partiellement indexée ou obsolète, ainsi que l'information montrée dans les résultats.
-- [ ] **15.5bis.0.d** : Établir une matrice par source et plateforme : lecture, recherche, mise à jour, accès à l'original, formats, permissions, limites et statut d'implémentation ; revérifier les études fournisseur avant intégration.
+- [✓] **15.5bis.0.a** : Décrire les scénarios prioritaires : facture dont l'emplacement est inconnu, garantie et échéance, contrat et fait précis, photos par date/personne/lieu/événement et recherche simultanée dans plusieurs sources. Voir [scénarios de recherche](docs/architecture/scenarios-recherche-multi-sources.md) ; ils décrivent la cible, pas une validation fonctionnelle.
+- [✓] **15.5bis.0.b** : Définir les niveaux de couverture : non accessible, métadonnées seules, contenu partiel et contenu analysé ; distinguer la couverture effective de la simple autorisation d'accès. Voir [couverture d'indexation](docs/architecture/index-coverage.md).
+- [✓] **15.5bis.0.c** : Définir les états et comportements d'une source déconnectée, inaccessible, partiellement indexée ou obsolète, ainsi que l'information montrée dans les résultats. Voir [états des sources](docs/architecture/etat-et-capacites-sources.md) ; comportements proposés, non tous intégrés.
+- [ ] **15.5bis.0.d** : Établir une matrice par source et plateforme : lecture, recherche, mise à jour, accès à l'original, formats, permissions, limites et statut d'implémentation ; revérifier les études fournisseur avant intégration. [Matrice initiale](docs/architecture/etat-et-capacites-sources.md) disponible, à actualiser pour le parcours expérimental et à revérifier avant intégration fournisseur.
 - **Validation :** les scénarios et la matrice distinguent ce qui existe, ce qui est prévu et ce qui dépend d'une autorisation ou d'une faisabilité non confirmée.
 
 ##### 15.5bis.1 – Architecture commune des sources
-- [ ] **15.5bis.1.a** : Définir une interface de connecteur couvrant connexion, autorisation, découverte, lecture des métadonnées et du contenu accessible, ouverture de l'original, suivi des changements, déconnexion et révocation.
+- [✓] **15.5bis.1.a** : Définir une interface de connecteur couvrant connexion, autorisation, découverte, lecture des métadonnées et du contenu accessible, ouverture de l'original, suivi des changements, déconnexion et révocation. Voir [contrat proposé](docs/architecture/contrat-connecteurs.md) ; sa mise en œuvre et sa validation sur un connecteur réel restent à faire.
 - [ ] **15.5bis.1.b** : Modéliser fournisseur, compte ou appareil, périmètre autorisé, capacités et état ; utiliser un identifiant stable par élément distinct de son nom et de son emplacement.
 - [ ] **15.5bis.1.c** : Gérer pagination, quotas, erreurs explicites, reconnexion et reprise après interruption ; isoler les défaillances d'une source des autres.
 - [ ] **15.5bis.1.d** : Concevoir le socle avec un premier connecteur réel afin de permettre l'ajout d'autres sources sans réécrire la recherche.

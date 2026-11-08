@@ -243,6 +243,18 @@
           </button>
         </form>
 
+        <section class="search-filters" aria-labelledby="experimental-index-title">
+          <h2 id="experimental-index-title">Recherche par nom multi-sources — expérimental</h2>
+          <p>Recherche locale dans les noms des fichiers locaux et Google Drive présents dans Famili-IA. Seules leurs métadonnées sont indexées ici : cela ne couvre pas tout l'appareil ni tout le compte Drive. L'index est reconstruit en mémoire ; la disponibilité des originaux n'est pas vérifiée.</p>
+          <form id="experimental-index-form" role="search">
+            <label for="experimental-index-query">Nom à rechercher</label>
+            <input id="experimental-index-query" type="search" autocomplete="off" required>
+            <button type="submit" class="text-button">Rechercher</button>
+          </form>
+          <p id="experimental-index-status" role="status" aria-live="polite"></p>
+          <ul id="experimental-index-results" aria-label="Résultats multi-sources"></ul>
+        </section>
+
         <section class="search-filters" aria-label="Filtres de recherche">
           <div class="search-filter-row">
             <span class="search-filter-label">Type</span>
@@ -281,7 +293,7 @@
         <!-- Protection -->
         <div class="security-notice" style="margin-top: 2rem; padding: 1rem; border-radius: var(--radius-md); background: #f1f5f9; display: flex; gap: 1rem; align-items: center; color: var(--color-text-secondary); font-size: 0.85rem;">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-primary); flex-shrink: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <p style="margin: 0;">Les fichiers locaux et contenus Google choisis restent en mémoire du navigateur, rien n'est envoyé à un serveur Famili-IA ni conservé après fermeture.</p>
+          <p style="margin: 0;">Les fichiers et contenus choisis sont traités localement ; des données peuvent être conservées dans le stockage de ce navigateur. Rien n'est envoyé à un serveur Famili-IA par ce parcours.</p>
         </div>
 
         <section class="results" id="results" aria-live="polite" aria-atomic="true" hidden>

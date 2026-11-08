@@ -61,21 +61,21 @@ Ces scénarios, fichiers, données et résultats sont entièrement fictifs. Ils 
 
 ---
 
-## Scénario 4 : Retrouver une photo par événement, personnes et date
+## Scénario 4 : Retrouver une photo par événement, personnes, lieu et date
 
-**Intention/Requête** : "mariage lucas marie 2024"
+**Intention/Requête** : "mariage lucas marie toulouse 2024"
 
 **Sources/Périmètre/Couverture** :
 - Photos locales : Appareil - Métadonnées seules
-- Associations événement/personnes : tags saisis volontairement par l'utilisateur, sans reconnaissance faciale.
+- Associations événement/personnes et lieu : informations saisies volontairement par l'utilisateur, sans reconnaissance faciale ni déduction automatique du lieu.
 
 **Données disponibles** :
-- 20240714_001_Mariage.jpg - EXIF 14/07/2024 - Tags `#mariage #lucas #marie`
-- 20240715_001_Ceremonie.jpg - EXIF 15/07/2024 - Tags `#mariage #lucas #marie`
+- 20240714_001_Mariage.jpg - EXIF 14/07/2024 - Tags `#mariage #lucas #marie` - Lieu saisi : Toulouse
+- 20240715_001_Ceremonie.jpg - EXIF 15/07/2024 - Tags `#mariage #lucas #marie` - Lieu saisi : Toulouse
 
 **Résultats/Preuves** :
-1. Photos 📸 `20240714_001_Mariage.jpg` - EXIF 14/07/2024, tags `#mariage #lucas #marie`
-2. Photos 📸 `20240715_001_Ceremonie.jpg` - EXIF 15/07/2024, tags `#mariage #lucas #marie`
+1. Photos 📸 `20240714_001_Mariage.jpg` - EXIF 14/07/2024, tags `#mariage #lucas #marie`, lieu saisi : Toulouse
+2. Photos 📸 `20240715_001_Ceremonie.jpg` - EXIF 15/07/2024, tags `#mariage #lucas #marie`, lieu saisi : Toulouse
 
 **Cas limite** : Si aucune photo locale sélectionnée ne porte les associations demandées → "Aucune photo locale sélectionnée n'est associée à cet événement et à ces personnes. Voir les photos sélectionnées datées de juillet 2024 ?" Cette proposition élargit les critères et ne prétend pas identifier les personnes ou l'événement.
 

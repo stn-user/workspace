@@ -14,6 +14,7 @@ import { getPhotoThumbnailDataUrl } from "./photo-thumbnails.js";
 import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline } from "./photo-timeline.js";
 import { getAlertsToNotify, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
+import { IndexSession } from "./index-session.js";
 
 const activeScanWorkers = new Map();
 let suspendPhotoThumbnailRendering = () => {};
@@ -273,7 +274,7 @@ function initOnboardingWizard() {
         if (fill) fill.style.width = "0%";
         if (text) text.textContent = "Initialisation du scan...";
 
-        startBackgroundScan([dirHandle]);
+        if (!startBackgroundScan([dirHandle])) return;
         showDemoNotice("Scan intelligent démarré sur le dossier choisi.");
 
         // S'assurer que la barre reste visible après le changement de vue
@@ -464,6 +465,7 @@ function initOnboardingWizard() {
 
     console.log('[DEBUG] Async init - About to load documents');
     uploadedDocuments.push(...getDocuments());
+    refreshExperimentalIndex();
     console.log('[DEBUG] Async init - documents loaded, count:', uploadedDocuments.length);
     if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
     startAlertScheduler();
@@ -674,6 +676,46 @@ const documents = [
 
 const driveDemoDocuments = documents.slice(0, 3);
 const uploadedDocuments = [];
+const experimentalIndex = new IndexSession();
+let driveSelectionGeneration = 0;
+let driveSelectionSettled = null;
+let removingSessionFiles = false;
+const experimentalIndexForm = document.querySelector("#experimental-index-form");
+const experimentalIndexQuery = document.querySelector("#experimental-index-query");
+const experimentalIndexStatus = document.querySelector("#experimental-index-status");
+const experimentalIndexResults = document.querySelector("#experimental-index-results");
+let experimentalQuery = "";
+
+function refreshExperimentalIndex() {
+  try {
+    experimentalIndex.syncDocuments(uploadedDocuments);
+    experimentalIndexResults.replaceChildren();
+    if (!experimentalQuery) {
+      experimentalIndexStatus.textContent = "";
+      return;
+    }
+    const matches = experimentalIndex.search(experimentalQuery);
+    for (const match of matches) {
+      const item = document.createElement("li");
+      const source = match.sourceId === "drive" ? "Google Drive" : "Local";
+      item.textContent = `${match.name} — ${source} — métadonnées uniquement — correspondance : ${match.reasons.map(reason => reason.value).join(", ")}`;
+      experimentalIndexResults.appendChild(item);
+    }
+    experimentalIndexStatus.textContent = matches.length
+      ? `${matches.length} résultat${matches.length === 1 ? "" : "s"} dans les fichiers présents dans Famili-IA.`
+      : "Aucun résultat dans les fichiers présents dans Famili-IA ; d'autres fichiers peuvent exister dans les sources.";
+  } catch (error) {
+    experimentalIndexResults.replaceChildren();
+    const reason = error instanceof Error ? error.message : "Erreur non détaillée";
+    experimentalIndexStatus.textContent = `Recherche expérimentale indisponible : ${reason}`;
+  }
+}
+
+experimentalIndexForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  experimentalQuery = experimentalIndexQuery.value;
+  refreshExperimentalIndex();
+});
 const maxDriveFiles = 50;
 const maxTextFileSize = 1024 * 1024;
 const maxPdfFileSize = 10 * 1024 * 1024;
@@ -1059,7 +1101,16 @@ function trackBackgroundWorker(worker) {
 }
 
 function startBackgroundScan(directories) {
-  const worker = new BackgroundSyncWorker(directories, updateScanProgressUI);
+  if (removingSessionFiles) {
+    setFileStatus("La suppression est en cours ; réessayez ensuite.", "error");
+    return null;
+  }
+  const worker = new BackgroundSyncWorker(directories, updateScanProgressUI, {
+    onDocument: (document) => {
+      uploadedDocuments.push(document);
+      refreshExperimentalIndex();
+    }
+  });
   trackBackgroundWorker(worker);
   return worker;
 }
@@ -1067,7 +1118,10 @@ function startBackgroundScan(directories) {
 function startBackgroundImport(files) {
   const worker = new BackgroundSyncWorker([], updateScanProgressUI, {
     files,
-    onDocument: (document) => uploadedDocuments.push(document)
+    onDocument: (document) => {
+      uploadedDocuments.push(document);
+      refreshExperimentalIndex();
+    }
   });
   const task = trackBackgroundWorker(worker);
 
@@ -1145,6 +1199,11 @@ function openSourceChoices() {
 }
 
 async function loadLocalFiles(files, sourceInput = localFilesInput) {
+  if (removingSessionFiles) {
+    setFileStatus("La suppression est en cours ; réessayez ensuite.", "error");
+    if (sourceInput) sourceInput.value = "";
+    return;
+  }
   const selectedFiles = [...files];
   if (selectedFiles.length === 0) return;
 
@@ -1245,6 +1304,10 @@ document.querySelector("#choose-local-files-native").addEventListener("click", (
 
 connectGoogleDriveButton.addEventListener("click", async () => {
   sourceChoiceDialog.close();
+  if (removingSessionFiles || driveSelectionSettled) {
+    setDriveConnectionStatus("Une sélection ou une suppression est déjà en cours.", "error");
+    return;
+  }
   const driveFileCount = uploadedDocuments.filter((file) => file.driveSource).length;
   const remainingCount = maxDriveFiles - driveFileCount;
   if (!googleDriveClient) {
@@ -1257,9 +1320,16 @@ connectGoogleDriveButton.addEventListener("click", async () => {
   }
 
   connectGoogleDriveButton.disabled = true;
+  const selectionGeneration = driveSelectionGeneration;
+  let finishSelection;
+  driveSelectionSettled = new Promise((resolve) => { finishSelection = resolve; });
   setDriveConnectionStatus("Ouverture de l'autorisation Google. Vous pouvez annuler avant de choisir des fichiers.", "success");
   try {
     const loadedFiles = await googleDriveClient.pickFiles(remainingCount);
+    if (selectionGeneration !== driveSelectionGeneration) {
+      setDriveConnectionStatus("La sélection a été ignorée car les fichiers ont été retirés pendant son exécution.", "error");
+      return;
+    }
     if (loadedFiles.length === 0) {
       setDriveConnectionStatus("Sélection annulée. Aucun fichier n'a été lu.", "success");
       return;
@@ -1273,6 +1343,7 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     }
 
     uploadedDocuments.push(...newFiles);
+    refreshExperimentalIndex();
     for (const doc of newFiles) {
       await addDocument(doc);
     }
@@ -1291,6 +1362,8 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     const reason = error instanceof Error ? error.message : "Erreur Google non détaillée.";
     setDriveConnectionStatus(`La sélection Drive a échoué : ${reason}`, "error");
   } finally {
+    driveSelectionSettled = null;
+    finishSelection();
     updateGoogleDriveButton();
     updateDriveConnectionActions();
   }
@@ -1371,36 +1444,50 @@ if (localFilesInput) {
 }
 
 async function clearSessionFiles() {
-  const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
-  for (const doc of [...uploadedDocuments]) {
-    await deleteDocument(doc.id);
-  }
-  uploadedDocuments.length = 0;
-  if (sourceDialog.open) sourceDialog.close();
-  dialogTitle.textContent = "";
-  dialogMeta.textContent = "";
-  dialogContent.textContent = "";
-  updateClearFilesButtonsVisibility();
-  documentList.replaceChildren();
-  answerText.textContent = "";
-  resultCount.textContent = "";
-  results.hidden = true;
-  noResults.hidden = true;
-  setFileStatus("Fichiers locaux retirés de cette page.", "success");
-  if (localFilesInput) localFilesInput.value = "";
-  updateGoogleDriveButton();
-  updateModeBanner();
-  if (shouldRevokeGoogleAccess) {
-    try {
-      await googleDriveClient.revoke();
-      setDriveConnectionStatus("Fichiers retirés de la mémoire locale et autorisation Google révoquée.", "success");
-    } catch (error) {
-      setDriveConnectionStatus(`Fichiers retirés localement, mais révocation Google non confirmée : ${error.message}`, "error");
+  if (removingSessionFiles) return;
+  removingSessionFiles = true;
+  driveSelectionGeneration += 1;
+  try {
+    if (driveSelectionSettled) await driveSelectionSettled;
+    await stopBackgroundScans();
+    const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
+    for (const doc of [...uploadedDocuments]) {
+      await deleteDocument(doc.id);
+      const index = uploadedDocuments.indexOf(doc);
+      if (index !== -1) uploadedDocuments.splice(index, 1);
+      refreshExperimentalIndex();
     }
-  } else {
-    setDriveConnectionStatus("Fichiers retirés de la mémoire locale. Aucun jeton Google n'était actif.", "success");
+    if (sourceDialog.open) sourceDialog.close();
+    dialogTitle.textContent = "";
+    dialogMeta.textContent = "";
+    dialogContent.textContent = "";
+    updateClearFilesButtonsVisibility();
+    documentList.replaceChildren();
+    answerText.textContent = "";
+    resultCount.textContent = "";
+    results.hidden = true;
+    noResults.hidden = true;
+    setFileStatus("Fichiers locaux retirés de cette page.", "success");
+    if (localFilesInput) localFilesInput.value = "";
+    updateGoogleDriveButton();
+    updateModeBanner();
+    if (shouldRevokeGoogleAccess) {
+      try {
+        await googleDriveClient.revoke();
+        setDriveConnectionStatus("Fichiers retirés de la mémoire locale et autorisation Google révoquée.", "success");
+      } catch (error) {
+        setDriveConnectionStatus(`Fichiers retirés localement, mais révocation Google non confirmée : ${error.message}`, "error");
+      }
+    } else {
+      setDriveConnectionStatus("Fichiers retirés de la mémoire locale. Aucun jeton Google n'était actif.", "success");
+    }
+    updateDriveConnectionActions();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Erreur non détaillée";
+    setFileStatus(`La suppression des fichiers a échoué : ${reason}`, "error");
+  } finally {
+    removingSessionFiles = false;
   }
-  updateDriveConnectionActions();
 }
 
 if (clearFilesButton) {
@@ -3113,6 +3200,7 @@ function openManualEntryDialog() {
 
     // Ajouter à la liste des documents locaux
     uploadedDocuments.push(newDoc);
+    refreshExperimentalIndex();
     await addDocument(newDoc);
 
     dialog.close();
@@ -3582,8 +3670,10 @@ function initMomentsLifeSearch() {
       }
       try {
         await deleteDocument(id);
-        const uploadedIndex = uploadedDocuments.findIndex(document => document.id === id);
-        if (uploadedIndex !== -1) uploadedDocuments.splice(uploadedIndex, 1);
+        for (let index = uploadedDocuments.length - 1; index >= 0; index -= 1) {
+          if (uploadedDocuments[index].id === id) uploadedDocuments.splice(index, 1);
+        }
+        refreshExperimentalIndex();
         selectedPhotoIds.delete(id);
         photoResults = photoResults.filter(item => item.photo.id !== id);
         deletedCount += 1;
@@ -3844,21 +3934,30 @@ function initDataView(filters = {}) {
 
   confirmPurgeBtn?.addEventListener('click', async () => {
     if (!purgeStatus || !confirmPurgeBtn) return;
+    if (removingSessionFiles) {
+      purgeStatus.textContent = "Une suppression est déjà en cours.";
+      purgeStatus.dataset.state = 'error';
+      purgeStatus.hidden = false;
+      return;
+    }
 
     confirmPurgeBtn.disabled = true;
     if (cancelPurgeBtn) cancelPurgeBtn.disabled = true;
     if (closePurgeBtn) closePurgeBtn.disabled = true;
     purgeStatus.hidden = true;
-    const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
-
     try {
+      driveSelectionGeneration += 1;
+      removingSessionFiles = true;
+      if (driveSelectionSettled) await driveSelectionSettled;
       await stopBackgroundScans();
+      const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
       await resetState();
+      uploadedDocuments.length = 0;
+      refreshExperimentalIndex();
       if (!clearFamilyState()) {
         throw new Error('Les données IndexedDB ont été supprimées, mais les données de famille dans le stockage du navigateur n’ont pas pu être effacées.');
       }
 
-      uploadedDocuments.length = 0;
       if (sourceDialog.open) sourceDialog.close();
       if (localFilesInput) localFilesInput.value = '';
       documentList.replaceChildren();
@@ -3895,6 +3994,8 @@ function initDataView(filters = {}) {
       confirmPurgeBtn.disabled = false;
       if (cancelPurgeBtn) cancelPurgeBtn.disabled = false;
       if (closePurgeBtn) closePurgeBtn.disabled = false;
+    } finally {
+      removingSessionFiles = false;
     }
   });
 }

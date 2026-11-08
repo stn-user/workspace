@@ -163,6 +163,14 @@ Rejette explicitement :
 - Un tableau vide reste vide ; il ne permet pas de déduire le contenu du compte ni, à lui seul, la raison de l'absence de résultats. L'annulation du Picker produit notamment un tel tableau.
 - L'adaptateur ne reçoit pas les erreurs du client et ne les masque pas : l'appelant doit les traiter explicitement.
 
+### Session expérimentale de sélection
+
+`DriveIndexSession` dans [drive-session.js](../../drive-session.js) relie en mémoire `pickFiles`, l'adaptateur, le rapprochement et `searchIndex`. L'appelant fournit un client initialisé, un `sourceId` opaque et, facultativement, des fiches de la même source. `selectFiles(maxItems)` lance une sélection explicite et retourne `{ selectedCount, records }` ; `getRecords()` retourne une copie, `updateRecord(record)` remplace une fiche existante de cette session et `search(query, options)` recherche dans les fiches.
+
+Une sélection vide conserve les fiches et ne prouve rien sur le contenu du compte. Les erreurs de sélection ou d'adaptation sont propagées sans modifier l'index. Une seule sélection peut être en cours ; les corrections sont refusées pendant celle-ci. Le contenu déjà lu par le client n'est pas conservé par l'adaptateur : seules les métadonnées sont recherchables. Les corrections restent en mémoire uniquement.
+
+La session n'est pas raccordée à l'interface ni à la persistance, ne lance pas elle-même l'initialisation du client et ne constitue pas un connecteur complet. Elle ne modifie pas le scope `drive.file`, ne découvre pas tout Drive et n'ajoute aucun appel réseau au parcours existant. Les tests utilisent des réponses simulées, sans validation OAuth réelle.
+
 ## Plan de validation avant adoption
 
 1. Construire un adaptateur fictif sans réseau et un jeu de données synthétiques ; vérifier les opérations supportées et non supportées, le refus et l'annulation.

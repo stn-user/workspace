@@ -256,6 +256,7 @@ export class BackgroundSyncWorker {
 
           console.log(`Debug: Ajout effectif du document dans le state -> ${fileObj.name}`);
           await addDocument(newDoc);
+          this.onDocument?.(newDoc);
           importedCount++;
         } catch (err) {
           failedCount++;
