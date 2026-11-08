@@ -1,4 +1,28 @@
+import { createContentProvenance } from "./content-index.js";
+
 export const googleDriveScope = "https://www.googleapis.com/auth/drive.file";
+const extractedPdfSegments = new WeakMap();
+
+export async function prepareDriveDocumentForIndex(document, index) {
+  let segments;
+  let method;
+  if (["Texte", "Markdown", "Document Google"].includes(document.type)) {
+    segments = [document.content];
+    method = "drive-text";
+  } else if (document.type === "PDF") {
+    const extracted = extractedPdfSegments.get(document);
+    if (!extracted || extracted.content !== document.content) {
+      throw new Error("Segments PDF Drive indisponibles ou contenu modifié.");
+    }
+    segments = extracted.segments;
+    method = "drive-pdf-text";
+  } else {
+    throw new TypeError("Type Drive non pris en charge pour l'indexation.");
+  }
+  const provenance = await createContentProvenance(document, segments, method);
+  if (provenance) document.contentProvenance = provenance;
+  index.trustExtractedContent(document, segments);
+}
 const googleIdentityScript = "https://accounts.google.com/gsi/client";
 const googleApiScript = "https://apis.google.com/js/api.js";
 const supportedMimeTypes = [
@@ -228,15 +252,18 @@ export class GoogleDriveClient {
     const contentResponse = await this.driveRequest(contentUrl, `Impossible de lire « ${metadata.name} »`);
     const bytes = await readBoundedBytes(contentResponse, fileType.maxSize, metadata.name);
     let content;
+    let segments;
     if (fileType.type === "PDF") {
-      const { readPdfFile } = await import("./document-reader.js");
-      content = await readPdfFile(new File([bytes], metadata.name, { type: "application/pdf" }));
+      const { readPdfFileWithSegments } = await import("./document-reader.js");
+      const pdfResult = await readPdfFileWithSegments(new File([bytes], metadata.name, { type: "application/pdf" }));
+      content = pdfResult.content;
+      segments = pdfResult.segments;
     } else {
       content = new TextDecoder().decode(bytes);
     }
     if (!content.trim()) throw new Error(`« ${metadata.name} » ne contient aucun texte exploitable.`);
 
-    return {
+    const document = {
       id: `drive-${metadata.id}`,
       name: metadata.name,
       type: fileType.type,
@@ -249,6 +276,8 @@ export class GoogleDriveClient {
       isLocal: true,
       driveSource: true
     };
+    if (segments) extractedPdfSegments.set(document, { content, segments });
+    return document;
   }
 
   revoke() {

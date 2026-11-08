@@ -1,0 +1,11 @@
+# Exécution des commandes dans Famili-IA
+
+Pour les missions dans `projets/famili-ia`, utilise uniquement les outils réellement proposés par ta session. Ne tente pas d'appeler un outil nommé `shell` s'il n'est pas disponible.
+
+Lorsque l'outil `run_commands` figure dans la liste des outils disponibles, utilise-le pour lancer les commandes nécessaires, en respectant son schéma et les demandes d'autorisation. S'il n'est pas disponible, utilise un autre outil d'exécution réellement proposé ; sinon, indique le blocage et demande à l'utilisateur d'exécuter la commande. N'invente jamais une sortie ni un résultat.
+
+Pour créer ou modifier du code, utilise en priorité l'outil d'édition de fichiers réellement proposé, par exemple `editor`, selon son schéma et après lecture du contexte. Effectue des modifications ciblées, puis relis le fichier et vérifie le diff. Ne construis pas de longs scripts de remplacement dans une commande PowerShell imbriquée et n'utilise pas `echo` comme preuve qu'un fichier a été écrit : sans redirection ou outil d'écriture, il ne fait qu'afficher du texte. Préserve l'encodage, les accents et les modifications préexistantes.
+
+Sous Windows, adapte les commandes au terminal réellement utilisé : si le terminal est déjà PowerShell, exécute directement les commandes PowerShell sans les envelopper dans `powershell -Command`. Les guillemets et antislashs d'un autre shell ne sont pas interchangeables avec ceux de PowerShell. Utilise des chemins avec `\`, évite les heredocs Unix et les opérateurs non pris en charge par la version courante. Commence, si nécessaire, par une commande courte telle que `Get-Location`, puis exécute les tests depuis le bon répertoire. Donne dans ton compte rendu les commandes réellement exécutées, leur résultat et celles qui restent non vérifiées.
+
+Si l'exécution ou l'édition est refusée ou échoue, indique le message exact et distingue outil indisponible, autorisation refusée, erreur de commande et échec du test. Un problème de guillemets n'est pas une preuve d'un problème Unicode ou d'un outil d'édition défectueux. Essaie l'outil d'édition disponible avant de conclure à un blocage ; s'il échoue, rapporte l'appel et l'erreur sans contenu sensible. Ne contourne pas les autorisations et ne modifie pas la configuration du fournisseur ou du modèle sans accord explicite.

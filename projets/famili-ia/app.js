@@ -1,6 +1,6 @@
 ﻿console.log("App script loaded");
 import { buildSearchResponse, rankDocuments } from "./search-utils.js";
-import { GoogleDriveClient } from "./google-drive.js";
+import { GoogleDriveClient, prepareDriveDocumentForIndex } from "./google-drive.js";
 import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
 import { Capacitor } from "@capacitor/core";
 import { parseDocument } from "./document-parser.js";
@@ -15,7 +15,6 @@ import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline 
 import { getAlertsToNotify, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
 import { IndexSession } from "./index-session.js";
-import { createContentProvenance } from "./content-index.js";
 import { describeSources } from "./source-status.js";
 
 const activeScanWorkers = new Map();
@@ -1401,11 +1400,7 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     }
 
     for (const doc of newFiles) {
-      if (["Texte", "Markdown", "Document Google"].includes(doc.type)) {
-        const provenance = await createContentProvenance(doc, [doc.content], "drive-text");
-        if (provenance) doc.contentProvenance = provenance;
-        experimentalIndex.trustExtractedContent(doc, [doc.content]);
-      }
+      await prepareDriveDocumentForIndex(doc, experimentalIndex);
       await addDocument(doc);
       uploadedDocuments.push(doc);
     }

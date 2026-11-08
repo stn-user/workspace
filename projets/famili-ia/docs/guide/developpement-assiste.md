@@ -11,10 +11,14 @@ Ce guide organise les lots Famili-IA confiés à un agent et leur revue. Les ins
 
 ## Cycle d'un lot
 
-1. **Préparer** : choisir une sous-étape du [plan](../../DEVELOPPEMENT_PLAN.md), définir une mission bornée et un niveau de risque.
-2. **Implémenter** : transmettre la mission à Cline. Il lit le contexte, modifie uniquement le périmètre autorisé, teste et fournit le compte rendu demandé.
+1. **Préparer** : choisir un lot fonctionnel du [plan](../../DEVELOPPEMENT_PLAN.md), définir une mission bornée et un niveau de risque. Un lot peut couvrir plusieurs sous-étapes cohérentes ; ne pas interrompre le travail après chaque fichier.
+2. **Implémenter** : transmettre la mission à Cline. Il prend en charge le parcours demandé de bout en bout, ses tests, les corrections nécessaires et la documentation ; il préserve les changements préexistants et rapporte les critères bloqués. Un module autonome n'est pas une intégration utilisateur.
 3. **Contrôler** : revenir vers Copilot avec la mission, la base de comparaison et les éventuelles modifications préexistantes. La revue porte sur le diff réel, les critères et les tests, pas seulement sur le résumé de l'agent.
-4. **Décider** : conclure « validé », « à corriger » ou « bloqué », avec preuves et limites. Corriger puis refaire le contrôle nécessaire avant de déclarer le lot terminé.
+4. **Décider** : conclure « validé », « à corriger » ou « bloqué », avec preuves et limites. Par défaut, regrouper les corrections dans une seule mission de retour à Cline, puis contrôler à nouveau les points modifiés. Copilot ne reprend l'implémentation que sur demande ou pour une petite correction indispensable clairement signalée.
+
+La revue est proportionnée au risque : pour un lot courant, vérifier prioritairement les critères, le diff et les tests pertinents ; les changements sensibles exigent les contrôles approfondis et décisions indiqués ci-dessous. Ne pas relire tout le projet ni exécuter des suites répétitivement sans raison. Une revue ciblée ne garantit pas l'absence de défaut.
+
+Pour évaluer les coûts, relever quand ces informations sont disponibles le modèle et fournisseur de chaque outil, les unités ou coûts facturés séparément pour préparation, implémentation et contrôle, ainsi que les reprises. Comparer plusieurs lots comparables, en tenant compte du cache et des abonnements ; ne pas interpréter un pourcentage de crédit comme un nombre de tokens ni supposer que Cline utilise un quota distinct. Ces mesures sont facultatives et ne doivent contenir ni secrets ni données familiales.
 
 La revue s'effectue avant toute intégration ou tout commit demandé. Si le lot est déjà commité, fournir sa référence et sa base ; sinon, indiquer les fichiers concernés et les changements préexistants. La revue doit examiner séparément les changements suivis, indexés et non indexés, ainsi que les fichiers non suivis pertinents : un simple `git diff` ne montre pas tout.
 
@@ -38,9 +42,16 @@ Arrêter et demander une décision si : [ambiguïtés ou risques]
 Respecte AGENTS.md et le guide du projet. Ne coche pas une phase du plan
 simplement parce que le lot est implémenté. Ne crée pas de commit. Ne change
 pas de fichiers hors périmètre ; si c'est nécessaire, arrête-toi et explique.
-Dans le compte rendu, donne : fichiers modifiés, décisions, tests et résultats
-exacts, vérifications non faites, risques, critères atteints ou non et
-changements préexistants préservés.
+Implémente l'intégration, les tests et la documentation demandés, puis corrige
+les échecs liés au lot. Ne déclare pas de réussite sur la base de la syntaxe,
+d'un test isolé ou d'une vérification manuelle non reproductible. Pour chaque
+critère, indique « vérifié », « partiel » ou « non vérifié » avec preuve.
+Dans le compte rendu, donne : base et fichiers modifiés, décisions, commandes
+réellement exécutées et résultats exacts, échecs et causes étayées, vérifications
+non faites, risques, critères atteints ou non et changements préexistants
+préservés. Distingue clairement simulation, vérification navigateur et source
+réelle. Si une commande ou une fixture manque, indique le blocage ; ne conclus
+pas qu'un échec est préexistant sans élément de comparaison.
 ```
 
 Le périmètre inclut les tests et la documentation attendus ; si des fichiers supplémentaires s'avèrent nécessaires, réviser la mission plutôt que contourner cette limite. Une mission portant sur OAuth, permissions, chiffrement, migration, synchronisation ou suppression nécessite un cadrage et une revue approfondis avant validation.
@@ -59,7 +70,7 @@ indique les preuves et les vérifications non réalisées, puis conclus : valid�
 à corriger ou bloqué.
 ```
 
-Pour une correction ultérieure, demander explicitement à Copilot ou préparer une nouvelle mission Cline. Une revue de sécurité dédiée est nécessaire pour les changements sensibles ; une checklist générique n'est pas un audit complet.
+Pour une correction ultérieure, préparer par défaut une mission Cline regroupant les écarts et leurs critères de validation ; demander explicitement à Copilot si l'on souhaite qu'il implémente. Une revue de sécurité dédiée est nécessaire pour les changements sensibles ; une checklist générique n'est pas un audit complet.
 
 ## Checklist de revue du lot
 

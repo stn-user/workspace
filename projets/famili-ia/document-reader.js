@@ -1,6 +1,9 @@
 import { Capacitor } from "@capacitor/core";
 import { Ocr } from "@jcesarmobile/capacitor-ocr";
-import * as pdfjs from "pdfjs-dist";
+
+const pdfjs = typeof window === "undefined"
+  ? await import("pdfjs-dist/legacy/build/pdf.mjs")
+  : await import("pdfjs-dist");
 
 const maxPdfPages = 20;
 const renderScale = 1.5;
@@ -41,9 +44,10 @@ async function recognizePage(page) {
   }
 }
 
-export async function readPdfFile(file) {
+export async function readPdfFileWithSegments(file) {
   const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
   let pdf;
+  const segments = [];
 
   try {
     pdf = await loadingTask.promise;
@@ -56,11 +60,18 @@ export async function readPdfFile(file) {
       const page = await pdf.getPage(pageNumber);
       const textContent = await page.getTextContent();
       const embeddedText = getEmbeddedPageText(textContent.items);
+
+      if (embeddedText) segments.push(embeddedText);
       const pageText = embeddedText || await recognizePage(page);
       if (pageText) pageContents.push(`Page ${pageNumber}\n${pageText}`);
     }
-    return pageContents.join("\n\n");
+    return { content: pageContents.join("\n\n"), segments };
   } finally {
     await loadingTask.destroy();
   }
+}
+
+export async function readPdfFile(file) {
+  const { content } = await readPdfFileWithSegments(file);
+  return content;
 }
