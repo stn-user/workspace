@@ -7,6 +7,8 @@
 - Adaptateur expérimental de métadonnées des fichiers déjà sélectionnés par Google Drive, sans extension des permissions ni raccordement au parcours de production.
 - Session Drive expérimentale en mémoire reliant sélection explicite, rapprochement et recherche ; aucune persistance ni intégration à l'interface.
 - Recherche expérimentale par nom dans les métadonnées locales et Drive déjà présentes dans l'application, avec source et limites explicites ; aucun nouvel accès Drive ni nouvelle persistance de l'index.
+- Recherche expérimentale dans les segments de texte dont l'extraction est connue, avec extraits littéraux et couverture partielle ; provenance minimale enregistrée avec les nouveaux documents et vérifiée après redémarrage. Les anciens textes de provenance inconnue restent exclus.
+- Affichage expérimental des fichiers présents par source, de leur couverture et des observations de session, sans prétendre vérifier l'accès aux originaux ni l'exhaustivité.
 - Prototypes de propositions d'échéances et d'extraction restrictive à partir de texte déjà extrait, sans création d'alerte.
 - Tests fictifs ciblés. L'index expérimental est reconstruit en mémoire depuis les documents applicatifs ; aucune migration, synchronisation des sources ou nouveau connecteur réel n'est annoncée.
 

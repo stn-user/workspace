@@ -15,6 +15,8 @@ import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline 
 import { getAlertsToNotify, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
 import { IndexSession } from "./index-session.js";
+import { createContentProvenance } from "./content-index.js";
+import { describeSources } from "./source-status.js";
 
 const activeScanWorkers = new Map();
 let suspendPhotoThumbnailRendering = () => {};
@@ -465,6 +467,21 @@ function initOnboardingWizard() {
 
     console.log('[DEBUG] Async init - About to load documents');
     uploadedDocuments.push(...getDocuments());
+    const restored = await Promise.all(uploadedDocuments.map(async doc => {
+      try {
+        return await experimentalIndex.restoreDocumentContent(doc);
+      } catch (error) {
+        console.error("Impossible de vérifier la provenance d'un document :", error);
+        return "invalid";
+      }
+    }));
+    const invalidCount = restored.filter(status => status === "invalid").length;
+    restored.forEach((status, index) => {
+      if (status === "invalid") invalidContentProvenance.add(uploadedDocuments[index]);
+    });
+    if (invalidCount) {
+      console.warn(`Recherche : provenance du contenu invalide pour ${invalidCount} document(s) ; noms uniquement.`);
+    }
     refreshExperimentalIndex();
     console.log('[DEBUG] Async init - documents loaded, count:', uploadedDocuments.length);
     if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
@@ -677,6 +694,7 @@ const documents = [
 const driveDemoDocuments = documents.slice(0, 3);
 const uploadedDocuments = [];
 const experimentalIndex = new IndexSession();
+const invalidContentProvenance = new WeakSet();
 let driveSelectionGeneration = 0;
 let driveSelectionSettled = null;
 let removingSessionFiles = false;
@@ -684,11 +702,31 @@ const experimentalIndexForm = document.querySelector("#experimental-index-form")
 const experimentalIndexQuery = document.querySelector("#experimental-index-query");
 const experimentalIndexStatus = document.querySelector("#experimental-index-status");
 const experimentalIndexResults = document.querySelector("#experimental-index-results");
+const experimentalSourceStatus = document.querySelector("#experimental-source-status");
 let experimentalQuery = "";
+let driveObservation = "unknown";
+let localImportFailed = false;
+
+function renderExperimentalSources() {
+  const statuses = describeSources(experimentalIndex.getAllRecords(), {
+    driveConfigured: Boolean(googleDriveClient),
+    driveToken: Boolean(googleDriveClient?.hasAccessToken),
+    driveState: driveObservation,
+    localState: activeScanWorkers.size ? "working" : localImportFailed ? "error" : "unknown"
+  });
+  experimentalSourceStatus.replaceChildren();
+  for (const status of statuses) {
+    const item = document.createElement("li");
+    const name = status.sourceId === "local" ? "Local" : "Google Drive";
+    item.textContent = `${name} : ${status.message} ${status.access} Le périmètre total et la fraîcheur sont inconnus.`;
+    experimentalSourceStatus.appendChild(item);
+  }
+}
 
 function refreshExperimentalIndex() {
   try {
     experimentalIndex.syncDocuments(uploadedDocuments);
+    renderExperimentalSources();
     experimentalIndexResults.replaceChildren();
     if (!experimentalQuery) {
       experimentalIndexStatus.textContent = "";
@@ -698,14 +736,20 @@ function refreshExperimentalIndex() {
     for (const match of matches) {
       const item = document.createElement("li");
       const source = match.sourceId === "drive" ? "Google Drive" : "Local";
-      item.textContent = `${match.name} — ${source} — métadonnées uniquement — correspondance : ${match.reasons.map(reason => reason.value).join(", ")}`;
+      const coverage = match.coverage === "partial" ? "texte partiellement recherché" : "métadonnées uniquement";
+      const reasons = match.reasons.map(reason =>
+        reason.location === "content" ? `texte extrait : « ${reason.value} »` : `nom : « ${reason.value} »`);
+      item.textContent = `${match.name} — ${source} — ${coverage} — ${reasons.join(" ; ")}`;
       experimentalIndexResults.appendChild(item);
     }
     experimentalIndexStatus.textContent = matches.length
       ? `${matches.length} résultat${matches.length === 1 ? "" : "s"} dans les fichiers présents dans Famili-IA.`
-      : "Aucun résultat dans les fichiers présents dans Famili-IA ; d'autres fichiers peuvent exister dans les sources.";
+      : "Aucun résultat dans les données recherchées ; certains textes ne sont pas disponibles et d'autres fichiers peuvent exister dans les sources.";
+    const invalidCount = uploadedDocuments.filter(doc => invalidContentProvenance.has(doc)).length;
+    if (invalidCount) experimentalIndexStatus.textContent += ` Provenance de ${invalidCount} document${invalidCount === 1 ? "" : "s"} invalide : recherche par nom uniquement.`;
   } catch (error) {
     experimentalIndexResults.replaceChildren();
+    experimentalSourceStatus.textContent = "État des sources indisponible : l'index n'a pas pu être actualisé.";
     const reason = error instanceof Error ? error.message : "Erreur non détaillée";
     experimentalIndexStatus.textContent = `Recherche expérimentale indisponible : ${reason}`;
   }
@@ -1041,6 +1085,7 @@ function setDriveConnectionStatus(message, state) {
  * Met à jour l'interface de progression du scan proactif (Phase 11.4.c.5.a)
  */
 function updateScanProgressUI(progressInfo) {
+  if (progressInfo?.status === "error" || progressInfo?.failed > 0) localImportFailed = true;
   const container = document.querySelector("#scan-progress-container");
   const fill = document.querySelector("#scan-progress-fill");
   const text = document.querySelector("#scan-progress-text");
@@ -1088,12 +1133,20 @@ function updateScanProgressUI(progressInfo) {
 let scanProgressTimeout;
 
 function trackBackgroundWorker(worker) {
+  localImportFailed = false;
   const scan = worker.start();
   activeScanWorkers.set(worker, scan);
+  renderExperimentalSources();
   scan.then(
-    () => activeScanWorkers.delete(worker),
-    (error) => {
+    (result) => {
+      if (result?.failed > 0 || result?.status === "error") localImportFailed = true;
       activeScanWorkers.delete(worker);
+      renderExperimentalSources();
+    },
+    (error) => {
+      localImportFailed = true;
+      activeScanWorkers.delete(worker);
+      renderExperimentalSources();
       console.error("Le traitement local s’est terminé avec une erreur :", error);
     }
   );
@@ -1106,7 +1159,8 @@ function startBackgroundScan(directories) {
     return null;
   }
   const worker = new BackgroundSyncWorker(directories, updateScanProgressUI, {
-    onDocument: (document) => {
+    onDocument: (document, extractedSegments) => {
+      experimentalIndex.trustExtractedContent(document, extractedSegments);
       uploadedDocuments.push(document);
       refreshExperimentalIndex();
     }
@@ -1118,7 +1172,8 @@ function startBackgroundScan(directories) {
 function startBackgroundImport(files) {
   const worker = new BackgroundSyncWorker([], updateScanProgressUI, {
     files,
-    onDocument: (document) => {
+    onDocument: (document, extractedSegments) => {
+      experimentalIndex.trustExtractedContent(document, extractedSegments);
       uploadedDocuments.push(document);
       refreshExperimentalIndex();
     }
@@ -1275,6 +1330,8 @@ if (googleDriveClient) {
     updateModeBanner();
     setDriveConnectionStatus("Prêt. Choisissez Google Drive pour demander l'accès drive.file et sélectionner vos fichiers dans le sélecteur officiel.", "success");
   }).catch((error) => {
+    driveObservation = "error";
+    renderExperimentalSources();
     setDriveConnectionStatus(`Connexion Google indisponible : ${error.message}`, "error");
   });
 } else {
@@ -1326,6 +1383,7 @@ connectGoogleDriveButton.addEventListener("click", async () => {
   setDriveConnectionStatus("Ouverture de l'autorisation Google. Vous pouvez annuler avant de choisir des fichiers.", "success");
   try {
     const loadedFiles = await googleDriveClient.pickFiles(remainingCount);
+    driveObservation = "unknown";
     if (selectionGeneration !== driveSelectionGeneration) {
       setDriveConnectionStatus("La sélection a été ignorée car les fichiers ont été retirés pendant son exécution.", "error");
       return;
@@ -1342,11 +1400,16 @@ connectGoogleDriveButton.addEventListener("click", async () => {
       return;
     }
 
-    uploadedDocuments.push(...newFiles);
-    refreshExperimentalIndex();
     for (const doc of newFiles) {
+      if (["Texte", "Markdown", "Document Google"].includes(doc.type)) {
+        const provenance = await createContentProvenance(doc, [doc.content], "drive-text");
+        if (provenance) doc.contentProvenance = provenance;
+        experimentalIndex.trustExtractedContent(doc, [doc.content]);
+      }
       await addDocument(doc);
+      uploadedDocuments.push(doc);
     }
+    refreshExperimentalIndex();
     updateClearFilesButtonsVisibility();
     updateGoogleDriveButton();
     updateModeBanner();
@@ -1359,11 +1422,14 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     );
     setDriveConnectionStatus("Fichiers choisis et chargés en mémoire pour cette session. « Retirer mes fichiers » effacera le contenu et révoquera l'autorisation.", "success");
   } catch (error) {
+    driveObservation = "error";
+    refreshExperimentalIndex();
     const reason = error instanceof Error ? error.message : "Erreur Google non détaillée.";
     setDriveConnectionStatus(`La sélection Drive a échoué : ${reason}`, "error");
   } finally {
     driveSelectionSettled = null;
     finishSelection();
+    renderExperimentalSources();
     updateGoogleDriveButton();
     updateDriveConnectionActions();
   }
@@ -1474,8 +1540,12 @@ async function clearSessionFiles() {
     if (shouldRevokeGoogleAccess) {
       try {
         await googleDriveClient.revoke();
+        driveObservation = "disconnected";
+        renderExperimentalSources();
         setDriveConnectionStatus("Fichiers retirés de la mémoire locale et autorisation Google révoquée.", "success");
       } catch (error) {
+        driveObservation = "error";
+        renderExperimentalSources();
         setDriveConnectionStatus(`Fichiers retirés localement, mais révocation Google non confirmée : ${error.message}`, "error");
       }
     } else {
@@ -3976,7 +4046,11 @@ function initDataView(filters = {}) {
       if (shouldRevokeGoogleAccess) {
         try {
           await googleDriveClient.revoke();
+          driveObservation = "disconnected";
+          renderExperimentalSources();
         } catch (error) {
+          driveObservation = "error";
+          renderExperimentalSources();
           googleRevocationFailed = true;
           successMessage += ` La révocation de l’autorisation Google n’a pas été confirmée : ${error.message}`;
         }

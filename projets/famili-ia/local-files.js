@@ -66,6 +66,7 @@ async function readPdfFile(fileBlob) {
     }
 
     const pageContents = [];
+    const extractedSegments = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber);
       const textContent = await page.getTextContent();
@@ -75,6 +76,7 @@ async function readPdfFile(fileBlob) {
       let pageText;
       if (embeddedText) {
         pageText = embeddedText;
+        extractedSegments.push(embeddedText);
       } else if (Capacitor.isNativePlatform()) {
         // Seule l'application mobile peut faire de l'OCR sur les PDFs scannés
         pageText = await recognizePage(page);
@@ -84,7 +86,7 @@ async function readPdfFile(fileBlob) {
 
       if (pageText) pageContents.push(`Page ${pageNumber}\n${pageText}`);
     }
-    return pageContents.join("\n\n");
+    return { text: pageContents.join("\n\n"), extractedSegments };
   } finally {
     await loadingTask.destroy();
   }
@@ -138,14 +140,24 @@ function getFileExtension(filename) {
 async function readFileContent(fileBlob, filename) {
   const extension = getFileExtension(filename);
   let textContent;
+  let extractedSegments = [];
 
   switch (extension) {
     case 'pdf':
-      textContent = await readPdfFile(fileBlob);
+      {
+        const pdf = await readPdfFile(fileBlob);
+        textContent = pdf.text;
+        extractedSegments = pdf.extractedSegments;
+      }
       break;
     case 'docx':
     case 'doc':
-      textContent = await readDocxFile(fileBlob).catch(() => "Fichier Word au format ancien (.doc). Veuillez l'enregistrer au format .docx pour une lecture optimale.");
+      try {
+        textContent = await readDocxFile(fileBlob);
+        extractedSegments = [textContent];
+      } catch {
+        textContent = "Fichier Word au format ancien (.doc). Veuillez l'enregistrer au format .docx pour une lecture optimale.";
+      }
       break;
     case 'xlsx':
     case 'xls':
@@ -154,6 +166,7 @@ async function readFileContent(fileBlob, filename) {
     case 'txt':
     case 'md':
       textContent = await readTextFile(fileBlob);
+      extractedSegments = [textContent];
       break;
     case 'jpg':
     case 'jpeg':
@@ -173,6 +186,7 @@ async function readFileContent(fileBlob, filename) {
   // Retourner à la fois le texte brut et le contexte structuré
   return {
     rawText: textContent,
+    extractedSegments,
     context: documentContext
   };
 }

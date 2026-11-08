@@ -1,6 +1,6 @@
 # Modèle d'index multi-sources — 15.5bis.2
 
-**Statut : expérimental, en mémoire uniquement.** Une recherche par nom utilise les métadonnées des documents locaux et Drive déjà présents dans l'application. Aucun schéma persistant de cet index ou mécanisme de migration n'est défini.
+**Statut : expérimental.** L'index de recherche reste en mémoire ; une provenance minimale est enregistrée avec les documents nouvellement lus pour permettre la restauration de certains textes. Aucun schéma persistant de l'index ou mécanisme de migration n'est défini.
 
 ## Forme et validation
 
@@ -79,7 +79,13 @@ Aucune persistance de l'index commun, migration, déduplication par empreinte, s
 
 Le rapprochement conserve les corrections de nom en mémoire lorsque la même identité reste présente ; les éléments absents de l'instantané applicatif sont retirés de cet index, sans suppression des originaux. Une absence ne signifie pas que le fournisseur a supprimé un fichier. `getAllRecords`, `getRecordsBySource`, `updateRecord` et `search` travaillent sur des copies ou résultats indépendants. Les corrections de l'index ne sont pas exposées dans l'interface ni persistées.
 
-L'interface expérimentale recherche les noms uniquement et indique la source, la couverture métadonnées et la correspondance. Les documents déjà stockés sont repris au démarrage ; les imports, suppressions et la purge actualisent les résultats. Cet index n'interroge ni Drive ni les dossiers après sélection, ne vérifie pas l'accès actuel aux originaux et ne couvre pas l'ensemble d'un appareil ou d'un compte. Les parcours applicatifs existants peuvent lire et conserver les contenus choisis dans IndexedDB, indépendamment de cet index de métadonnées.
+L'interface expérimentale recherche les noms et les segments explicitement transmis comme texte extrait par le lecteur. Les imports locaux TXT, Markdown et Word réussis, ainsi que les pages à texte incorporé des PDF locaux, fournissent ces segments ; les messages OCR et les textes de remplacement ne le font pas. Les fichiers texte, Markdown et Google Docs sélectionnés via Drive fournissent leur contenu lu ; les PDF Drive, tableaux Excel et images restent ici limités aux métadonnées. Le texte des anciens documents sans provenance reste exclu : seuls leurs noms sont recherchés.
+
+Pour les nouveaux contenus, `contentProvenance` est stockée avec le document dans IndexedDB : version, méthode, positions des segments dans le contenu et empreinte SHA-256 liant source, identifiant, méthode, positions et contenu. Au redémarrage, les positions et l'empreinte sont vérifiées avant de reconstruire les segments ; une provenance invalide n'autorise que la recherche par nom et est signalée. Aucune copie supplémentaire du texte ni migration des anciens documents n'est créée. L'empreinte détecte les changements accidentels mais n'authentifie pas les données face à un acteur capable de modifier à la fois contenu et provenance.
+
+La couverture `partial` indique la présence de segments recherchables, sans prétendre que tout le document est analysé. Chaque terme de contenu possède un extrait littéral, potentiellement distinct si les termes sont éloignés ; une correspondance exige tous les termes dans le nom ou tous dans les segments du contenu. Aucun résumé n'est traité comme preuve. L'affichage utilise du texte, pas du HTML interprété. L'index et ses extraits ne sont pas persistés séparément ; le document, son contenu et sa provenance sont conservés dans le stockage applicatif existant.
+
+Les imports, suppressions et la purge actualisent les résultats. Cet index n'interroge ni Drive ni les dossiers après sélection, ne vérifie pas l'accès actuel aux originaux et ne couvre pas l'ensemble d'un appareil ou d'un compte. Une recherche sans résultat ne prouve pas l'absence de correspondance dans les textes non disponibles.
 
 ## Recherche expérimentale dans l'index commun 15.5bis.9
 

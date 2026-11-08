@@ -5,6 +5,12 @@
 
 import { getAccessibleDirectories, listLocalFiles, readFileContent, scanDirectoryWeb } from "./local-files.js";
 import { addDocument, getCurrentUser, getDocuments } from "./state.js";
+import { createContentProvenance } from "./content-index.js";
+
+function localExtractionMethod(filename) {
+  const extension = filename.split(".").pop().toLowerCase();
+  return extension === "pdf" ? "local-pdf" : ["doc", "docx"].includes(extension) ? "local-word" : "local-text";
+}
 
 export class BackgroundSyncWorker {
   constructor(directories, onProgress, { files = null, onDocument = null } = {}) {
@@ -113,8 +119,10 @@ export class BackgroundSyncWorker {
             ...(photoThumbnail ? { photoThumbnail } : {})
           };
 
+          const provenance = await createContentProvenance(document, parsed.extractedSegments, localExtractionMethod(file.name));
+          if (provenance) document.contentProvenance = provenance;
           await addDocument(document);
-          this.onDocument?.(document);
+          this.onDocument?.(document, parsed.extractedSegments);
           imported += 1;
         } catch (error) {
           failed += 1;
@@ -255,8 +263,10 @@ export class BackgroundSyncWorker {
           };
 
           console.log(`Debug: Ajout effectif du document dans le state -> ${fileObj.name}`);
+          const provenance = await createContentProvenance(newDoc, parsed.extractedSegments, localExtractionMethod(fileObj.name));
+          if (provenance) newDoc.contentProvenance = provenance;
           await addDocument(newDoc);
-          this.onDocument?.(newDoc);
+          this.onDocument?.(newDoc, parsed.extractedSegments);
           importedCount++;
         } catch (err) {
           failedCount++;

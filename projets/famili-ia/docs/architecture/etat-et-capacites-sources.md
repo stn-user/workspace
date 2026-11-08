@@ -1,6 +1,6 @@
 # États et capacités des sources — 15.5bis.0.c et 15.5bis.0.d
 
-**Synthèse établie le 7 novembre 2026.** Les états ci-dessous sont des propositions de conception, pas une description de l'interface actuelle. Les lignes de la matrice distinguent les capacités observées dans le dépôt, les possibilités relevées dans des études antérieures et les éléments à vérifier. Les études fournisseurs citées datent d'octobre 2026 ; leurs API, règles et autorisations doivent être revérifiées avant implémentation ou lancement. Aucun essai sur appareil ni appel fournisseur réel n'a été réalisé pour cette synthèse.
+**Synthèse établie le 7 novembre 2026.** Les états du tableau sont des propositions de conception ; l'interface expérimentale n'en expose qu'un sous-ensemble décrit ci-dessous. Les lignes de la matrice distinguent les capacités observées dans le dépôt, les possibilités relevées dans des études antérieures et les éléments à vérifier. Les études fournisseurs citées datent d'octobre 2026 ; leurs API, règles et autorisations doivent être revérifiées avant implémentation ou lancement. Aucun essai sur appareil ni appel fournisseur réel n'a été réalisé pour cette synthèse.
 
 ## Dimensions indépendantes
 
@@ -25,7 +25,7 @@ Une source peut être inaccessible alors que son index local est conservé. Ses 
 
 ## Matrice des sources
 
-La colonne « recherche / actualisation / original » décrit l'état vérifié dans le dépôt ou indique explicitement les points à vérifier. Les niveaux de couverture et les états proposés ne sont pas encore raccordés aux connecteurs ni à l'interface.
+La colonne « recherche / actualisation / original » décrit l'état vérifié dans le dépôt ou indique explicitement les points à vérifier. L'interface expérimentale distingue pour les sources locale et Drive le nombre de fichiers présents dans Famili-IA, ceux dont le texte est partiellement recherché, et les observations d'accès de la session. Elle signale l'import local en cours ou en erreur et les erreurs ou déconnexions Drive observées ; l'accès actuel et la fraîcheur des originaux restent inconnus. La présence d'un jeton ne prouve pas l'accès aux fichiers. Ces observations ne sont pas persistées, et aucun contrôle réseau supplémentaire n'est effectué. Les autres états proposés ne sont pas encore raccordés. Voir [modèle d'index](modele-index.md#parcours-expérimental-local-et-drive-dans-lapplication).
 
 | Source et contexte | État du projet et périmètre | Métadonnées / contenu | Recherche / actualisation / original | Limite et prochaine action |
 |---|---|---|---|---|

@@ -16,5 +16,15 @@ test("local-files module", async (t) => {
     assert.ok("rawText" in result);
     assert.ok("context" in result);
     assert.ok(result.rawText.length > 0);
+    assert.ok(result.extractedSegments.length > 0);
+    assert.ok(result.extractedSegments.every(segment => result.rawText.includes(segment)));
+  });
+
+  await t.test("OCR placeholder is not returned as extracted evidence", async () => {
+    const image = new Blob(["fictif"], { type: "image/png" });
+    Object.defineProperty(image, "name", { value: "image.png" });
+    const result = await readFileContent(image, "image.png");
+    assert.match(result.rawText, /OCR/);
+    assert.deepEqual(result.extractedSegments, []);
   });
 });

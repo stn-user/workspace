@@ -244,10 +244,12 @@
         </form>
 
         <section class="search-filters" aria-labelledby="experimental-index-title">
-          <h2 id="experimental-index-title">Recherche par nom multi-sources — expérimental</h2>
-          <p>Recherche locale dans les noms des fichiers locaux et Google Drive présents dans Famili-IA. Seules leurs métadonnées sont indexées ici : cela ne couvre pas tout l'appareil ni tout le compte Drive. L'index est reconstruit en mémoire ; la disponibilité des originaux n'est pas vérifiée.</p>
+          <h2 id="experimental-index-title">Recherche multi-sources — expérimental</h2>
+          <p>Recherche locale dans les noms et textes dont la provenance a été enregistrée et vérifiée. Pour les anciens fichiers sans provenance, seuls les noms sont recherchés ici. L'index reste en mémoire ; il ne couvre pas tout l'appareil ni tout Drive et l'accès aux originaux n'est pas vérifié.</p>
+          <h3>Sources et périmètre</h3>
+          <ul id="experimental-source-status" aria-label="État des sources" aria-live="polite"></ul>
           <form id="experimental-index-form" role="search">
-            <label for="experimental-index-query">Nom à rechercher</label>
+            <label for="experimental-index-query">Mots à rechercher</label>
             <input id="experimental-index-query" type="search" autocomplete="off" required>
             <button type="submit" class="text-button">Rechercher</button>
           </form>

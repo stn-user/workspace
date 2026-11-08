@@ -1,148 +1,59 @@
 import { normalizeText } from "./search-utils.js";
 
-/**
- * Trouve un extrait contenant les mots recherchés
- */
-function findExcerpt(text, words) {
-  const lines = text.split(/[\r\n]+/);
-  for (const line of lines) {
-    const normalized = normalizeText(line);
-    if (words.every(w => normalized.includes(w))) {
-      return line.trim().substring(0, 200);
-    }
-  }
-  return text.length > 200 ? text.substring(0, 200) + "..." : text;
+function queryWords(query) {
+  if (typeof query !== "string" || !normalizeText(query)) throw new TypeError("Requête invalide");
+  return [...new Set(normalizeText(query).split(" "))];
 }
 
-/**
- * Vérifie si un document a un texte exploitable valide
- * (pas un message d'erreur ou donnée fictive)
- */
-function hasValidText(doc, field) {
-  if (!doc[field] || typeof doc[field] !== "string" || !doc[field].trim()) {
-    return false;
+function validateDocument(doc) {
+  if (!doc || typeof doc !== "object" || Array.isArray(doc) ||
+      typeof doc.sourceId !== "string" || !doc.sourceId.trim() ||
+      typeof doc.itemId !== "string" || !doc.itemId.trim() ||
+      typeof doc.name !== "string" || !doc.name.trim() ||
+      !Array.isArray(doc.segments) || doc.segments.some(segment => typeof segment !== "string")) {
+    throw new TypeError("Document de recherche invalide");
   }
-  const text = normalizeText(doc[field]);
-  // Exclure les messages d'erreur et données fictives
-  const errorPatterns = [
-    /^erreur$/i,
-    /impossible de/i,
-    /non trouve/i,
-    /aucun texte/i,
-    /^vide$/i,
-    /erreur de lecture/i,
-    /erreur de chargement/i,
-    /echec/i,
-    /echec de/i,
-    /non disponible/i,
-    /fichier supprime/i
-  ];
-  if (errorPatterns.some(pattern => pattern.test(doc[field]))) {
-    return false;
-  }
-  // Ignorer les messages très courts qui ressemblent à des erreurs
-  if (doc[field].length < 30 && /erreur|impossible|vide/i.test(doc[field])) {
-    return false;
-  }
-  return true;
 }
 
-/**
- * Recherche dans un document avec texte extrait disponible
- * Retourne les correspondances avec leurs raisons
- */
-export function searchContent(doc, query) {
-  if (typeof query !== "string" || !query.trim()) {
-    throw new TypeError("Requete invalide");
-  }
-  
-  const normalized = normalizeText(query);
-  if (!normalized) {
-    throw new TypeError("Requete vide apres normalisation");
-  }
-  
-  const words = [...new Set(normalized.split(" "))];
-  const results = [];
-  
-  // Rechercher dans le nom
-  if (doc.name && typeof doc.name === "string") {
-    const nameText = normalizeText(doc.name);
-    const matchedWords = words.filter(w => nameText.includes(w));
-    if (matchedWords.length === words.length) {
-      results.push({
-        sourceId: doc.sourceId,
-        itemId: doc.itemId,
-        name: doc.name,
-        location: "name",
-        excerpt: doc.name,
-        source: doc.source || "provider",
-        matchedWords
-      });
-    }
-  }
-  
-  // Rechercher dans le contenu (si disponible et valide)
-  if (hasValidText(doc, "content")) {
-    const contentText = normalizeText(doc.content);
-    const matchedWords = words.filter(w => contentText.includes(w));
-    if (matchedWords.length === words.length && matchedWords.length > 0) {
-      results.push({
-        sourceId: doc.sourceId,
-        itemId: doc.itemId,
-        name: doc.name,
-        location: "content",
-        excerpt: findExcerpt(doc.content, words),
-        source: "extracted",
-        matchedWords
-      });
-    }
-  }
-  
-  // Rechercher dans le summary (si disponible)
-  if (hasValidText(doc, "summary")) {
-    const summaryText = normalizeText(doc.summary);
-    const matchedWords = words.filter(w => summaryText.includes(w));
-    if (matchedWords.length === words.length && matchedWords.length > 0) {
-      results.push({
-        sourceId: doc.sourceId,
-        itemId: doc.itemId,
-        name: doc.name,
-        location: "summary",
-        excerpt: findExcerpt(doc.summary, words),
-        source: doc.summarySource || "extracted",
-        matchedWords
-      });
-    }
-  }
-  
-  return results;
-}
-
-/**
- * Recherche dans un tableau de documents
- */
-export function searchContentInDocuments(documents, query) {
-  if (!Array.isArray(documents)) {
-    throw new TypeError("Documents doit etre un tableau");
-  }
-  
-  const allResults = [];
-  const seen = new Set();
-  
-  for (const doc of documents) {
-    try {
-      const results = searchContent(doc, query);
-      for (const result of results) {
-        const key = `${result.sourceId}|${result.itemId}|${result.location}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          allResults.push(result);
+function findEvidence(segments, words) {
+  const found = new Map();
+  for (const text of segments) {
+    for (const match of text.matchAll(/[\p{L}\p{M}\p{N}]+/gu)) {
+      const token = normalizeText(match[0]);
+      for (const word of words) {
+        if (!found.has(word) && token.includes(word)) {
+          const start = Math.max(0, match.index - 60);
+          const end = Math.min(text.length, match.index + match[0].length + 60);
+          found.set(word, text.slice(start, end));
         }
       }
-    } catch (e) {
-      // Ignorer les documents invalides
     }
   }
-  
-  return allResults;
+  if (found.size !== words.length) return [];
+  return words.map(word => ({
+    location: "content", value: found.get(word), source: "extracted",
+    estimated: false, proof: { excerpt: found.get(word), location: null }, matchedWords: [word]
+  }));
+}
+
+export function searchContent(doc, query) {
+  const words = queryWords(query);
+  validateDocument(doc);
+  return findEvidence(doc.segments, words);
+}
+
+export function searchContentInDocuments(documents, query) {
+  const words = queryWords(query);
+  if (!Array.isArray(documents)) throw new TypeError("Documents invalides");
+  const seen = new Map();
+  const results = [];
+  for (const doc of documents) {
+    validateDocument(doc);
+    if (!seen.has(doc.sourceId)) seen.set(doc.sourceId, new Set());
+    if (seen.get(doc.sourceId).has(doc.itemId)) throw new TypeError("Identité dupliquée");
+    seen.get(doc.sourceId).add(doc.itemId);
+    const reasons = findEvidence(doc.segments, words);
+    if (reasons.length) results.push({ sourceId: doc.sourceId, itemId: doc.itemId, reasons });
+  }
+  return results;
 }
