@@ -233,34 +233,131 @@ L'index doit exploiter les métadonnées et le contenu effectivement accessibles
 
 Le traitement et l'index sont locaux par défaut ; toute synchronisation ou transmission à un service externe exige une décision d'architecture et une information distinctes. Les acquis de 15.1 à 15.5 sont réutilisés et leurs statuts restent inchangés. Les parcours existants sont à préserver ou à migrer explicitement et à tester.
 
-**Suivi des lots 15.5bis** — les cases ci-dessous ne sont cochées que lorsque l'ensemble de leurs critères est satisfait.
+### Plan d'action opérationnel 15.5bis
 
-| Lot | Références | Statut | Réalisé et limites / restant |
-|---|---|---|---|
-| Cadrage et contrat | 15.5bis.0, 15.5bis.1.a–c | Partiel | Scénarios, niveaux de couverture, états et contrat cible définis ; connecteur fictif et orchestration paginée expérimentaux. La matrice doit être actualisée et les capacités réelles et la reprise par fournisseur restent à valider. |
-| Index commun expérimental | 15.5bis.2, 15.5bis.9 | Partiel | Fiches en mémoire, provenance, preuves, rapprochement et recherche ; aucune migration, persistance de l'index ni déduplication complète. |
-| Échéances expérimentales | 15.5bis.3, 15.5bis.10 | Partiel | Propositions non confirmées dans l'interface, issues de segments fiables local, Drive et OneDrive, avec preuve et abstention ; ni pipeline général ni raccordement de ce parcours au moteur d'alertes. |
-| Premier parcours local + Drive | 15.5bis.1.d, 15.5bis.2.a–c, 15.5bis.5.a, 15.5bis.9.a–b | Partiel | Recherche expérimentale sur les documents présents dans l'application, avec source et couverture ; sélection Drive et recherche après rechargement confirmées par l'utilisateur sur le parcours actuel. Pas de découverte générale ni d'accès à l'original vérifié ; les sources ne constituent pas encore des connecteurs complets. |
-| Connecteur Drive Web limité | 15.5bis.1.b–d, .5.a | Partiel | Sélection explicite et révocation raccordées au contrat expérimental ; recherche Drive après rechargement confirmée par l'utilisateur sur le parcours actuel. Révocation et suppression à confirmer sur ce parcours ; pas de découverte paginée, identité multi-comptes ou synchronisation. |
-| Connecteur OneDrive personnel Web | 15.5bis.6–8 | Expérimental | Connexion Microsoft et parcours paginé sur action explicite, arrêt, copies locales et recherche ; TXT/Markdown et PDF à texte incorporé bornés, autres fichiers en métadonnées. Pas de synchronisation ; validation sur compte réel nécessaire. |
-| Recherche de contenu local, Drive et OneDrive | 15.5bis.3.a–c, 15.5bis.5.a, .6, 15.5bis.9.a–b et .d | Partiel | Recherche en mémoire de segments extraits avec provenance vérifiée après redémarrage, dont PDF texte Drive sélectionnés et OneDrive bornés ; OneDrive simulé. Textes anciens sans provenance et tableaux exclus ; OCR Web indisponible. Pas de synchronisation ni d'accès aux originaux vérifié. |
-| États des sources dans la recherche | 15.5bis.0.c–d, 15.5bis.5–6, 15.5bis.9.b | Partiel | Comptes des fichiers présents et couverture textuelle, observations d'import local et de session Drive et OneDrive ; accès aux originaux, fraîcheur et périmètre total restent inconnus. Pas de contrôle réseau supplémentaire ni d'état persistant. |
-| Parcours de résultat expérimental | 15.5bis.2.a–c, .5.a, .9.b–c | Partiel | Fiches avec informations et preuves disponibles, accès à la copie textuelle ou au détail photo lorsqu'ils existent et indications pour retrouver l'original ; aucun accès vérifié à l'original ni regroupement des doublons. |
-| Autres sources et parcours cible | 15.5bis.4, .6–.8, .11–.13 | À faire | Intégrations autres que les parcours expérimentaux décrits ci-dessus, autorisations, disponibilité, confidentialité et validations propres à chaque plateforme. |
+**Comment suivre ce plan :** les lots ci-dessous donnent l'ordre de travail et les cases décrivent les actions concrètes. Les sections 15.5bis.0 à 15.5bis.13 restent le référentiel des exigences globales : une action cochée ici ne valide pas automatiquement une exigence plus large. Un lot est terminé lorsque toutes ses cases et son critère de sortie sont satisfaits ; consigner la date, les tests et les limites dans la documentation. Une étude peut révéler un blocage fournisseur : le documenter, sans annoncer la source comme disponible.
 
-**Ordre indicatif des prochains lots fonctionnels** — un lot comprend intégration, tests, documentation et suivi ; les dépendances et résultats peuvent conduire à revoir cet ordre. Les états ci-dessous ne cochent aucune étape globale.
+**Acquis au 9 novembre 2026**
+- [✓] Scénarios, couverture, contrat proposé et prototypes d'index, recherche et échéances sourcées réalisés ; la cible complète reste à construire.
+- [✓] Google Drive Web : sélection `drive.file`, recherche après rechargement et indexation sur smartphone confirmées par l'utilisateur. Un cas passant a aussi confirmé révocation, conservation de la copie, purge globale et conservation de l'original ; les formats et l'annulation restent à préciser.
+- [✓] OneDrive personnel Web raccordé avec parcours volontaire interruptible, TXT/Markdown et PDF texte bornés, autres formats en métadonnées seules ; indexation sur smartphone confirmée par l'utilisateur. Les détails des formats et du cycle de révocation et suppression restent à préciser.
+- [✓] Recherche expérimentale des noms et segments vérifiés sur les copies présentes, avec source et extrait ; propositions d'échéances à vérifier, sans création d'alerte par ce parcours.
+- [✓] 260 tests Node, build et trois tests navigateur ciblés réussis ; la suite Playwright complète reste à exécuter. L'audit npm a été analysé et des risques restent ouverts.
 
-| Ordre | Lot et références | Résultat attendu / condition de passage |
-|---|---|---|
-| 1 | Texte incorporé des PDF Drive — 15.5bis.3.b, .5.a, .9.b | Réalisé expérimentalement avec client simulé : recherche après redémarrage des segments réellement extraits de PDF choisis ; PDF nécessitant OCR refusés sur le Web, OCR natif non vérifié sur appareil. Un PDF synthétique a aussi été testé sur une ancienne version avec un compte réel ; le format testé sur le parcours actuel n'est pas précisé. |
-| 2 | Parcours de résultat et accès à la source — 15.5bis.2.a–c, .5.a, .9.b–c | Réalisé expérimentalement : informations et preuves disponibles, copie textuelle et détail photo, indications de recherche manuelle de l'original ; accès à l'original non vérifié et doublons non regroupés. La recherche Drive sur le parcours actuel a été confirmée par l'utilisateur. |
-| 3 | Échéances sourcées — 15.5bis.3.c, .10 | Réalisé expérimentalement : propositions non confirmées avec preuve et copie disponible, échéances du jour à 90 jours ; les cas non fiables sont signalés et aucun raccordement aux alertes n'est effectué. Pas de validation spécifique des échéances avec un compte réel. |
-| 4 | Premier connecteur commun réel — 15.5bis.1.b–d, .4 ou .5 | Partiellement réalisé : connecteur Drive Web pour sélection explicite, annulation et révocation, recherche locale + Drive et tests simulés. Le 9 novembre, l'utilisateur confirme le choix d'un fichier Drive et sa recherche après rechargement ; révocation et suppression du parcours actuel restent à confirmer. Identité de compte, découverte et synchronisation non implémentées. |
-| 5 | Source supplémentaire — 15.5bis.6–8 | OneDrive personnel Web : `Files.Read` autorise une lecture large ; parcours sur action distincte, arrêt et progression tant que l'onglet est ouvert. Authentification, contenu borné, copies et recherche raccordés ; configuration Microsoft et validation réelle restent nécessaires. Pas de synchronisation automatique. |
+**Prochaine action : lot B.** Le cas passant Google Drive a été confirmé ; le lot A reste ouvert pour les autres scénarios non vérifiés. Ne pas partager d'identifiants, de jetons ou de documents personnels.
 
-**Mode de réalisation accéléré :** terminer chaque source par un parcours de bout en bout utilisable et testé sur son périmètre, avant d'étendre le contrat selon les besoins réels. La synchronisation reste dans la cible sans bloquer les pilotes. Les procédures de vérification figurent dans [l'étude Drive](ETUDE_GOOGLE_DRIVE.md#validation-du-parcours-actuel) et [l'étude OneDrive](ETUDE_ONEDRIVE.md).
+#### Lot A — Valider les parcours Web déjà raccordés
+**Objectif :** disposer de deux parcours cloud expérimentaux dont le fonctionnement et les limites sont vérifiés de bout en bout. Références : 15.5bis.5.a, .6.a–c, .9.b, .13.a–b.
 
-**Bilan de validation du 9 novembre 2026 :** 257 tests `node --test` et la compilation Vite ont réussi. Un parcours navigateur avec authentification et Graph simulés a couvert l'indexation OneDrive d'un texte fictif et sa recherche après rechargement ; ce n'est pas une validation OAuth Microsoft réelle. Les tests Playwright complets, la révocation/suppression Drive sur le parcours actuel et le cycle OneDrive sur compte réel restent à confirmer. L'installation des dépendances a signalé quatre vulnérabilités npm ; leur analyse et leur statut actuel restent à vérifier avant un pilote.
+- [ ] Préparer un compte de test et un corpus fictif : TXT et PDF texte avec mot distinctif, document hors format pris en charge, et plusieurs dossiers OneDrive ; noter les configurations sans enregistrer de secret.
+- [ ] Google Drive : vérifier sélection TXT et PDF, recherche locale + Drive et rechargement, puis annulation, révocation sans suppression des copies et suppression des copies sans toucher aux originaux. Consigner ce qui est réellement testé dans [l'étude Drive](ETUDE_GOOGLE_DRIVE.md#validation-du-parcours-actuel).
+- [✓] Cas passant Google Drive sur smartphone : révocation, copie conservée, purge globale et original préservé, confirmés par l'utilisateur. Ce test n'établit pas le format ni l'annulation et ne constitue pas un test de suppression sélective.
+- [ ] OneDrive : configurer l'application Microsoft personnelle selon [l'étude OneDrive](ETUDE_ONEDRIVE.md), vérifier le consentement `Files.Read`, l'absence de scan avant le bouton dédié, les dossiers/pages, les textes/PDF et les métadonnées seules, puis la recherche après rechargement.
+- [ ] OneDrive : tester arrêt pendant le scan, conservation des copies partielles, reconnexion, déconnexion locale sans révocation ni suppression implicite ; vérifier séparément la révocation Microsoft et la suppression de copies sans supprimer les originaux.
+- [ ] Tester refus de consentement, expiration ou indisponibilité, erreur réseau et nouveau lancement ; corriger les défauts constatés, puis consigner les résultats et formats effectivement vérifiés.
+- [ ] Examiner les vulnérabilités npm signalées et exécuter les tests ciblés, la suite Node, le build et les tests navigateur pertinents ; documenter les résultats et tout risque non résolu.
+- [✓] Audit npm : quatre dépendances signalées, dont `xlsx` en production (risque élevé, aucun correctif proposé par npm) et trois dépendances transitives de l'outillage Capacitor (risque modéré). Éviter les classeurs non fiables en attendant un remplacement ou une mise à niveau évaluée ; ne pas appliquer `npm audit fix` à l'aveugle. Voir [état et capacités](docs/architecture/etat-et-capacites-sources.md#audit-des-dépendances).
+
+**Sortie :** parcours testés sur comptes et données fictives, résultats et écarts documentés ; aucune promesse de synchronisation, de reprise durable ou d'accès continu aux originaux. Un blocage identifié est enregistré avec sa prochaine action, pas marqué comme validé.
+
+#### Lot B — Fiabiliser les sources déjà disponibles
+**Objectif :** maintenir la cohérence des données indexées et rendre les opérations compréhensibles. Prérequis : résultats du lot A ; références : 15.5bis.1.b–d, .4.a, .5.c, .6.b–c, .13.b.
+
+- [ ] Définir pour chaque source l'identité de compte/périmètre et d'élément, ses capacités réelles, les limites de réidentification des imports locaux et les conséquences d'un changement de compte.
+- [✓] Décrire les identités et capacités actuellement observables et afficher leurs limites dans l'état des sources ; la conception et la validation de la future réidentification restent à faire.
+- [ ] Concevoir puis implémenter l'actualisation explicite des éléments accessibles : distinguer nouveau, inchangé, modifié, supprimé ou inaccessible ; ne jamais déduire une suppression d'un scan interrompu ou d'un accès refusé.
+- [✓] Première étape OneDrive : compter les changements de nom ou de version fournisseur observés pendant un parcours ; les anciennes copies sans version restent de version inconnue et aucune copie existante n'est remplacée. Ce bilan ne vérifie ni les suppressions, ni l'équivalence du contenu, ni l'accès continu.
+- [ ] Présenter les modifications par élément, permettre leur examen et demander confirmation avant remplacement, conformément au choix de l'utilisateur ; préserver les corrections et la copie précédente en cas d'échec. Couvrir les anciennes copies sans version et les changements de compte avant toute actualisation.
+- [ ] Définir et tester la reprise après interruption, pagination, expiration, quotas et erreurs réseau pour les parcours qui la prennent en charge ; afficher les résultats partiels et les actions disponibles.
+- [ ] Préserver les corrections utilisateur et les copies précédentes en cas d'échec ; distinguer déconnexion locale, révocation fournisseur et suppression des données applicatives, sans supprimer les originaux.
+- [ ] Tester deux comptes, renommage/déplacement, changement de contenu, suppression, accès perdu et purge concurrente ; actualiser la matrice des capacités.
+
+**Sortie :** chaque source annonce son périmètre et ses limites ; les scénarios ci-dessus sont testés ou explicitement exclus du périmètre de la source, sans perte silencieuse de corrections.
+
+#### Lot C — Construire l'index durable et l'analyse utile
+**Objectif :** passer des copies et fiches expérimentales à un modèle commun durable, explicable et compatible avec les données existantes. Prérequis : règles d'identité du lot B ; références : 15.5bis.2, .3.
+
+- [ ] Spécifier les fiches document/photo, identités, dates et leur nature, couverture, provenance, preuves, corrections et durée de conservation ; définir les données manquantes et l'incertitude.
+- [ ] Concevoir une migration versionnée IndexedDB avec stratégie de retour arrière ; tester anciennes données, interruption, reprise et suppression des seules données Famili-IA.
+- [ ] Raccorder découverte, extraction et indexation pour les formats déjà disponibles ; ajouter ou adapter Word, Excel et OCR après vérification par plateforme, en conservant les métadonnées lorsque le contenu est illisible.
+- [ ] Extraire et classer les faits utiles avec preuve ou abstention : type, émetteur, dates, montants, équipements et échéances ; réutiliser les métadonnées et annotations photo existantes sans inventer personnes ou lieux.
+- [ ] Détecter les doublons exacts par empreinte lorsqu'elle existe ; proposer les rapprochements incertains sans fusion automatique et préserver les corrections lors des réindexations.
+- [ ] Constituer un corpus fictif annoté ; mesurer couverture, extraction et classification, erreurs, temps et mémoire ; comparer les règles et les solutions locales avant tout modèle supplémentaire ou traitement distant.
+
+**Sortie :** migration et retour arrière testés ; recherche et preuves restent correctes après redémarrage, réindexation et suppression ; limites de formats et mesures publiées.
+
+#### Lot D — Achever la recherche multi-sources et les alertes
+**Objectif :** retrouver et exploiter une information sourcée, pas seulement afficher un nom. Prérequis : modèle et preuves du lot C ; références : 15.5bis.9–10.
+
+- [ ] Unifier les résultats documents/photos et les filtres par source, type, date, personne, lieu et couverture, en n'utilisant que les informations effectivement disponibles.
+- [ ] Afficher raison, extrait, nature de date, couverture, fraîcheur et accès observé ; proposer la copie ou l'ouverture de l'original quand elle est réellement possible, sinon expliquer comment le retrouver.
+- [ ] Présenter les doublons possibles sans masquer leurs sources ; vérifier les réponses en cas de source indisponible, contenu non lu ou index ancien.
+- [ ] Définir la confirmation et les règles de création d'alertes à partir de faits vérifiables ; raccorder le moteur existant en conservant source et preuve, sans transformer une date ambiguë en alerte certaine.
+- [ ] Réévaluer les alertes lors des changements ou pertes d'accès et préserver corrections, reports et choix utilisateur ; tester dates ambiguës, doublons, révocations et suppressions.
+- [ ] Mesurer précision, rappel, qualité des extraits et temps sur le corpus multi-sources ; documenter les cas d'abstention et les régressions.
+
+**Sortie :** recherche sur au moins deux sources validées et corpus mesuré ; alertes sourcées testées avec cas incertains et corrections conservées.
+
+#### Lot E — Rendre le parcours compréhensible et accessible
+**Objectif :** permettre de découvrir, connecter et rechercher sans ambiguïté. Références : 15.5bis.11 et .13.a–b ; peut progresser en parallèle des lots C et D.
+
+- [ ] E1 — Poser des composants et jetons visuels réutilisables (boutons, cartes, icônes, champs et modales), inspirés de la maquette ; les adopter progressivement dans les vues sans modifier leurs fonctions. Première tranche : accueil, personnalisation et choix du parcours d'onboarding.
+- [✓] Première tranche E1/E2 : accueil, personnalisation et choix du parcours restylés ; illustration et logo corrigés, premiers styles partagés, libellé de champ et focus des titres. Tests navigateur ciblés à 390, 768, 1280 et 1920 px, cibles tactiles et annulation simulée ; accessibilité complète et harmonisation des autres vues restent ouvertes.
+- [✓] Socle E1 : boutons primaire, secondaire et texte, champ texte et libellé partagés documentés ; adoption dans l'onboarding et pour le rejeu depuis le profil. Première modale partagée appliquée aux extraits documentaires. Restent les autres types de champs et la migration progressive des vues et modales.
+- [✓] Modale de choix des sources harmonisée avec le socle et les icônes SVG fournies. L'accès aux exemples, précédemment inactif car son ancienne modale était absente, ouvre la démo isolée sans importer de données. Sélecteurs locaux, focus, états OneDrive simulés et préservation de données fictives testés ; comptes réels et autres modales non revalidés.
+- [✓] Validation complémentaire ciblée : les deux tests de recherche attendaient insuffisamment l'initialisation de la base et la fin de l'indexation locale en arrière-plan. Après synchronisation des tests, les cinq scénarios de recherche et les trois tests de modale passent ; les deux scénarios précédemment en échec passent aussi trois fois chacun. Cela ne valide pas toute la suite ni les parcours sur appareils réels.
+- [ ] E2 — Finaliser le parcours d'accueil : progression compréhensible, navigation et focus accessibles, prénom facultatif, illustration adaptée aux écrans et choix explicite entre démo et données personnelles.
+- [ ] E3 — Revoir la démo : exemples fictifs clairement identifiés, scénarios facture, contrat et photos, mise en évidence des actions et résultats, étapes guidées rejouables ou ignorables. Ne jamais automatiser une permission ni une connexion réelle.
+- [✓] Démo d'onboarding rejouable : trois exemples fictifs affichés sans écriture de données applicatives ni connexion ; rejeu depuis le profil sans effacement de la progression. Tests de conservation avec documents, famille, équipements et alertes fictifs. La visite guidée complète, le scénario contrat et la mise en lumière des autres vues restent à réaliser.
+- [✓] Premier guide E3 dans la démo : deux étapes facultatives, mise en évidence de la question puis du résultat et de sa provenance, progression automatique après sélection, retour et rejeu. Les exemples restent fictifs et libres d'accès ; la visite des autres vues et le scénario contrat restent ouverts.
+- [✓] Scénario de contrat d'habitation ajouté à la démo, distinct de la garantie existante ; échéance et source explicitement fictives, aucune alerte créée. Test navigateur aux quatre largeurs de référence ; la visite guidée des autres vues reste ouverte.
+- [ ] E4 — Unifier progressivement le point d'entrée et la présentation des recherches existantes (historique, multi-sources et moments de vie), en conservant leurs filtres et preuves. Le moteur commun et les fonctionnalités non encore disponibles relèvent des lots C et D ; exposer les limites sans promettre une couverture complète.
+- [ ] E5 — Harmoniser progressivement accueil, données, foyer, alertes et modales avec les composants partagés ; vérifier les parcours existants et les appareils à chaque migration.
+- [ ] Organiser l'accueil autour de la recherche et proposer une démo sans permission distinguant clairement sources et données fictives.
+- [ ] Expliquer avant connexion les permissions, données lues et conservées, copies et originaux ; afficher progression, limites, erreurs et actions de déconnexion/suppression disponibles.
+- [ ] Tester les trois scénarios fictifs facture, contrat et photos, puis une première recherche personnelle sur données de test ; conserver les accès utiles au foyer et aux alertes.
+- [ ] Vérifier clavier, ARIA, contrastes et mouvement réduit ; cibles tactiles ≥ 48 × 48 px, absence de débordement à 390 et 768 px, rendu à 1280 et 1920 px.
+- [ ] Automatiser les transitions et refus de permission avec Playwright ; consigner résultats, plateformes et limites.
+
+**Sortie :** parcours de démo et de première recherche vérifiés, mesures d'accessibilité et tests navigateur documentés.
+
+#### Lot F — Étendre les connecteurs et les appareils
+**Objectif :** poursuivre toutes les sources de la cible sans supposer qu'elles offrent les mêmes droits. Références : 15.5bis.4, .5.b–c, .6, .7–8. Études fournisseurs à engager tôt, en parallèle ; intégration après validation de leurs prérequis et avec le socle des lots B–C.
+
+- [ ] Google Drive étendu : vérifier éligibilité et exigences Google, périmètre, sécurité, délais et coûts ; prototyper seulement selon les autorisations obtenues. Conserver le parcours Picker limité si l'accès étendu n'est pas autorisé.
+- [ ] OneDrive : étudier séparément comptes professionnels/scolaires et parcours natifs, politiques d'organisation et permissions ; implémenter et tester seulement après validation du périmètre.
+- [ ] Dropbox : choisir et expliquer les niveaux d'accès, implémenter connexion, lecture et états, traiter quotas et changements ; préparer l'approbation de production.
+- [ ] Local Web/ordinateur et Android : tester sélecteurs, accès persistants, reprise, permission perdue et originaux ; étudier un compagnon ordinateur si nécessaire et valider sur appareils Android réels.
+- [ ] iOS/iCloud Drive et Photos Apple : créer la cible, étudier sélecteurs et photothèque autorisée, éléments distants et limites de permissions ; tester sur appareils et ne pas annoncer d'API cloud générale non établie.
+- [ ] Google Photos : demander la confirmation d'éligibilité du cas d'usage et étudier la sélection et l'expiration des accès ; ne pas engager de production sans réponse favorable.
+- [ ] Pour chaque source ajoutée, livrer configuration, permissions, formats, indexation, recherche, erreurs, déconnexion/suppression, tests et matrice des capacités ; consigner tout blocage fournisseur et son alternative.
+
+**Sortie :** chaque source est soit testée sur son périmètre et documentée, soit explicitement bloquée avec preuve et prochaine démarche ; aucun connecteur indisponible n'est présenté comme opérationnel.
+
+#### Lot G — Relier les appareils avec consentement
+**Objectif :** rechercher entre appareils sans transfert implicite de données sensibles. Prérequis : index durable et politique de conservation du lot C ; référence : 15.5bis.12.
+
+- [ ] Comparer index séparés, synchronisation chiffrée, recherche entre appareils autorisés et espace choisi ; documenter faisabilité, confidentialité, coûts et disponibilité.
+- [ ] Choisir l'architecture et les données transférées avec consentement explicite ; définir association/révocation, chiffrement, hors ligne, conflits et propagation des suppressions, sans transfert automatique des originaux ou jetons.
+- [ ] Implémenter et tester sur plusieurs appareils, avec conflit, hors ligne, révocation et suppression ; documenter les limites et coûts.
+
+**Sortie :** architecture approuvée et parcours multi-appareils testés ; aucune recherche distante n'est annoncée sans mécanisme actif.
+
+#### Lot H — Préparer le pilote et la livraison
+**Objectif :** valider sécurité, conformité et qualité avant utilisation au-delà des essais fictifs. Références : 15.5bis.13 et 15.8 ; contrôles à engager dès le lot A et à finaliser après les lots retenus pour le pilote.
+
+- [ ] Cartographier par source données lues, stockées, transmises et supprimées, destinataires et durées ; vérifier protection des jetons, liens temporaires et transferts, export et restauration.
+- [ ] Examiner les risques des données familiales et des mineurs, ainsi que l'isolation des comptes et foyers si le partage est introduit ; réaliser les vérifications fournisseur, sécurité et conformité appropriées.
+- [ ] Fixer le périmètre du pilote, ses critères d'entrée/sortie, assistance, suivi des incidents et retour arrière ; vérifier les risques et dépendances encore ouverts.
+- [ ] Exécuter les tests unitaires, intégration et navigateur applicables, y compris les parcours réels autorisés ; relever résultats, appareils, limites et décision de livraison.
+
+**Sortie :** décision documentée de lancement, de correction ou de report ; aucune validation globale n'est déduite d'un test simulé.
+
+**Bilan de validation du 9 novembre 2026 :** 257 tests `node --test` et la compilation Vite ont réussi avant le lot B. L'utilisateur confirme l'indexation Google Drive et OneDrive sur smartphone, ainsi qu'un cas passant Google de révocation et purge avec original conservé. Un parcours navigateur avec authentification et Graph simulés a couvert la recherche OneDrive après rechargement. Les tests Playwright complets et les autres scénarios non explicitement confirmés restent ouverts. L'installation des dépendances a signalé quatre vulnérabilités npm ; leur analyse et leur statut actuel restent à vérifier avant un pilote.
+
+### Référentiel détaillé des exigences 15.5bis
+
+Les cases ci-dessous portent sur les objectifs globaux, plus larges que les lots livrables ci-dessus. Elles ne sont cochées que lorsque tous leurs critères sont satisfaits ; les lots opérationnels indiquent les prochaines actions.
 
 ##### 15.5bis.0 – Cadrage de la recherche universelle
 - [✓] **15.5bis.0.a** : Décrire les scénarios prioritaires : facture dont l'emplacement est inconnu, garantie et échéance, contrat et fait précis, photos par date/personne/lieu/événement et recherche simultanée dans plusieurs sources. Voir [scénarios de recherche](docs/architecture/scenarios-recherche-multi-sources.md) ; ils décrivent la cible, pas une validation fonctionnelle.
@@ -311,7 +408,7 @@ Le traitement et l'index sont locaux par défaut ; toute synchronisation ou tran
 - **Validation :** tests sur données fictives ; distinguer fichiers choisis et accès étendu. Aucun accès étendu en production avant les autorisations requises. Voir [l'étude Google Drive](ETUDE_GOOGLE_DRIVE.md).
 
 ##### 15.5bis.6 – OneDrive
-- **Première étape réalisée expérimentalement :** compte Microsoft personnel sur le Web ; `Files.Read` n'est pas limité aux fichiers sélectionnés. Authentification, parcours Graph paginé, indexation déclenchée séparément, arrêt, copies locales et recherche sont raccordés. Le parcours ne s'exécute que tant que l'onglet reste ouvert ; le compte réel reste à tester. Voir [étude OneDrive](ETUDE_ONEDRIVE.md).
+- **Première étape réalisée expérimentalement :** compte Microsoft personnel sur le Web ; `Files.Read` n'est pas limité aux fichiers sélectionnés. Authentification, parcours Graph paginé, indexation déclenchée séparément, arrêt, copies locales et recherche sont raccordés. Le parcours ne s'exécute que tant que l'onglet reste ouvert ; l'indexation sur smartphone a été confirmée, les autres scénarios restent à vérifier. Voir [étude OneDrive](ETUDE_ONEDRIVE.md).
 - [ ] **15.5bis.6.a** : Concevoir l'authentification, les permissions et la lecture via l'API officielle ; étudier séparément les comptes personnels et professionnels/scolaires.
 - [ ] **15.5bis.6.b** : Indexer les métadonnées et contenus accessibles ; gérer fichiers déplacés, modifiés, supprimés ou inaccessibles, expiration de session et reprise.
 - [ ] **15.5bis.6.c** : Vérifier le périmètre réellement accordé, y compris lorsque l'interface utilise un sélecteur ; le présenter fidèlement à l'utilisateur.
@@ -367,15 +464,7 @@ Le traitement et l'index sont locaux par défaut ; toute synchronisation ou tran
 - [ ] **15.5bis.13.d** : Réaliser les vérifications fournisseur, sécurité et conformité avant pilote sur données réelles ; préparer critères d'entrée/sortie, assistance et retour arrière en coordination avec 15.8.
 - **Validation :** tests unitaires et d'intégration ciblés, puis suites de non-régression du projet (`node --test` et Playwright) avant livraison ; vérifier les flux réseau et la persistance selon l'architecture retenue, sans supposer que toutes les sources fonctionnent hors ligne ou sans serveur.
 
-##### Ordre de réalisation indicatif
-1. **V1 – Démontrer :** démo multi-sources fictive, recherche centrale et cadrage du modèle commun.
-2. **V2 – Retrouver réellement :** index intelligent et recherche unifiée sur fichiers locaux et une première source cloud opérationnelle.
-3. **V3 – Étendre les clouds :** Google Drive, OneDrive et Dropbox, avec états et couverture propres à chaque connecteur.
-4. **V4 – Étendre aux photos et appareils :** parcours Android et Apple, photothèques autorisées et services photo compatibles avec les règles fournisseurs.
-5. **V5 – Relier les appareils :** recherche ou synchronisation multi-appareils selon l'architecture choisie et activée par l'utilisateur.
-6. **V6 – Piloter et lancer :** validation de la qualité, sécurité, coûts, permissions et expérience.
-
-Ces versions ordonnent les livraisons sans réduire la cible ; engager tôt les études natives et les démarches fournisseur, qui peuvent être longues ou bloquantes. La première recherche personnelle précède la décision de monétisation : les sections 15.6 et 15.7 restent à instruire, en préservant une recherche gratuite réellement utile, ainsi que l'accès, l'export et la suppression des données en cas de changement d'offre.
+La progression et les dépendances figurent dans le [plan d'action opérationnel](#plan-daction-opérationnel-155bis). Les études natives et démarches fournisseur peuvent commencer en parallèle, car elles peuvent être longues ou bloquantes. La première recherche personnelle précède la décision de monétisation : les sections 15.6 et 15.7 restent à instruire, en préservant une recherche gratuite réellement utile, ainsi que l'accès, l'export et la suppression des données en cas de changement d'offre.
 
 
 #### 15.6 – Hypothèses d'offres et viabilité économique

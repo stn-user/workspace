@@ -25,6 +25,15 @@ test("un jeton et des fichiers stockés ne garantissent ni accès ni exhaustivit
   assert.doesNotMatch(drive.access, /accessible|complet/);
 });
 
+test("les capacités décrivent le périmètre et les limites sans supposer de compte ou synchronisation", () => {
+  const [local, drive, onedrive] = describeSources(records, initial);
+  assert.match(local.scope, /nouvelle copie/);
+  assert.match(drive.scope, /compte d'origine non identifié/);
+  assert.match(drive.scope, /Pas de parcours complet/);
+  assert.match(onedrive.scope, /permission de lecture large/);
+  assert.match(onedrive.scope, /pas actualisées automatiquement/);
+});
+
 test("états observés de connexion, erreur, import et suppression", () => {
   assert.match(describeSources(records, { ...initial, driveConfigured: false })[1].access, /non configurée/);
   assert.match(describeSources(records, { ...initial, driveState: "error", driveToken: true })[1].access, /échoué/);

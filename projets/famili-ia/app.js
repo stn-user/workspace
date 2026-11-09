@@ -6,7 +6,7 @@ import { countInventorySources, filterInventoryDocuments, filterSearchResultsByC
 import { Capacitor } from "@capacitor/core";
 import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, updatePhotoAnnotations, initializeDemoState, resetState, setDemoMode } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, updatePhotoAnnotations, resetState } from "./state.js";
 import { redactPhotoLocationsForExport } from "./photo-metadata.js";
 import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
 import { searchMomentsLife } from "./moments-life-search.js";
@@ -21,11 +21,12 @@ import { describeExperimentalResult } from "./experimental-result.js";
 import { findIndexDeadlines } from "./index-deadline-search.js";
 import { OneDriveAuth } from "./onedrive-auth.js";
 import { scanOneDrive } from "./onedrive-graph.js";
-import { oneDriveDocumentId, readOneDriveDocument } from "./onedrive-document.js";
+import { compareOneDriveCopy, oneDriveDocumentId, readOneDriveDocument } from "./onedrive-document.js";
 
 const activeScanWorkers = new Map();
 let suspendPhotoThumbnailRendering = () => {};
 let resumePhotoThumbnailRendering = () => {};
+let replayOnboarding = false;
 
 /**
  * Vérifie si l'onboarding est complet et retourne l'état.
@@ -54,7 +55,7 @@ function manageOnboardingWizardVisibility(show = false) {
   // Afficher le wizard UNIQUEMENT si :
   // 1. C'est la vue accueil ET
   // 2. L'onboarding n'est pas terminé
-  const shouldShow = show || (!onboardingComplete && activeView === 'accueil');
+  const shouldShow = show || ((!onboardingComplete || replayOnboarding) && activeView === 'accueil');
 
   console.log('[DEBUG] manageOnboardingWizardVisibility:', {
     show,
@@ -96,7 +97,6 @@ function initOnboardingWizard() {
   const wizard = document.querySelector("#onboarding-wizard");
   const steps = wizard ? wizard.querySelectorAll(".wizard-step") : [];
   const userNameInput = document.querySelector("#wizard-user-name");
-  const startDemoMode = document.querySelector('#start-demo-mode');
   const startScanMode = document.querySelector('#start-scan-mode');
   const startOnboarding = document.querySelector('#start-onboarding');
 
@@ -113,7 +113,6 @@ function initOnboardingWizard() {
   if (isOnboardingComplete()) {
     console.log('[DEBUG] initOnboardingWizard - onboarding already complete, exiting');
     if (wizard) wizard.hidden = true;
-    return;
   }
 
   // Fonction pour afficher une étape
@@ -122,6 +121,11 @@ function initOnboardingWizard() {
     steps.forEach((step, idx) => {
       step.hidden = idx !== stepIndex;
     });
+    const heading = steps[stepIndex]?.querySelector("h2");
+    if (heading) {
+      heading.tabIndex = -1;
+      heading.focus();
+    }
   }
 
   // Navigation entre les étapes
@@ -136,32 +140,14 @@ function initOnboardingWizard() {
           const name = userNameInput.value.trim();
 
           // Le prénom est optionnel, pas de validation bloquante
-          if (name) {
-            // Mettre à jour l'état utilisateur
-            const user = getCurrentUser();
-            if (user) {
-              user.name = name;
-              // Mettre à jour l'avatar si existant
-              const stateAvatar = document.querySelector('#profile-avatar, #dashboard-title strong');
-              if (stateAvatar) {
-                stateAvatar.textContent = name.charAt(0).toUpperCase();
-              }
-            }
-
-            // Personnaliser l'écran 3 (étape index 2) avec le prénom
-            const greetingSpan = document.querySelector('#wizard-user-greeting');
-            if (greetingSpan) {
-              greetingSpan.textContent = name;
-            }
-          }
+          const greetingSpan = document.querySelector('#wizard-user-greeting');
+          const greeting = document.querySelector('#wizard-greeting');
+          greetingSpan.textContent = name;
+          greeting.hidden = !name;
         }
 
-        // Étape 2 -> Aller à l'étape 3 (démonstration)
-        // Initialiser le foyer de démo
         if (targetStep === 3) {
-          await initializeDemoState();
-          setDemoMode(true);
-          injectDemoDocuments();
+          startDemoGuide();
         }
 
         showStep(targetStep);
@@ -190,34 +176,11 @@ function initOnboardingWizard() {
   const skipPersonalization = document.querySelector('#skip-personalization');
   if (skipPersonalization) {
     skipPersonalization.addEventListener('click', () => {
+      userNameInput.value = "";
+      document.querySelector('#wizard-user-greeting').textContent = "";
+      document.querySelector('#wizard-greeting').hidden = true;
       showStep(2);
       manageOnboardingWizardVisibility();
-    });
-  }
-
-  // Étape 3 : Choix de démarrage
-  if (startDemoMode) {
-    startDemoMode.addEventListener('click', async (e) => {
-      e.preventDefault();
-      
-      // Sauvegarder le prénom s'il a été saisi (facultatif)
-      if (userNameInput) {
-        const name = userNameInput.value.trim();
-        if (name) {
-          const user = getCurrentUser();
-          if (user) user.name = name;
-        }
-      }
-
-      // Initialiser le foyer complet de démo
-      await initializeDemoState();
-      // Activer l'état mode démo pour afficher le badge et le message
-      setDemoMode(true);
-      // Injecter les documents de référence
-      injectDemoDocuments();
-      
-      // Aller sur l'Écran 4 (step-3) - Démonstration interactive
-      showStep(3);
     });
   }
 
@@ -236,22 +199,47 @@ function initOnboardingWizard() {
     });
   }
 
-  // Écouteur pour retourner au choix du parcours depuis l'Écran 4
-  const backToStep2 = document.getElementById('back-to-step-2');
-  if (backToStep2) {
-    backToStep2.addEventListener('click', () => {
-      showStep(2);
-    });
-  }
+  document.querySelector('#finish-onboarding-demo').addEventListener('click', () => {
+    if (!isOnboardingComplete()) completeOnboarding();
+    replayOnboarding = false;
+    manageOnboardingWizardVisibility();
+    showView('accueil');
+    document.querySelector('#dashboard-title').focus();
+  });
 
   // Écouteurs pour les questions de démo préremplies (Écran 4)
   const demoQuestions = document.querySelectorAll('.demo-question');
   demoQuestions.forEach(button => {
-    button.addEventListener('click', async (e) => {
+    button.addEventListener('click', (e) => {
       const questionType = e.currentTarget.dataset.demoQuestion;
-      await handleDemoQuestion(questionType);
+      handleDemoQuestion(questionType);
+      if (demoGuideStep === 1) {
+        setDemoGuideStep(2);
+        document.querySelector('#demo-result-heading').focus();
+      }
     });
-  })
+  });
+  document.querySelector('#demo-guide-next').addEventListener('click', () => {
+    if (demoGuideStep === 1) {
+      setDemoGuideStep(2);
+      document.querySelector('#demo-result-heading').focus();
+    } else {
+      setDemoGuideStep(0);
+      document.querySelector('#demo-guide-restart').focus();
+    }
+  });
+  document.querySelector('#demo-guide-prev').addEventListener('click', () => {
+    setDemoGuideStep(1);
+    document.querySelector('.demo-question[aria-pressed="true"]').focus();
+  });
+  document.querySelector('#demo-guide-skip').addEventListener('click', () => {
+    setDemoGuideStep(0);
+    document.querySelector('#demo-guide-restart').focus();
+  });
+  document.querySelector('#demo-guide-restart').addEventListener('click', () => {
+    setDemoGuideStep(1);
+    document.querySelector('#demo-guide-next').focus();
+  });
 
   /**
    * Lance le scan intelligent local (Phase 13.3.a)
@@ -263,6 +251,7 @@ function initOnboardingWizard() {
       try {
         const dirHandle = await window.showDirectoryPicker();
 
+        replayOnboarding = false;
         completeOnboarding();
         manageOnboardingWizardVisibility();
         showView("accueil");
@@ -308,147 +297,12 @@ function initOnboardingWizard() {
       return;
     }
 
+    replayOnboarding = false;
     completeOnboarding();
     manageOnboardingWizardVisibility();
     showView("accueil");
     showDemoNotice("Choisissez les photos ou documents à analyser sur votre appareil.");
     localFilesInput.click();
-  }
-
-  /**
-   * Injecte les 5 documents de référence de démonstration
-   * Utilisés par le bouton "Explorer la démo" du wizard d'onboarding
-   */
-  function injectDemoDocuments() {
-    // Prendre les 5 premiers documents du tableau documents (il y en a 12)
-    const demoDocs = documents.slice(0, 5);
-
-    // Les ajouter aux documents locaux en session
-    uploadedDocuments.push(...demoDocs.map(doc => ({
-      ...doc,
-      id: `demo-${doc.id}`,
-      isLocal: true,
-      driveDemo: true
-    })));
-
-    // Les ajouter à la state via addDocument
-    for (const doc of demoDocs) {
-      // Créer un objet document complet avec les métadonnées
-      const fullDoc = {
-        id: `demo-${doc.id}`,
-        name: doc.name,
-        type: doc.type,
-        date: doc.date,
-        keywords: doc.keywords,
-        summary: doc.summary,
-        content: doc.content,
-        isLocal: true,
-        driveDemo: true
-      };
-      uploadedDocuments.push(fullDoc);
-    }
-
-    // Mettre à jour l'interface
-    updateClearFilesButtonsVisibility();
-    updateGoogleDriveButton();
-    updateModeBanner();
-
-    const count = uploadedDocuments.length;
-    setFileStatus(`${demoDocs.length} document${demoDocs.length === 1 ? "" : "s"} fictif${demoDocs.length === 1 ? "" : "s"} ajouté${demoDocs.length === 1 ? "" : "s"} à la session.`, "success");
-
-    // Lancer la visite guidée automatisée
-    runGuidedTour();
-  }
-
-  /**
-   * Lance la visite guidée automatisée (Phase 13.2.c.1).
-   * Enchaîne les vues avec simulation d'actions : Recherche ➔ Maison ➔ Alertes ➔ Import ➔ Famille ➔ Vos données.
-   * À la fin, redirige automatiquement vers l'étape 3 de l'onboarding pour permettre le replay du demo ou l'utilisation du bouton scan intelligent.
-   */
-  async function runGuidedTour() {
-    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    document.body.classList.add('is-tour-active');
-
-    // Étape 1/6 : Recherche
-    showView("recherche", { params: { q: "" } });
-    showDemoNotice("Visite guidée (1/6) : Recherche intelligente");
-    await delay(1500);
-    showDemoNotice("L'IA analyse vos documents locaux sans quitter votre appareil.");
-
-    const searchInput = document.querySelector("#question");
-    if (searchInput) {
-        const query = "Où est la facture de la piscine ?";
-        for (let i = 0; i <= query.length; i++) {
-            searchInput.value = query.substring(0, i);
-            await delay(50);
-        }
-        search(query);
-    }
-    await delay(3000);
-
-    // Étape 2/6 : Maison
-    showView("maison");
-    showDemoNotice("Visite guidée (2/6) : Inventaire domestique");
-    await delay(1500);
-    showDemoNotice("Cliquez sur une catégorie pour filtrer automatiquement vos équipements.");
-    // Simuler le clic sur piscine
-    const piscineTab = document.querySelector('[data-house-category="piscine"]');
-    if (piscineTab) piscineTab.click();
-    await delay(3000);
-
-    // Étape 3/6 : Alertes
-    showView("alertes");
-    showDemoNotice("Visite guidée (3/6) : Alertes et échéances");
-    await delay(1500);
-    showDemoNotice("Gardez le contrôle sur vos garanties et contrats importants.");
-    // Simuler lecture alerte
-    const firstAlert = document.querySelector('[data-alert-card]');
-    if (firstAlert) firstAlert.classList.add('is-read');
-    await delay(3000);
-
-    // Étape 4/6 : Import
-    showView("importer");
-    showDemoNotice("Visite guidée (4/6) : Importation de documents");
-    await delay(1500);
-    showDemoNotice("Glissez vos documents ici, ils seront instantanément indexés.");
-    await delay(3000);
-
-    // Étape 5/6 : Famille
-    showView("famille");
-    showDemoNotice("Visite guidée (5/6) : Gestion des membres");
-    await delay(1500);
-    showDemoNotice("Ajoutez un membre pour partager l'accès aux documents de la famille.");
-    // Simuler l'ouverture du dialogue d'ajout
-    const addMemberBtn = document.querySelector('#add-member-btn'); // Note: This doesn't exist, I need to check how to add member
-    // Actually the app.js has initAddMemberDialog()
-    // Looking at the code, there's no visible add-member-btn in the family view, only member-list container
-    // Let's just use the notice.
-    await delay(3000);
-
-    // Étape 6/6 : Assistant IA (vue assistant)
-    showView("assistant");
-    showDemoNotice("Visite guidée (6/6) : Assistant IA");
-    await delay(1500);
-    showDemoNotice("Posez une question type, par exemple : 'Quelle est la garantie de ma pompe ?'");
-    const assistantInput = document.querySelector("#assistant-input");
-    if (assistantInput) assistantInput.value = "Quelle est la garantie de ma pompe ?";
-    await delay(3000);
-
-    document.body.classList.remove('is-tour-active');
-    showDemoNotice("Fin de la visite guidée. Vous avez maintenant le contrôle.");
-
-    // === Phase 13.2.c.6 : Retour automatique à l'écran d'accueil et à l'étape 3 onboarding ===
-    showView("accueil");
-
-    const wizardSteps = document.querySelectorAll('#onboarding-wizard .wizard-step');
-    if (wizardSteps.length >= 3) {
-      // Cacher toutes les étapes, puis afficher l'étape 3 (index 2)
-      wizardSteps.forEach((step, idx) => {
-        step.hidden = idx !== 2;
-      });
-      // Rendre le wizard visible
-      manageOnboardingWizardVisibility(true); // Forcer l'affichage
-    }
   }
 
   // Initialiser à l'étape 1
@@ -696,7 +550,6 @@ const documents = [
   }
 ];
 
-const driveDemoDocuments = documents.slice(0, 3);
 const uploadedDocuments = [];
 const experimentalIndex = new IndexSession();
 const invalidContentProvenance = new WeakSet();
@@ -735,7 +588,7 @@ function renderExperimentalSources() {
   for (const status of statuses) {
     const item = document.createElement("li");
     const name = sourceName(status.sourceId);
-    item.textContent = `${name} : ${status.message} ${status.access} Le périmètre total et la fraîcheur sont inconnus.`;
+    item.textContent = `${name} : ${status.message} ${status.access} ${status.scope} Le périmètre total et la fraîcheur sont inconnus.`;
     experimentalSourceStatus.appendChild(item);
   }
   deadlineResults.querySelectorAll("[data-deadline-source]").forEach(element => {
@@ -909,10 +762,6 @@ const dialogNoticeText = document.querySelector("#dialog-notice-text");
 const localFilesInput = document.querySelector("#local-files-input");
 const clearFilesButton = document.querySelector("#clear-files");
 const fileStatus = document.querySelector("#file-status");
-const drivePickerDialog = document.querySelector("#drive-picker-dialog");
-const drivePickerList = document.querySelector("#drive-picker-list");
-const drivePickerStatus = document.querySelector("#drive-picker-status");
-const confirmDrivePickerButton = document.querySelector("#confirm-drive-picker");
 const connectGoogleDriveButton = document.querySelector("#connect-google-drive");
 const disconnectGoogleDriveButton = document.querySelector("#disconnect-google-drive");
 const driveConnectionStatus = document.querySelector("#drive-connection-status");
@@ -1431,165 +1280,11 @@ async function loadLocalFiles(files, sourceInput = localFilesInput) {
   if (sourceInput) sourceInput.value = "";
 }
 
-function renderDrivePickerOptions() {
-  drivePickerList.replaceChildren();
-  drivePickerStatus.textContent = "";
-  const selectedDemoIds = new Set(uploadedDocuments.filter((document) => document.driveDemo).map((document) => document.driveDemoId));
-
-  driveDemoDocuments.forEach((sampleDocument) => {
-    const label = document.createElement("label");
-    label.className = "drive-picker-option";
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.name = "drive-demo-file";
-    checkbox.value = sampleDocument.id;
-    checkbox.disabled = selectedDemoIds.has(sampleDocument.id);
-    checkbox.checked = checkbox.disabled;
-
-    const copy = document.createElement("span");
-    copy.className = "drive-picker-copy";
-    addTextElement(copy, "strong", "", sampleDocument.name);
-    addTextElement(copy, "small", "", `${sampleDocument.type} · ${sampleDocument.date}${checkbox.disabled ? " · déjà ajouté" : ""}`);
-    label.append(checkbox, copy);
-    drivePickerList.append(label);
-  });
-
-  updateDrivePickerCount();
-}
-
-function updateDrivePickerCount() {
-  const selectedCount = drivePickerList.querySelectorAll('input[name="drive-demo-file"]:checked:not(:disabled)').length;
-  const remainingCount = driveDemoDocuments.length - uploadedDocuments.filter((document) => document.driveDemo).length;
-  drivePickerStatus.textContent = `${selectedCount} sélectionné${selectedCount === 1 ? "" : "s"} · ${remainingCount} exemple${remainingCount === 1 ? "" : "s"} encore disponible${remainingCount === 1 ? "" : "s"}.`;
-  confirmDrivePickerButton.disabled = selectedCount === 0;
-}
-
 if (googleDriveClient) {
   setDriveConnectionStatus("Chargement des bibliothèques Google. Aucun accès aux fichiers n'est demandé avant votre action.", "success", false);
   googleDriveClient.initialize().then(() => {
     googleDriveReady = true;
     updateGoogleDriveButton();
-
-    const oneDriveClientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID?.trim();
-    const oneDriveAuth = oneDriveClientId && !isNativePlatform ? new OneDriveAuth(oneDriveClientId) : null;
-    const oneDriveConnectButton = document.querySelector("#connect-onedrive");
-    const oneDriveStartButton = document.querySelector("#start-onedrive");
-    const oneDriveStopButton = document.querySelector("#stop-onedrive");
-    const oneDriveDisconnectButton = document.querySelector("#disconnect-onedrive");
-    const oneDriveStatus = document.querySelector("#onedrive-status");
-    let oneDriveReady = false;
-    let oneDriveConnecting = false;
-
-    function updateOneDriveActions() {
-      oneDriveConnectButton.disabled = !oneDriveReady || oneDriveConnecting || Boolean(oneDriveScanSettled);
-      oneDriveStartButton.disabled = !oneDriveAuth?.connected || oneDriveConnecting || Boolean(oneDriveScanSettled) || removingSessionFiles;
-      oneDriveStopButton.hidden = !oneDriveScanSettled;
-      oneDriveDisconnectButton.hidden = !oneDriveAuth?.connected;
-      oneDriveDisconnectButton.disabled = oneDriveConnecting || Boolean(oneDriveScanSettled) || removingSessionFiles;
-    }
-
-    if (oneDriveAuth) {
-      oneDriveStatus.textContent = "Préparation de OneDrive, sans demande d'autorisation.";
-      oneDriveAuth.initialize().then(() => {
-        oneDriveReady = true;
-        oneDriveStatus.textContent = "OneDrive prêt à être connecté. Aucune indexation n'a démarré.";
-        updateOneDriveActions();
-      }).catch(error => {
-        oneDriveObservation = "error";
-        oneDriveStatus.textContent = `Initialisation Microsoft impossible : ${error.message}`;
-        renderExperimentalSources();
-      });
-    } else if (isNativePlatform) {
-      oneDriveStatus.textContent = "OneDrive est disponible uniquement dans le navigateur web configuré.";
-    }
-
-    oneDriveConnectButton.addEventListener("click", async () => {
-      if (!oneDriveAuth || oneDriveConnecting || oneDriveScanSettled || removingSessionFiles) return;
-      oneDriveConnecting = true;
-      updateOneDriveActions();
-      try {
-        await oneDriveAuth.connect();
-        oneDriveObservation = "connected";
-        oneDriveStatus.textContent = "Compte connecté. L'indexation de tous les fichiers nécessite une action distincte.";
-      } catch (error) {
-        oneDriveObservation = "error";
-        oneDriveStatus.textContent = `Connexion Microsoft impossible : ${error.message}`;
-      } finally {
-        oneDriveConnecting = false;
-        updateOneDriveActions();
-        renderExperimentalSources();
-      }
-    });
-
-    oneDriveStartButton.addEventListener("click", () => {
-      if (!oneDriveAuth?.connected || oneDriveScanSettled || removingSessionFiles) return;
-      const controller = new AbortController();
-      oneDriveScanController = controller;
-      const existing = new Set(uploadedDocuments.map(doc => doc.id));
-      const accountId = oneDriveAuth.accountId;
-      let added = 0;
-      let metadataOnly = 0;
-      let skipped = 0;
-      let progress = { files: 0, pages: 0, foldersRead: 0 };
-      const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${progress.foldersRead} dossier(s) ; ${added} copie(s) ajoutée(s), dont ${metadataOnly} en métadonnées seules ; ${skipped} déjà présente(s).`;
-      oneDriveObservation = "working";
-      oneDriveScanSettled = (async () => {
-        try {
-          await scanOneDrive({
-            signal: controller.signal,
-            getToken: () => oneDriveAuth.getToken(),
-            onProgress: value => { progress = value; oneDriveStatus.textContent = `Indexation en cours : ${summary()}`; },
-            onItem: async item => {
-              const id = await oneDriveDocumentId(accountId, item.id);
-              if (existing.has(id)) { skipped += 1; return; }
-              const result = await readOneDriveDocument({ item, accountId, getToken: () => oneDriveAuth.getToken(), signal: controller.signal });
-              if (controller.signal.aborted) throw new DOMException("Indexation arrêtée.", "AbortError");
-              await addDocument(result.document);
-              uploadedDocuments.push(result.document);
-              existing.add(id);
-              if (result.segments) experimentalIndex.trustExtractedContent(result.document, result.segments);
-              added += 1;
-              if (result.coverage === "metadata") metadataOnly += 1;
-              if (added % 10 === 0) refreshExperimentalIndex();
-            }
-          });
-          oneDriveObservation = "connected";
-          oneDriveStatus.textContent = `Parcours terminé. ${summary()} Les copies ne sont pas automatiquement actualisées.`;
-        } catch (error) {
-          oneDriveObservation = error.name === "AbortError" ? "connected" : "error";
-          oneDriveStatus.textContent = `${error.name === "AbortError" ? "Indexation arrêtée" : `Indexation interrompue : ${error.message}`}. ${summary()} Les copies déjà enregistrées sont conservées.`;
-        } finally {
-          oneDriveScanController = null;
-          oneDriveScanSettled = null;
-          refreshExperimentalIndex();
-          updateClearFilesButtonsVisibility();
-          updateModeBanner();
-          renderDataInventory(parseHash().params);
-          updateOneDriveActions();
-        }
-      })();
-      updateOneDriveActions();
-      renderExperimentalSources();
-    });
-
-    oneDriveStopButton.addEventListener("click", () => oneDriveScanController?.abort());
-    oneDriveDisconnectButton.addEventListener("click", async () => {
-      if (!oneDriveAuth?.connected || oneDriveScanSettled || oneDriveConnecting) return;
-      oneDriveConnecting = true;
-      updateOneDriveActions();
-      try {
-        await oneDriveAuth.disconnect();
-        oneDriveObservation = "disconnected";
-        oneDriveStatus.textContent = "Session locale déconnectée. Les copies restent enregistrées et l'autorisation Microsoft n'est pas révoquée.";
-      } catch (error) {
-        oneDriveObservation = "error";
-        oneDriveStatus.textContent = `Déconnexion locale impossible : ${error.message}`;
-      } finally {
-        oneDriveConnecting = false;
-        updateOneDriveActions();
-        renderExperimentalSources();
-      }
-    });
     updateModeBanner();
     setDriveConnectionStatus("Prêt. Choisissez Google Drive pour demander l'accès drive.file et sélectionner vos fichiers dans le sélecteur officiel.", "success", false);
   }).catch((error) => {
@@ -1605,6 +1300,129 @@ if (googleDriveClient) {
 }
 updateGoogleDriveButton();
 
+const oneDriveClientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID?.trim();
+const oneDriveAuth = oneDriveClientId && !isNativePlatform ? new OneDriveAuth(oneDriveClientId) : null;
+const oneDriveConnectButton = document.querySelector("#connect-onedrive");
+const oneDriveStartButton = document.querySelector("#start-onedrive");
+const oneDriveStopButton = document.querySelector("#stop-onedrive");
+const oneDriveDisconnectButton = document.querySelector("#disconnect-onedrive");
+const oneDriveStatus = document.querySelector("#onedrive-status");
+let oneDriveReady = false;
+let oneDriveConnecting = false;
+
+function updateOneDriveActions() {
+  oneDriveConnectButton.disabled = !oneDriveReady || oneDriveConnecting || Boolean(oneDriveScanSettled);
+  oneDriveStartButton.disabled = !oneDriveAuth?.connected || oneDriveConnecting || Boolean(oneDriveScanSettled) || removingSessionFiles;
+  oneDriveStopButton.hidden = !oneDriveScanSettled;
+  oneDriveDisconnectButton.hidden = !oneDriveAuth?.connected;
+  oneDriveDisconnectButton.disabled = oneDriveConnecting || Boolean(oneDriveScanSettled) || removingSessionFiles;
+}
+
+if (oneDriveAuth) {
+  oneDriveStatus.textContent = "Préparation de OneDrive, sans demande d'autorisation.";
+  oneDriveAuth.initialize().then(() => {
+    oneDriveReady = true;
+    oneDriveStatus.textContent = "OneDrive prêt à être connecté. Aucune indexation n'a démarré.";
+    updateOneDriveActions();
+  }).catch(error => {
+    oneDriveObservation = "error";
+    oneDriveStatus.textContent = `Initialisation Microsoft impossible : ${error.message}`;
+    renderExperimentalSources();
+  });
+} else if (isNativePlatform) {
+  oneDriveStatus.textContent = "OneDrive est disponible uniquement dans le navigateur web configuré.";
+}
+
+oneDriveConnectButton.addEventListener("click", async () => {
+  if (!oneDriveAuth || oneDriveConnecting || oneDriveScanSettled || removingSessionFiles) return;
+  oneDriveConnecting = true;
+  updateOneDriveActions();
+  try {
+    await oneDriveAuth.connect();
+    oneDriveObservation = "connected";
+    oneDriveStatus.textContent = "Compte connecté. L'indexation de tous les fichiers nécessite une action distincte.";
+  } catch (error) {
+    oneDriveObservation = "error";
+    oneDriveStatus.textContent = `Connexion Microsoft impossible : ${error.message}`;
+  } finally {
+    oneDriveConnecting = false;
+    updateOneDriveActions();
+    renderExperimentalSources();
+  }
+});
+
+oneDriveStartButton.addEventListener("click", () => {
+  if (!oneDriveAuth?.connected || oneDriveScanSettled || removingSessionFiles) return;
+  const controller = new AbortController();
+  oneDriveScanController = controller;
+  const existing = new Map(uploadedDocuments.map(doc => [doc.id, doc]));
+  const accountId = oneDriveAuth.accountId;
+  let added = 0;
+  let metadataOnly = 0;
+  const compared = { unchanged: 0, changed: 0, unknown: 0 };
+  let progress = { files: 0, pages: 0, foldersRead: 0 };
+  const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${progress.foldersRead} dossier(s) ; ${added} copie(s) ajoutée(s), dont ${metadataOnly} en métadonnées seules ; copies existantes : ${compared.unchanged} même version observée, ${compared.changed} changement détecté, ${compared.unknown} version inconnue.`;
+  oneDriveObservation = "working";
+  oneDriveScanSettled = (async () => {
+    try {
+      await scanOneDrive({
+        signal: controller.signal,
+        getToken: () => oneDriveAuth.getToken(),
+        onProgress: value => { progress = value; oneDriveStatus.textContent = `Indexation en cours : ${summary()}`; },
+        onItem: async item => {
+          const id = await oneDriveDocumentId(accountId, item.id);
+          if (existing.has(id)) {
+            compared[compareOneDriveCopy(existing.get(id), item)] += 1;
+            return;
+          }
+          const result = await readOneDriveDocument({ item, accountId, getToken: () => oneDriveAuth.getToken(), signal: controller.signal });
+          if (controller.signal.aborted) throw new DOMException("Indexation arrêtée.", "AbortError");
+          await addDocument(result.document);
+          uploadedDocuments.push(result.document);
+          existing.set(id, result.document);
+          if (result.segments) experimentalIndex.trustExtractedContent(result.document, result.segments);
+          added += 1;
+          if (result.coverage === "metadata") metadataOnly += 1;
+          if (added % 10 === 0) refreshExperimentalIndex();
+        }
+      });
+      oneDriveObservation = "connected";
+      oneDriveStatus.textContent = `Parcours terminé. ${summary()} Les copies existantes ne sont pas remplacées ; la comparaison détaillée et la confirmation ne sont pas encore disponibles.`;
+    } catch (error) {
+      oneDriveObservation = error.name === "AbortError" ? "connected" : "error";
+      oneDriveStatus.textContent = `${error.name === "AbortError" ? "Indexation arrêtée" : `Indexation interrompue : ${error.message}`}. ${summary()} Les copies déjà enregistrées sont conservées.`;
+    } finally {
+      oneDriveScanController = null;
+      oneDriveScanSettled = null;
+      refreshExperimentalIndex();
+      updateClearFilesButtonsVisibility();
+      updateModeBanner();
+      renderDataInventory(parseHash().params);
+      updateOneDriveActions();
+    }
+  })();
+  updateOneDriveActions();
+  renderExperimentalSources();
+});
+
+oneDriveStopButton.addEventListener("click", () => oneDriveScanController?.abort());
+oneDriveDisconnectButton.addEventListener("click", async () => {
+  if (!oneDriveAuth?.connected || oneDriveScanSettled || oneDriveConnecting) return;
+  oneDriveConnecting = true;
+  updateOneDriveActions();
+  try {
+    await oneDriveAuth.disconnect();
+    oneDriveObservation = "disconnected";
+    oneDriveStatus.textContent = "Session locale déconnectée. Les copies restent enregistrées et l'autorisation Microsoft n'est pas révoquée.";
+  } catch (error) {
+    oneDriveObservation = "error";
+    oneDriveStatus.textContent = `Déconnexion locale impossible : ${error.message}`;
+  } finally {
+    oneDriveConnecting = false;
+    updateOneDriveActions();
+    renderExperimentalSources();
+  }
+});
 document.querySelectorAll("[data-open-source-dialog]").forEach((button) => {
   button.addEventListener("click", openSourceChoices);
 });
@@ -1701,58 +1519,11 @@ connectGoogleDriveButton.addEventListener("click", async () => {
   }
 });
 
-const openDrivePickerBtn = document.querySelector("#open-drive-picker");
-if (openDrivePickerBtn && drivePickerDialog) {
-  openDrivePickerBtn.addEventListener("click", () => {
+const openSourceDemoButton = document.querySelector("#open-drive-picker");
+if (openSourceDemoButton) {
+  openSourceDemoButton.addEventListener("click", () => {
     sourceChoiceDialog.close();
-    renderDrivePickerOptions();
-    drivePickerDialog.showModal();
-  });
-}
-
-if (drivePickerDialog) {
-  document.querySelector("#close-drive-picker").addEventListener("click", () => drivePickerDialog.close());
-  document.querySelector("#cancel-drive-picker").addEventListener("click", () => drivePickerDialog.close());
-  drivePickerDialog.addEventListener("click", (event) => {
-    if (event.target === drivePickerDialog) drivePickerDialog.close();
-  });
-}
-if (drivePickerList) {
-  drivePickerList.addEventListener("change", updateDrivePickerCount);
-}
-if (confirmDrivePickerButton && drivePickerList) {
-  confirmDrivePickerButton.addEventListener("click", async () => {
-    const selectedIds = new Set(
-      [...drivePickerList.querySelectorAll('input[name="drive-demo-file"]:checked:not(:disabled)')].map((checkbox) => checkbox.value)
-    );
-    if (selectedIds.size === 0) {
-      drivePickerStatus.textContent = "Sélectionnez au moins un fichier fictif.";
-      return;
-    }
-
-    const selectedDocuments = driveDemoDocuments
-      .filter((document) => selectedIds.has(document.id))
-      .map((document) => ({
-        ...document,
-        id: `drive-demo-${document.id}`,
-        driveDemo: true,
-        driveDemoId: document.id,
-        isLocal: true
-      }));
-    uploadedDocuments.push(...selectedDocuments);
-    for (const doc of selectedDocuments) {
-      await addDocument(doc);
-    }
-    updateClearFilesButtonsVisibility();
-    updateGoogleDriveButton();
-    updateModeBanner();
-    completeOnboarding();
-    setFileStatus(
-      `${selectedDocuments.length} fichier${selectedDocuments.length === 1 ? "" : "s"} fictif${selectedDocuments.length === 1 ? "" : "s"} ajouté${selectedDocuments.length === 1 ? "" : "s"} à la session. Aucun compte Google n'est connecté et aucun fichier Drive n'a été consulté.`,
-      "success"
-    );
-    drivePickerDialog.close();
-    showView("recherche");
+    startOnboardingReplay(3);
   });
 }
 
@@ -4578,23 +4349,18 @@ async function checkAlertsForExpiry() {
 /**
  * Réinitialise l'onboarding avec confirmation
  */
-function resetOnboarding() {
-  console.log('[DEBUG] resetOnboarding - START');
-  console.log('[DEBUG] localStorage BEFORE remove:', localStorage.getItem("famili-ia-source-choice-complete"));
-
-  if (!confirm("Voulez-vous vraiment réinitialiser l'onboarding ?\n\nToutes vos préférences et votre progression seront effacées.")) {
-    console.log('[DEBUG] resetOnboarding - User cancelled');
-    return;
-  }
-
-  // Supprimer la clé localStorage
-  localStorage.removeItem("famili-ia-source-choice-complete");
-
-  console.log('[DEBUG] localStorage AFTER remove:', localStorage.getItem("famili-ia-source-choice-complete"));
-  console.log('[DEBUG] resetOnboarding - About to redirect and reload');
-
-  // Rediriger vers l'accueil avant de recharger
-  window.location.hash = '#accueil';
+function startOnboardingReplay(stepIndex = 0) {
+  replayOnboarding = true;
+  document.querySelector('#wizard-user-name').value = "";
+  document.querySelector('#wizard-greeting').hidden = true;
+  document.querySelector('#wizard-user-greeting').textContent = "";
+  document.querySelectorAll('#onboarding-wizard .wizard-step').forEach((step, index) => {
+    step.hidden = index !== stepIndex;
+  });
+  if (stepIndex === 3) startDemoGuide();
+  showView('accueil');
+  manageOnboardingWizardVisibility();
+  document.querySelector(`#step-${stepIndex}-title`).focus();
 }
 
 /**
@@ -4602,92 +4368,60 @@ function resetOnboarding() {
  * Affiche les résultats avec les badges de provenance appropriés
  * @param {string} questionType - Le type de question ('facture-piscine', 'garantie-pompe', 'photos-aaron')
  */
-async function handleDemoQuestion(questionType) {
-  console.log('[DEBUG] handleDemoQuestion:', questionType);
-  
-  // Masquer les questions et afficher les résultats
-  const demoQuestionsSection = document.querySelector('.demo-questions');
-  const backButton = document.getElementById('back-to-step-2');
-  
-  if (demoQuestionsSection) {
-    demoQuestionsSection.style.display = 'none';
-  }
-  if (backButton) {
-    backButton.style.display = 'block';
-  }
-  
-  // Obtenir le conteneur de résultats de la démo
-  const resultsContainer = document.querySelector('#demo-results');
+let demoGuideStep = 0;
+
+function setDemoGuideStep(step) {
+  demoGuideStep = step;
+  const guide = document.querySelector('#demo-guide');
+  guide.hidden = step === 0;
+  document.querySelector('#demo-guide-restart').hidden = step !== 0;
+  document.querySelector('.demo-questions').classList.toggle('demo-guide-highlight', step === 1);
+  document.querySelector('#demo-results').classList.toggle('demo-guide-highlight', step === 2);
+  if (step === 0) return;
+  document.querySelector('#demo-guide-progress').textContent = `Guide · étape ${step} sur 2`;
+  document.querySelector('#demo-guide-instruction').textContent = step === 1
+    ? 'Choisissez une question fictive ci-dessous, ou découvrez le résultat déjà affiché.'
+    : 'Ce résultat fictif montre une source, une date et un extrait. Choisissez une autre question pour comparer.';
+  document.querySelector('#demo-guide-prev').hidden = step === 1;
+  document.querySelector('#demo-guide-next').textContent = step === 1 ? 'Voir le résultat' : 'Explorer librement';
+}
+
+function startDemoGuide() {
+  handleDemoQuestion('facture-piscine');
+  setDemoGuideStep(1);
+}
+
+function handleDemoQuestion(questionType) {
   const documentList = document.querySelector('#demo-document-list');
-  const resultsEyebrow = document.getElementById('results-eyebrow');
-  const answerTitle = document.getElementById('answer-title');
-  const resultCount = document.getElementById('result-count');
-  
-  if (!resultsContainer) {
-    console.error('[DEBUG] Container #demo-results not found');
-    return;
-  }
-  
-  // Charger les données de démo selon le type de question
-  let results = [];
-  let headingText = '';
-  let sourceLabel = 'Démo';
+  let results;
+  let headingText;
   
   switch (questionType) {
-    case 'demo-walkthrough':
-      // Afficher les questions de démo dans l'écran 4 (step-3)
-      if (demoQuestionsSection) {
-        demoQuestionsSection.style.display = 'flex';
-      }
-      if (resultsContainer) {
-        resultsContainer.style.display = 'none';
-      }
-      if (backButton) {
-        backButton.style.display = 'none';
-      }
-      // Faire défiler vers le haut pour voir les questions
-      wizard?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
     case 'facture-piscine':
       results = getDemoResultsFacturePiscine();
       headingText = 'Facture de piscine';
-      sourceLabel = '☁️ Drive';
+      break;
+    case 'contrat-habitation':
+      results = getDemoResultsContratHabitation();
+      headingText = 'Contrat d’assurance habitation';
       break;
     case 'garantie-pompe':
       results = getDemoResultsGarantiePompe();
       headingText = 'Échéance garantie pompe';
-      sourceLabel = '☁️ Drive';
       break;
     case 'photos-aaron':
       results = getDemoResultsPhotosAaron();
       headingText = 'Photos familiales';
-      sourceLabel = '💾 Local';
       break;
     default:
-      console.warn('[DEBUG] Unknown question type:', questionType);
-      results = [];
-      headingText = 'Résultats';
+      throw new TypeError(`Exemple de démo inconnu : ${questionType}`);
   }
-  
-  // Mettre à jour l'entête des résultats
-  if (resultsEyebrow) resultsEyebrow.textContent = `🔍 Recherche universelle — ${sourceLabel}`;
-  if (answerTitle) answerTitle.textContent = headingText;
-  if (resultCount) resultCount.textContent = `${results.length} ${results.length === 1 ? 'résultat trouvé' : 'résultats trouvés'}`;
-  
-  // Vider et remplacer le contenu de la liste de documents
-  if (documentList) {
-    documentList.innerHTML = '';
-    results.forEach(result => {
-      const resultElement = createResultElement(result);
-      documentList.appendChild(resultElement);
-    });
-  }
-  
-  // Scroll vers les résultats
-  resultsContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  
-  // Activer le mode démo
-  setDemoMode(true);
+  document.querySelector('#demo-result-heading').textContent =
+    `${headingText} · ${results.length} ${results.length === 1 ? 'résultat fictif' : 'résultats fictifs'}`;
+  documentList.replaceChildren(...results.map(createResultElement));
+  document.querySelectorAll('.demo-question').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.demoQuestion === questionType));
+  });
 }
 
 /**
@@ -4697,47 +4431,30 @@ async function handleDemoQuestion(questionType) {
  */
 function createResultElement(result) {
   const div = document.createElement('div');
-  div.className = 'result-card';
-  div.style.cssText = `
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-    background: var(--gradient-surface);
-    margin-bottom: 1rem;
-    box-shadow: var(--shadow-sm);
-  `;
+  div.className = 'ui-card onboarding-demo-result';
   
   // Badge de provenance
   const badge = document.createElement('span');
   badge.className = `provenance-badge ${result.source === 'Drive' ? 'drive' : 'local'}`;
-  badge.innerHTML = `${result.source === 'Drive' ? '☁️' : '💾'} ${result.source}`;
+  badge.textContent = `${result.source === 'Drive' ? 'Google Drive' : 'Local'} · exemple fictif`;
   
   // Titre
   const title = document.createElement('h3');
   title.className = 'result-title';
-  title.style.margin = '0 0 0.5rem 0';
   title.textContent = result.title;
   
   // Contenu
   const content = document.createElement('p');
   content.className = 'result-content';
-  content.style.margin = '0 0 0.75rem 0';
-  content.style.color = 'var(--color-text-secondary)';
-  content.style.fontSize = '0.9rem';
   content.textContent = result.content;
   
   // Footer avec date
   const dateEl = document.createElement('small');
-  dateEl.style.color = 'var(--color-text-muted)';
-  dateEl.style.fontSize = '0.75rem';
   dateEl.textContent = result.date;
   
   div.appendChild(badge);
-  div.appendChild(document.createTextNode(' '));
   div.appendChild(title);
-  div.appendChild(document.createElement('br'));
   div.appendChild(content);
-  div.appendChild(document.createElement('br'));
   div.appendChild(dateEl);
   
   return div;
@@ -4752,6 +4469,20 @@ function getDemoResultsFacturePiscine() {
     title: 'Facture - Installation piscine.pdf',
     content: 'Facture d\'installation d\'une piscine familiale. Le montant total indiqué est de 8 900 euros TTC, réglé le 4 mars 2023.',
     date: '4 mars 2023',
+    source: 'Drive',
+    provenance: 'Démo'
+  }];
+}
+
+/**
+ * Résultat fictif de démonstration d'un contrat, sans création d'alerte.
+ */
+function getDemoResultsContratHabitation() {
+  return [{
+    id: 'contrat-habitation',
+    title: 'Contrat - Assurance habitation.pdf',
+    content: 'Le contrat prend effet le 1er janvier 2027 et arrive à échéance le 31 décembre 2027, sauf résiliation. Cette échéance est un exemple fictif ; aucune alerte n’est créée.',
+    date: '1 janvier 2027',
     source: 'Drive',
     provenance: 'Démo'
   }];
@@ -4801,7 +4532,7 @@ function getDemoResultsPhotosAaron() {
 function initResetOnboardingButton() {
   const resetBtn = document.querySelector('#reset-onboarding-btn');
   if (resetBtn) {
-    resetBtn.addEventListener('click', resetOnboarding);
+    resetBtn.addEventListener('click', () => startOnboardingReplay());
   }
 }
 

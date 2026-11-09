@@ -10,7 +10,7 @@ La permission `Files.Read` peut autoriser l'accès à tous les fichiers du compt
 
 ## Validation effectuée et à compléter
 
-Le 9 novembre 2026, les tests automatisés ont vérifié notamment la pagination, l'arrêt, les erreurs, les limites de lecture et la provenance. Dans le navigateur, une authentification et des réponses Graph simulées ont permis d'indexer un texte fictif et de le retrouver après rechargement. **Aucun compte Microsoft réel n'a encore été testé.** La connexion OAuth, les permissions effectivement accordées, l'arrêt pendant un parcours réel et la déconnexion restent à vérifier avec un compte et des fichiers de test.
+Le 9 novembre 2026, les tests automatisés ont vérifié notamment la pagination, l'arrêt, les erreurs, les limites de lecture et la provenance. Dans le navigateur, une authentification et des réponses Graph simulées ont permis d'indexer un texte fictif et de le retrouver après rechargement. L'utilisateur confirme également l'indexation de documents OneDrive depuis son smartphone. Les formats et autres étapes de cet essai ne sont pas précisés ; l'arrêt, la déconnexion, la révocation et la suppression restent à confirmer sur le parcours réel.
 
 ## Limites et données
 

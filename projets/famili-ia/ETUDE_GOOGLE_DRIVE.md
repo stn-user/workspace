@@ -114,7 +114,7 @@ Lorsque la configuration est présente, les bibliothèques publiques Google sont
 
 ### Validation du parcours actuel
 
-L'ancienne version a été essayée avec des TXT et PDF synthétiques sur un compte de test, comme décrit ci-dessous. Le 9 novembre 2026, l'utilisateur confirme l'ouverture du Picker, le choix d'un fichier Drive et le succès des recherches demandées, y compris après rechargement, sur le parcours actuel. Le format du fichier et les résultats des étapes d'annulation, de révocation et de suppression ne sont pas précisés ; ces étapes restent à confirmer. Ne partagez ni identifiants, ni jetons, ni documents personnels.
+L'ancienne version a été essayée avec des TXT et PDF synthétiques sur un compte de test, comme décrit ci-dessous. Le 9 novembre 2026, l'utilisateur confirme l'ouverture du Picker, le choix d'un fichier Drive, la recherche après rechargement et l'indexation sur smartphone. Il confirme ensuite un cas passant sur smartphone : révocation Google, conservation de la copie, purge complète des données Famili-IA et conservation de l'original Drive. Le format et l'annulation ne sont pas précisés ; ces scénarios restent à confirmer. Ne partagez ni identifiants, ni jetons, ni documents personnels.
 
 1. Utiliser la configuration de test ci-dessus et démarrer l'application sur l'origine autorisée.
 2. Créer un TXT local et un TXT Drive **fictifs**, contenant un même mot distinctif. Depuis le bouton d'ajout, importer le premier puis sélectionner le second via Google Drive.

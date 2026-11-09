@@ -27,13 +27,16 @@ export function describeSources(records, { driveConfigured, driveToken, driveSta
   else if (driveToken) driveAccess = "Jeton Google présent pour cette session ; accès actuel aux fichiers non vérifié.";
   else driveAccess = "Aucun jeton Google dans cette session ; accès actuel aux fichiers inconnu.";
   return [
-    { sourceId: "local", ...local, access: localAccess },
-    { sourceId: "drive", ...drive, access: driveAccess },
+    { sourceId: "local", ...local, access: localAccess,
+      scope: "Fichiers importés explicitement ; une nouvelle sélection peut créer une nouvelle copie. Aucun suivi automatique des originaux." },
+    { sourceId: "drive", ...drive, access: driveAccess,
+      scope: "Fichiers sélectionnés avec Google Picker ; compte d'origine non identifié par Famili-IA. Pas de parcours complet ni d'actualisation automatique." },
     { sourceId: "onedrive", ...describeCoverage("onedrive"), access:
       oneDriveState === "working" ? "Indexation OneDrive en cours ; résultats incomplets."
       : oneDriveState === "connected" ? "Session OneDrive active ; accès actuel aux originaux non vérifié."
       : oneDriveState === "error" ? "Une opération OneDrive a échoué ; accès actuel inconnu."
       : oneDriveState === "disconnected" ? "Session OneDrive locale déconnectée ; révocation Microsoft non vérifiée."
-      : "Accès actuel à OneDrive inconnu." }
+      : "Accès actuel à OneDrive inconnu.",
+      scope: "OneDrive personnel : parcours déclenché séparément, permission de lecture large. Les copies existantes ne sont pas actualisées automatiquement." }
   ];
 }

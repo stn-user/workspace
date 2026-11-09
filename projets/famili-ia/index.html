@@ -6,22 +6,6 @@
   <meta name="theme-color" content="#f5f8ff">
   <meta name="description" content="Famili-IA : retrouvez vos documents familiaux facilement en toute confidentialité.">
   <title>Accueil | Famili-IA</title>
-  <style>
-    .onboarding-page-white {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: #ffffff;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
-    }
-  </style>
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.js"></script>
 </head>
@@ -59,7 +43,7 @@
       <div id="dashboard-content" hidden data-view="accueil" class="view-header-centered">
         <div class="view-titles">
           <p class="eyebrow">VOTRE ESPACE FAMILIAL</p>
-          <h1 id="dashboard-title">Bonjour <span id="dashboard-user-name"></span></h1>
+          <h1 id="dashboard-title" tabindex="-1">Bonjour <span id="dashboard-user-name"></span></h1>
           <p id="dashboard-subtitle">Votre vie numérique, enfin retrouvée.</p>
           <div id="demo-welcome-banner" class="demo-welcome-banner" hidden>
             ✨ Bienvenue dans votre espace de démonstration !
@@ -69,116 +53,110 @@
 
       <section class="view dashboard-view" id="view-accueil" data-view="accueil" aria-labelledby="welcome-title">
         <!-- Conteneur pour onboarding en mode page blanche -->
-        <section class="onboarding-page-white" id="onboarding-wizard" aria-labelledby="wizard-title" hidden>
+        <section class="onboarding-page-white" id="onboarding-wizard" aria-label="Découvrir Famili-IA" hidden>
           <!-- Écran 1 : Accueil de l'onboarding -->
           <div class="wizard-step" id="step-0" aria-labelledby="step-0-title">
-            <img src="assets/famili-ia-logo.svg" alt="Famili-IA" class="logo-lg app-logo" style="margin-bottom: 2rem; width: auto;">
-            <h2 id="step-0-title">Retrouvez tout, où que cela se trouve.</h2>
-            <p>Vos documents, photos et informations dans une seule application, grâce à l'IA.</p>
-          <img src="assets/famili-ia-accueil.svg" alt="Illustration Famili-IA" style="width: 180px; height: auto; margin: 2rem 0; display: block; margin-left: auto; margin-right: auto;">
-          <div style="margin-top: 2rem; text-align: center;">
-            <button class="primary-button onboarding-primary-button" type="button" id="start-onboarding" style="margin-bottom: 1rem;">Découvrir Famili-IA &rarr;</button>
-          </div>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem; color: #666;">
-              <img src="assets/icons/lock-closed.svg" alt="Cadenas verrouillé" width="16" height="16" style="flex-shrink: 0;">
-              <span>Vos données restent privées</span>
-            </div>
+            <svg class="onboarding-logo" viewBox="596 309 252 185" role="img" aria-label="Famili-IA">
+              <image href="assets/Logo.svg" width="1440" height="810"></image>
+            </svg>
+            <h2 id="step-0-title" tabindex="-1">Retrouvez ce qui compte,<br>où que cela se trouve.</h2>
+            <p>Vos documents et photos réunis dans un même espace de recherche.</p>
+            <svg class="onboarding-illustration" viewBox="117 528 576 384" aria-hidden="true" focusable="false">
+              <image href="assets/famili-ia-accueil.svg" width="810" height="1440"></image>
+            </svg>
+            <button class="ui-button ui-button--primary ui-button--full" type="button" id="start-onboarding">Découvrir Famili-IA <span aria-hidden="true">→</span></button>
+            <p class="onboarding-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>Vous choisissez les données à importer ou connecter.</p>
           </div>
 
           <!-- Écran 2 : Personnalisation -->
           <div class="wizard-step" id="step-1" aria-labelledby="step-1-title" hidden>
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <div class="onboarding-header">
               <button class="onboarding-back-btn" type="button" data-wizard-prev="0" aria-label="Retour">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
               </button>
-              <span style="font-size: 0.95rem; font-weight: 500; color: var(--color-text-secondary);">Découvrir Famili-IA</span>
+              <span>Découvrir Famili-IA</span>
             </div>
-            
-            <h2 id="step-1-title">Comment pouvons-nous vous nommer ?</h2>
+            <span class="ui-icon onboarding-person-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg></span>
+            <h2 id="step-1-title" tabindex="-1">Comment pouvons-nous vous appeler ?</h2>
             <p>Votre prénom nous permettra de personnaliser votre expérience.</p>
-            <input type="text" id="wizard-user-name" placeholder="Votre prénom" style="display:block; width:100%; margin-bottom:1rem; padding:0.5rem;">
-            <button class="primary-button onboarding-primary-button" type="button" data-wizard-next="2" style="width:100%;">Continuer &rarr;</button>
-            <button class="text-button" type="button" id="skip-personalization" style="margin-top: 1rem;">Passer cette étape</button>
+            <label class="ui-label onboarding-field" for="wizard-user-name">Votre prénom <span>(facultatif)</span></label>
+            <input class="ui-input" type="text" id="wizard-user-name" autocomplete="given-name" placeholder="Votre prénom">
+            <button class="ui-button ui-button--primary ui-button--full" type="button" data-wizard-next="2">Continuer <span aria-hidden="true">→</span></button>
+            <button class="ui-button ui-button--text" type="button" id="skip-personalization">Passer cette étape</button>
           </div>
 
           <!-- Écran 3 : Découverte Famili-IA -->
           <div class="wizard-step" id="step-2" aria-labelledby="step-2-title" hidden>
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <div class="onboarding-header">
               <button class="onboarding-back-btn" type="button" data-wizard-prev="1" aria-label="Retour">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
               </button>
-              <span style="font-size: 0.95rem; font-weight: 500; color: var(--color-text-secondary);">Découvrir Famili-IA</span>
+              <span>Découvrir Famili-IA</span>
             </div>
-            
-            <h2 id="step-2-title" style="font-size: 1.5rem; font-weight: 700; line-height: 1.35; margin-bottom: 1.5rem; color: var(--color-text); text-align: left;">Bonjour <span id="wizard-user-greeting"></span>, souhaitez-vous lancer une recherche intelligente pour retrouver vos documents ?</h2>
-            
+            <p class="onboarding-greeting" id="wizard-greeting" hidden>Bonjour <span id="wizard-user-greeting"></span> !</p>
+            <h2 id="step-2-title" tabindex="-1">Comment souhaitez-vous commencer ?</h2>
+            <p>Découvrez Famili-IA avec des exemples ou choisissez vos propres fichiers.</p>
             <!-- Card 1 : Découvrir avec un exemple -->
-            <button class="onboarding-option-card" type="button" data-wizard-next="3">
-              <div style="background: linear-gradient(135deg, #2563eb, #7c3aed); width: 48px; height: 48px; min-width: 48px; border-radius: var(--radius-md, 12px); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v14l4 4 4-4V2"></path></svg>
-              </div>
-              <div style="flex: 1; min-width: 0;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
-                  <span class="badge recommended" style="background: #ecfdf5; color: #059669; font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: var(--radius-full); border: 1px solid rgba(5, 150, 105, 0.2);">Recommandé</span>
-                  <span style="color: #7c3aed; font-size: 0.75rem; font-weight: 600;">Environ 1 minute</span>
-                </div>
-                <div style="font-size: 1.05rem; font-weight: 700; color: var(--color-text); margin-bottom: 0.25rem;">Découvrir avec un exemple</div>
-                <div style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.45;">Explorez une maison déjà organisée : recherche, alertes, documents fictifs</div>
-              </div>
-              <div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; color: var(--color-text-muted); align-self: center;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
-              </div>
+            <button class="ui-card onboarding-option-card" type="button" data-wizard-next="3">
+              <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3z"></path><path d="M19 15v4m-2-2h4M5 3v4M3 5h4"></path></svg></span>
+              <span class="onboarding-option-copy"><span class="ui-badge">Sans connexion</span><strong>Découvrir avec un exemple</strong><span>Explorez des résultats fictifs, sans utiliser vos données personnelles.</span></span>
+              <span class="onboarding-arrow" aria-hidden="true">›</span>
             </button>
-            
             <!-- Card 2 : Créer mon espace personnel -->
-            <button class="onboarding-option-card" type="button" id="start-scan-mode">
-              <div style="background: var(--surface-tint, #f5f5f5); width: 48px; height: 48px; min-width: 48px; border-radius: var(--radius-md, 12px); display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-border);">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-              </div>
-              <div style="flex: 1; min-width: 0;">
-                <div style="font-size: 1.05rem; font-weight: 700; color: var(--color-text); margin-bottom: 0.25rem;">Créer mon espace personnel</div>
-                <div style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.45;">Commencer à organiser vos propres documents</div>
-              </div>
-              <div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; color: var(--color-text-muted); align-self: center;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
-              </div>
+            <button class="ui-card onboarding-option-card" type="button" id="start-scan-mode">
+              <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M12 10v6m-3-3h6"></path></svg></span>
+              <span class="onboarding-option-copy"><strong>Créer mon espace personnel</strong><span>Choisissez les fichiers ou le dossier à importer depuis cet appareil.</span></span>
+              <span class="onboarding-arrow" aria-hidden="true">›</span>
             </button>
           </div>
 
           <!-- Écran 4 : Résultats de la démo -->
           <div class="wizard-step" id="step-3" aria-labelledby="step-3-title" hidden>
-            <h2 id="step-3-title">Démonstration universelle multi-sources</h2>
-            <p class="demo-intro">Explorez l'application avec 3 questions préremplies. Aucun accès à vos données personnelles.</p>
-            
-            <div class="demo-questions">
+            <div class="onboarding-header">
+              <button class="onboarding-back-btn" type="button" data-wizard-prev="2" aria-label="Retour au choix du parcours">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+              </button>
+              <span>Démo Famili-IA</span>
+            </div>
+            <h2 id="step-3-title" tabindex="-1">Découvrez une recherche</h2>
+            <p>Choisissez un exemple pour voir les résultats. Tout est fictif : aucun compte n'est connecté.</p>
+            <section class="ui-card demo-guide" id="demo-guide" aria-label="Guide de découverte">
+              <div role="status" aria-live="polite" aria-atomic="true">
+                <p class="demo-guide-progress" id="demo-guide-progress"></p>
+                <p class="demo-guide-instruction" id="demo-guide-instruction"></p>
+              </div>
+              <div class="demo-guide-actions">
+                <button class="ui-button ui-button--secondary" type="button" id="demo-guide-prev" hidden>Étape précédente</button>
+                <button class="ui-button ui-button--primary" type="button" id="demo-guide-next">Voir le résultat</button>
+                <button class="ui-button ui-button--text" type="button" id="demo-guide-skip">Passer le guide</button>
+              </div>
+            </section>
+            <button class="ui-button ui-button--text" type="button" id="demo-guide-restart" hidden>Revoir le guide</button>
+            <div class="demo-questions" aria-label="Exemples de recherche">
               <button class="demo-question" type="button" data-demo-question="facture-piscine">
-                <span class="question-icon">☁️</span>
+                <span class="question-icon" aria-hidden="true">⌕</span>
                 <span class="question-text">Retrouve la facture de ma piscine</span>
               </button>
+              <button class="demo-question" type="button" data-demo-question="contrat-habitation">
+                <span class="question-icon" aria-hidden="true">⌕</span>
+                <span class="question-text">Que prévoit mon contrat d’assurance habitation ?</span>
+              </button>
               <button class="demo-question" type="button" data-demo-question="garantie-pompe">
-                <span class="question-icon">☁️</span>
-                <span class="question-text">Quand est-ce que je dois payer la garantie du pompe ?</span>
+                <span class="question-icon" aria-hidden="true">⌕</span>
+                <span class="question-text">Quand expire la garantie de la pompe ?</span>
               </button>
               <button class="demo-question" type="button" data-demo-question="photos-aaron">
-                <span class="question-icon">💾</span>
+                <span class="question-icon" aria-hidden="true">⌕</span>
                 <span class="question-text">Montre-moi les photos de Aaron</span>
               </button>
             </div>
             
-            <section class="results" id="demo-results" aria-live="polite" aria-atomic="true">
-              <div class="results-heading">
-                <div>
-                  <p class="eyebrow" id="results-eyebrow"></p>
-                  <h2 id="answer-title"></h2>
-                </div>
-                <span class="result-count" id="result-count"></span>
-              </div>
+            <section class="onboarding-demo-results" id="demo-results" aria-live="polite" aria-atomic="true">
+              <p id="demo-result-heading" tabindex="-1"></p>
               <div class="document-list" id="demo-document-list"></div>
             </section>
-            
-            <button class="secondary-button" type="button" id="back-to-step-2" style="display: none;">
-              Retour au choix du parcours
-            </button>
+            <p class="onboarding-demo-note">Exemples fictifs : les sources et les résultats illustrent le fonctionnement de Famili-IA.</p>
+            <button class="ui-button ui-button--primary ui-button--full" type="button" id="finish-onboarding-demo">Terminer et accéder à mon espace</button>
           </div>
         </section>
 
@@ -639,7 +617,7 @@
                 <input type="checkbox" id="pref-drive-conn">
               </div>
               <button class="text-button" type="button" data-open-view="vos-donnees" style="margin-top: 1rem;">Gérer mes données</button>
-              <button class="secondary-button" type="button" id="reset-onboarding-btn" style="margin-top: 1rem; width: 100%;">Relancer l'onboarding</button>
+              <button class="ui-button ui-button--secondary ui-button--full" type="button" id="reset-onboarding-btn" style="margin-top: 1rem;">Revoir la découverte</button>
             </section>
           </section>
         </div>
@@ -809,8 +787,8 @@
     </nav>
   </div>
 
-  <dialog class="source-dialog" id="source-dialog" aria-labelledby="dialog-title">
-    <div class="dialog-header"><div><p class="eyebrow" id="dialog-eyebrow"></p><h2 id="dialog-title"></h2></div><button class="close-button" id="close-dialog" type="button" aria-label="Fermer">×</button></div>
+  <dialog class="ui-dialog" id="source-dialog" aria-labelledby="dialog-title">
+    <div class="ui-dialog__header"><div><p class="eyebrow" id="dialog-eyebrow"></p><h2 id="dialog-title"></h2></div><button class="ui-dialog__close" id="close-dialog" type="button" aria-label="Fermer l'extrait">×</button></div>
     <p class="dialog-meta" id="dialog-meta"></p>
     <p class="dialog-content" id="dialog-content"></p>
     <div class="dialog-notice"><span aria-hidden="true">ⓘ</span><span id="dialog-notice-text">Ceci est un contenu d'exemple inventé pour le prototype.</span></div>
@@ -830,42 +808,42 @@
     </div>
   </dialog>
 
-  <dialog class="source-dialog source-choice-dialog" id="source-choice-dialog" aria-labelledby="source-choice-title">
-    <div class="dialog-header">
+  <dialog class="ui-dialog source-choice-dialog" id="source-choice-dialog" aria-labelledby="source-choice-title" aria-describedby="source-choice-intro">
+    <div class="ui-dialog__header">
       <div><p class="eyebrow">CHOIX DES SOURCES</p><h2 id="source-choice-title">Où se trouvent vos documents ?</h2></div>
-      <button class="close-button" id="close-source-choice" type="button" aria-label="Fermer">×</button>
+      <button class="ui-dialog__close" id="close-source-choice" type="button" aria-label="Fermer le choix des sources">×</button>
     </div>
-    <p class="source-choice-intro">Choisissez uniquement les fichiers que vous souhaitez rechercher.</p>
+    <p class="source-choice-intro" id="source-choice-intro">Choisissez uniquement les fichiers que vous souhaitez rechercher.</p>
     <div class="source-choice-list">
-      <button class="source-choice" id="choose-local-files" type="button">
-        <span class="source-choice-icon" aria-hidden="true">▤</span>
+      <button class="ui-card source-choice" id="choose-local-files" type="button">
+        <span class="ui-icon source-choice-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/Dossier.svg" width="1440" height="810"></image></svg></span>
         <span><strong>Sur cet appareil</strong><small>Choisir plusieurs fichiers TXT, Markdown, PDF, DOCX, XLSX ou photos. L'indexation s'effectue en arrière-plan avec une progression.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
-      <button class="source-choice" id="choose-local-files-native" type="button">
-        <span class="source-choice-icon" aria-hidden="true">💾</span>
+      <button class="ui-card source-choice" id="choose-local-files-native" type="button">
+        <span class="ui-icon source-choice-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/mobile.svg" width="1440" height="810"></image></svg></span>
         <span><strong>Fichiers sur l'appareil (mobile)</strong><small>Choisir plusieurs fichiers dans le sélecteur de votre appareil. L'indexation s'effectue en arrière-plan avec une progression.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
-      <button class="source-choice" id="connect-google-drive" type="button" disabled>
-        <span class="source-choice-icon google-source-icon" aria-hidden="true">G</span>
+      <button class="ui-card source-choice" id="connect-google-drive" type="button" disabled>
+        <span class="ui-icon source-choice-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/google-drive.svg" width="1440" height="810"></image></svg></span>
         <span><strong>Google Drive</strong><small id="google-drive-choice-description">Disponible dans la version web de test, si elle est configurée.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
-      <button class="source-choice" id="connect-onedrive" type="button" disabled>
-        <span class="source-choice-icon" aria-hidden="true">☁</span>
+      <button class="ui-card source-choice" id="connect-onedrive" type="button" disabled>
+        <span class="ui-icon source-choice-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/onedrive.svg" width="1440" height="810"></image></svg></span>
         <span><strong>Connecter OneDrive personnel</strong><small>La permission Microsoft Files.Read peut donner accès à tous les fichiers du compte. La connexion ne lance pas l'indexation.</small></span>
       </button>
-      <button class="source-choice" id="open-drive-picker" type="button">
-        <span class="source-choice-icon demo-source-icon" aria-hidden="true">✦</span>
-        <span><strong>Exemples de démonstration</strong><small>Essayer avec des documents fictifs, sans connecter de compte.</small></span>
+      <button class="ui-card source-choice" id="open-drive-picker" type="button">
+        <span class="ui-icon source-choice-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/baguette.svg" width="1440" height="810"></image></svg></span>
+        <span><strong>Exemples de démonstration</strong><small>Voir des résultats fictifs, sans connecter de compte ni ajouter de fichiers.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
     </div>
     <p class="source-choice-footnote">Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive peut autoriser l'accès à tous les fichiers du compte personnel.</p>
     <p>OneDrive : l'indexation complète est facultative et s'arrête à la fermeture de l'onglet. TXT/Markdown : 1 Mo maximum ; PDF texte : 10 Mo et 20 pages maximum, sans OCR web. Les autres fichiers ne fournissent que leurs métadonnées. Les copies existantes ne sont pas actualisées automatiquement.</p>
-    <button class="secondary-button" id="start-onedrive" type="button" disabled>Indexer mon OneDrive</button>
-    <button class="secondary-button" id="stop-onedrive" type="button" hidden>Arrêter l'indexation</button>
+    <button class="ui-button ui-button--secondary" id="start-onedrive" type="button" disabled>Indexer mon OneDrive</button>
+    <button class="ui-button ui-button--secondary" id="stop-onedrive" type="button" hidden>Arrêter l'indexation</button>
     <p id="onedrive-status" role="status" aria-live="polite">OneDrive non configuré.</p>
   </dialog>
   <input type="file" id="local-files-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">

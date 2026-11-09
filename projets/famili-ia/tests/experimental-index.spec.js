@@ -1,26 +1,16 @@
 import { test, expect } from '@playwright/test';
 
 test('recherche locale et Drive simulé, puis purge sans résultats résiduels', async ({ page }) => {
+  const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
   await page.goto('http://localhost:5179/#/recherche');
+  await ready;
   await page.evaluate(async () => {
-    const request = indexedDB.open('FamiliIADatabase', 2);
-    const db = await new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+    const { put } = await import('/db.js');
+    await put('documents', {
+      id: 'drive-test-index', name: 'Facture Drive.txt', type: 'Texte',
+      date: 'Date inconnue', isLocal: true, driveSource: true,
+      content: 'Contenu fictif', keywords: '', summary: ''
     });
-
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction('documents', 'readwrite');
-      tx.objectStore('documents').put({
-        id: 'drive-test-index', name: 'Facture Drive.txt', type: 'Texte',
-        date: 'Date inconnue', isLocal: true, driveSource: true,
-        content: 'Contenu fictif', keywords: '', summary: ''
-      });
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
-    });
-    db.close();
   });
   const initialized = page.waitForEvent('console', message => message.text().includes('dialogs initialized'));
   await page.reload();
@@ -28,6 +18,7 @@ test('recherche locale et Drive simulé, puis purge sans résultats résiduels',
   await page.locator('#local-files-input').setInputFiles({
     name: 'Facture locale.txt', mimeType: 'text/plain', buffer: Buffer.from('Contenu fictif')
   });
+  await expect(page.locator('#scan-progress-text')).toHaveText('Indexation terminée : 1/1 fichiers indexés');
   await page.locator('#experimental-index-query').fill('facture');
   await page.locator('#experimental-index-form button').click();
   const entries = page.locator('#experimental-index-results li');
@@ -44,11 +35,14 @@ test('recherche locale et Drive simulé, puis purge sans résultats résiduels',
 });
 
 test('texte local extrait et preuve littérale conservés après redémarrage', async ({ page }) => {
+  const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
   await page.goto('http://localhost:5179/#/recherche');
+  await ready;
   await page.locator('#local-files-input').setInputFiles({
     name: 'contrat-test.txt', mimeType: 'text/plain',
     buffer: Buffer.from('Impossible de résilier avant décembre. <img src=x onerror=alert(1)>')
   });
+  await expect(page.locator('#scan-progress-text')).toHaveText('Indexation terminée : 1/1 fichiers indexés');
   await page.locator('#experimental-index-query').fill('résilier');
   await page.locator('#experimental-index-form button').click();
   const entries = page.locator('#experimental-index-results li');

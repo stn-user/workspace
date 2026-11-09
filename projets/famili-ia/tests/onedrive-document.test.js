@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { oneDriveDocumentId, readOneDriveDocument } from "../onedrive-document.js";
+import { compareOneDriveCopy, oneDriveDocumentId, readOneDriveDocument } from "../onedrive-document.js";
 import { IndexSession } from "../index-session.js";
 import { getInventorySource, filterSearchResultsByChips } from "../data-inventory.js";
 
@@ -66,4 +66,28 @@ test("contrôle la taille réelle même si les métadonnées sont fausses", asyn
   } });
   assert.equal(result.coverage, "metadata");
   assert.equal(result.reason, "taille dépassée");
+});
+
+test("compare les copies par nom et version fournisseur sans présumer les anciennes versions", async () => {
+  const current = { name: "test.txt", eTag: '"v1"' };
+  const copy = { name: "test.txt", oneDriveETag: '"v1"', content: "correction locale" };
+  assert.equal(compareOneDriveCopy(copy, current), "unchanged");
+  assert.equal(compareOneDriveCopy(copy, { ...current, eTag: '"v2"' }), "changed");
+  assert.equal(compareOneDriveCopy(copy, { ...current, name: "renommé.txt" }), "changed");
+  assert.equal(compareOneDriveCopy({ name: "test.txt" }, current), "unknown");
+  assert.equal(compareOneDriveCopy(copy, { name: "test.txt" }), "unknown");
+  assert.equal(copy.content, "correction locale");
+  assert.throws(() => compareOneDriveCopy(null, current), /invalide/);
+});
+
+test("conserve la version fournisseur pour les nouvelles copies seulement si disponible", async () => {
+  const never = async () => { throw new Error("appel inattendu"); };
+  const withVersion = await readOneDriveDocument({
+    ...options, item: { ...item, name: "photo.jpg", eTag: '"v1"' }, fetchImpl: never
+  });
+  const withoutVersion = await readOneDriveDocument({
+    ...options, item: { ...item, name: "photo.jpg" }, fetchImpl: never
+  });
+  assert.equal(withVersion.document.oneDriveETag, '"v1"');
+  assert.equal(withoutVersion.document.oneDriveETag, undefined);
 });

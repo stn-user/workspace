@@ -8,6 +8,27 @@ Cette fonctionnalité est **critique** pour l'expérience utilisateur. Toute ré
 
 ---
 
+## État de la refonte du lot E
+
+L'accueil, la personnalisation facultative et le choix du parcours utilisent les styles communs `ui-card`, `ui-icon` et `ui-badge`, ainsi que les variables `--ui-*`. Les boutons et champs partagés ci-dessous sont utilisés dans l'onboarding ; le bouton de rejeu du profil utilise aussi le bouton secondaire. Les modales d'extrait et de choix des sources utilisent le socle commun de dialogue ; les autres modales et vues ne sont pas encore harmonisées. Les titres reçoivent le focus lors des transitions ; l'accessibilité complète reste à vérifier.
+
+### Premiers composants CSS partagés
+
+- Bouton : `ui-button` avec une variante `ui-button--primary`, `ui-button--secondary` ou `ui-button--text` ; ajouter `ui-button--full` pour occuper la largeur disponible. Utiliser un vrai élément `button` et son attribut `disabled` si nécessaire.
+- Champ texte : `ui-input` sur l'élément `input` et `ui-label` sur un `label` associé par `for` et `id`. Le libellé reste nécessaire même en présence d'un placeholder.
+- Cartes, icônes et badges : `ui-card`, `ui-icon` et `ui-badge`. Les classes propres à une vue restent responsables de leur disposition et de leurs dimensions particulières.
+- Modale : utiliser un élément `dialog` avec `ui-dialog`, un titre identifié par `aria-labelledby`, un en-tête `ui-dialog__header` et un bouton de fermeture `ui-dialog__close` avec un libellé accessible. Ouvrir avec `showModal()` et fermer avec `close()` ; la classe CSS ne gère ni l'ouverture ni la fermeture par clic sur le fond. Le dialogue natif gère Échap et le retour du focus. Prévoir une description liée par `aria-describedby` lorsqu'elle est utile, sans y inclure un contenu long.
+
+Ces classes sont facultatives et ne remplacent pas automatiquement les styles existants. Elles prévoient un focus clavier visible et une cible de bouton d'au moins 48 × 48 px ; les contrastes et l'accessibilité des vues complètes doivent encore être vérifiés. La migration des autres modales et les autres types de champs restent à réaliser.
+
+Le parcours personnel existant ouvre le sélecteur de fichiers ou de dossier. La démo de l'onboarding affiche des résultats fictifs dans le wizard, sans appeler l'ancienne initialisation destructrice, sans importer de données et sans connecter de compte. Depuis le choix des sources, « Exemples de démonstration » ouvre directement cette même démo isolée ; il ne crée pas de copies fictives dans les données personnelles. Après la démo, « Terminer » marque l'onboarding terminé s'il ne l'était pas ; depuis le profil, « Revoir la découverte » le rouvre sans effacer les données ni la progression. Les descriptions historiques ci-dessous peuvent ne pas refléter le parcours actuel.
+
+La démo inclut des scénarios fictifs de facture, de contrat d'habitation, de garantie et de photos, ainsi qu'un guide facultatif en deux étapes : choix d'une question, puis lecture de la source fictive, de la date et de l'extrait. L'échéance du contrat ne crée aucune alerte. Le choix d'une question avance automatiquement le guide ; les boutons permettent aussi d'avancer, de revenir, de le passer et de le revoir. Les exemples restent accessibles librement, sans superposition bloquante ni mouvement imposé. Le guide est temporaire et repart de la première étape à chaque nouvelle ouverture de la démo. Il ne constitue pas encore une visite des autres vues ni une recherche réelle.
+
+Pour les tests ciblés, démarrer Vite sur `127.0.0.1:5179`, puis lancer `npx playwright test onboarding-refresh --workers=1`. Les tests utilisent des profils navigateur isolés et des données fictives.
+
+---
+
 ## 🏗️ Architecture Globale
 
 ### Flux de démarrage de l'application

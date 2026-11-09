@@ -12,6 +12,16 @@ export async function oneDriveDocumentId(accountId, itemId) {
   return `onedrive-${hash.slice("sha256:".length)}`;
 }
 
+export function compareOneDriveCopy(document, item) {
+  if (!document || !item || typeof document.name !== "string" || typeof item.name !== "string") {
+    throw new TypeError("Comparaison OneDrive invalide.");
+  }
+  if (document.name !== item.name) return "changed";
+  if (typeof document.oneDriveETag !== "string" || !document.oneDriveETag ||
+      typeof item.eTag !== "string" || !item.eTag) return "unknown";
+  return document.oneDriveETag === item.eTag ? "unchanged" : "changed";
+}
+
 function downloadUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error("Lien de téléchargement OneDrive invalide."); }
@@ -63,6 +73,7 @@ export async function readOneDriveDocument({ item, accountId, getToken, signal, 
       ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(modified) : "Date inconnue",
     isLocal: true, oneDriveSource: true, content: "", summary: "", keywords: ""
   };
+  if (typeof item.eTag === "string" && item.eTag) document.oneDriveETag = item.eTag;
   if (type === "Document") return { document, coverage: "metadata", reason: "format non pris en charge" };
   const limit = type === "PDF" ? pdfLimit : textLimit;
   if (typeof item.size === "number" && item.size > limit) {
