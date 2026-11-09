@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Connexion Microsoft</title></head>
+<body>
+  <p>Finalisation de la connexion Microsoft…</p>
+  <script type="module">
+    import { broadcastResponseToMainFrame } from "@azure/msal-browser/redirect-bridge";
+    broadcastResponseToMainFrame().catch(() => {
+      document.querySelector("p").textContent = "La connexion Microsoft n'a pas pu être finalisée. Fermez cette fenêtre et réessayez.";
+    });
+  </script>
+</body>
+</html>

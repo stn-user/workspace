@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { IndexSession } from "../index-session.js";
 import { createIndexRecord } from "../index-record.js";
-import { GoogleDriveClient, googleDriveScope } from "../google-drive.js";
-import { createContentProvenance } from "../content-index.js";
+import { GoogleDriveClient, googleDriveScope, prepareDriveDocumentForIndex } from "../google-drive.js";
+import { GoogleDriveSource } from "../google-drive-source.js";
 
 const local = { id: "1", name: "Facture locale.txt", isLocal: true, content: "secret local" };
 const drive = { id: "1", name: "Facture Drive.txt", isLocal: true, driveSource: true, content: "secret drive" };
@@ -74,11 +74,12 @@ test("résultats du client Drive simulé réutilisés sans deuxième sélection 
       ? new Response("Texte privé fictif")
       : Response.json({ id: "1", name: "Facture Drive.txt", mimeType: "text/plain", size: "20" });
   };
-  const selected = await client.pickFiles(1);
-  selected[0].contentProvenance = await createContentProvenance(selected[0], [selected[0].content], "drive-text");
+  const source = new GoogleDriveSource({ client, sourceId: "drive" });
+  const { documents: selected, status } = await source.selectFiles(1);
+  assert.equal(status, "selected");
   const session = new IndexSession();
   session.trustExtractedContent(local, [local.content]);
-  session.trustExtractedContent(selected[0], [selected[0].content]);
+  await prepareDriveDocumentForIndex(selected[0], session);
   session.syncDocuments([local, ...selected]);
   assert.deepEqual(session.search("facture").map(({ sourceId }) => sourceId), ["local", "drive"]);
   session.syncDocuments([local, ...selected]);

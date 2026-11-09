@@ -47,7 +47,7 @@ test("abstention sur dates ambiguës, libellés incertains ou date invalide", ()
     ["Fin de garantie : 15/03/2025 et 16/03/2025", "ambiguous"],
     ["Fin de garantie : 15/03/2025\nÉchéance : 16/03/2025", "ambiguous"],
     ["Fin de garantie : 15/03/2025\nÉchéance : 15/03/2025", "ambiguous"],
-    ["Fin de garantie : 31/02/2025", "not-found"],
+    ["Fin de garantie : 31/02/2025", "invalid-date"],
     ["Pas d'échéance : 15/03/2025", "ambiguous"],
     ["Fin de garantie : 15/03/2025 (sauf résiliation)", "ambiguous"],
     ["Échéance : 15/03/2025\nRenouvellement : 2026", "ambiguous"],

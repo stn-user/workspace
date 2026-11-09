@@ -28,7 +28,7 @@ export function extractDeadlineFromText(record, text) {
   const match = normalized.match(exactLine);
   if (!match) return { record: copyRecord(record), status: "ambiguous" };
   const date = normalizeAlertDate(match[1]);
-  if (!date) return { record: copyRecord(record), status: "not-found" };
+  if (!date) return { record: copyRecord(record), status: "invalid-date" };
 
   const dates = {
     ...record.dates,

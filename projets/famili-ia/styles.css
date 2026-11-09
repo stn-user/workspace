@@ -1697,6 +1697,33 @@ body {
   border-radius: var(--radius-md);
 }
 
+#experimental-index-results,
+#experimental-deadline-results,
+#experimental-deadline-review-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.experimental-result {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow-wrap: anywhere;
+}
+
+.experimental-result p,
+.experimental-result-name {
+  margin: 0;
+}
+
+.experimental-result .source-button {
+  justify-self: start;
+}
+
 .search-filter-row {
   display: grid;
   grid-template-columns: 90px minmax(0, 1fr);

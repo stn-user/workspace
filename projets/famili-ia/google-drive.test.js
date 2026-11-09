@@ -124,12 +124,61 @@ test("returns an empty selection when Picker is cancelled without reading files"
       this.callback({ access_token: "memory-only-token", scope: googleDriveScope });
     }
   };
-  client.openPicker = async () => [];
+  client.openPicker = async () => null;
   client.readSelectedFile = () => {
     throw new Error("Un fichier ne doit pas être lu après annulation");
   };
 
   assert.deepEqual(await client.pickFiles(1), []);
+  assert.deepEqual(await client.pickFilesDetailed(1), { status: "cancelled", documents: [] });
+  client.openPicker = async () => [];
+  assert.deepEqual(await client.pickFilesDetailed(1), { status: "empty", documents: [] });
+});
+
+test("maps the actual Picker cancellation callback to a distinct result", async (t) => {
+  const previousWindow = globalThis.window;
+  globalThis.window = {
+    location: { origin: "http://localhost:5173" },
+    google: {
+      accounts: { oauth2: { hasGrantedAllScopes: () => true } },
+      picker: {
+        DocsView: class { setIncludeFolders() { return this; } setMimeTypes() { return this; } },
+        PickerBuilder: class {
+          setAppId() { return this; } setDeveloperKey() { return this; }
+          setOAuthToken() { return this; } setOrigin() { return this; }
+          setMaxItems() { return this; } enableFeature() { return this; }
+          addView() { return this; } setCallback(callback) { this.callback = callback; return this; }
+          build() { return { setVisible: () => this.callback({ action: "cancel" }) }; }
+        },
+        ViewId: { DOCS: "docs" }, Feature: { MULTISELECT_ENABLED: "multi" },
+        Action: { PICKED: "picked", CANCEL: "cancel", ERROR: "error" }
+      }
+    }
+  };
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  });
+  const client = new GoogleDriveClient({ apiKey: "test", appId: "test", clientId: "test" });
+  client.tokenClient = {
+    requestAccessToken() { this.callback({ access_token: "test-token", scope: googleDriveScope }); }
+  };
+  client.readSelectedFile = () => { throw new Error("Aucune lecture attendue"); };
+  assert.deepEqual(await client.pickFilesDetailed(1), { status: "cancelled", documents: [] });
+});
+
+test("distinguishes a closed OAuth popup from an authorization refusal", async (t) => {
+  const previousWindow = globalThis.window;
+  globalThis.window = { google: { accounts: { oauth2: { hasGrantedAllScopes: () => true } } } };
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  });
+  const client = new GoogleDriveClient({ apiKey: "test", appId: "test", clientId: "test" });
+  client.tokenClient = { requestAccessToken() { this.error_callback({ type: "popup_closed" }); } };
+  assert.deepEqual(await client.pickFilesDetailed(1), { status: "cancelled", documents: [] });
+  client.tokenClient.requestAccessToken = function () { this.callback({ error: "access_denied" }); };
+  await assert.rejects(client.pickFilesDetailed(1), /Autorisation Google refusée/);
 });
 
 test("rejects a missing Drive scope before opening Picker", async (t) => {
@@ -180,6 +229,16 @@ test("revokes the active token and reports a provider rejection", async (t) => {
   response = { successful: false };
   client.accessToken = "memory-only-token";
   await assert.rejects(client.revoke(), /Google n’a pas confirmé la révocation/);
+  assert.equal(client.hasAccessToken, false);
+
+  response = undefined;
+  client.accessToken = "memory-only-token";
+  await assert.rejects(client.revoke(), /Google n’a pas confirmé la révocation/);
+  assert.equal(client.hasAccessToken, false);
+
+  globalThis.window = {};
+  client.accessToken = "memory-only-token";
+  await assert.rejects(client.revoke(), /Révocation Google indisponible/);
   assert.equal(client.hasAccessToken, false);
 });
 

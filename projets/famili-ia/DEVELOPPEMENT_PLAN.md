@@ -239,27 +239,35 @@ Le traitement et l'index sont locaux par défaut ; toute synchronisation ou tran
 |---|---|---|---|
 | Cadrage et contrat | 15.5bis.0, 15.5bis.1.a–c | Partiel | Scénarios, niveaux de couverture, états et contrat cible définis ; connecteur fictif et orchestration paginée expérimentaux. La matrice doit être actualisée et les capacités réelles et la reprise par fournisseur restent à valider. |
 | Index commun expérimental | 15.5bis.2, 15.5bis.9 | Partiel | Fiches en mémoire, provenance, preuves, rapprochement et recherche ; aucune migration, persistance de l'index ni déduplication complète. |
-| Échéances expérimentales | 15.5bis.3, 15.5bis.10 | Partiel | Extraction restrictive et propositions en mémoire ; ni pipeline général ni raccordement au moteur d'alertes. |
-| Premier parcours local + Drive | 15.5bis.1.d, 15.5bis.2.a–c, 15.5bis.5.a, 15.5bis.9.a–b | Partiel | Recherche expérimentale sur les documents présents dans l'application, avec source et couverture. Pas de découverte générale, accès à l'original vérifié ni validation OAuth réelle de ce parcours ; les deux sources ne constituent pas encore deux connecteurs complets. |
-| Recherche de contenu local + Drive | 15.5bis.3.a–c, 15.5bis.5.a, 15.5bis.9.a–b et .d | Partiel | Recherche en mémoire de segments extraits, y compris texte incorporé de PDF Drive sélectionnés, avec provenance vérifiée après redémarrage ; test Drive simulé. Textes anciens sans provenance, tableaux et OCR exclus ; PDF nécessitant OCR refusés sur le Web. Pas de synchronisation ni d'accès aux originaux vérifié. |
-| États des sources dans la recherche | 15.5bis.0.c–d, 15.5bis.5, 15.5bis.9.b | Partiel | Comptes des fichiers présents et couverture textuelle, observations d'import local et de session Drive ; accès aux originaux, fraîcheur et périmètre total restent inconnus. Pas de contrôle réseau supplémentaire ni d'état persistant. |
-| Autres sources et parcours cible | 15.5bis.4, .6–.8, .11–.13 | À faire | Intégrations, autorisations, disponibilité, confidentialité et validations propres à chaque plateforme. |
+| Échéances expérimentales | 15.5bis.3, 15.5bis.10 | Partiel | Propositions non confirmées dans l'interface, issues de segments fiables local, Drive et OneDrive, avec preuve et abstention ; ni pipeline général ni raccordement de ce parcours au moteur d'alertes. |
+| Premier parcours local + Drive | 15.5bis.1.d, 15.5bis.2.a–c, 15.5bis.5.a, 15.5bis.9.a–b | Partiel | Recherche expérimentale sur les documents présents dans l'application, avec source et couverture ; sélection Drive et recherche après rechargement confirmées par l'utilisateur sur le parcours actuel. Pas de découverte générale ni d'accès à l'original vérifié ; les sources ne constituent pas encore des connecteurs complets. |
+| Connecteur Drive Web limité | 15.5bis.1.b–d, .5.a | Partiel | Sélection explicite et révocation raccordées au contrat expérimental ; recherche Drive après rechargement confirmée par l'utilisateur sur le parcours actuel. Révocation et suppression à confirmer sur ce parcours ; pas de découverte paginée, identité multi-comptes ou synchronisation. |
+| Connecteur OneDrive personnel Web | 15.5bis.6–8 | Expérimental | Connexion Microsoft et parcours paginé sur action explicite, arrêt, copies locales et recherche ; TXT/Markdown et PDF à texte incorporé bornés, autres fichiers en métadonnées. Pas de synchronisation ; validation sur compte réel nécessaire. |
+| Recherche de contenu local, Drive et OneDrive | 15.5bis.3.a–c, 15.5bis.5.a, .6, 15.5bis.9.a–b et .d | Partiel | Recherche en mémoire de segments extraits avec provenance vérifiée après redémarrage, dont PDF texte Drive sélectionnés et OneDrive bornés ; OneDrive simulé. Textes anciens sans provenance et tableaux exclus ; OCR Web indisponible. Pas de synchronisation ni d'accès aux originaux vérifié. |
+| États des sources dans la recherche | 15.5bis.0.c–d, 15.5bis.5–6, 15.5bis.9.b | Partiel | Comptes des fichiers présents et couverture textuelle, observations d'import local et de session Drive et OneDrive ; accès aux originaux, fraîcheur et périmètre total restent inconnus. Pas de contrôle réseau supplémentaire ni d'état persistant. |
+| Parcours de résultat expérimental | 15.5bis.2.a–c, .5.a, .9.b–c | Partiel | Fiches avec informations et preuves disponibles, accès à la copie textuelle ou au détail photo lorsqu'ils existent et indications pour retrouver l'original ; aucun accès vérifié à l'original ni regroupement des doublons. |
+| Autres sources et parcours cible | 15.5bis.4, .6–.8, .11–.13 | À faire | Intégrations autres que les parcours expérimentaux décrits ci-dessus, autorisations, disponibilité, confidentialité et validations propres à chaque plateforme. |
 
 **Ordre indicatif des prochains lots fonctionnels** — un lot comprend intégration, tests, documentation et suivi ; les dépendances et résultats peuvent conduire à revoir cet ordre. Les états ci-dessous ne cochent aucune étape globale.
 
 | Ordre | Lot et références | Résultat attendu / condition de passage |
 |---|---|---|
-| 1 | Texte incorporé des PDF Drive — 15.5bis.3.b, .5.a, .9.b | Réalisé expérimentalement avec client simulé : recherche après redémarrage des segments réellement extraits de PDF choisis ; PDF nécessitant OCR refusés sur le Web, OCR natif non vérifié sur appareil, compte Google réel non testé. |
-| 2 | Parcours de résultat et accès à la source — 15.5bis.2.a–c, .5.a, .9.b–c | Afficher les informations et raisons réellement disponibles, distinguer la copie indexée de l'original et proposer uniquement les actions de retour effectivement possibles ; tester états manquants et accès indisponibles. |
-| 3 | Échéances sourcées — 15.5bis.3.c, .10 | Relier les propositions expérimentales aux documents pertinents avec preuve, distinction estimation/confirmation et contrôle utilisateur ; définir explicitement les conditions avant toute création ou modification d'alerte persistante. |
-| 4 | Premier connecteur commun réel — 15.5bis.1.b–d, .4 ou .5 | Réutiliser le contrat sur un parcours autorisé, avec erreurs et état vérifiables ; choisir la source et cadrer permissions, cycle de vie et compatibilité avant implémentation. |
-| 5 | Source supplémentaire — 15.5bis.6–8 | Choisir le fournisseur et la plateforme après étude actualisée des API, permissions et exigences ; construire un parcours limité et testé, sans promettre une bibliothèque entière ni une approbation fournisseur. |
+| 1 | Texte incorporé des PDF Drive — 15.5bis.3.b, .5.a, .9.b | Réalisé expérimentalement avec client simulé : recherche après redémarrage des segments réellement extraits de PDF choisis ; PDF nécessitant OCR refusés sur le Web, OCR natif non vérifié sur appareil. Un PDF synthétique a aussi été testé sur une ancienne version avec un compte réel ; le format testé sur le parcours actuel n'est pas précisé. |
+| 2 | Parcours de résultat et accès à la source — 15.5bis.2.a–c, .5.a, .9.b–c | Réalisé expérimentalement : informations et preuves disponibles, copie textuelle et détail photo, indications de recherche manuelle de l'original ; accès à l'original non vérifié et doublons non regroupés. La recherche Drive sur le parcours actuel a été confirmée par l'utilisateur. |
+| 3 | Échéances sourcées — 15.5bis.3.c, .10 | Réalisé expérimentalement : propositions non confirmées avec preuve et copie disponible, échéances du jour à 90 jours ; les cas non fiables sont signalés et aucun raccordement aux alertes n'est effectué. Pas de validation spécifique des échéances avec un compte réel. |
+| 4 | Premier connecteur commun réel — 15.5bis.1.b–d, .4 ou .5 | Partiellement réalisé : connecteur Drive Web pour sélection explicite, annulation et révocation, recherche locale + Drive et tests simulés. Le 9 novembre, l'utilisateur confirme le choix d'un fichier Drive et sa recherche après rechargement ; révocation et suppression du parcours actuel restent à confirmer. Identité de compte, découverte et synchronisation non implémentées. |
+| 5 | Source supplémentaire — 15.5bis.6–8 | OneDrive personnel Web : `Files.Read` autorise une lecture large ; parcours sur action distincte, arrêt et progression tant que l'onglet est ouvert. Authentification, contenu borné, copies et recherche raccordés ; configuration Microsoft et validation réelle restent nécessaires. Pas de synchronisation automatique. |
+
+**Mode de réalisation accéléré :** terminer chaque source par un parcours de bout en bout utilisable et testé sur son périmètre, avant d'étendre le contrat selon les besoins réels. La synchronisation reste dans la cible sans bloquer les pilotes. Les procédures de vérification figurent dans [l'étude Drive](ETUDE_GOOGLE_DRIVE.md#validation-du-parcours-actuel) et [l'étude OneDrive](ETUDE_ONEDRIVE.md).
+
+**Bilan de validation du 9 novembre 2026 :** 257 tests `node --test` et la compilation Vite ont réussi. Un parcours navigateur avec authentification et Graph simulés a couvert l'indexation OneDrive d'un texte fictif et sa recherche après rechargement ; ce n'est pas une validation OAuth Microsoft réelle. Les tests Playwright complets, la révocation/suppression Drive sur le parcours actuel et le cycle OneDrive sur compte réel restent à confirmer. L'installation des dépendances a signalé quatre vulnérabilités npm ; leur analyse et leur statut actuel restent à vérifier avant un pilote.
 
 ##### 15.5bis.0 – Cadrage de la recherche universelle
 - [✓] **15.5bis.0.a** : Décrire les scénarios prioritaires : facture dont l'emplacement est inconnu, garantie et échéance, contrat et fait précis, photos par date/personne/lieu/événement et recherche simultanée dans plusieurs sources. Voir [scénarios de recherche](docs/architecture/scenarios-recherche-multi-sources.md) ; ils décrivent la cible, pas une validation fonctionnelle.
 - [✓] **15.5bis.0.b** : Définir les niveaux de couverture : non accessible, métadonnées seules, contenu partiel et contenu analysé ; distinguer la couverture effective de la simple autorisation d'accès. Voir [couverture d'indexation](docs/architecture/index-coverage.md).
 - [✓] **15.5bis.0.c** : Définir les états et comportements d'une source déconnectée, inaccessible, partiellement indexée ou obsolète, ainsi que l'information montrée dans les résultats. Voir [états des sources](docs/architecture/etat-et-capacites-sources.md) ; comportements proposés, non tous intégrés.
-- [ ] **15.5bis.0.d** : Établir une matrice par source et plateforme : lecture, recherche, mise à jour, accès à l'original, formats, permissions, limites et statut d'implémentation ; revérifier les études fournisseur avant intégration. [Matrice initiale](docs/architecture/etat-et-capacites-sources.md) disponible, à actualiser pour le parcours expérimental et à revérifier avant intégration fournisseur.
+- [ ] **15.5bis.0.d** : Établir une matrice par source et plateforme : lecture, recherche, mise à jour, accès à l'original, formats, permissions, limites et statut d'implémentation ; revérifier les études fournisseur avant intégration. [Matrice](docs/architecture/etat-et-capacites-sources.md) disponible et mise à jour pour les parcours expérimentaux, à compléter et à revérifier pour les autres sources.
+- **Réalisé partiellement :** matrice actualisée pour les parcours locaux, Google Drive et OneDrive expérimentaux ; les autres plateformes et capacités restent à vérifier.
 - **Validation :** les scénarios et la matrice distinguent ce qui existe, ce qui est prévu et ce qui dépend d'une autorisation ou d'une faisabilité non confirmée.
 
 ##### 15.5bis.1 – Architecture commune des sources
@@ -267,6 +275,7 @@ Le traitement et l'index sont locaux par défaut ; toute synchronisation ou tran
 - [ ] **15.5bis.1.b** : Modéliser fournisseur, compte ou appareil, périmètre autorisé, capacités et état ; utiliser un identifiant stable par élément distinct de son nom et de son emplacement.
 - [ ] **15.5bis.1.c** : Gérer pagination, quotas, erreurs explicites, reconnexion et reprise après interruption ; isoler les défaillances d'une source des autres.
 - [ ] **15.5bis.1.d** : Concevoir le socle avec un premier connecteur réel afin de permettre l'ajout d'autres sources sans réécrire la recherche.
+- **Réalisé partiellement :** contrat et orchestrateur fictifs, adaptateur Drive limité et parcours Graph OneDrive paginé avec arrêt, erreurs et identité distincte par compte ; pas de reprise par curseur durable ni de contrat commun complet pour tous les fournisseurs.
 - **Validation :** tests d'un connecteur fictif couvrant autorisation, pagination, erreurs, reprise, modification et révocation ; documentation des capacités effectives de chaque adaptateur.
 
 ##### 15.5bis.2 – Modèle d'index intelligent
@@ -275,6 +284,7 @@ Le traitement et l'index sont locaux par défaut ; toute synchronisation ou tran
 - [ ] **15.5bis.2.c** : Associer les faits importants à une preuve ou un extrait lorsqu'ils existent ; afficher l'incertitude et ne pas présenter une estimation comme un fait certain.
 - [ ] **15.5bis.2.d** : Versionner le schéma et migrer les données IndexedDB existantes ; définir la conservation et la suppression des extraits, liens et vignettes.
 - [ ] **15.5bis.2.e** : Détecter les doublons exacts lorsque l'empreinte est disponible et proposer les rapprochements incertains sans fusion automatique ; préserver associations et corrections manuelles lors des réindexations.
+- **Réalisé partiellement :** fiches versionnées en mémoire, champs et preuves sourcés, rapprochement et provenance des segments vérifiée après redémarrage ; les documents et leurs provenances sont persistés, pas l'index commun séparément. Migration et déduplication restent à réaliser.
 - **Validation :** tests de migration, réindexation, doublons, changement de nom, suppression et révocation ; supprimer l'index Famili-IA ne supprime pas l'original.
 
 ##### 15.5bis.3 – Pipeline d'analyse et de classification
@@ -283,6 +293,7 @@ Le traitement et l'index sont locaux par défaut ; toute synchronisation ou tran
 - [ ] **15.5bis.3.c** : Extraire type de document, émetteur, dates, montants, équipements, échéances et extraits pertinents avec leur provenance ; réutiliser les métadonnées photo et annotations volontaires de 15.3 et 15.4.
 - [ ] **15.5bis.3.d** : Comparer règles explicables, OCR et modèles locaux sur un corpus annoté avant de retenir un modèle supplémentaire ; mesurer intérêt, stockage, confidentialité et performance. Une analyse distante éventuelle nécessite une décision et une information distinctes.
 - [ ] **15.5bis.3.e** : Traiter les fichiers progressivement avec pause, reprise, limitation mémoire et priorité configurable aux éléments récents ou utiles.
+- **Réalisé partiellement :** segments vérifiés pour certains textes et PDF, échéances avec preuve et parcours OneDrive progressif interruptible ; pas de reprise durable, classification générale ou OCR Web.
 - **Validation :** corpus fictif de documents natifs, PDF scannés, images, fichiers incomplets et formats non pris en charge ; mesurer classification, extraction, couverture, erreurs et temps. Profiler sur appareils cibles avant toute promesse mobile. Les personnes, lieux et scènes ne sont pas déduits des seules métadonnées : toute analyse supplémentaire est conçue et évaluée séparément.
 
 ##### 15.5bis.4 – Fichiers locaux et appareils
@@ -296,12 +307,15 @@ Le traitement et l'index sont locaux par défaut ; toute synchronisation ou tran
 - [ ] **15.5bis.5.a** : Consolider et vérifier le parcours de sélection explicite, les permissions et les formats réellement lisibles ; indexer les métadonnées et contenus autorisés, y compris les exports nécessaires aux formats Google compatibles.
 - [ ] **15.5bis.5.b** : Étudier et prototyper l'accès étendu lorsque la cible le justifie ; préparer les justificatifs, schémas de flux, vérifications et estimations de coûts applicables.
 - [ ] **15.5bis.5.c** : Gérer pagination, quotas, modifications, révocation et fichiers devenus inaccessibles.
+- **Réalisé partiellement :** sélection Web explicite `drive.file`, lecture bornée et révocation ; sélection et recherche après rechargement confirmées sur le parcours actuel. Actualisation continue, export de tous les formats Google, gestion générale des changements et validation complète restent à faire.
 - **Validation :** tests sur données fictives ; distinguer fichiers choisis et accès étendu. Aucun accès étendu en production avant les autorisations requises. Voir [l'étude Google Drive](ETUDE_GOOGLE_DRIVE.md).
 
 ##### 15.5bis.6 – OneDrive
+- **Première étape réalisée expérimentalement :** compte Microsoft personnel sur le Web ; `Files.Read` n'est pas limité aux fichiers sélectionnés. Authentification, parcours Graph paginé, indexation déclenchée séparément, arrêt, copies locales et recherche sont raccordés. Le parcours ne s'exécute que tant que l'onglet reste ouvert ; le compte réel reste à tester. Voir [étude OneDrive](ETUDE_ONEDRIVE.md).
 - [ ] **15.5bis.6.a** : Concevoir l'authentification, les permissions et la lecture via l'API officielle ; étudier séparément les comptes personnels et professionnels/scolaires.
 - [ ] **15.5bis.6.b** : Indexer les métadonnées et contenus accessibles ; gérer fichiers déplacés, modifiés, supprimés ou inaccessibles, expiration de session et reprise.
 - [ ] **15.5bis.6.c** : Vérifier le périmètre réellement accordé, y compris lorsque l'interface utilise un sélecteur ; le présenter fidèlement à l'utilisateur.
+- **Réalisé partiellement :** métadonnées et texte de formats bornés, conservation sur interruption et déconnexion locale distincte de la révocation Microsoft ; les copies existantes ne sont pas actualisées et les comptes professionnels ne sont pas pris en charge.
 - **Validation :** tests sur comptes et données fictifs couvrant pagination, refus, expiration, déconnexion et reprise.
 
 ##### 15.5bis.7 – Dropbox
@@ -321,12 +335,14 @@ Le traitement et l'index sont locaux par défaut ; toute synchronisation ou tran
 - [ ] **15.5bis.9.b** : Afficher nom, type, source, emplacement disponible, date et sa nature, extrait ou raison de correspondance et état d'accès à l'original ; expliquer les sources incomplètes, obsolètes ou indisponibles.
 - [ ] **15.5bis.9.c** : Regrouper les doublons possibles sans masquer leurs sources ; ouvrir l'original lorsque possible ou expliquer la marche à suivre.
 - [ ] **15.5bis.9.d** : Réutiliser la recherche documentaire traçable et « Moments de vie » ; comparer les améliorations sur un corpus multi-sources annoté et maintenir la recherche utile pour tous, conformément à 15.2.e.
+- **Réalisé partiellement :** recherche par nom et segments vérifiés sur les copies locales, Drive et OneDrive, avec source, extrait, couverture et accès à la copie ; filtres complets, regroupement des doublons et validation sur corpus restent ouverts.
 - **Validation :** une requête retourne des résultats de deux connecteurs opérationnels ; les faits ont une preuve ou entraînent une abstention explicite. Mesurer précision, rappel, qualité des extraits et temps ; tester source indisponible et index périmé.
 
 ##### 15.5bis.10 – Alertes issues des sources indexées
 - [ ] **15.5bis.10.a** : Alimenter le moteur d'alertes existant avec les faits accessibles des différents connecteurs, en conservant source et extrait justificatif ; ne pas créer d'alerte certaine sur une date ambiguë ou non vérifiable.
 - [ ] **15.5bis.10.b** : Réévaluer les alertes à la modification, disparition ou perte d'accès d'un document ; signaler une source indisponible ou un index ancien.
 - [ ] **15.5bis.10.c** : Préserver corrections, reports et choix utilisateur lors des synchronisations et réindexations.
+- **Réalisé partiellement :** propositions d'échéances sourcées à vérifier, pour les 90 prochains jours, issues des segments vérifiés disponibles ; aucune alerte ni notification n'est créée par ce parcours.
 - **Validation :** tests de dates ambiguës, échéances détectées, modifications, doublons entre sources et révocations ; aucune correction manuelle perdue silencieusement.
 
 ##### 15.5bis.11 – Démonstration et parcours d'accueil

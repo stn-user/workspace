@@ -1,7 +1,13 @@
 import { hashPhotoBytes } from "./photo-metadata.js";
 import { getInventorySource } from "./data-inventory.js";
 
-const methods = new Set(["local-text", "local-word", "local-pdf", "drive-text", "drive-pdf-text"]);
+const methods = new Set(["local-text", "local-word", "local-pdf", "drive-text", "drive-pdf-text", "onedrive-text", "onedrive-pdf-text"]);
+
+function methodMatchesSource(method, source) {
+  if (method.startsWith("onedrive-")) return source === "onedrive";
+  if (method.startsWith("drive-")) return source === "drive";
+  return source === "local";
+}
 
 function payload(document, method, ranges) {
   return JSON.stringify([1, getInventorySource(document), document.id, method, document.content, ranges]);
@@ -14,10 +20,9 @@ async function fingerprint(document, method, ranges) {
 export async function createContentProvenance(document, segments, method) {
   if (!document || typeof document !== "object" || Array.isArray(document)) throw new TypeError("Document invalide");
   const source = getInventorySource(document);
-  const isDriveMethod = method === "drive-text" || method === "drive-pdf-text";
   if (typeof document.id !== "string" || !document.id.trim() ||
       typeof document.content !== "string" || !Array.isArray(segments) ||
-      !methods.has(method) || (isDriveMethod ? source !== "drive" : source !== "local")) {
+      !methods.has(method) || !methodMatchesSource(method, source)) {
     throw new TypeError("Provenance du contenu invalide");
   }
   const ranges = [];
@@ -46,8 +51,7 @@ export async function restoreContentSegments(document) {
   if (provenance === undefined || provenance === null) return { status: "legacy", segments: [] };
   const source = getInventorySource(document);
   const { version, method, ranges, hash } = provenance;
-  const isDriveMethod = method === "drive-text" || method === "drive-pdf-text";
-  if (version !== 1 || !methods.has(method) || (isDriveMethod ? source !== "drive" : source !== "local") ||
+  if (version !== 1 || !methods.has(method) || !methodMatchesSource(method, source) ||
       typeof document.id !== "string" || !document.id.trim() || typeof document.content !== "string" ||
       !Array.isArray(ranges) || !ranges.length || typeof hash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(hash)) {
     return { status: "invalid", segments: [] };

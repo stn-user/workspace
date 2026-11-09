@@ -1,6 +1,6 @@
 # Contrat proposé des connecteurs de sources — 15.5bis.1
 
-**Statut : proposition de conception, non implémentée et à valider avec un premier adaptateur réel.** Elle ne modifie ni les connecteurs existants ni leur couverture. Les permissions, les méthodes et les comportements des fournisseurs doivent être revérifiés avant toute intégration réelle. Voir [états et capacités des sources](etat-et-capacites-sources.md) et [couverture d'indexation](index-coverage.md).
+**Statut : proposition de conception partiellement confrontée au parcours Google Drive Web.** Le connecteur expérimental ci-dessous ne réalise qu'une partie du contrat ; la sélection et la recherche après rechargement ont été confirmées par l'utilisateur sur le parcours actuel, mais pas la révocation. Voir [états et capacités des sources](etat-et-capacites-sources.md) et [couverture d'indexation](index-coverage.md).
 
 ## Objectif et limites
 
@@ -56,8 +56,9 @@ L'orchestrateur peut reprendre après une erreur récupérable ou une interrupti
 ## Confrontation aux parcours existants
 
 - **Google Drive Web** : [GoogleDriveClient](../../google-drive.js) combine demande d'autorisation, Picker et lecture des fichiers sélectionnés dans `pickFiles`. Le scope est `drive.file`. Il propose `revoke`, qui efface le jeton local et demande sa révocation à Google ; un échec fournisseur est signalé, sans garantie de suppression de l'index. Le parcours ne fournit pas à lui seul une découverte générale, un suivi de changements ou une ouverture de l'original conformes à la cible. Les droits étendus restent soumis à vérification dans [l'étude Drive](../../ETUDE_GOOGLE_DRIVE.md).
+- **OneDrive personnel Web** : [onedrive-auth.js](../../onedrive-auth.js), [onedrive-graph.js](../../onedrive-graph.js) et [onedrive-document.js](../../onedrive-document.js) raccordent connexion, parcours paginé volontaire et lecture bornée à l'application. `Files.Read` peut autoriser l'accès à tous les fichiers ; la déconnexion locale ne révoque pas le consentement. Pas de synchronisation ou de reprise durable, et aucun essai sur compte réel ; voir [l'étude OneDrive](../../ETUDE_ONEDRIVE.md).
 - **Sélection locale et scan** : [local-files.js](../../local-files.js) lit les fichiers et [background-sync.js](../../background-sync.js) orchestre les traitements et leur persistance. Le worker construit actuellement des identifiants locaux basés sur l'heure et une valeur aléatoire : ils ne constituent pas une identité source stable pour la réindexation. La disponibilité d'un fichier ou d'un dossier après redémarrage dépend du parcours et du navigateur.
-- **Recherche et inventaire** : [data-inventory.js](../../data-inventory.js) distingue actuellement les sources et l'état « texte / métadonnées » selon ses propres conventions. Le [module de couverture](../../index-coverage.js) est autonome, non raccordé ; aucune correspondance automatique fiable entre les deux n'est encore établie.
+- **Recherche et inventaire** : [data-inventory.js](../../data-inventory.js) distingue actuellement les sources et l'état « texte / métadonnées » selon ses propres conventions. L'index expérimental expose une couverture `metadata` ou `partial` selon les segments vérifiés ; les états et capacités complets du contrat restent à raccorder.
 
 Ces constats ne garantissent pas la disponibilité des parcours sur tous les appareils. Les limites Web, Android et iOS sont détaillées dans [integration.md](integration.md).
 
@@ -65,7 +66,7 @@ Ces constats ne garantissent pas la disponibilité des parcours sur tous les app
 
 [FakeSourceConnector](../../tests/fixtures/fake-source-connector.js) est une doublure exclusivement destinée aux tests, sans réseau ni persistance. Les [tests associés](../../tests/fake-source-connector.test.js) couvrent autorisation, refus et annulation, pagination et reprise après indisponibilité, lecture, changement, suppression, isolation de deux sources, déconnexion et révocation simulées. Les curseurs de découverte deviennent invalides si le jeu change : cela illustre une stratégie possible, non une exigence imposée aux fournisseurs.
 
-Cette expérimentation ne prouve ni l'idempotence d'un index réel, ni la conservation des corrections, ni la compatibilité avec un connecteur de production. Elle ne modélise pas encore les quotas, pages vides avec curseur, autorisations système ou révocations effectives. La confrontation à un premier adaptateur réel reste nécessaire avant de figer le contrat.
+Cette expérimentation ne prouve ni l'idempotence d'un index réel, ni la conservation des corrections, ni la compatibilité avec un connecteur de production. Elle ne modélise pas encore les quotas, pages vides avec curseur, autorisations système ou révocations effectives. Le contrat reste à valider avant d'être figé.
 
 ## Confrontation au parcours Google Drive
 
@@ -73,14 +74,24 @@ Les [tests Drive](../../google-drive.test.js) exercent le client existant avec P
 
 | Exigence cible | Comportement existant et écart |
 |---|---|
-| Autorisation et sélection explicites | `pickFiles` associe demande de jeton, Picker et lecture ; l'annulation du Picker renvoie un tableau vide, traité comme annulation dans l'interface, sans résultat structuré distinct. |
+| Autorisation et sélection explicites | `pickFilesDetailed` associe demande de jeton, Picker et lecture, en distinguant annulation, sélection vide et refus. `pickFiles` conserve son API historique de tableau pour les appelants existants. |
 | Découverte, pagination et reprise | Le Picker retourne une sélection ponctuelle ; aucun parcours général de pagination ou de curseur de reprise n'est exposé par le client. |
 | Métadonnées et contenu | `readSelectedFile` lit les métadonnées et le contenu d'un fichier sélectionné en une opération ; il n'expose pas séparément un résultat partiel lorsque la lecture échoue. |
 | Identité | Le résultat utilise un identifiant dérivé de l'identifiant Drive, sans identifiant d'instance de compte/source ; la stratégie multi-comptes reste à définir. |
 | Changements et ouverture de l'original | Aucun suivi de changements ni méthode d'ouverture directe de l'original n'est exposé par ce client. |
 | Déconnexion et révocation | `revoke` efface d'abord le jeton local puis demande la révocation ; un refus de Google est signalé. Il n'expose pas une déconnexion locale indépendante ni la suppression de l'index. |
 
-Un connecteur conforme nécessite de résoudre ces écarts sans élargir les permissions, de distinguer annulation et refus dans son résultat, puis de tester les transitions et la compatibilité du parcours existant. L'adaptateur expérimental ci-dessous convertit seulement les résultats existants ; il ne constitue pas un tel connecteur.
+### Connecteur de sélection expérimentale
+
+[GoogleDriveSource](../../google-drive-source.js) raccorde le parcours Web existant à un sous-ensemble du contrat : `describe`, `selectFiles` et `revoke`. L'application utilise ce connecteur pour la sélection et la révocation, puis conserve son traitement habituel des documents, y compris les segments PDF et la persistance. `selectFiles` fournit les documents lus et leurs fiches de métadonnées adaptées, sans requête supplémentaire. Les fiches ne remplacent pas l'index reconstruit par l'application ; si un identifiant apparaît plusieurs fois, les documents restent transmis au parcours existant et les fiches sont uniques.
+
+- Le scope reste `drive.file`, limité aux fichiers auxquels l'application est autorisée ; le Picker sélectionne explicitement les fichiers à traiter. Selon [Google : portées Drive](https://developers.google.com/workspace/drive/api/guides/api-specific-auth) et [Picker pour applications Web](https://developers.google.com/workspace/drive/picker/guides/web-picker), cette portée ne donne pas une découverte exhaustive du compte.
+- L'identifiant `drive` utilisé par l'application distingue le fournisseur localement, pas une instance durable de compte. Les changements de compte et les identités multi-comptes restent à concevoir.
+- `describe` rapporte les capacités, le dernier résultat de sélection en mémoire et la présence éventuelle d'un jeton, sans exposer celui-ci. Ni la disponibilité, ni l'accès aux originaux, ni leur fraîcheur ne sont vérifiés. Annulation du Picker ou fermeture de la fenêtre OAuth, sélection vide et erreurs dont le refus sont distingués.
+- `revoke` exige un jeton de session, interdit les opérations concurrentes et rapporte la réponse fournisseur ; l'absence de réponse confirmant le succès est une erreur. Le jeton local est effacé même en cas d'échec. Dans « Vos données », la révocation est proposée même sans fichier importé et conserve les copies ; la suppression globale efface les copies et demande aussi la révocation si un jeton est présent.
+- Autorisation séparée, découverte, lecture séparée, ouverture d'original, changements et déconnexion locale indépendante sont annoncés indisponibles et rejetés explicitement. Les plateformes natives ne sont pas raccordées.
+
+Les [tests](../../tests/google-drive-source.test.js) utilisent le client réel avec Picker et réseau simulés ainsi qu'une doublure pour les transitions. Le 9 novembre 2026, l'utilisateur a confirmé la sélection et la recherche après rechargement avec Google ; la révocation du parcours actuel reste à confirmer. Une absence de jeton après redémarrage ne prouve pas une révocation fournisseur.
 
 ## Orchestration des découvertes
 
@@ -102,7 +113,7 @@ Le module **source-orchestrator.js** exporte trois fonctions principales :
 
 - Pas de mécanisme de reprise persistante automatique
 - Aucune déduplication des éléments entre sources
-- Aucun connecteur réel raccordé à l'orchestrateur ; dates et quotas fournisseurs non simulés
+- La découverte paginée n'est pas applicable à la sélection Drive ponctuelle : l'orchestrateur reçoit une erreur explicite s'il la demande. Le parcours de sélection applicatif n'utilise pas cet orchestrateur ; dates et quotas fournisseurs ne sont pas simulés.
 
 `readSourcePage` laisse l'appelant conserver le curseur et décider quand reprendre ; aucun curseur n'est persisté automatiquement. Les curseurs sont opaques et transmis sans interprétation. `collectMultipleSources` valide la configuration globale (options, identifiants et forme des connecteurs) avant les appels, puis conserve l'erreur de chaque source en échec à l'exécution.
 

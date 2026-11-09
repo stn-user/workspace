@@ -16,6 +16,7 @@
     "android:run": "npm run cap:sync && cap run android"
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.29.0",
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@capacitor/filesystem": "^8.1.4",

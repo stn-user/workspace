@@ -5,7 +5,7 @@ import { searchIndex } from "./index-search.js";
 import { searchContentInDocuments } from "./content-search.js";
 import { restoreContentSegments } from "./content-index.js";
 
-export const INDEX_SOURCES = Object.freeze({ local: "local", drive: "drive" });
+export const INDEX_SOURCES = Object.freeze({ local: "local", drive: "drive", onedrive: "onedrive" });
 
 export class IndexSession {
   #records = [];
@@ -93,6 +93,12 @@ export class IndexSession {
   getRecordsBySource(sourceId) {
     if (!Object.values(INDEX_SOURCES).includes(sourceId)) throw new TypeError("Source inconnue");
     return this.getAllRecords().filter(record => record.sourceId === sourceId);
+  }
+
+  getAllContentDocs() {
+    return this.#content.map(({ sourceId, itemId, segments }) => ({
+      sourceId, itemId, segments: [...segments]
+    }));
   }
 
   updateRecord(record) {

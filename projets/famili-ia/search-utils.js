@@ -226,6 +226,7 @@ function getEvidenceExcerpt(question, lines) {
 }
 
 function getProvenance(document) {
+  if (document.oneDriveSource) return "OneDrive · copie enregistrée localement";
   if (document.driveSource) return "Google Drive · copie temporaire locale";
   if (document.driveDemo) return "Sélection Drive simulée · document fictif";
   if (document.isLocal) return document.sourceDir ? "Stockage local" : "Fichier local";

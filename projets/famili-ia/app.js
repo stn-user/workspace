@@ -1,6 +1,7 @@
 ﻿console.log("App script loaded");
 import { buildSearchResponse, rankDocuments } from "./search-utils.js";
 import { GoogleDriveClient, prepareDriveDocumentForIndex } from "./google-drive.js";
+import { GoogleDriveSource } from "./google-drive-source.js";
 import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
 import { Capacitor } from "@capacitor/core";
 import { parseDocument } from "./document-parser.js";
@@ -14,8 +15,13 @@ import { getPhotoThumbnailDataUrl } from "./photo-thumbnails.js";
 import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline } from "./photo-timeline.js";
 import { getAlertsToNotify, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
-import { IndexSession } from "./index-session.js";
+import { IndexSession, INDEX_SOURCES } from "./index-session.js";
 import { describeSources } from "./source-status.js";
+import { describeExperimentalResult } from "./experimental-result.js";
+import { findIndexDeadlines } from "./index-deadline-search.js";
+import { OneDriveAuth } from "./onedrive-auth.js";
+import { scanOneDrive } from "./onedrive-graph.js";
+import { oneDriveDocumentId, readOneDriveDocument } from "./onedrive-document.js";
 
 const activeScanWorkers = new Map();
 let suspendPhotoThumbnailRendering = () => {};
@@ -574,7 +580,7 @@ function updateClearFilesButtonsVisibility() {
   const isDataView = activeView === 'vos-donnees';
 
   if (clearFilesButton) clearFilesButton.hidden = !(hasFiles && isDataView);
-  if (disconnectGoogleDriveButton) disconnectGoogleDriveButton.hidden = !(hasFiles && isDataView && googleDriveClient?.hasAccessToken);
+  if (disconnectGoogleDriveButton) disconnectGoogleDriveButton.hidden = !(isDataView && googleDriveClient?.hasAccessToken);
 }
 
 
@@ -702,43 +708,160 @@ const experimentalIndexQuery = document.querySelector("#experimental-index-query
 const experimentalIndexStatus = document.querySelector("#experimental-index-status");
 const experimentalIndexResults = document.querySelector("#experimental-index-results");
 const experimentalSourceStatus = document.querySelector("#experimental-source-status");
+const deadlineStatus = document.querySelector("#experimental-deadline-status");
+const deadlineResults = document.querySelector("#experimental-deadline-results");
+const deadlineReview = document.querySelector("#experimental-deadline-review");
+const deadlineReviewList = document.querySelector("#experimental-deadline-review-list");
 let experimentalQuery = "";
 let driveObservation = "unknown";
 let localImportFailed = false;
+let oneDriveObservation = "unknown";
+let oneDriveScanController = null;
+let oneDriveScanSettled = null;
+
+function sourceName(sourceId) {
+  return sourceId === "drive" ? "Google Drive" : sourceId === "onedrive" ? "OneDrive" : "Local";
+}
 
 function renderExperimentalSources() {
   const statuses = describeSources(experimentalIndex.getAllRecords(), {
     driveConfigured: Boolean(googleDriveClient),
     driveToken: Boolean(googleDriveClient?.hasAccessToken),
     driveState: driveObservation,
-    localState: activeScanWorkers.size ? "working" : localImportFailed ? "error" : "unknown"
+    localState: activeScanWorkers.size ? "working" : localImportFailed ? "error" : "unknown",
+    oneDriveState: oneDriveObservation
   });
   experimentalSourceStatus.replaceChildren();
   for (const status of statuses) {
     const item = document.createElement("li");
-    const name = status.sourceId === "local" ? "Local" : "Google Drive";
+    const name = sourceName(status.sourceId);
     item.textContent = `${name} : ${status.message} ${status.access} Le périmètre total et la fraîcheur sont inconnus.`;
     experimentalSourceStatus.appendChild(item);
   }
+  deadlineResults.querySelectorAll("[data-deadline-source]").forEach(element => {
+    const source = statuses.find(status => status.sourceId === element.dataset.deadlineSource);
+    element.textContent = source?.access || "Accès actuel à l'original inconnu.";
+  });
+  return statuses;
+}
+
+function findExperimentalDocument(sourceId, itemId) {
+  for (let i = uploadedDocuments.length - 1; i >= 0; i -= 1) {
+    const doc = uploadedDocuments[i];
+    if (doc.id === itemId && getInventorySource(doc) === sourceId) return doc;
+  }
+  return undefined;
+}
+
+function addDeadlineCopyAction(item, sourceId, itemId) {
+  const sourceDocument = findExperimentalDocument(sourceId, itemId);
+  if (!sourceDocument || typeof sourceDocument.content !== "string" || !sourceDocument.content.trim()) {
+    addTextElement(item, "p", "", "Copie textuelle indisponible dans Famili-IA.");
+    return;
+  }
+  const button = addTextElement(item, "button", "source-button", "Voir la copie dans Famili-IA");
+  button.type = "button";
+  button.addEventListener("click", () => {
+    const current = findExperimentalDocument(sourceId, itemId);
+    if (!current || typeof current.content !== "string" || !current.content.trim()) {
+      refreshExperimentalIndex();
+      deadlineStatus.textContent = "Cette copie n'est plus disponible dans Famili-IA.";
+      return;
+    }
+    openSource(current);
+  });
+}
+
+function renderExperimentalDeadlines(sourceStatuses) {
+  const now = new Date();
+  const referenceDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const result = findIndexDeadlines(experimentalIndex, referenceDate, 90);
+  deadlineResults.replaceChildren();
+  deadlineReviewList.replaceChildren();
+  for (const candidate of result.candidates) {
+    const item = document.createElement("li");
+    item.className = "experimental-result";
+    addTextElement(item, "h3", "experimental-result-name", candidate.name || "Nom inconnu");
+    addTextElement(item, "p", "", `Source : ${sourceName(candidate.sourceId)}`);
+    addTextElement(item, "p", "", `Échéance proposée : ${candidate.dueDate} · dans ${candidate.daysUntil} jour(s) · non confirmée`);
+    addTextElement(item, "p", "search-evidence", `Extrait : « ${candidate.proof.excerpt} »${candidate.proof.location ? ` (${candidate.proof.location})` : ""}`);
+    const access = sourceStatuses.find(status => status.sourceId === candidate.sourceId);
+    const accessElement = addTextElement(item, "p", "", access?.access || "Accès actuel à l'original inconnu.");
+    accessElement.dataset.deadlineSource = candidate.sourceId;
+    addTextElement(item, "p", "", "Couverture : texte partiellement recherché ; fraîcheur inconnue.");
+    addDeadlineCopyAction(item, candidate.sourceId, candidate.itemId);
+    deadlineResults.appendChild(item);
+  }
+  for (const entry of result.needReview) {
+    const item = document.createElement("li");
+    item.className = "experimental-result";
+    addTextElement(item, "p", "", `${entry.name || "Nom inconnu"} · ${sourceName(entry.sourceId)} · ${entry.reason}`);
+    addDeadlineCopyAction(item, entry.sourceId, entry.itemId);
+    deadlineReviewList.appendChild(item);
+  }
+  deadlineReview.hidden = result.needReview.length === 0;
+  deadlineStatus.textContent = `${result.candidates.length} proposition(s) à vérifier ; ${result.outsidePeriod} échéance(s) détectée(s) hors période ; ${result.needReview.length} document(s) à vérifier.`;
+  if (result.ineligible.length) deadlineStatus.textContent += ` ${result.ineligible.length} échéance(s) non admissible(s).`;
 }
 
 function refreshExperimentalIndex() {
   try {
     experimentalIndex.syncDocuments(uploadedDocuments);
-    renderExperimentalSources();
+    const sourceStatuses = renderExperimentalSources();
+    try {
+      renderExperimentalDeadlines(sourceStatuses);
+    } catch (error) {
+      console.error("Impossible de calculer les propositions d'échéances :", error);
+      deadlineResults.replaceChildren();
+      deadlineReviewList.replaceChildren();
+      deadlineReview.hidden = true;
+      deadlineStatus.textContent = `Propositions d'échéances indisponibles : ${error instanceof Error ? error.message : "Erreur non détaillée"}`;
+    }
     experimentalIndexResults.replaceChildren();
     if (!experimentalQuery) {
       experimentalIndexStatus.textContent = "";
       return;
     }
     const matches = experimentalIndex.search(experimentalQuery);
+    const records = experimentalIndex.getAllRecords();
     for (const match of matches) {
       const item = document.createElement("li");
-      const source = match.sourceId === "drive" ? "Google Drive" : "Local";
-      const coverage = match.coverage === "partial" ? "texte partiellement recherché" : "métadonnées uniquement";
-      const reasons = match.reasons.map(reason =>
-        reason.location === "content" ? `texte extrait : « ${reason.value} »` : `nom : « ${reason.value} »`);
-      item.textContent = `${match.name} — ${source} — ${coverage} — ${reasons.join(" ; ")}`;
+      const sourceDocument = findExperimentalDocument(match.sourceId, match.itemId);
+      const record = records.find(entry => entry.sourceId === match.sourceId && entry.itemId === match.itemId);
+      const sourceAccess = sourceStatuses.find(status => status.sourceId === match.sourceId)?.access;
+      const result = describeExperimentalResult(match, record, sourceDocument, sourceAccess);
+      item.className = "experimental-result";
+      addTextElement(item, "h3", "experimental-result-name", result.name);
+      for (const detail of result.details) addTextElement(item, "p", "", detail);
+      for (const reason of result.reasons) addTextElement(item, "p", "search-evidence", reason);
+      if (result.canViewCopy) {
+        const button = addTextElement(item, "button", "source-button", "Voir la copie dans Famili-IA");
+        button.type = "button";
+        button.addEventListener("click", () => {
+          const current = findExperimentalDocument(match.sourceId, match.itemId);
+          if (!current || typeof current.content !== "string" || !current.content.trim()) {
+            refreshExperimentalIndex();
+            experimentalIndexStatus.textContent = "Cette copie n'est plus disponible dans Famili-IA.";
+            return;
+          }
+          openSource(current);
+        });
+      } else {
+        addTextElement(item, "p", "", "Copie textuelle indisponible dans Famili-IA.");
+      }
+      if (sourceDocument && isPhotoDocument(sourceDocument)) {
+        const button = addTextElement(item, "button", "source-button", "Voir le détail de la photo");
+        button.type = "button";
+        button.addEventListener("click", () => {
+          const current = findExperimentalDocument(match.sourceId, match.itemId);
+          if (!current || !isPhotoDocument(current)) {
+            refreshExperimentalIndex();
+            experimentalIndexStatus.textContent = "Cette photo n'est plus disponible dans Famili-IA.";
+            return;
+          }
+          openPhotoDetailsDialog(current);
+        });
+      }
       experimentalIndexResults.appendChild(item);
     }
     experimentalIndexStatus.textContent = matches.length
@@ -751,8 +874,14 @@ function refreshExperimentalIndex() {
     experimentalSourceStatus.textContent = "État des sources indisponible : l'index n'a pas pu être actualisé.";
     const reason = error instanceof Error ? error.message : "Erreur non détaillée";
     experimentalIndexStatus.textContent = `Recherche expérimentale indisponible : ${reason}`;
+    deadlineResults.replaceChildren();
+    deadlineReviewList.replaceChildren();
+    deadlineReview.hidden = true;
+    deadlineStatus.textContent = `Propositions d'échéances indisponibles : ${reason}`;
   }
 }
+
+document.querySelector("#experimental-deadline-refresh").addEventListener("click", refreshExperimentalIndex);
 
 experimentalIndexForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -788,6 +917,7 @@ const connectGoogleDriveButton = document.querySelector("#connect-google-drive")
 const disconnectGoogleDriveButton = document.querySelector("#disconnect-google-drive");
 const driveConnectionStatus = document.querySelector("#drive-connection-status");
 const googleDriveClient = hasGoogleDriveConfig && !isNativePlatform ? new GoogleDriveClient(googleDriveConfig) : null;
+const googleDriveSource = googleDriveClient ? new GoogleDriveSource({ client: googleDriveClient, sourceId: INDEX_SOURCES.drive }) : null;
 const sourceChoiceDialog = document.querySelector("#source-choice-dialog");
 const googleDriveChoiceDescription = document.querySelector("#google-drive-choice-description");
 const onboardingCompleteKey = "famili-ia-source-choice-complete";
@@ -797,9 +927,13 @@ const sidebarModeCopy = document.querySelector("#sidebar-mode-copy");
 
 function updateModeBanner() {
   const hasDriveFiles = uploadedDocuments.some((file) => file.driveSource);
-  const hasLocalFiles = uploadedDocuments.some((file) => file.isLocal && !file.driveDemo && !file.driveSource);
+  const hasOneDriveFiles = uploadedDocuments.some((file) => file.oneDriveSource);
+  const hasLocalFiles = uploadedDocuments.some((file) => file.isLocal && !file.driveDemo && !file.driveSource && !file.oneDriveSource);
   if (demoStatusLabel && sidebarModeCopy) {
-    if (hasDriveFiles) {
+    if (hasOneDriveFiles) {
+      demoStatusLabel.textContent = "Prototype — copies OneDrive locales";
+      sidebarModeCopy.textContent = "Les copies enregistrées ne sont pas synchronisées automatiquement.";
+    } else if (hasDriveFiles) {
       demoStatusLabel.textContent = "Drive de test — contenu en mémoire locale";
       sidebarModeCopy.textContent = "Fichiers choisis manuellement ; aucune IA ni serveur Famili-IA.";
     } else if (hasLocalFiles) {
@@ -843,7 +977,9 @@ function renderDocuments(matches) {
     const info = document.createElement("div");
     info.className = "document-info";
     addTextElement(info, "p", "document-name", sourceDocument.name);
-    const origin = sourceDocument.driveSource
+    const origin = sourceDocument.oneDriveSource
+      ? "OneDrive · copie enregistrée localement"
+      : sourceDocument.driveSource
       ? "Google Drive · copie temporaire locale"
       : sourceDocument.driveDemo
         ? "Sélection Google Drive simulée · fichier fictif"
@@ -869,7 +1005,9 @@ function renderDocuments(matches) {
 }
 
 function openSource(document) {
-  dialogEyebrow.textContent = document.driveSource
+  dialogEyebrow.textContent = document.oneDriveSource
+    ? "FICHIER ONEDRIVE"
+    : document.driveSource
     ? "FICHIER CHOISI DANS GOOGLE DRIVE"
     : document.isLocal
       ? document.sourceDir && Capacitor.isNativePlatform()
@@ -878,23 +1016,27 @@ function openSource(document) {
       : "DOCUMENT DE DÉMONSTRATION";
   dialogTitle.textContent = document.name;
   dialogMeta.textContent = document.isLocal
-    ? document.driveSource
-      ? `${document.type} · téléchargé directement depuis Google et conservé en mémoire locale${document.date ? ` · modifié le ${document.date}` : ""}`
+    ? document.oneDriveSource
+      ? `${document.type} · copie locale issue de OneDrive${document.date && document.date !== "Date inconnue" ? ` · modifié le ${document.date}` : ""}`
+      : document.driveSource
+      ? `${document.type} · copie textuelle locale issue de Google Drive${document.date && document.date !== "Date inconnue" ? ` · modifié le ${document.date}` : ""}`
       : document.driveDemo
         ? `${document.type} · exemple fictif copié dans cette session`
         : document.sourceDir && Capacitor.isNativePlatform()
-          ? `${document.type} · ${document.sourceDir} · chargé depuis le stockage local natif`
-          : `${document.type} · chargé localement pour cette session`
+          ? `${document.type} · ${document.sourceDir} · copie textuelle locale`
+          : `${document.type} · copie textuelle locale`
     : `${document.type} · ${document.date} · Source de démonstration`;
   if (dialogNoticeText) {
-    dialogNoticeText.textContent = document.driveSource
-      ? "Fichier explicitement choisi dans Google Picker. Le contenu est conservé en mémoire dans ce navigateur et n'est envoyé ni à un serveur Famili-IA ni à une IA."
+    dialogNoticeText.textContent = document.oneDriveSource
+      ? "Copie conservée dans Famili-IA, non synchronisée automatiquement. L'accès actuel à l'original n'est pas vérifié ; ce fichier peut être ancien ou ne contenir que ses métadonnées."
+      : document.driveSource
+      ? "Copie textuelle d'un fichier choisi dans Google Picker, conservée dans Famili-IA. Ce n'est pas l'original ; son accès actuel n'est pas vérifié et la copie peut être ancienne ou contenir du texte non vérifié."
       : document.driveDemo
         ? "Ceci est un contenu fictif. Aucun compte Google n'est connecté et aucun fichier Drive réel n'a été consulté."
         : document.isLocal
           ? document.sourceDir && Capacitor.isNativePlatform()
-            ? "Fichier scanné depuis votre stockage local (Documents/Téléchargements). Le contenu est traité en mémoire et n'est pas transmis à un serveur."
-            : "Fichier choisi depuis cet appareil. Le contenu est traité localement et n'est pas transmis."
+            ? "Copie textuelle issue de votre stockage local, conservée dans Famili-IA. Ce n'est pas l'original ; son accès actuel n'est pas vérifié et la copie peut être ancienne ou contenir du texte non vérifié."
+            : "Copie textuelle d'un fichier choisi sur cet appareil, conservée dans Famili-IA. Ce n'est pas l'original ; son accès actuel n'est pas vérifié et la copie peut être ancienne ou contenir du texte non vérifié."
           : "Ceci est un contenu d'exemple inventé pour le prototype.";
   }
   dialogContent.textContent = document.content;
@@ -1073,11 +1215,12 @@ function setFileStatus(message, state) {
   }
 }
 
-function setDriveConnectionStatus(message, state) {
+function setDriveConnectionStatus(message, state, notify = true) {
   if (!driveConnectionStatus) return;
   driveConnectionStatus.textContent = message;
   if (state) driveConnectionStatus.dataset.state = state;
   else delete driveConnectionStatus.dataset.state;
+  if (notify) showDemoNotice(message);
 }
 
 /**
@@ -1322,12 +1465,133 @@ function updateDrivePickerCount() {
 }
 
 if (googleDriveClient) {
-  setDriveConnectionStatus("Chargement des bibliothèques Google. Aucun accès aux fichiers n'est demandé avant votre action.", "success");
+  setDriveConnectionStatus("Chargement des bibliothèques Google. Aucun accès aux fichiers n'est demandé avant votre action.", "success", false);
   googleDriveClient.initialize().then(() => {
     googleDriveReady = true;
     updateGoogleDriveButton();
+
+    const oneDriveClientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID?.trim();
+    const oneDriveAuth = oneDriveClientId && !isNativePlatform ? new OneDriveAuth(oneDriveClientId) : null;
+    const oneDriveConnectButton = document.querySelector("#connect-onedrive");
+    const oneDriveStartButton = document.querySelector("#start-onedrive");
+    const oneDriveStopButton = document.querySelector("#stop-onedrive");
+    const oneDriveDisconnectButton = document.querySelector("#disconnect-onedrive");
+    const oneDriveStatus = document.querySelector("#onedrive-status");
+    let oneDriveReady = false;
+    let oneDriveConnecting = false;
+
+    function updateOneDriveActions() {
+      oneDriveConnectButton.disabled = !oneDriveReady || oneDriveConnecting || Boolean(oneDriveScanSettled);
+      oneDriveStartButton.disabled = !oneDriveAuth?.connected || oneDriveConnecting || Boolean(oneDriveScanSettled) || removingSessionFiles;
+      oneDriveStopButton.hidden = !oneDriveScanSettled;
+      oneDriveDisconnectButton.hidden = !oneDriveAuth?.connected;
+      oneDriveDisconnectButton.disabled = oneDriveConnecting || Boolean(oneDriveScanSettled) || removingSessionFiles;
+    }
+
+    if (oneDriveAuth) {
+      oneDriveStatus.textContent = "Préparation de OneDrive, sans demande d'autorisation.";
+      oneDriveAuth.initialize().then(() => {
+        oneDriveReady = true;
+        oneDriveStatus.textContent = "OneDrive prêt à être connecté. Aucune indexation n'a démarré.";
+        updateOneDriveActions();
+      }).catch(error => {
+        oneDriveObservation = "error";
+        oneDriveStatus.textContent = `Initialisation Microsoft impossible : ${error.message}`;
+        renderExperimentalSources();
+      });
+    } else if (isNativePlatform) {
+      oneDriveStatus.textContent = "OneDrive est disponible uniquement dans le navigateur web configuré.";
+    }
+
+    oneDriveConnectButton.addEventListener("click", async () => {
+      if (!oneDriveAuth || oneDriveConnecting || oneDriveScanSettled || removingSessionFiles) return;
+      oneDriveConnecting = true;
+      updateOneDriveActions();
+      try {
+        await oneDriveAuth.connect();
+        oneDriveObservation = "connected";
+        oneDriveStatus.textContent = "Compte connecté. L'indexation de tous les fichiers nécessite une action distincte.";
+      } catch (error) {
+        oneDriveObservation = "error";
+        oneDriveStatus.textContent = `Connexion Microsoft impossible : ${error.message}`;
+      } finally {
+        oneDriveConnecting = false;
+        updateOneDriveActions();
+        renderExperimentalSources();
+      }
+    });
+
+    oneDriveStartButton.addEventListener("click", () => {
+      if (!oneDriveAuth?.connected || oneDriveScanSettled || removingSessionFiles) return;
+      const controller = new AbortController();
+      oneDriveScanController = controller;
+      const existing = new Set(uploadedDocuments.map(doc => doc.id));
+      const accountId = oneDriveAuth.accountId;
+      let added = 0;
+      let metadataOnly = 0;
+      let skipped = 0;
+      let progress = { files: 0, pages: 0, foldersRead: 0 };
+      const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${progress.foldersRead} dossier(s) ; ${added} copie(s) ajoutée(s), dont ${metadataOnly} en métadonnées seules ; ${skipped} déjà présente(s).`;
+      oneDriveObservation = "working";
+      oneDriveScanSettled = (async () => {
+        try {
+          await scanOneDrive({
+            signal: controller.signal,
+            getToken: () => oneDriveAuth.getToken(),
+            onProgress: value => { progress = value; oneDriveStatus.textContent = `Indexation en cours : ${summary()}`; },
+            onItem: async item => {
+              const id = await oneDriveDocumentId(accountId, item.id);
+              if (existing.has(id)) { skipped += 1; return; }
+              const result = await readOneDriveDocument({ item, accountId, getToken: () => oneDriveAuth.getToken(), signal: controller.signal });
+              if (controller.signal.aborted) throw new DOMException("Indexation arrêtée.", "AbortError");
+              await addDocument(result.document);
+              uploadedDocuments.push(result.document);
+              existing.add(id);
+              if (result.segments) experimentalIndex.trustExtractedContent(result.document, result.segments);
+              added += 1;
+              if (result.coverage === "metadata") metadataOnly += 1;
+              if (added % 10 === 0) refreshExperimentalIndex();
+            }
+          });
+          oneDriveObservation = "connected";
+          oneDriveStatus.textContent = `Parcours terminé. ${summary()} Les copies ne sont pas automatiquement actualisées.`;
+        } catch (error) {
+          oneDriveObservation = error.name === "AbortError" ? "connected" : "error";
+          oneDriveStatus.textContent = `${error.name === "AbortError" ? "Indexation arrêtée" : `Indexation interrompue : ${error.message}`}. ${summary()} Les copies déjà enregistrées sont conservées.`;
+        } finally {
+          oneDriveScanController = null;
+          oneDriveScanSettled = null;
+          refreshExperimentalIndex();
+          updateClearFilesButtonsVisibility();
+          updateModeBanner();
+          renderDataInventory(parseHash().params);
+          updateOneDriveActions();
+        }
+      })();
+      updateOneDriveActions();
+      renderExperimentalSources();
+    });
+
+    oneDriveStopButton.addEventListener("click", () => oneDriveScanController?.abort());
+    oneDriveDisconnectButton.addEventListener("click", async () => {
+      if (!oneDriveAuth?.connected || oneDriveScanSettled || oneDriveConnecting) return;
+      oneDriveConnecting = true;
+      updateOneDriveActions();
+      try {
+        await oneDriveAuth.disconnect();
+        oneDriveObservation = "disconnected";
+        oneDriveStatus.textContent = "Session locale déconnectée. Les copies restent enregistrées et l'autorisation Microsoft n'est pas révoquée.";
+      } catch (error) {
+        oneDriveObservation = "error";
+        oneDriveStatus.textContent = `Déconnexion locale impossible : ${error.message}`;
+      } finally {
+        oneDriveConnecting = false;
+        updateOneDriveActions();
+        renderExperimentalSources();
+      }
+    });
     updateModeBanner();
-    setDriveConnectionStatus("Prêt. Choisissez Google Drive pour demander l'accès drive.file et sélectionner vos fichiers dans le sélecteur officiel.", "success");
+    setDriveConnectionStatus("Prêt. Choisissez Google Drive pour demander l'accès drive.file et sélectionner vos fichiers dans le sélecteur officiel.", "success", false);
   }).catch((error) => {
     driveObservation = "error";
     renderExperimentalSources();
@@ -1381,19 +1645,26 @@ connectGoogleDriveButton.addEventListener("click", async () => {
   driveSelectionSettled = new Promise((resolve) => { finishSelection = resolve; });
   setDriveConnectionStatus("Ouverture de l'autorisation Google. Vous pouvez annuler avant de choisir des fichiers.", "success");
   try {
-    const loadedFiles = await googleDriveClient.pickFiles(remainingCount);
+    const selection = await googleDriveSource.selectFiles(remainingCount);
+    const loadedFiles = selection.documents;
     driveObservation = "unknown";
     if (selectionGeneration !== driveSelectionGeneration) {
       setDriveConnectionStatus("La sélection a été ignorée car les fichiers ont été retirés pendant son exécution.", "error");
       return;
     }
     if (loadedFiles.length === 0) {
-      setDriveConnectionStatus("Sélection annulée. Aucun fichier n'a été lu.", "success");
+      setDriveConnectionStatus(selection.status === "cancelled"
+        ? "Sélection Google Drive annulée. Aucun fichier n'a été lu."
+        : "Aucun fichier Google Drive sélectionné.", "success");
       return;
     }
 
     const existingDriveIds = new Set(uploadedDocuments.filter((document) => document.driveSource).map((document) => document.id));
-    const newFiles = loadedFiles.filter((file) => !existingDriveIds.has(file.id));
+    const newFiles = loadedFiles.filter((file) => {
+      if (existingDriveIds.has(file.id)) return false;
+      existingDriveIds.add(file.id);
+      return true;
+    });
     if (newFiles.length === 0) {
       setDriveConnectionStatus("Ces fichiers Drive sont déjà présents dans cette session.", "success");
       return;
@@ -1415,7 +1686,7 @@ connectGoogleDriveButton.addEventListener("click", async () => {
       `${newFiles.length} fichier${newFiles.length === 1 ? "" : "s"} Drive chargé${newFiles.length === 1 ? "" : "s"} en mémoire locale. Aucun serveur Famili-IA ni IA n'a reçu leur contenu.`,
       "success"
     );
-    setDriveConnectionStatus("Fichiers choisis et chargés en mémoire pour cette session. « Retirer mes fichiers » effacera le contenu et révoquera l'autorisation.", "success");
+    setDriveConnectionStatus("Fichiers choisis enregistrés localement. La révocation et la suppression des copies sont disponibles dans Vos données.", "success");
   } catch (error) {
     driveObservation = "error";
     refreshExperimentalIndex();
@@ -1510,6 +1781,8 @@ async function clearSessionFiles() {
   driveSelectionGeneration += 1;
   try {
     if (driveSelectionSettled) await driveSelectionSettled;
+    oneDriveScanController?.abort();
+    if (oneDriveScanSettled) await oneDriveScanSettled;
     await stopBackgroundScans();
     const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
     for (const doc of [...uploadedDocuments]) {
@@ -1534,7 +1807,7 @@ async function clearSessionFiles() {
     updateModeBanner();
     if (shouldRevokeGoogleAccess) {
       try {
-        await googleDriveClient.revoke();
+        await googleDriveSource.revoke();
         driveObservation = "disconnected";
         renderExperimentalSources();
         setDriveConnectionStatus("Fichiers retirés de la mémoire locale et autorisation Google révoquée.", "success");
@@ -1552,6 +1825,7 @@ async function clearSessionFiles() {
     setFileStatus(`La suppression des fichiers a échoué : ${reason}`, "error");
   } finally {
     removingSessionFiles = false;
+    updateOneDriveActions();
   }
 }
 
@@ -1559,7 +1833,29 @@ if (clearFilesButton) {
   clearFilesButton.addEventListener("click", clearSessionFiles);
 }
 if (disconnectGoogleDriveButton) {
-  disconnectGoogleDriveButton.addEventListener("click", clearSessionFiles);
+  disconnectGoogleDriveButton.addEventListener("click", async () => {
+    if (removingSessionFiles || driveSelectionSettled) {
+      setDriveConnectionStatus("Une sélection ou une suppression est déjà en cours.", "error");
+      return;
+    }
+    disconnectGoogleDriveButton.disabled = true;
+    let finishRevocation;
+    driveSelectionSettled = new Promise((resolve) => { finishRevocation = resolve; });
+    try {
+      await googleDriveSource.revoke();
+      driveObservation = "disconnected";
+      setDriveConnectionStatus("Autorisation Google révoquée. Les copies enregistrées dans Famili-IA sont conservées.", "success");
+    } catch (error) {
+      driveObservation = "error";
+      setDriveConnectionStatus(`Révocation Google non confirmée : ${error.message}`, "error");
+    } finally {
+      driveSelectionSettled = null;
+      finishRevocation();
+      disconnectGoogleDriveButton.disabled = false;
+      renderExperimentalSources();
+      updateDriveConnectionActions();
+    }
+  });
 }
 
 document.querySelector("#close-dialog").addEventListener("click", () => sourceDialog.close());
@@ -3296,6 +3592,7 @@ function renderDataInventory(filters = {}) {
   document.querySelector('#summary-total').textContent = String(counts.total);
   document.querySelector('#summary-local').textContent = String(counts.local);
   document.querySelector('#summary-drive').textContent = String(counts.drive);
+  document.querySelector('#summary-onedrive').textContent = String(counts.onedrive);
   document.querySelector('#summary-demo').textContent = String(counts.demo);
 
   const docs = filterInventoryDocuments(allDocuments, filters);
@@ -3312,7 +3609,7 @@ function renderDataInventory(filters = {}) {
   dataList.replaceChildren();
   docs.forEach((doc) => {
     const source = getInventorySource(doc);
-    const sourceText = source === 'drive'
+    const sourceText = source === 'onedrive' ? 'OneDrive' : source === 'drive'
       ? 'Google Drive'
       : source === 'local'
         ? doc.sourceDir && Capacitor.isNativePlatform() ? 'Stockage local' : 'Fichier local'
@@ -4014,6 +4311,8 @@ function initDataView(filters = {}) {
       driveSelectionGeneration += 1;
       removingSessionFiles = true;
       if (driveSelectionSettled) await driveSelectionSettled;
+      oneDriveScanController?.abort();
+      if (oneDriveScanSettled) await oneDriveScanSettled;
       await stopBackgroundScans();
       const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
       await resetState();
@@ -4040,7 +4339,7 @@ function initDataView(filters = {}) {
       let googleRevocationFailed = false;
       if (shouldRevokeGoogleAccess) {
         try {
-          await googleDriveClient.revoke();
+          await googleDriveSource.revoke();
           driveObservation = "disconnected";
           renderExperimentalSources();
         } catch (error) {
@@ -4055,7 +4354,12 @@ function initDataView(filters = {}) {
       purgeStatus.dataset.state = googleRevocationFailed ? 'error' : 'success';
       purgeStatus.hidden = false;
       confirmPurgeBtn.textContent = 'Suppression terminée';
-      setTimeout(() => window.location.reload(), 1200);
+      if (googleRevocationFailed) {
+        if (cancelPurgeBtn) cancelPurgeBtn.disabled = false;
+        if (closePurgeBtn) closePurgeBtn.disabled = false;
+      } else {
+        setTimeout(() => window.location.reload(), 1200);
+      }
     } catch (error) {
       purgeStatus.textContent = `La suppression n’a pas pu être terminée : ${error.message}`;
       purgeStatus.dataset.state = 'error';
@@ -4065,6 +4369,7 @@ function initDataView(filters = {}) {
       if (closePurgeBtn) closePurgeBtn.disabled = false;
     } finally {
       removingSessionFiles = false;
+      updateOneDriveActions();
     }
   });
 }

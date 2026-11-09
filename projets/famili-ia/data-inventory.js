@@ -15,6 +15,7 @@ export function isInventoryDocumentType(value) {
 }
 
 export function getInventorySource(document) {
+  if (document.oneDriveSource) return "onedrive";
   if (document.driveSource) return "drive";
   if (document.driveDemo || !document.isLocal) return "demo";
   return "local";
@@ -35,7 +36,7 @@ export function filterSearchResultsByChips(results, { type = "", source = "" } =
   const normalizedType = String(type).trim().toLocaleLowerCase("fr");
   const normalizedSource = String(source).trim().toLocaleLowerCase("fr");
   const supportedTypes = new Set(["facture", "garantie", "contrat", "notice", "pdf", "texte", "markdown", "image", "vidéo", "video"]);
-  const supportedSources = new Set(["local", "drive", "demo"]);
+  const supportedSources = new Set(["local", "drive", "onedrive", "demo"]);
 
   if ((normalizedType && !supportedTypes.has(normalizedType)) || (normalizedSource && !supportedSources.has(normalizedSource))) {
     return [];
@@ -80,5 +81,5 @@ export function countInventorySources(documents) {
     counts[getInventorySource(document)] += 1;
     counts.total += 1;
     return counts;
-  }, { total: 0, local: 0, drive: 0, demo: 0 });
+  }, { total: 0, local: 0, drive: 0, onedrive: 0, demo: 0 });
 }

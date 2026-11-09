@@ -152,7 +152,12 @@ export class GoogleDriveClient {
     });
   }
 
-  pickFiles(maxItems) {
+  async pickFiles(maxItems) {
+    const result = await this.pickFilesDetailed(maxItems);
+    return result.documents;
+  }
+
+  pickFilesDetailed(maxItems) {
     if (!this.tokenClient || maxItems < 1) {
       return Promise.reject(new Error("La connexion Google Drive n’est pas prête ou la limite de fichiers est atteinte."));
     }
@@ -171,17 +176,26 @@ export class GoogleDriveClient {
         this.accessToken = tokenResponse.access_token;
         try {
           const selectedFiles = await this.openPicker(maxItems);
+          if (selectedFiles === null) {
+            resolve({ status: "cancelled", documents: [] });
+            return;
+          }
+          if (!Array.isArray(selectedFiles)) throw new Error("Réponse Google Picker invalide.");
           if (selectedFiles.length > maxItems) {
             throw new Error(`Sélectionnez au plus ${maxItems} fichier${maxItems === 1 ? "" : "s"} pour respecter la limite de la session.`);
           }
           const loadedFiles = await Promise.all(selectedFiles.map((file) => this.readSelectedFile(file)));
-          resolve(loadedFiles);
+          resolve({ status: loadedFiles.length ? "selected" : "empty", documents: loadedFiles });
         } catch (error) {
           reject(error);
         }
       };
       this.tokenClient.error_callback = (error) => {
-        reject(new Error(error.message || "La fenêtre d’autorisation Google n’a pas pu être ouverte."));
+        if (error?.type === "popup_closed") {
+          resolve({ status: "cancelled", documents: [] });
+          return;
+        }
+        reject(new Error(error?.message || "La fenêtre d’autorisation Google n’a pas pu être ouverte."));
       };
       this.tokenClient.requestAccessToken();
     });
@@ -202,7 +216,7 @@ export class GoogleDriveClient {
         .addView(view)
         .setCallback((data) => {
           if (data.action === window.google.picker.Action.CANCEL) {
-            resolve([]);
+            resolve(null);
           } else if (data.action === window.google.picker.Action.PICKED) {
             resolve(data.docs);
           } else if (data.action === window.google.picker.Action.ERROR) {
@@ -283,12 +297,15 @@ export class GoogleDriveClient {
   revoke() {
     const token = this.accessToken;
     this.accessToken = null;
-    if (!token || !window.google?.accounts?.oauth2) return Promise.resolve();
+    if (!token) return Promise.resolve();
+    if (!window.google?.accounts?.oauth2?.revoke) {
+      return Promise.reject(new Error("Révocation Google indisponible : la révocation fournisseur n'a pas été confirmée."));
+    }
 
     return new Promise((resolve, reject) => {
       window.google.accounts.oauth2.revoke(token, (response) => {
-        if (response?.error || response?.successful === false) {
-          reject(new Error(response.error_description || response.error || "Google n’a pas confirmé la révocation. Vous pouvez également retirer Famili-IA depuis les paramètres de sécurité de votre compte Google."));
+        if (response?.error || response?.successful !== true) {
+          reject(new Error(response?.error_description || response?.error || "Google n’a pas confirmé la révocation. Vous pouvez également retirer Famili-IA depuis les paramètres de sécurité de votre compte Google."));
           return;
         }
         resolve();

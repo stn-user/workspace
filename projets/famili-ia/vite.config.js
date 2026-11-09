@@ -6,6 +6,14 @@ import { defineConfig } from "vite";
 const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(projectRoot, "index.html"),
+        microsoftRedirect: resolve(projectRoot, "microsoft-redirect.html")
+      }
+    }
+  },
   plugins: [
     {
       name: "copy-classic-demo-assets",

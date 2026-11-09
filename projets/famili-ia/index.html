@@ -257,6 +257,19 @@
           <ul id="experimental-index-results" aria-label="Résultats multi-sources"></ul>
         </section>
 
+        <section class="search-filters" aria-labelledby="experimental-deadline-title">
+          <h2 id="experimental-deadline-title">Échéances proposées — expérimental</h2>
+          <p>Du jour aux 90 prochains jours inclus, à partir des textes extraits fiables déjà présents dans Famili-IA. Ces propositions sont à vérifier : elles ne créent aucune alerte ni notification. Les échéances passées et plus éloignées ne sont pas affichées.</p>
+          <p>Les sources peuvent être incomplètes ou périmées ; l'accès actuel aux originaux n'est pas vérifié. L'absence de proposition ne prouve pas l'absence d'échéance.</p>
+          <button type="button" class="text-button" id="experimental-deadline-refresh">Actualiser les propositions</button>
+          <p id="experimental-deadline-status" role="status" aria-live="polite"></p>
+          <ul id="experimental-deadline-results" aria-label="Échéances proposées"></ul>
+          <details id="experimental-deadline-review">
+            <summary>Documents à vérifier</summary>
+            <ul id="experimental-deadline-review-list"></ul>
+          </details>
+        </section>
+
         <section class="search-filters" aria-label="Filtres de recherche">
           <div class="search-filter-row">
             <span class="search-filter-label">Type</span>
@@ -277,6 +290,7 @@
               <button class="chip is-selected" type="button" data-filter-source="" aria-pressed="true">Toutes</button>
               <button class="chip" type="button" data-filter-source="local" aria-pressed="false">Local</button>
               <button class="chip" type="button" data-filter-source="drive" aria-pressed="false">Google Drive</button>
+              <button class="chip" type="button" data-filter-source="onedrive" aria-pressed="false">OneDrive</button>
               <button class="chip" type="button" data-filter-source="demo" aria-pressed="false">Démonstration</button>
             </div>
           </div>
@@ -636,7 +650,7 @@
           <div class="view-titles">
             <p class="eyebrow">VOTRE ESPACE NUMÉRIQUE</p>
             <h1 id="data-title">Vos données</h1>
-            <p>Consultez les fichiers locaux, les sources Google Drive et les exemples fictifs, avec leur provenance.</p>
+            <p>Consultez les fichiers locaux, les sources Google Drive et OneDrive et les exemples fictifs, avec leur provenance.</p>
           </div>
           <div class="data-privacy-note">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -660,6 +674,9 @@
           <div class="data-stat-card data-stat-card--demo">
             <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 9v4m0 3h.01"/></svg></span>
             <span class="data-stat-copy"><strong id="summary-demo">0</strong><span class="data-stat-label">Exemples fictifs</span></span>
+          </div>
+          <div class="data-stat-card">
+            <span class="data-stat-copy"><strong id="summary-onedrive">0</strong><span class="data-stat-label">Sources OneDrive</span></span>
           </div>
         </div>
 
@@ -730,7 +747,12 @@
           </section>
           <section class="panel danger-panel">
             <div class="section-heading"><h2>Gestion des données</h2></div>
-            <p>La suppression efface les données enregistrées par Famili-IA sur cet appareil. Les fichiers d’origine de vos dossiers ou de Google Drive ne sont pas supprimés.</p>
+            <p>La suppression efface les données enregistrées par Famili-IA sur cet appareil. Les fichiers d’origine locaux, Google Drive et OneDrive ne sont pas supprimés.</p>
+            <p id="drive-connection-status" class="purge-status" role="status" aria-live="polite">Google Drive : état de session inconnu.</p>
+            <button class="secondary-button" type="button" id="disconnect-google-drive" hidden>Révoquer l'accès Google Drive</button>
+            <p>OneDrive : la déconnexion locale ne révoque pas l'autorisation Microsoft et ne supprime pas les copies enregistrées.</p>
+            <button class="secondary-button" type="button" id="disconnect-onedrive" hidden>Déconnecter la session OneDrive</button>
+            <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener noreferrer">Gérer les autorisations Microsoft</a>
             <button class="danger-button" type="button" id="purge-all-data">Supprimer toutes mes données</button>
             <button class="secondary-button" type="button" id="export-all-data">Exporter mes données (JSON)</button>
             <button class="secondary-button" type="button" id="export-pdf-data">Exporter le rapport (PDF)</button>
@@ -800,7 +822,7 @@
       <button class="close-button" id="close-purge-confirmation" type="button" aria-label="Fermer">×</button>
     </div>
     <p id="purge-confirmation-description">Cette action effacera les données enregistrées par Famili-IA dans cette application, dont les documents copiés en mémoire locale et les données de foyer dans IndexedDB.</p>
-    <p class="purge-safety-note">Les fichiers d’origine dans vos dossiers ou sur Google Drive ne seront pas supprimés. Les exemples fictifs intégrés resteront disponibles.</p>
+    <p class="purge-safety-note">Les fichiers d’origine locaux, Google Drive et OneDrive ne seront pas supprimés. Les exemples fictifs intégrés resteront disponibles.</p>
     <p class="purge-status" id="purge-status" role="status" aria-live="polite" hidden></p>
     <div class="purge-actions">
       <button class="secondary-button" id="cancel-purge" type="button">Annuler</button>
@@ -830,13 +852,21 @@
         <span><strong>Google Drive</strong><small id="google-drive-choice-description">Disponible dans la version web de test, si elle est configurée.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
+      <button class="source-choice" id="connect-onedrive" type="button" disabled>
+        <span class="source-choice-icon" aria-hidden="true">☁</span>
+        <span><strong>Connecter OneDrive personnel</strong><small>La permission Microsoft Files.Read peut donner accès à tous les fichiers du compte. La connexion ne lance pas l'indexation.</small></span>
+      </button>
       <button class="source-choice" id="open-drive-picker" type="button">
         <span class="source-choice-icon demo-source-icon" aria-hidden="true">✦</span>
         <span><strong>Exemples de démonstration</strong><small>Essayer avec des documents fictifs, sans connecter de compte.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
     </div>
-    <p class="source-choice-footnote">Google Drive ne donne accès qu'aux fichiers que vous sélectionnez. Aucun autre service cloud n'est encore connecté.</p>
+    <p class="source-choice-footnote">Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive peut autoriser l'accès à tous les fichiers du compte personnel.</p>
+    <p>OneDrive : l'indexation complète est facultative et s'arrête à la fermeture de l'onglet. TXT/Markdown : 1 Mo maximum ; PDF texte : 10 Mo et 20 pages maximum, sans OCR web. Les autres fichiers ne fournissent que leurs métadonnées. Les copies existantes ne sont pas actualisées automatiquement.</p>
+    <button class="secondary-button" id="start-onedrive" type="button" disabled>Indexer mon OneDrive</button>
+    <button class="secondary-button" id="stop-onedrive" type="button" hidden>Arrêter l'indexation</button>
+    <p id="onedrive-status" role="status" aria-live="polite">OneDrive non configuré.</p>
   </dialog>
   <input type="file" id="local-files-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
 

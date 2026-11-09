@@ -1,8 +1,9 @@
-export function describeSources(records, { driveConfigured, driveToken, driveState, localState }) {
+export function describeSources(records, { driveConfigured, driveToken, driveState, localState, oneDriveState = "unknown" }) {
   if (!Array.isArray(records) || typeof driveConfigured !== "boolean" ||
       typeof driveToken !== "boolean" ||
       !["unknown", "disconnected", "error"].includes(driveState) ||
-      !["unknown", "working", "error"].includes(localState)) {
+      !["unknown", "working", "error"].includes(localState) ||
+      !["unknown", "connected", "working", "error", "disconnected"].includes(oneDriveState)) {
     throw new TypeError("État des sources invalide");
   }
   const describeCoverage = source => {
@@ -27,6 +28,12 @@ export function describeSources(records, { driveConfigured, driveToken, driveSta
   else driveAccess = "Aucun jeton Google dans cette session ; accès actuel aux fichiers inconnu.";
   return [
     { sourceId: "local", ...local, access: localAccess },
-    { sourceId: "drive", ...drive, access: driveAccess }
+    { sourceId: "drive", ...drive, access: driveAccess },
+    { sourceId: "onedrive", ...describeCoverage("onedrive"), access:
+      oneDriveState === "working" ? "Indexation OneDrive en cours ; résultats incomplets."
+      : oneDriveState === "connected" ? "Session OneDrive active ; accès actuel aux originaux non vérifié."
+      : oneDriveState === "error" ? "Une opération OneDrive a échoué ; accès actuel inconnu."
+      : oneDriveState === "disconnected" ? "Session OneDrive locale déconnectée ; révocation Microsoft non vérifiée."
+      : "Accès actuel à OneDrive inconnu." }
   ];
 }

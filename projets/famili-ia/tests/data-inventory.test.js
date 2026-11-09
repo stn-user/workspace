@@ -24,7 +24,7 @@ test("merges demonstration and stored documents without duplicate IDs", () => {
 
   assert.equal(documents.length, 3);
   assert.equal(documents.find((document) => document.id === "sample-1").name, "Document stocké");
-  assert.deepEqual(countInventorySources(documents), { total: 3, local: 2, drive: 0, demo: 1 });
+  assert.deepEqual(countInventorySources(documents), {   total: 3, local: 2, drive: 0, onedrive: 0, demo: 1 });
 });
 
 test("classifies real Drive, simulated Drive, and demonstration sources distinctly", () => {

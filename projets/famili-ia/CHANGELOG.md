@@ -8,10 +8,16 @@
 - Session Drive expérimentale en mémoire reliant sélection explicite, rapprochement et recherche ; aucune persistance ni intégration à l'interface.
 - Recherche expérimentale par nom dans les métadonnées locales et Drive déjà présentes dans l'application, avec source et limites explicites ; aucun nouvel accès Drive ni nouvelle persistance de l'index.
 - Recherche expérimentale dans les segments de texte dont l'extraction est connue, avec extraits littéraux et couverture partielle ; provenance minimale enregistrée avec les nouveaux documents et vérifiée après redémarrage. Les anciens textes de provenance inconnue restent exclus.
-- PDF Drive sélectionnés : recherche des seuls segments à texte incorporé avec provenance restaurable, sans nouvelle lecture Drive ; refus Web des PDF nécessitant l'OCR conservé. Parcours validé avec un client simulé, sans validation OAuth réelle ni OCR sur appareil.
+- PDF Drive sélectionnés : recherche des seuls segments à texte incorporé avec provenance restaurable, sans nouvelle lecture Drive ; refus Web des PDF nécessitant l'OCR conservé. Tests avec client simulé et PDF synthétique sur une ancienne version avec compte réel ; format non précisé pour l'essai réel du parcours actuel, OCR natif non validé sur appareil.
 - Affichage expérimental des fichiers présents par source, de leur couverture et des observations de session, sans prétendre vérifier l'accès aux originaux ni l'exhaustivité.
+- Fiches de résultats multi-sources avec raisons, informations disponibles et accès à la copie textuelle ou au détail photo ; l'accès à l'original reste non vérifié et sa recherche est manuelle.
+- Propositions expérimentales d'échéances sourcées à partir des segments fiables, du jour à 90 jours : preuve littérale et cas à vérifier, sans création d'alerte ni notification par ce parcours.
+- Connecteur Drive Web expérimental pour la sélection explicite et la révocation, avec description des capacités et erreurs ; sélection et recherche après rechargement confirmées par l'utilisateur avec Google. Pas de découverte durable ni d'identité multi-comptes ; révocation du parcours actuel à confirmer.
+- Distinction de l'annulation et d'une sélection vide ; messages Drive visibles et révocation accessible même sans fichier, indépendamment de la suppression des copies. Recherche locale + Drive et persistance vérifiées avec réponses synthétiques.
+- Parcours OneDrive personnel Web expérimental : connexion Microsoft, indexation complète volontaire et interruptible, progression et recherche des copies ; contenu TXT/Markdown et PDF borné, autres formats en métadonnées. Pas de synchronisation automatique ni de test sur compte réel ; la déconnexion locale ne révoque pas l'autorisation Microsoft.
 - Prototypes de propositions d'échéances et d'extraction restrictive à partir de texte déjà extrait, sans création d'alerte.
-- Tests fictifs ciblés. L'index expérimental est reconstruit en mémoire depuis les documents applicatifs ; aucune migration, synchronisation des sources ou nouveau connecteur réel n'est annoncée.
+- Tests fictifs ciblés. L'index expérimental est reconstruit en mémoire depuis les documents applicatifs ; aucune migration ni synchronisation des sources n'est annoncée.
+- Validation du 9 novembre 2026 : 257 tests Node et build réussis ; indexation OneDrive et recherche après rechargement vérifiées dans un navigateur avec authentification et Graph simulés. Validation OneDrive réelle, révocation/suppression Drive du parcours actuel et suite Playwright complète restent à faire.
 
 # [15.4.e] - 2026-11-02 - Résultats expliqués et corrections locales Moments de vie
 

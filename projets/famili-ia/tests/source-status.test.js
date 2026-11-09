@@ -33,7 +33,7 @@ test("états observés de connexion, erreur, import et suppression", () => {
   assert.equal(disconnected.count, 1);
   assert.match(describeSources(records, { ...initial, localState: "working" })[0].access, /en cours/);
   assert.match(describeSources(records, { ...initial, localState: "error" })[0].access, /erreur/);
-  assert.deepEqual(describeSources([], initial).map(source => source.count), [0, 0]);
+  assert.deepEqual(describeSources([], initial).map(source => source.count), [0, 0, 0]);
 });
 
 test("entrées invalides explicitement rejetées", () => {
