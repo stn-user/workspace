@@ -169,17 +169,20 @@ export async function createDocumentIndexRecord(document, { previous = document?
         proof: fact.proof
       };
     }
-    const expiryEvidence = parsed.expiryDateEvidence ||
+    const userConfirmedExpiry = document.expiryDateSource === "user" &&
+      normalizeAlertDate(document.expiryDate) !== null;
+    const expiryEvidence = (userConfirmedExpiry ? document.expiryDateEvidence : null) ||
+      parsed.expiryDateEvidence ||
       (typeof document.expiryDateEvidence === "string" &&
         extractedText.split(/\r?\n/).some(line => line.trim() === document.expiryDateEvidence.trim())
         ? document.expiryDateEvidence.trim()
         : null);
-    const expiry = normalizeAlertDate(parsed.expiryDate || document.expiryDate);
+    const expiry = normalizeAlertDate(userConfirmedExpiry ? document.expiryDate : parsed.expiryDate || document.expiryDate);
     if (expiry && expiryEvidence) {
       const lineIndex = extractedText.split(/\r?\n/).findIndex(line => line.trim() === expiryEvidence);
       dates.echeance = {
         value: expiry,
-        source: "extracted",
+        source: userConfirmedExpiry ? "user-input" : "extracted",
         estimated: false,
         proof: {
           excerpt: expiryEvidence,

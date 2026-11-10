@@ -150,3 +150,32 @@ test("les faits persistés sont restaurés après redémarrage seulement si le c
   assert.deepEqual(unverified.search("edf"), []);
   assert.equal(unverified.search("facture")[0].coverage, "metadata");
 });
+
+test("les filtres avancés s'appliquent aux résultats de texte comme aux fiches", async () => {
+  const photo = {
+    id: "filtered-photo",
+    name: "Vacances.jpg",
+    type: "Image",
+    isLocal: true,
+    content: "Souvenir de vacances"
+  };
+  photo.contentProvenance = await createContentProvenance(
+    photo, [photo.content], "local-text"
+  );
+  photo.indexRecord = createIndexRecord("local", photo.id, {
+    type: "photo",
+    name: { value: photo.name, source: "provider" },
+    dates: { priseDeVue: { value: "2024-07-14", source: "provider" } },
+    coverage: "partial",
+    fields: [
+      { name: "personIds", value: "member-1", source: "user-input" },
+      { name: "place", value: "Québec", source: "user-input" }
+    ]
+  });
+  const session = new IndexSession();
+  await session.restoreDocumentContent(photo);
+  session.syncDocuments([photo]);
+  assert.equal(session.search("souvenir", { type: "photo", personId: "member-1", place: "Quebec" }).length, 1);
+  assert.equal(session.search("souvenir", { dateType: "priseDeVue", dateFrom: "2024-01-01" }).length, 1);
+  assert.deepEqual(session.search("souvenir", { dateType: "echeance" }), []);
+});

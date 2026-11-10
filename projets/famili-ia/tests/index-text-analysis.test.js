@@ -41,9 +41,80 @@ test("dates explicites acceptées et proposition traçable", () => {
   });
 });
 
+test("date de fin de garantie en phrase avec une date d'achat séparée", () => {
+  const text = "Date d'achat pergola au 15/11/2025 et date de fin de garantie au 15/11/2026";
+  const result = extractDeadlineFromText(base(), text);
+  assert.equal(result.status, "extracted");
+  assert.deepEqual(result.record.dates.echeance, {
+    value: "2026-11-15", source: "extracted", estimated: false,
+    proof: { excerpt: text, location: null }
+  });
+  assert.equal(findDeadlineCandidates([result.record], "2026-11-10", 90).candidates[0].dueDate, "2026-11-15");
+});
+
+test("reconnaît « fin de la garantie : date » après une date d'achat sur la même ligne", () => {
+  const record = createIndexRecord("src", "id", {});
+  const result = extractDeadlineFromText(record,
+    "Fichier de garantie pergola\ndate d'achat : 15/11/2025 fin de la garantie : 15/11/2026");
+  assert.equal(result.status, "extracted");
+  assert.equal(result.record.dates.echeance.value, "2026-11-15");
+});
+
+test("estime l'échéance avec les formulations « durée de la garantie » et sans deux-points", () => {
+  const record = createIndexRecord("src", "id", {});
+  for (const text of [
+    "Fichier de garantie téléviseur Sony\ndate d'achat : 15/11/2025\ndurée de la garantie : 1 an",
+    "date d'achat le 15/11/2025, durée de garantie 1 an"
+  ]) {
+    const result = extractDeadlineFromText(record, text);
+    assert.equal(result.status, "estimated");
+    assert.equal(result.record.dates.echeance.value, "2026-11-15");
+  }
+});
+
+test("calcule une proposition estimée depuis une date d'achat prouvée et une durée explicite", () => {
+  const purchaseExcerpt = "Date d'achat : 15/11/2025";
+  const durationExcerpt = "Durée de garantie : 1 an";
+  const record = createIndexRecord("src", "id", {
+    dates: {
+      achat: {
+        value: "2025-11-15", source: "extracted",
+        proof: { excerpt: purchaseExcerpt, location: "ligne 1" }
+      }
+    }
+  });
+  const result = extractDeadlineFromText(record, `${purchaseExcerpt}\n${durationExcerpt}`);
+  assert.equal(result.status, "estimated");
+  assert.deepEqual(result.record.dates.echeance, {
+    value: "2026-11-15", source: "auto-estimate", estimated: true,
+    proof: { excerpt: `${purchaseExcerpt}\n${durationExcerpt}`, location: null }
+  });
+  assert.equal(findDeadlineCandidates([result.record], "2026-11-10", 90).candidates.length, 0);
+  const candidates = findDeadlineCandidates([result.record], "2026-11-10", 90, { includeEstimated: true });
+  assert.deepEqual(candidates.candidates[0], {
+    sourceId: "src", itemId: "id", name: null, dueDate: "2026-11-15", source: "auto-estimate",
+    proof: { excerpt: `${purchaseExcerpt}\n${durationExcerpt}`, location: null },
+    daysUntil: 5, estimated: true
+  });
+
+  const monthEnd = createIndexRecord("src", "month-end", {
+    dates: {
+      achat: {
+        value: "2025-01-31", source: "extracted",
+        proof: { excerpt: "Date d'achat : 31/01/2025", location: "ligne 1" }
+      }
+    }
+  });
+  assert.equal(
+    extractDeadlineFromText(monthEnd, "Date d'achat : 31/01/2025\nDurée de garantie : 1 mois").record.dates.echeance.value,
+    "2025-02-28"
+  );
+});
+
 test("abstention sur dates ambiguës, libellés incertains ou date invalide", () => {
   const cases = [
     ["Achat : 15/03/2023\nDurée : 2 ans", "not-found"],
+    ["Date de fin de garantie au 15/03/2025 et échéance au 16/03/2025", "ambiguous"],
     ["Fin de garantie : 15/03/2025 et 16/03/2025", "ambiguous"],
     ["Fin de garantie : 15/03/2025\nÉchéance : 16/03/2025", "ambiguous"],
     ["Fin de garantie : 15/03/2025\nÉchéance : 15/03/2025", "ambiguous"],

@@ -1,7 +1,6 @@
-// Mock Capacitor pour le navigateur web
-const Capacitor = { isNativePlatform: () => false };
-const Filesystem = null;
-const Ocr = { process: async () => ({ results: [] }) };
+import { Capacitor } from "@capacitor/core";
+import { Filesystem } from "@capacitor/filesystem";
+import { Ocr } from "@jcesarmobile/capacitor-ocr";
 import { parseDocument } from "./document-parser.js";
 
 // Top-level await pour charger la version appropriée de pdf.js
@@ -80,6 +79,7 @@ async function readPdfFile(fileBlob) {
       } else if (Capacitor.isNativePlatform()) {
         // Seule l'application mobile peut faire de l'OCR sur les PDFs scannés
         pageText = await recognizePage(page);
+        if (pageText.trim()) extractedSegments.push(pageText.trim());
       } else {
         pageText = "[Texte extrait impossible sans OCR mobile - PDF scanné]";
       }
@@ -177,6 +177,10 @@ async function readFileContent(fileBlob, filename) {
     case 'heif':
     case 'webp':
       textContent = await readImageFile(fileBlob);
+      if (Capacitor.isNativePlatform() && textContent.trim() &&
+          textContent !== "Aucun texte détecté sur cette image.") {
+        extractedSegments = [textContent];
+      }
       break;
     default:
       throw new Error(`Format de fichier non supporté : .${extension}`);

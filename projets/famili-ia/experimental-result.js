@@ -50,6 +50,7 @@ export function describeExperimentalResult(match, record, document, sourceAccess
   }
 
   details.push(`Couverture : ${match.coverage === "partial" ? "texte partiellement recherché" : "métadonnées uniquement"}`);
+  details.push(`Dernière vérification de la source : ${record.lastCheck ?? "inconnue"}`);
   details.push(sourceAccess || "Accès actuel à l'original inconnu.");
   details.push(match.sourceId === "drive" || match.sourceId === "onedrive"
     ? `Original : recherchez ce fichier par son nom dans ${sourceName} ; son accès n'a pas été vérifié.`

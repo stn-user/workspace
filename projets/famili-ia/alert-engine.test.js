@@ -46,6 +46,9 @@ test("only creates source-backed alerts for supported dates and document types",
   assert.equal(alert.type, "red");
   assert.equal(alert.sourceExcerpt, "Échéance : 2027-01-16");
   assert.equal(alert.confidence, "high");
+  assert.equal(generateAlertForDoc(documentCase("garantie", "2027-01-16", {
+    alertSourceId: "drive"
+  }), today).sourceId, "drive");
   assert.equal(generateAlertForDoc(documentCase("garantie", "2027-03-15"), today), null);
   assert.equal(generateAlertForDoc(documentCase("garantie", "2027-02-30"), today), null);
   assert.equal(generateAlertForDoc(documentCase("garantie", "2027-01-16", { expiryDateEvidence: null }), today), null);
@@ -64,6 +67,16 @@ test("document parsing only promotes explicitly labeled due dates to alert candi
   assert.equal(parsed.type, "garantie");
   assert.equal(parsed.expiryDate, "2028-05-04");
   assert.equal(parsed.expiryDateEvidence, "Fin de garantie : 4 mai 2028");
+
+  const purchaseAndExpiry = parseDocument(
+    "CERTIFICAT DE GARANTIE\nDate d'achat pergola au 15/11/2025 et date de fin de garantie au 15/11/2026",
+    "pergola.txt"
+  );
+  assert.equal(purchaseAndExpiry.expiryDate, "2026-11-15");
+  assert.equal(
+    purchaseAndExpiry.expiryDateEvidence,
+    "Date d'achat pergola au 15/11/2025 et date de fin de garantie au 15/11/2026"
+  );
 
   const ambiguous = parseDocument(
     "CERTIFICAT DE GARANTIE\nDate d'achat : 4 mai 2023\nDurée de garantie : 5 ans",

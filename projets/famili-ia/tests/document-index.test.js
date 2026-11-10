@@ -35,6 +35,29 @@ test("fiche locale durable : identité, couverture vérifiée et échéance sour
   });
 });
 
+test("date d'échéance confirmée manuellement prévaut sur l'extraction et reste attribuée à l'utilisateur", async () => {
+  const document = {
+    id: "confirmed-deadline",
+    name: "garantie.txt",
+    type: "garantie",
+    isLocal: true,
+    content: "Fin de garantie : 05/01/2027",
+    expiryDate: "2027-01-08",
+    expiryDateEvidence: "Échéance corrigée manuellement : 08/01/2027",
+    expiryDateSource: "user"
+  };
+  document.contentProvenance = await createContentProvenance(
+    document, [document.content], "local-text"
+  );
+  const record = await createDocumentIndexRecord(document);
+  assert.deepEqual(record.dates.echeance, {
+    value: "2027-01-08",
+    source: "user-input",
+    estimated: false,
+    proof: { excerpt: "Échéance corrigée manuellement : 08/01/2027", location: null }
+  });
+});
+
 test("fiche conserve emplacement local et date fournisseur sans les confondre avec une extraction", async () => {
   const record = await createDocumentIndexRecord({
     id: "drive-metadata",

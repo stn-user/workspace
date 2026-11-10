@@ -37,10 +37,12 @@ test("métadonnées absentes, copie manquante et identités distinctes", () => {
   assert.equal(localResult.canViewCopy, false);
   assert.ok(localResult.details.includes("Emplacement enregistré : Dossier/Facture locale"));
   assert.ok(localResult.details.includes("Date : non disponible"));
+  assert.ok(localResult.details.includes("Dernière vérification de la source : inconnue"));
   assert.ok(localResult.details.includes("Type : inconnu"));
   assert.ok(localResult.reasons[0].startsWith("Nom :"));
   assert.equal(driveResult.canViewCopy, false);
   assert.ok(driveResult.details.includes("Accès actuel à l'original inconnu."));
+  assert.ok(driveResult.details.includes("Dernière vérification de la source : inconnue"));
   assert.throws(() => describeExperimentalResult(localMatch, driveRecord, local), TypeError);
 });
 
@@ -63,6 +65,7 @@ test("résultat OneDrive garde la copie attribuée à son compte même si l'acc�
 test("raisons et dates conservent provenance, estimation et preuve", () => {
   const record = createIndexRecord("local", "1", {
     name: { value: "Fichier", source: "provider" }, coverage: "metadata",
+    lastCheck: "2026-11-09T12:30:00Z",
     dates: { echeance: { value: "2027-01-01", source: "auto-estimate",
       proof: { excerpt: "vers janvier", location: "page 2" } } },
     fields: [{ name: "catégorie", value: "contrat", source: "user-input", estimated: true,
@@ -73,6 +76,7 @@ test("raisons et dates conservent provenance, estimation et preuve", () => {
   session.updateRecord(record);
   const match = session.search("contrat")[0];
   const result = describeExperimentalResult(match, record, { date: "Session locale" });
+  assert.ok(result.details.includes("Dernière vérification de la source : 2026-11-09T12:30:00Z"));
   assert.ok(result.details.some(text => text.includes("Échéance : 2027-01-01") && text.includes("estimation non confirmée")));
   assert.ok(result.details.some(text => text.includes("vers janvier") && text.includes("page 2")));
   assert.ok(result.reasons[0].includes("Champ catégorie"));

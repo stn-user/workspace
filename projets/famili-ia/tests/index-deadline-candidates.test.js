@@ -125,6 +125,8 @@ describe("findDeadlineCandidates", () => {
     assert.equal(result.candidates.length, 0);
     assert.equal(result.ineligible.length, 1);
     assert.deepEqual(result.ineligible[0].reasons, ["échéance estimée"]);
+    const proposals = findDeadlineCandidates([record], referenceDate, daysToExamine, { includeEstimated: true });
+    assert.equal(proposals.candidates[0].estimated, true);
   });
 
   it("rejette une échéance sans preuve", () => {

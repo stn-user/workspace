@@ -1,8 +1,9 @@
-import { isValidIndexRecord } from "./index-record.js";
+import { isValidDate, isValidIndexRecord } from "./index-record.js";
 import { isValidCoverageLevel } from "./index-coverage.js";
 import { normalizeText } from "./search-utils.js";
 
 const VALID_TYPES = Object.freeze(["document", "photo"]);
+const VALID_DATE_TYPES = Object.freeze(["creation", "modification", "priseDeVue", "achat", "echeance"]);
 
 function validateRecords(records) {
   if (!Array.isArray(records)) throw new TypeError("records doit être un tableau");
@@ -25,14 +26,55 @@ function validateOptions(options) {
     throw new TypeError("Options invalides");
   }
   for (const key of Reflect.ownKeys(options)) {
-    if (!["sourceId", "type", "coverage"].includes(key)) throw new TypeError("Option inconnue");
+    if (!["sourceId", "type", "coverage", "dateType", "dateFrom", "dateTo", "personId", "place"].includes(key)) {
+      throw new TypeError("Option inconnue");
+    }
     const value = options[key];
     if (key === "sourceId" && (typeof value !== "string" || !value.trim())) {
       throw new TypeError("sourceId du filtre invalide");
     }
     if (key === "type" && !VALID_TYPES.includes(value)) throw new TypeError("Type du filtre invalide");
     if (key === "coverage" && !isValidCoverageLevel(value)) throw new TypeError("Couverture du filtre invalide");
+    if (key === "dateType" && !VALID_DATE_TYPES.includes(value)) throw new TypeError("Nature de date invalide");
+    if (["dateFrom", "dateTo"].includes(key) && !isValidDate(value)) throw new TypeError("Filtre de date invalide");
+    if (["personId", "place"].includes(key) && (typeof value !== "string" || !value.trim())) {
+      throw new TypeError(`Filtre ${key} invalide`);
+    }
   }
+  if (options.dateFrom && options.dateTo && options.dateFrom > options.dateTo) {
+    throw new TypeError("La période de dates est inversée");
+  }
+}
+
+export function matchesIndexFilters(record, options = {}) {
+  validateOptions(options);
+  if (options.sourceId !== undefined && record.sourceId !== options.sourceId) return false;
+  if (options.type !== undefined && record.type !== options.type) return false;
+  if (options.coverage !== undefined && record.coverage !== options.coverage) return false;
+
+  if (options.dateType !== undefined || options.dateFrom !== undefined || options.dateTo !== undefined) {
+    const dates = Object.entries(record.dates).filter(([type]) =>
+      options.dateType === undefined || type === options.dateType
+    );
+    if (!dates.some(([, entry]) => {
+      const date = entry.value.slice(0, 10);
+      return (!options.dateFrom || date >= options.dateFrom) &&
+        (!options.dateTo || date <= options.dateTo);
+    })) return false;
+  }
+
+  if (options.personId !== undefined) {
+    const personFields = record.fields.filter(field => field.name === "personIds");
+    if (!personFields.some(field => field.value.split(",").map(value => value.trim()).includes(options.personId))) {
+      return false;
+    }
+  }
+  if (options.place !== undefined) {
+    const normalizedPlace = normalizeText(options.place);
+    if (!record.fields.some(field => field.name === "place" &&
+        normalizeText(field.value) === normalizedPlace)) return false;
+  }
+  return true;
 }
 
 export function searchIndex(records, query, options = {}) {
@@ -45,9 +87,7 @@ export function searchIndex(records, query, options = {}) {
   const results = [];
 
   for (const record of records) {
-    if (options.sourceId !== undefined && record.sourceId !== options.sourceId) continue;
-    if (options.type !== undefined && record.type !== options.type) continue;
-    if (options.coverage !== undefined && record.coverage !== options.coverage) continue;
+    if (!matchesIndexFilters(record, options)) continue;
 
     const values = [];
     if (record.name) values.push({ location: "name", entry: record.name });
@@ -81,4 +121,4 @@ export function searchIndex(records, query, options = {}) {
   return results;
 }
 
-export { isValidCoverageLevel, VALID_TYPES };
+export { isValidCoverageLevel, VALID_TYPES, VALID_DATE_TYPES };

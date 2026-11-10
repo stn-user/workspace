@@ -16,18 +16,25 @@ const extractDate = (text) => {
 };
 
 const extractExpiryDate = (text) => {
-    const expiryLabels = /\b(fin de garantie|date d['’]?expiration|expiration|date d['’]?echeance|echeance|renouvellement|expire le|a regler avant|a payer avant|prochain entretien|entretien avant|controle avant|a effectuer avant)\b/;
-    const datePattern = /\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{1,2}\s+[a-zA-ZÀ-ÿ]+\s+\d{4})\b/i;
+    const expiryLabels = /\b(?:fin de (?:la )?garantie|date d['’]?expiration|expiration|date d['’]?echeance|echeance|renouvellement|expire le|a regler avant|a payer avant|prochain entretien|entretien avant|controle avant|a effectuer avant)\b/g;
+    const expiryDatePattern = /\b(?:fin de (?:la )?garantie|date d['’]?expiration|expiration|date d['’]?echeance|echeance|renouvellement|expire le|a regler avant|a payer avant|prochain entretien|entretien avant|controle avant|a effectuer avant)\b\s*(?::|au|le)?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{1,2}\s+[a-zA-Z]+\s+\d{4})\s*[.!]?\s*$/i;
+    const negatedExpiryLabel = /\b(?:pas d['’]?(?:echeance|expiration)|pas de fin de (?:la )?garantie|aucun[e]?\s+(?:echeance|expiration|fin de (?:la )?garantie))\b/;
+    let candidate = null;
 
     for (const line of text.split(/\r?\n/)) {
         const normalizedLine = line.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
-        if (!expiryLabels.test(normalizedLine)) continue;
-        const match = line.match(datePattern);
-        const expiryDate = match ? normalizeAlertDate(match[0]) : null;
-        if (expiryDate) return { expiryDate, expiryDateEvidence: line.trim() };
+        const labels = [...normalizedLine.matchAll(expiryLabels)];
+        if (!labels.length) continue;
+        if (labels.length !== 1 || negatedExpiryLabel.test(normalizedLine)) {
+            return { expiryDate: null, expiryDateEvidence: null };
+        }
+        const match = normalizedLine.match(expiryDatePattern);
+        const expiryDate = match ? normalizeAlertDate(match[1]) : null;
+        if (!expiryDate || candidate) return { expiryDate: null, expiryDateEvidence: null };
+        candidate = { expiryDate, expiryDateEvidence: line.trim() };
     }
 
-    return { expiryDate: null, expiryDateEvidence: null };
+    return candidate || { expiryDate: null, expiryDateEvidence: null };
 };
 
 const extractAmount = (text) => {

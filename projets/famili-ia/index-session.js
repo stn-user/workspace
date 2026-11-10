@@ -2,7 +2,7 @@ import { getInventorySource } from "./data-inventory.js";
 import { createIndexRecord, isValidIndexRecord } from "./index-record.js";
 import { reconcileIndex } from "./index-reconciliation.js";
 import { preserveUserValues } from "./document-index.js";
-import { searchIndex } from "./index-search.js";
+import { matchesIndexFilters, searchIndex } from "./index-search.js";
 import { searchContentInDocuments } from "./content-search.js";
 import { restoreContentSegments } from "./content-index.js";
 
@@ -158,9 +158,7 @@ export class IndexSession {
     const matches = searchIndex(this.#records, query, options);
     const eligible = this.#content.filter(doc => {
       const record = this.#records.find(entry => entry.sourceId === doc.sourceId && entry.itemId === doc.itemId);
-      return (options.sourceId === undefined || options.sourceId === doc.sourceId) &&
-        (options.type === undefined || options.type === record.type) &&
-        (options.coverage === undefined || options.coverage === record.coverage);
+      return record && matchesIndexFilters(record, options);
     });
     for (const result of searchContentInDocuments(eligible, query)) {
       let match = matches.find(entry => entry.sourceId === result.sourceId && entry.itemId === result.itemId);

@@ -54,6 +54,50 @@ test("filtres exacts combinés, valeurs inconnues et sans filtre", () => {
   assert.deepEqual(ids({ sourceId: "b", type: "photo", coverage: "partial" }), ["b:1"]);
 });
 
+test("filtres par date et nature, personne annotée et lieu connu", () => {
+  const records = [
+    make("local", "photo", {
+      name: name("Vacances été"),
+      type: "photo",
+      coverage: "metadata",
+      dates: { priseDeVue: { value: "2024-07-14", source: "provider" } },
+      fields: [
+        { name: "personIds", value: "member-1, member-2", source: "user-input" },
+        { name: "place", value: "Québec", source: "user-input" }
+      ]
+    }),
+    make("drive", "contract", {
+      name: name("Vacances garantie"),
+      type: "document",
+      coverage: "partial",
+      dates: { echeance: { value: "2027-07-14", source: "extracted" } }
+    }),
+    make("local", "unknown", {
+      name: name("Vacances sans date"),
+      type: "photo",
+      coverage: "metadata"
+    })
+  ];
+  const ids = options => searchIndex(records, "vacances", options).map(record => record.itemId);
+  assert.deepEqual(ids({ dateFrom: "2024-01-01", dateTo: "2024-12-31" }), ["photo"]);
+  assert.deepEqual(ids({ dateType: "echeance" }), ["contract"]);
+  assert.deepEqual(ids({ personId: "member-2" }), ["photo"]);
+  assert.deepEqual(ids({ place: "Quebec" }), ["photo"]);
+  assert.deepEqual(ids({
+    sourceId: "local", type: "photo", coverage: "metadata",
+    dateType: "priseDeVue", dateFrom: "2024-07-01", dateTo: "2024-07-31",
+    personId: "member-1", place: "Québec"
+  }), ["photo"]);
+  assert.deepEqual(ids({ dateType: "echeance", dateFrom: "2024-01-01", dateTo: "2024-12-31" }), []);
+  for (const options of [
+    { dateType: "not-a-date" },
+    { dateFrom: "2024-02-31" },
+    { dateFrom: "2025-01-01", dateTo: "2024-01-01" },
+    { personId: "" },
+    { place: "" }
+  ]) assert.throws(() => searchIndex(records, "vacances", options), TypeError);
+});
+
 test("rejette requêtes, options, fiches et identités invalides sans collisions de paires", () => {
   const record = make("a|b", "c", { name: name("test") });
   const other = make("a", "b|c", { name: name("test") });

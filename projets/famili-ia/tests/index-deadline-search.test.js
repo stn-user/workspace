@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { IndexSession } from "../index-session.js";
 import { findIndexDeadlines } from "../index-deadline-search.js";
+import { createIndexRecord } from "../index-record.js";
 import { createContentProvenance } from "../content-index.js";
 import { GoogleDriveClient, prepareDriveDocumentForIndex } from "../google-drive.js";
 
@@ -129,6 +130,62 @@ test("une échéance estimée ou sans preuve préexistante ne devient pas une pr
     assert.equal(result.candidates.length, 0);
     assert.match(result.needReview[0].reason, /déjà enregistrée/);
   }
+});
+
+test("une échéance déjà extraite et prouvée reste une proposition à confirmer", async () => {
+  const session = new IndexSession();
+  const doc = local("extracted", "Garantie", "Fin de garantie : 05/01/2027");
+  await trustedLocal(session, doc);
+  doc.indexRecord = createIndexRecord("local", doc.id, {
+    name: { value: doc.name, source: "provider" },
+    coverage: "partial",
+    dates: {
+      echeance: {
+        value: "2027-01-05",
+        source: "extracted",
+        estimated: false,
+        proof: { excerpt: "Fin de garantie : 05/01/2027", location: "ligne 1" }
+      }
+    }
+  });
+  session.syncDocuments([doc]);
+  const result = findIndexDeadlines(session, reference, 90);
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].dueDate, "2027-01-05");
+  assert.equal(result.candidates[0].proof.excerpt, "Fin de garantie : 05/01/2027");
+  assert.equal(result.needReview.length, 0);
+});
+
+test("reconnaît une fin de garantie explicite après une date d'achat dans la même phrase", async () => {
+  const session = new IndexSession();
+  const content = "Date d'achat pergola au 15/11/2025 et date de fin de garantie au 15/11/2026";
+  const doc = local("pergola", "Pergola.txt", content);
+  await trustedLocal(session, doc);
+  session.syncDocuments([doc]);
+
+  const result = findIndexDeadlines(session, "2026-11-10", 90);
+  assert.equal(result.candidates.length, 1);
+  assert.deepEqual(result.candidates[0], {
+    sourceId: "local", itemId: "pergola", name: "Pergola.txt",
+    dueDate: "2026-11-15", source: "extracted",
+    proof: { excerpt: content, location: null }, daysUntil: 5
+  });
+});
+
+test("propose une estimation à confirmer depuis la date d'achat et la durée de garantie", async () => {
+  const session = new IndexSession();
+  const content = "Date d'achat : 15/11/2025\nDurée de garantie : 1 an";
+  const doc = local("pergola-estimee", "Pergola estimée.txt", content);
+  await trustedLocal(session, doc);
+  session.syncDocuments([doc]);
+
+  const result = findIndexDeadlines(session, "2026-11-10", 90);
+  assert.equal(result.candidates.length, 1);
+  assert.deepEqual(result.candidates[0], {
+    sourceId: "local", itemId: "pergola-estimee", name: "Pergola estimée.txt",
+    dueDate: "2026-11-15", source: "auto-estimate",
+    proof: { excerpt: content, location: null }, daysUntil: 5, estimated: true
+  });
 });
 
 test("les segments réellement extraits dans la session sont utilisables sans provenance persistée", () => {

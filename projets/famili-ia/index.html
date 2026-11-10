@@ -229,6 +229,51 @@
           <form id="experimental-index-form" role="search">
             <label for="experimental-index-query">Mots à rechercher</label>
             <input id="experimental-index-query" type="search" autocomplete="off" required>
+            <fieldset class="search-filter-options">
+              <legend>Affiner les résultats</legend>
+              <label for="experimental-index-source">Source</label>
+              <select id="experimental-index-source">
+                <option value="">Toutes les sources</option>
+                <option value="local">Fichiers locaux</option>
+                <option value="drive">Google Drive</option>
+                <option value="onedrive">OneDrive</option>
+              </select>
+              <label for="experimental-index-type">Type</label>
+              <select id="experimental-index-type">
+                <option value="">Tous les types connus</option>
+                <option value="document">Documents</option>
+                <option value="photo">Photos</option>
+              </select>
+              <label for="experimental-index-coverage">Couverture</label>
+              <select id="experimental-index-coverage">
+                <option value="">Toutes les couvertures connues</option>
+                <option value="metadata">Métadonnées seules</option>
+                <option value="partial">Texte partiellement recherché</option>
+                <option value="analyzed">Contenu analysé</option>
+                <option value="unavailable">Contenu indisponible</option>
+              </select>
+              <label for="experimental-index-date-type">Nature de la date</label>
+              <select id="experimental-index-date-type">
+                <option value="">Toute nature de date disponible</option>
+                <option value="creation">Création</option>
+                <option value="modification">Modification</option>
+                <option value="priseDeVue">Prise de vue</option>
+                <option value="achat">Achat</option>
+                <option value="echeance">Échéance</option>
+              </select>
+              <label for="experimental-index-date-from">Date de début</label>
+              <input id="experimental-index-date-from" type="date">
+              <label for="experimental-index-date-to">Date de fin</label>
+              <input id="experimental-index-date-to" type="date">
+              <label for="experimental-index-person">Personne annotée</label>
+              <select id="experimental-index-person">
+                <option value="">Toutes les personnes</option>
+              </select>
+              <label for="experimental-index-place">Lieu annoté</label>
+              <select id="experimental-index-place">
+                <option value="">Tous les lieux</option>
+              </select>
+            </fieldset>
             <button type="submit" class="text-button">Rechercher</button>
           </form>
           <p id="experimental-index-status" role="status" aria-live="polite"></p>
@@ -237,7 +282,7 @@
 
         <section class="search-filters" aria-labelledby="experimental-deadline-title">
           <h2 id="experimental-deadline-title">Échéances proposées — expérimental</h2>
-          <p>Du jour aux 90 prochains jours inclus, à partir des textes extraits fiables déjà présents dans Famili-IA. Ces propositions sont à vérifier : elles ne créent aucune alerte ni notification. Les échéances passées et plus éloignées ne sont pas affichées.</p>
+          <p>Du jour aux 90 prochains jours inclus, à partir des textes extraits fiables déjà présents dans Famili-IA. Les dates explicites et les estimations de garantie sont distinguées ; une estimation basée sur une date d'achat et une durée explicites doit être confirmée. Aucune proposition ne crée d'alerte sans votre confirmation.</p>
           <p>Les sources peuvent être incomplètes ou périmées ; l'accès actuel aux originaux n'est pas vérifié. L'absence de proposition ne prouve pas l'absence d'échéance.</p>
           <button type="button" class="text-button" id="experimental-deadline-refresh">Actualiser les propositions</button>
           <p id="experimental-deadline-status" role="status" aria-live="polite"></p>

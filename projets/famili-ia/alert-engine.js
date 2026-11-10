@@ -136,6 +136,7 @@ export function generateAlertForDoc(doc, now = new Date()) {
   return {
     id: `alert-${doc.id}`,
     docId: doc.id,
+    ...(typeof doc.alertSourceId === "string" ? { sourceId: doc.alertSourceId } : {}),
     documentType: String(documentType).toLocaleLowerCase("fr"),
     source: "document",
     sourceExcerpt: evidence || "Échéance confirmée manuellement.",

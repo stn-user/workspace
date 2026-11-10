@@ -16,6 +16,7 @@ Cette page distingue les capacités réellement présentes des choix à mettre e
 
 - Le projet comprend une cible Android et la dépendance `@capacitor/filesystem`, mais aucun plugin de sélection de photos ou de documents n'est installé ou raccordé.
 - Le code utilise `Filesystem.Directory.Documents` pour explorer des chemins supposés publics. La documentation Capacitor précise que sur Android 11 et ultérieur, ce répertoire ne donne accès qu'aux fichiers créés par l'application. Le manifeste Android actuel ne déclare pas de permission de lecture des médias ou du stockage. Le parcours de scan actuel ne constitue donc pas un accès fiable aux photos de l'utilisateur.
+- Le lecteur importe les plugins Capacitor Filesystem et OCR natifs ; l'OCR de PDF scannés et d'images peut fournir des segments locaux indexables. Ce raccordement n'a pas encore été validé sur appareil et ne change ni les limites d'accès aux fichiers ni la sélection explicite.
 - Le sélecteur photo système Android est le choix recommandé pour obtenir un accès ponctuel aux seules images sélectionnées, sans permission générale de photothèque. Il n'est pas encore implémenté.
 - Les fichiers locaux de l'application peuvent être traités sans serveur, mais l'absence de test hors ligne sur appareil et le cas de fournisseurs médias cloud empêchent de promettre une disponibilité hors ligne universelle.
 

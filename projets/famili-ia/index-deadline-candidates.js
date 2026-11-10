@@ -6,12 +6,13 @@ export function isValidCalendarDate(value) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && isValidDate(value);
 }
 
-export function findDeadlineCandidates(records, referenceDate, daysToExamine) {
+export function findDeadlineCandidates(records, referenceDate, daysToExamine, { includeEstimated = false } = {}) {
   if (!Array.isArray(records)) throw new TypeError("records doit être un tableau");
   if (!isValidCalendarDate(referenceDate)) throw new TypeError("date de référence invalide");
   if (!Number.isSafeInteger(daysToExamine) || daysToExamine < 0) {
     throw new TypeError("nombre de jours invalide (doit être un entier non négatif sûr)");
   }
+  if (typeof includeEstimated !== "boolean") throw new TypeError("option includeEstimated invalide");
   const identities = new Map();
   for (const record of records) {
     if (!isValidIndexRecord(record)) throw new TypeError("fiche d'index invalide");
@@ -36,7 +37,8 @@ export function findDeadlineCandidates(records, referenceDate, daysToExamine) {
     const deadline = normalized.dates.echeance;
     const reasons = [];
     if (!isValidCalendarDate(deadline.value)) reasons.push("date-heure non prise en charge");
-    if (deadline.estimated) reasons.push("échéance estimée");
+    const allowedEstimate = includeEstimated && deadline.source === "auto-estimate";
+    if (deadline.estimated && !allowedEstimate) reasons.push("échéance estimée");
     if (!deadline.proof) reasons.push("preuve absente");
     if (reasons.length) {
       ineligible.push({ sourceId: record.sourceId, itemId: record.itemId, reasons });
@@ -48,7 +50,8 @@ export function findDeadlineCandidates(records, referenceDate, daysToExamine) {
         sourceId: record.sourceId, itemId: record.itemId,
         name: normalized.name ? normalized.name.value : null,
         dueDate: deadline.value, source: deadline.source,
-        proof: { ...deadline.proof }, daysUntil
+        proof: { ...deadline.proof }, daysUntil,
+        ...(deadline.estimated ? { estimated: true } : {})
       });
     }
   }

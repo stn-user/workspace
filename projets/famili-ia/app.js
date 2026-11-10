@@ -18,7 +18,9 @@ import { BackgroundSyncWorker } from "./background-sync.js";
 import { IndexSession, INDEX_SOURCES } from "./index-session.js";
 import { describeSources } from "./source-status.js";
 import { describeExperimentalResult } from "./experimental-result.js";
+import { findDocumentDuplicateCandidates } from "./document-deduplication.js";
 import { findIndexDeadlines } from "./index-deadline-search.js";
+import { ALERT_CATEGORIES, getAlertLevelForDate } from "./alert-engine.js";
 import { OneDriveAuth } from "./onedrive-auth.js";
 import { scanOneDrive } from "./onedrive-graph.js";
 import {
@@ -562,6 +564,14 @@ let driveSelectionSettled = null;
 let removingSessionFiles = false;
 const experimentalIndexForm = document.querySelector("#experimental-index-form");
 const experimentalIndexQuery = document.querySelector("#experimental-index-query");
+const experimentalIndexSource = document.querySelector("#experimental-index-source");
+const experimentalIndexType = document.querySelector("#experimental-index-type");
+const experimentalIndexCoverage = document.querySelector("#experimental-index-coverage");
+const experimentalIndexDateType = document.querySelector("#experimental-index-date-type");
+const experimentalIndexDateFrom = document.querySelector("#experimental-index-date-from");
+const experimentalIndexDateTo = document.querySelector("#experimental-index-date-to");
+const experimentalIndexPerson = document.querySelector("#experimental-index-person");
+const experimentalIndexPlace = document.querySelector("#experimental-index-place");
 const experimentalIndexStatus = document.querySelector("#experimental-index-status");
 const experimentalIndexResults = document.querySelector("#experimental-index-results");
 const experimentalSourceStatus = document.querySelector("#experimental-source-status");
@@ -574,6 +584,54 @@ let driveObservation = "unknown";
 let localImportFailed = false;
 let oneDriveObservation = "unknown";
 let oneDriveAccountFingerprint = null;
+
+function updateExperimentalFacet(select, defaultLabel, entries) {
+  const selected = select.value;
+  const options = [{ value: "", label: defaultLabel }, ...entries];
+  select.replaceChildren(...options.map(({ value, label }) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    return option;
+  }));
+  if (options.some(option => option.value === selected)) select.value = selected;
+}
+
+function refreshExperimentalFacets(records) {
+  const membersById = new Map(getFamilyMembers().map(member => [member.id, member]));
+  const people = new Map();
+  const places = new Set();
+  for (const record of records) {
+    for (const field of record.fields) {
+      if (field.name === "personIds") {
+        for (const id of field.value.split(",").map(value => value.trim()).filter(Boolean)) {
+          people.set(id, membersById.get(id)?.name || "Membre associé");
+        }
+      } else if (field.name === "place") {
+        places.add(field.value);
+      }
+    }
+  }
+  updateExperimentalFacet(experimentalIndexPerson, "Toutes les personnes",
+    [...people].sort((a, b) => a[1].localeCompare(b[1], "fr"))
+      .map(([value, label]) => ({ value, label })));
+  updateExperimentalFacet(experimentalIndexPlace, "Tous les lieux",
+    [...places].sort((a, b) => a.localeCompare(b, "fr"))
+      .map(value => ({ value, label: value })));
+}
+
+function getExperimentalIndexFilters() {
+  return Object.fromEntries([
+    ["sourceId", experimentalIndexSource.value],
+    ["type", experimentalIndexType.value],
+    ["coverage", experimentalIndexCoverage.value],
+    ["dateType", experimentalIndexDateType.value],
+    ["dateFrom", experimentalIndexDateFrom.value],
+    ["dateTo", experimentalIndexDateTo.value],
+    ["personId", experimentalIndexPerson.value],
+    ["place", experimentalIndexPlace.value]
+  ].filter(([, value]) => value));
+}
 let oneDriveScanController = null;
 let oneDriveScanSettled = null;
 
@@ -644,13 +702,15 @@ function renderExperimentalDeadlines(sourceStatuses) {
     item.className = "experimental-result";
     addTextElement(item, "h3", "experimental-result-name", candidate.name || "Nom inconnu");
     addTextElement(item, "p", "", `Source : ${sourceName(candidate.sourceId)}`);
-    addTextElement(item, "p", "", `Échéance proposée : ${candidate.dueDate} · dans ${candidate.daysUntil} jour(s) · non confirmée`);
+    const deadlineLabel = candidate.estimated ? "Échéance estimée" : "Échéance proposée";
+    addTextElement(item, "p", "", `${deadlineLabel} : ${candidate.dueDate} · dans ${candidate.daysUntil} jour(s) · à confirmer`);
     addTextElement(item, "p", "search-evidence", `Extrait : « ${candidate.proof.excerpt} »${candidate.proof.location ? ` (${candidate.proof.location})` : ""}`);
     const access = sourceStatuses.find(status => status.sourceId === candidate.sourceId);
     const accessElement = addTextElement(item, "p", "", access?.access || "Accès actuel à l'original inconnu.");
     accessElement.dataset.deadlineSource = candidate.sourceId;
     addTextElement(item, "p", "", "Couverture : texte partiellement recherché ; fraîcheur inconnue.");
     addDeadlineCopyAction(item, candidate.sourceId, candidate.itemId);
+    addDeadlineAlertAction(item, candidate);
     deadlineResults.appendChild(item);
   }
   for (const entry of result.needReview) {
@@ -663,6 +723,107 @@ function renderExperimentalDeadlines(sourceStatuses) {
   deadlineReview.hidden = result.needReview.length === 0;
   deadlineStatus.textContent = `${result.candidates.length} proposition(s) à vérifier ; ${result.outsidePeriod} échéance(s) détectée(s) hors période ; ${result.needReview.length} document(s) à vérifier.`;
   if (result.ineligible.length) deadlineStatus.textContent += ` ${result.ineligible.length} échéance(s) non admissible(s).`;
+}
+
+function addDeadlineAlertAction(item, candidate) {
+  const document = findExperimentalDocument(candidate.sourceId, candidate.itemId);
+  const matchingStoredDocuments = getDocuments().filter(entry => entry.id === candidate.itemId);
+  const proofLines = candidate.proof.excerpt.split(/\r\n|\n|\r/).map(line => line.trim()).filter(Boolean);
+  if (!document || matchingStoredDocuments.length !== 1 ||
+      getInventorySource(matchingStoredDocuments[0]) !== candidate.sourceId ||
+      typeof document.content !== "string" ||
+      !proofLines.length ||
+      !proofLines.every(proofLine => document.content.split(/\r\n|\n|\r/).some(line => line.trim() === proofLine))) {
+    addTextElement(item, "p", "", "Alerte non disponible : copie persistée ou preuve inchangée introuvable.");
+    return;
+  }
+
+  const storedDocument = matchingStoredDocuments[0];
+  const parsedType = parseDocument(storedDocument.content, storedDocument.name || storedDocument.originalName || "").type;
+  const documentType = ALERT_CATEGORIES.includes(storedDocument.alertType)
+    ? storedDocument.alertType
+    : ALERT_CATEGORIES.includes(parsedType) ? parsedType : null;
+  if (!documentType) {
+    addTextElement(item, "p", "", "Alerte non disponible : catégorie prise en charge non déterminée.");
+    return;
+  }
+  const level = getAlertLevelForDate(candidate.dueDate, documentType);
+  if (level !== "amber" && level !== "red") {
+    addTextElement(item, "p", "", `Alerte non encore admissible pour cette échéance de type ${documentType}.`);
+    return;
+  }
+
+  const buttonLabel = candidate.estimated
+    ? "Confirmer l’estimation et créer l’alerte"
+    : "Confirmer la date et créer l’alerte";
+  const button = addTextElement(item, "button", "source-button", buttonLabel);
+  button.type = "button";
+  button.addEventListener("click", async () => {
+    const currentDocuments = getDocuments().filter(entry => entry.id === candidate.itemId);
+    const current = currentDocuments[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const currentProposal = findIndexDeadlines(experimentalIndex, today, 90).candidates
+      .find(entry => entry.sourceId === candidate.sourceId && entry.itemId === candidate.itemId);
+    if (currentDocuments.length !== 1 || !current ||
+        getInventorySource(current) !== candidate.sourceId ||
+        current.content !== document.content ||
+        !current.content ||
+        !proofLines.every(proofLine => current.content.split(/\r\n|\n|\r/).some(line => line.trim() === proofLine)) ||
+        !currentProposal || currentProposal.dueDate !== candidate.dueDate ||
+        currentProposal.estimated !== candidate.estimated ||
+        currentProposal.proof.excerpt !== candidate.proof.excerpt) {
+      deadlineStatus.textContent = "Cette proposition a changé ou sa copie n’est plus disponible ; actualisez et vérifiez-la à nouveau.";
+      refreshExperimentalIndex();
+      return;
+    }
+
+    const confirmedType = ALERT_CATEGORIES.includes(current.alertType)
+      ? current.alertType
+      : parseDocument(current.content, current.name || current.originalName || "").type;
+    const confirmedLevel = getAlertLevelForDate(candidate.dueDate, confirmedType, now);
+    if (!ALERT_CATEGORIES.includes(confirmedType) || (confirmedLevel !== "amber" && confirmedLevel !== "red")) {
+      deadlineStatus.textContent = "Cette date ne remplit plus les conditions du moteur d’alertes ; aucune alerte n’a été créée.";
+      refreshExperimentalIndex();
+      return;
+    }
+    if (!window.confirm(
+      `${candidate.estimated
+        ? `Confirmer l’estimation calculée de l’échéance au ${candidate.dueDate} (${confirmedType}) ?\n\n` +
+          "Cette date est calculée à partir de la date d’achat et de la durée de garantie. Vérifiez les deux preuves avant de confirmer.\n\n"
+        : `Confirmer l’échéance du ${candidate.dueDate} (${confirmedType}) ?\n\n`}` +
+      `Preuve : « ${candidate.proof.excerpt} »\n` +
+      `Source : ${sourceName(candidate.sourceId)}\n\n` +
+      "Cela enregistre votre confirmation dans Famili-IA et crée une alerte, selon vos préférences de notification. L’original dans la source ne sera pas modifié."
+    )) {
+      deadlineStatus.textContent = "Échéance laissée en proposition ; aucune alerte ni notification n’a été créée.";
+      return;
+    }
+
+    try {
+      const confirmedDocument = {
+        ...current,
+        alertType: confirmedType,
+        expiryDate: candidate.dueDate,
+        expiryDateEvidence: candidate.proof.excerpt,
+        expiryDateSource: "user",
+        alertSourceId: candidate.sourceId
+      };
+      await addDocument(confirmedDocument);
+      const uploadedIndex = uploadedDocuments.findIndex(entry =>
+        entry.id === candidate.itemId && getInventorySource(entry) === candidate.sourceId);
+      if (uploadedIndex !== -1) uploadedDocuments[uploadedIndex] = confirmedDocument;
+      const restoreStatus = await experimentalIndex.restoreDocumentContent(confirmedDocument);
+      if (restoreStatus !== "verified") {
+        throw new Error("La provenance du contenu n’a pas pu être revérifiée après l’enregistrement.");
+      }
+      refreshExperimentalIndex();
+      deadlineStatus.textContent = "Échéance confirmée et alerte créée dans Famili-IA ; la preuve et la source sont conservées.";
+    } catch (error) {
+      console.error("Impossible de confirmer l'échéance et de créer l'alerte.", error);
+      deadlineStatus.textContent = `Échec de l'enregistrement de l'alerte : ${error instanceof Error ? error.message : "erreur non détaillée"}`;
+    }
+  });
 }
 
 function refreshExperimentalIndex() {
@@ -679,14 +840,24 @@ function refreshExperimentalIndex() {
       deadlineStatus.textContent = `Propositions d'échéances indisponibles : ${error instanceof Error ? error.message : "Erreur non détaillée"}`;
     }
     experimentalIndexResults.replaceChildren();
+    const records = experimentalIndex.getAllRecords();
+    refreshExperimentalFacets(records);
     if (!experimentalQuery) {
       experimentalIndexStatus.textContent = "";
       return;
     }
-    const matches = experimentalIndex.search(experimentalQuery);
-    const records = experimentalIndex.getAllRecords();
-    for (const match of matches) {
-      const item = document.createElement("li");
+    const matches = experimentalIndex.search(experimentalQuery, getExperimentalIndexFilters());
+    const matchKey = ({ sourceId, itemId }) => JSON.stringify([sourceId, itemId]);
+    const matchedKeys = new Set(matches.map(matchKey));
+    const duplicateDocuments = uploadedDocuments
+      .map(document => ({ ...document, sourceId: INDEX_SOURCES[getInventorySource(document)] }))
+      .filter(document => document.sourceId);
+    const duplicateCandidates = findDocumentDuplicateCandidates(duplicateDocuments);
+    const duplicatePairs = [...duplicateCandidates.exactDuplicates, ...duplicateCandidates.possibleDuplicates]
+      .filter(pair => matchedKeys.has(matchKey(pair.first)) && matchedKeys.has(matchKey(pair.second)));
+    const renderedKeys = new Set();
+    const renderMatch = (match, tagName = "li") => {
+      const item = document.createElement(tagName);
       const sourceDocument = findExperimentalDocument(match.sourceId, match.itemId);
       const record = records.find(entry => entry.sourceId === match.sourceId && entry.itemId === match.itemId);
       const sourceAccess = sourceStatuses.find(status => status.sourceId === match.sourceId)?.access;
@@ -723,7 +894,37 @@ function refreshExperimentalIndex() {
           openPhotoDetailsDialog(current);
         });
       }
-      experimentalIndexResults.appendChild(item);
+      return item;
+    };
+    for (const match of matches) {
+      const key = matchKey(match);
+      if (renderedKeys.has(key)) continue;
+      const duplicatePair = duplicatePairs.find(pair => {
+        const firstKey = matchKey(pair.first);
+        const secondKey = matchKey(pair.second);
+        return (firstKey === key && !renderedKeys.has(secondKey)) ||
+          (secondKey === key && !renderedKeys.has(firstKey));
+      });
+      if (!duplicatePair) {
+        experimentalIndexResults.appendChild(renderMatch(match));
+        renderedKeys.add(key);
+        continue;
+      }
+
+      const group = document.createElement("li");
+      group.className = "experimental-result-duplicate-group";
+      const exact = duplicatePair.match === "content-hash";
+      addTextElement(group, "h3", "", exact
+        ? "Doublon probable — empreinte identique"
+        : "Rapprochement à vérifier — nom normalisé identique");
+      addTextElement(group, "p", "", "Copies et sources conservées séparément ; aucune fusion n'a été effectuée.");
+      for (const identity of [duplicatePair.first, duplicatePair.second]) {
+        const pairedMatch = matches.find(candidate => matchKey(candidate) === matchKey(identity));
+        if (!pairedMatch) continue;
+        group.appendChild(renderMatch(pairedMatch, "div"));
+        renderedKeys.add(matchKey(pairedMatch));
+      }
+      experimentalIndexResults.appendChild(group);
     }
     experimentalIndexStatus.textContent = matches.length
       ? `${matches.length} résultat${matches.length === 1 ? "" : "s"} dans les fichiers présents dans Famili-IA.`
@@ -2854,8 +3055,9 @@ function renderAlerts(filter) {
     const dueDate = alert.dueDate
       ? new Date(`${alert.dueDate}T00:00:00`).toLocaleDateString("fr-FR")
       : "";
+    const alertSource = alert.sourceId ? sourceName(alert.sourceId) : "Document";
     const sourceExcerpt = alert.sourceExcerpt
-      ? `<p class="alert-evidence"><strong>Source :</strong> ${escapeHtml(alert.sourceExcerpt)}</p>`
+      ? `<p class="alert-evidence"><strong>Source — ${escapeHtml(alertSource)} :</strong> ${escapeHtml(alert.sourceExcerpt)}</p>`
       : "";
     const snoozeNotice = isSnoozed
       ? `<p class="alert-snooze-note">Reportée jusqu'au ${escapeHtml(new Date(`${alert.snoozedUntil}T00:00:00`).toLocaleDateString("fr-FR"))}.</p>`
