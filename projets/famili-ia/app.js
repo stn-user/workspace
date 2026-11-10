@@ -21,7 +21,11 @@ import { describeExperimentalResult } from "./experimental-result.js";
 import { findIndexDeadlines } from "./index-deadline-search.js";
 import { OneDriveAuth } from "./onedrive-auth.js";
 import { scanOneDrive } from "./onedrive-graph.js";
-import { compareOneDriveCopy, oneDriveDocumentId, readOneDriveDocument } from "./onedrive-document.js";
+import {
+  canRefreshOneDriveCopy, compareOneDriveCopy, describeOneDriveChanges, mergeOneDriveDocumentUpdate,
+  oneDriveDocumentId, readOneDriveDocument
+} from "./onedrive-document.js";
+import { formatOneDriveAccountFingerprint, getOneDriveAccountFingerprint } from "./onedrive-account.js";
 
 const activeScanWorkers = new Map();
 let suspendPhotoThumbnailRendering = () => {};
@@ -569,6 +573,7 @@ let experimentalQuery = "";
 let driveObservation = "unknown";
 let localImportFailed = false;
 let oneDriveObservation = "unknown";
+let oneDriveAccountFingerprint = null;
 let oneDriveScanController = null;
 let oneDriveScanSettled = null;
 
@@ -588,7 +593,10 @@ function renderExperimentalSources() {
   for (const status of statuses) {
     const item = document.createElement("li");
     const name = sourceName(status.sourceId);
-    item.textContent = `${name} : ${status.message} ${status.access} ${status.scope} Le périmètre total et la fraîcheur sont inconnus.`;
+    const accountContext = status.sourceId === "onedrive" && oneDriveAccountFingerprint
+      ? ` Compte actuellement connecté (empreinte locale) : ${formatOneDriveAccountFingerprint(oneDriveAccountFingerprint)}.`
+      : "";
+    item.textContent = `${name} : ${status.message} ${status.access} ${status.scope}${accountContext} Le périmètre total et la fraîcheur sont inconnus.`;
     experimentalSourceStatus.appendChild(item);
   }
   deadlineResults.querySelectorAll("[data-deadline-source]").forEach(element => {
@@ -1307,6 +1315,12 @@ const oneDriveStartButton = document.querySelector("#start-onedrive");
 const oneDriveStopButton = document.querySelector("#stop-onedrive");
 const oneDriveDisconnectButton = document.querySelector("#disconnect-onedrive");
 const oneDriveStatus = document.querySelector("#onedrive-status");
+const oneDriveReviewPanel = document.querySelector("#onedrive-review-panel");
+const oneDriveReviewList = document.querySelector("#onedrive-review-list");
+const oneDriveReviewStatus = document.querySelector("#onedrive-review-status");
+const oneDriveApplyUpdatesButton = document.querySelector("#apply-onedrive-updates");
+const oneDriveKeepCopiesButton = document.querySelector("#keep-onedrive-copies");
+let pendingOneDriveChanges = [];
 let oneDriveReady = false;
 let oneDriveConnecting = false;
 
@@ -1316,6 +1330,105 @@ function updateOneDriveActions() {
   oneDriveStopButton.hidden = !oneDriveScanSettled;
   oneDriveDisconnectButton.hidden = !oneDriveAuth?.connected;
   oneDriveDisconnectButton.disabled = oneDriveConnecting || Boolean(oneDriveScanSettled) || removingSessionFiles;
+  oneDriveReviewList.querySelectorAll("input").forEach(input => { input.disabled = Boolean(oneDriveScanSettled) || removingSessionFiles; });
+  oneDriveApplyUpdatesButton.disabled = Boolean(oneDriveScanSettled) || removingSessionFiles;
+  oneDriveKeepCopiesButton.disabled = Boolean(oneDriveScanSettled) || removingSessionFiles;
+}
+
+function renderOneDriveReview(candidates) {
+  pendingOneDriveChanges = candidates;
+  oneDriveReviewList.replaceChildren();
+  candidates.forEach((candidate, index) => {
+    const item = document.createElement("li");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = `onedrive-update-${index}`;
+    checkbox.value = String(index);
+    checkbox.disabled = Boolean(oneDriveScanSettled) || removingSessionFiles;
+    const label = document.createElement("label");
+    label.htmlFor = checkbox.id;
+    const changes = candidate.changes.length
+      ? candidate.changes.join(" ; ")
+      : "version fournisseur différente";
+    label.textContent = `${candidate.existing.name} → ${candidate.item.name} (${changes})`;
+    item.append(checkbox, label);
+    oneDriveReviewList.appendChild(item);
+  });
+  oneDriveReviewPanel.hidden = candidates.length === 0;
+  oneDriveApplyUpdatesButton.disabled = Boolean(oneDriveScanSettled) || removingSessionFiles;
+  oneDriveKeepCopiesButton.disabled = Boolean(oneDriveScanSettled) || removingSessionFiles;
+}
+
+function clearOneDriveReview() {
+  renderOneDriveReview([]);
+  oneDriveReviewStatus.textContent = "";
+}
+
+async function applyOneDriveUpdates(candidates) {
+  if (!candidates.length || !oneDriveAuth?.connected || oneDriveScanSettled || removingSessionFiles) return;
+  const controller = new AbortController();
+  oneDriveScanController = controller;
+  oneDriveObservation = "working";
+  oneDriveReviewStatus.textContent = `Actualisation en cours : 0/${candidates.length}. Les copies précédentes restent disponibles en cas d'erreur.`;
+
+  const remaining = new Set(pendingOneDriveChanges);
+  oneDriveScanSettled = (async () => {
+    let updated = 0;
+    const failures = [];
+    const metadataOnly = [];
+    for (const candidate of candidates) {
+      if (controller.signal.aborted) break;
+      try {
+        const result = await readOneDriveDocument({
+          item: candidate.item,
+          accountId: oneDriveAuth.accountId,
+          accountFingerprint: oneDriveAccountFingerprint,
+          getToken: () => oneDriveAuth.getToken(),
+          signal: controller.signal
+        });
+        if (controller.signal.aborted) break;
+        const replacement = mergeOneDriveDocumentUpdate(candidate.existing, result.document);
+        await addDocument(replacement);
+        const index = uploadedDocuments.findIndex(document => document.id === replacement.id);
+        if (index === -1) throw new Error("La copie OneDrive à actualiser n'est plus présente.");
+        uploadedDocuments[index] = replacement;
+        if (result.segments) experimentalIndex.trustExtractedContent(replacement, result.segments);
+        if (result.coverage === "metadata") {
+          metadataOnly.push(`${candidate.item.name} (${result.reason || "contenu non disponible"})`);
+        }
+        invalidContentProvenance.delete(candidate.existing);
+        remaining.delete(candidate);
+        updated += 1;
+        oneDriveReviewStatus.textContent = `Actualisation en cours : ${updated}/${candidates.length}.`;
+      } catch (error) {
+        if (controller.signal.aborted) break;
+        failures.push(`${candidate.item.name} : ${error instanceof Error ? error.message : "erreur non détaillée"}`);
+      }
+    }
+
+    pendingOneDriveChanges = [...remaining];
+    oneDriveObservation = failures.length ? "error" : "connected";
+    const interrupted = controller.signal.aborted;
+    oneDriveStatus.textContent = interrupted
+      ? `Actualisation arrêtée. ${updated} copie(s) actualisée(s) ; les autres copies restent inchangées.`
+      : `Actualisation terminée : ${updated} copie(s) remplacée(s)${failures.length ? ` ; ${failures.length} échec(s)` : ""}${metadataOnly.length ? ` ; métadonnées seules : ${metadataOnly.join(", ")}` : ""}.`;
+    oneDriveReviewStatus.textContent = [
+      interrupted ? "Action arrêtée ; les éléments non terminés restent à examiner." : "",
+      pendingOneDriveChanges.length && !interrupted ? `${pendingOneDriveChanges.length} élément(s) non actualisé(s) restent à examiner.` : "",
+      ...failures
+    ].filter(Boolean).join(" ");
+    renderOneDriveReview(pendingOneDriveChanges);
+    if (!pendingOneDriveChanges.length) oneDriveReviewStatus.textContent = failures.join(" ");
+  })().finally(() => {
+    oneDriveScanController = null;
+    oneDriveScanSettled = null;
+    refreshExperimentalIndex();
+    renderDataInventory(parseHash().params);
+    updateOneDriveActions();
+    renderExperimentalSources();
+  });
+  updateOneDriveActions();
+  renderExperimentalSources();
 }
 
 if (oneDriveAuth) {
@@ -1331,6 +1444,8 @@ if (oneDriveAuth) {
   });
 } else if (isNativePlatform) {
   oneDriveStatus.textContent = "OneDrive est disponible uniquement dans le navigateur web configuré.";
+} else {
+  oneDriveStatus.textContent = "OneDrive n'est pas configuré : ajoutez VITE_MICROSOFT_CLIENT_ID à .env.local, puis redémarrez Vite.";
 }
 
 oneDriveConnectButton.addEventListener("click", async () => {
@@ -1339,8 +1454,9 @@ oneDriveConnectButton.addEventListener("click", async () => {
   updateOneDriveActions();
   try {
     await oneDriveAuth.connect();
+    oneDriveAccountFingerprint = await getOneDriveAccountFingerprint(oneDriveAuth.accountId);
     oneDriveObservation = "connected";
-    oneDriveStatus.textContent = "Compte connecté. L'indexation de tous les fichiers nécessite une action distincte.";
+    oneDriveStatus.textContent = `Compte connecté (${formatOneDriveAccountFingerprint(oneDriveAccountFingerprint)}). L'indexation nécessite une action distincte.`;
   } catch (error) {
     oneDriveObservation = "error";
     oneDriveStatus.textContent = `Connexion Microsoft impossible : ${error.message}`;
@@ -1353,13 +1469,17 @@ oneDriveConnectButton.addEventListener("click", async () => {
 
 oneDriveStartButton.addEventListener("click", () => {
   if (!oneDriveAuth?.connected || oneDriveScanSettled || removingSessionFiles) return;
+  clearOneDriveReview();
   const controller = new AbortController();
   oneDriveScanController = controller;
   const existing = new Map(uploadedDocuments.map(doc => [doc.id, doc]));
   const accountId = oneDriveAuth.accountId;
+  const accountFingerprint = oneDriveAccountFingerprint;
   let added = 0;
   let metadataOnly = 0;
   const compared = { unchanged: 0, changed: 0, unknown: 0 };
+  const candidates = [];
+  let scanComplete = false;
   let progress = { files: 0, pages: 0, foldersRead: 0 };
   const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${progress.foldersRead} dossier(s) ; ${added} copie(s) ajoutée(s), dont ${metadataOnly} en métadonnées seules ; copies existantes : ${compared.unchanged} même version observée, ${compared.changed} changement détecté, ${compared.unknown} version inconnue.`;
   oneDriveObservation = "working";
@@ -1372,10 +1492,20 @@ oneDriveStartButton.addEventListener("click", () => {
         onItem: async item => {
           const id = await oneDriveDocumentId(accountId, item.id);
           if (existing.has(id)) {
-            compared[compareOneDriveCopy(existing.get(id), item)] += 1;
+            const previous = existing.get(id);
+            const comparison = compareOneDriveCopy(previous, item);
+            if (comparison === "changed" && canRefreshOneDriveCopy(previous, accountFingerprint)) {
+              compared.changed += 1;
+              candidates.push({ existing: previous, item, changes: describeOneDriveChanges(previous, item) });
+            } else {
+              compared[comparison === "changed" ? "unknown" : comparison] += 1;
+            }
             return;
           }
-          const result = await readOneDriveDocument({ item, accountId, getToken: () => oneDriveAuth.getToken(), signal: controller.signal });
+          const result = await readOneDriveDocument({
+            item, accountId, accountFingerprint,
+            getToken: () => oneDriveAuth.getToken(), signal: controller.signal
+          });
           if (controller.signal.aborted) throw new DOMException("Indexation arrêtée.", "AbortError");
           await addDocument(result.document);
           uploadedDocuments.push(result.document);
@@ -1386,14 +1516,19 @@ oneDriveStartButton.addEventListener("click", () => {
           if (added % 10 === 0) refreshExperimentalIndex();
         }
       });
+      scanComplete = true;
       oneDriveObservation = "connected";
-      oneDriveStatus.textContent = `Parcours terminé. ${summary()} Les copies existantes ne sont pas remplacées ; la comparaison détaillée et la confirmation ne sont pas encore disponibles.`;
+      oneDriveStatus.textContent = `Parcours terminé. ${summary()} Les éléments absents ne sont pas déclarés supprimés.`;
     } catch (error) {
       oneDriveObservation = error.name === "AbortError" ? "connected" : "error";
       oneDriveStatus.textContent = `${error.name === "AbortError" ? "Indexation arrêtée" : `Indexation interrompue : ${error.message}`}. ${summary()} Les copies déjà enregistrées sont conservées.`;
     } finally {
       oneDriveScanController = null;
       oneDriveScanSettled = null;
+      if (scanComplete && candidates.length) {
+        renderOneDriveReview(candidates);
+        oneDriveReviewStatus.textContent = `${candidates.length} changement(s) détecté(s). Sélectionnez les copies à actualiser ; rien ne sera remplacé sans confirmation.`;
+      }
       refreshExperimentalIndex();
       updateClearFilesButtonsVisibility();
       updateModeBanner();
@@ -1406,12 +1541,31 @@ oneDriveStartButton.addEventListener("click", () => {
 });
 
 oneDriveStopButton.addEventListener("click", () => oneDriveScanController?.abort());
+oneDriveApplyUpdatesButton.addEventListener("click", () => {
+  const selected = [...oneDriveReviewList.querySelectorAll("input:checked")]
+    .map(input => pendingOneDriveChanges[Number(input.value)])
+    .filter(Boolean);
+  if (!selected.length) {
+    oneDriveReviewStatus.textContent = "Sélectionnez au moins un élément à actualiser, ou conservez les copies actuelles.";
+    return;
+  }
+  void applyOneDriveUpdates(selected);
+});
+oneDriveKeepCopiesButton.addEventListener("click", () => {
+  clearOneDriveReview();
+  oneDriveStatus.textContent = "Copies OneDrive actuelles conservées ; aucun remplacement effectué.";
+});
+sourceChoiceDialog.addEventListener("close", () => {
+  if (oneDriveScanSettled) oneDriveScanController?.abort();
+  clearOneDriveReview();
+});
 oneDriveDisconnectButton.addEventListener("click", async () => {
   if (!oneDriveAuth?.connected || oneDriveScanSettled || oneDriveConnecting) return;
   oneDriveConnecting = true;
   updateOneDriveActions();
   try {
     await oneDriveAuth.disconnect();
+    oneDriveAccountFingerprint = null;
     oneDriveObservation = "disconnected";
     oneDriveStatus.textContent = "Session locale déconnectée. Les copies restent enregistrées et l'autorisation Microsoft n'est pas révoquée.";
   } catch (error) {
@@ -3380,7 +3534,9 @@ function renderDataInventory(filters = {}) {
   dataList.replaceChildren();
   docs.forEach((doc) => {
     const source = getInventorySource(doc);
-    const sourceText = source === 'onedrive' ? 'OneDrive' : source === 'drive'
+    const sourceText = source === 'onedrive'
+      ? `OneDrive · ${formatOneDriveAccountFingerprint(doc.oneDriveAccountFingerprint)}`
+      : source === 'drive'
       ? 'Google Drive'
       : source === 'local'
         ? doc.sourceDir && Capacitor.isNativePlatform() ? 'Stockage local' : 'Fichier local'

@@ -830,7 +830,7 @@
         <span><strong>Google Drive</strong><small id="google-drive-choice-description">Disponible dans la version web de test, si elle est configurée.</small></span>
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
-      <button class="ui-card source-choice" id="connect-onedrive" type="button" disabled>
+      <button class="ui-card source-choice" id="connect-onedrive" type="button" aria-describedby="onedrive-status" disabled>
         <span class="ui-icon source-choice-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/onedrive.svg" width="1440" height="810"></image></svg></span>
         <span><strong>Connecter OneDrive personnel</strong><small>La permission Microsoft Files.Read peut donner accès à tous les fichiers du compte. La connexion ne lance pas l'indexation.</small></span>
       </button>
@@ -841,10 +841,18 @@
       </button>
     </div>
     <p class="source-choice-footnote">Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive peut autoriser l'accès à tous les fichiers du compte personnel.</p>
-    <p>OneDrive : l'indexation complète est facultative et s'arrête à la fermeture de l'onglet. TXT/Markdown : 1 Mo maximum ; PDF texte : 10 Mo et 20 pages maximum, sans OCR web. Les autres fichiers ne fournissent que leurs métadonnées. Les copies existantes ne sont pas actualisées automatiquement.</p>
-    <button class="ui-button ui-button--secondary" id="start-onedrive" type="button" disabled>Indexer mon OneDrive</button>
+    <p>OneDrive : l'indexation complète est facultative et s'arrête à la fermeture de l'onglet. TXT/Markdown : 1 Mo maximum ; PDF texte : 10 Mo et 20 pages maximum, sans OCR web. Les autres fichiers ne fournissent que leurs métadonnées. Les changements détectés sont proposés ici avant remplacement. Les éléments absents du parcours ne sont pas déclarés supprimés.</p>
+    <button class="ui-button ui-button--secondary" id="start-onedrive" type="button" disabled>Indexer ou vérifier les changements OneDrive</button>
     <button class="ui-button ui-button--secondary" id="stop-onedrive" type="button" hidden>Arrêter l'indexation</button>
     <p id="onedrive-status" role="status" aria-live="polite">OneDrive non configuré.</p>
+    <section id="onedrive-review-panel" aria-labelledby="onedrive-review-title" hidden>
+      <h3 id="onedrive-review-title">Modifications OneDrive à examiner</h3>
+      <p>Les copies actuelles sont conservées tant que vous ne sélectionnez pas et ne confirmez pas un remplacement. Le contenu est relu après confirmation ; si le nouveau fichier est illisible ou non pris en charge, le texte précédent sera remplacé par des métadonnées seules. Les versions ou comptes d'origine non vérifiables ne sont pas actualisés.</p>
+      <ul id="onedrive-review-list"></ul>
+      <p id="onedrive-review-status" role="status" aria-live="polite"></p>
+      <button class="ui-button ui-button--primary" id="apply-onedrive-updates" type="button">Actualiser les éléments sélectionnés</button>
+      <button class="ui-button ui-button--secondary" id="keep-onedrive-copies" type="button">Conserver les copies actuelles</button>
+    </section>
   </dialog>
   <input type="file" id="local-files-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
 

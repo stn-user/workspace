@@ -1,3 +1,5 @@
+import { formatOneDriveAccountFingerprint } from "./onedrive-account.js";
+
 const DOCUMENT_TYPES = new Set(["facture", "garantie", "contrat", "notice"]);
 
 export function mergeInventoryDocuments(demoDocuments, storedDocuments) {

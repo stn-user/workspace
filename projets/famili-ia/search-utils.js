@@ -1,3 +1,5 @@
+import { formatOneDriveAccountFingerprint } from "./onedrive-account.js";
+
 /**
  * Calcule un score de similarité sémantique entre deux documents basé sur leurs métadonnées (DocumentContext).
  * Pondération : provider (40%), type (20%), category (20%), tags (10%), date (10%).
@@ -226,7 +228,9 @@ function getEvidenceExcerpt(question, lines) {
 }
 
 function getProvenance(document) {
-  if (document.oneDriveSource) return "OneDrive · copie enregistrée localement";
+  if (document.oneDriveSource) {
+    return `OneDrive · copie enregistrée localement · compte d'origine ${formatOneDriveAccountFingerprint(document.oneDriveAccountFingerprint)}`;
+  }
   if (document.driveSource) return "Google Drive · copie temporaire locale";
   if (document.driveDemo) return "Sélection Drive simulée · document fictif";
   if (document.isLocal) return document.sourceDir ? "Stockage local" : "Fichier local";

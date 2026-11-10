@@ -1,5 +1,6 @@
 import { createContentProvenance } from "./content-index.js";
 import { hashPhotoBytes } from "./photo-metadata.js";
+import { getOneDriveAccountFingerprint } from "./onedrive-account.js";
 
 const textLimit = 1024 * 1024;
 const pdfLimit = 10 * 1024 * 1024;
@@ -20,6 +21,41 @@ export function compareOneDriveCopy(document, item) {
   if (typeof document.oneDriveETag !== "string" || !document.oneDriveETag ||
       typeof item.eTag !== "string" || !item.eTag) return "unknown";
   return document.oneDriveETag === item.eTag ? "unchanged" : "changed";
+}
+
+export function describeOneDriveChanges(document, item) {
+  const changes = [];
+  if (document.name !== item.name) changes.push(`nom : ${document.name} → ${item.name}`);
+  if (typeof document.oneDriveETag === "string" && document.oneDriveETag
+    && typeof item.eTag === "string" && item.eTag
+    && document.oneDriveETag !== item.eTag) {
+    changes.push("version fournisseur différente");
+  }
+  return changes;
+}
+
+export function canRefreshOneDriveCopy(document, accountFingerprint) {
+  return Boolean(document?.oneDriveSource
+    && /^[0-9a-f]{64}$/i.test(accountFingerprint ?? "")
+    && document.oneDriveAccountFingerprint === accountFingerprint);
+}
+
+export function mergeOneDriveDocumentUpdate(existing, refreshed) {
+  if (!existing || !refreshed || existing.id !== refreshed.id
+    || !existing.oneDriveSource || !refreshed.oneDriveSource
+    || !existing.oneDriveAccountFingerprint
+    || existing.oneDriveAccountFingerprint !== refreshed.oneDriveAccountFingerprint) {
+    throw new TypeError("Remplacement OneDrive invalide ou compte d'origine non vérifié.");
+  }
+  const merged = {
+    ...existing,
+    ...refreshed,
+    ...(existing.photoAnnotations ? { photoAnnotations: existing.photoAnnotations } : {})
+  };
+  for (const field of ["contentProvenance", "oneDriveETag", "photoMetadata"]) {
+    if (!Object.hasOwn(refreshed, field)) delete merged[field];
+  }
+  return merged;
 }
 
 function downloadUrl(value) {
@@ -62,8 +98,12 @@ async function boundedBytes(response, limit) {
   return bytes;
 }
 
-export async function readOneDriveDocument({ item, accountId, getToken, signal, fetchImpl = fetch }) {
+export async function readOneDriveDocument({ item, accountId, accountFingerprint, getToken, signal, fetchImpl = fetch }) {
   const id = await oneDriveDocumentId(accountId, item.id);
+  const originFingerprint = accountFingerprint ?? await getOneDriveAccountFingerprint(accountId);
+  if (!/^[0-9a-f]{64}$/i.test(originFingerprint)) {
+    throw new TypeError("Empreinte de compte OneDrive invalide.");
+  }
   const extension = item.name.toLowerCase().split(".").pop();
   const type = extension === "pdf" ? "PDF" : extension === "txt" ? "Texte"
     : extension === "md" ? "Markdown" : "Document";
@@ -71,7 +111,8 @@ export async function readOneDriveDocument({ item, accountId, getToken, signal, 
   const document = {
     id, name: item.name, type, date: modified && !Number.isNaN(modified.getTime())
       ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(modified) : "Date inconnue",
-    isLocal: true, oneDriveSource: true, content: "", summary: "", keywords: ""
+    isLocal: true, oneDriveSource: true, oneDriveAccountFingerprint: originFingerprint,
+    content: "", summary: "", keywords: ""
   };
   if (typeof item.eTag === "string" && item.eTag) document.oneDriveETag = item.eTag;
   if (type === "Document") return { document, coverage: "metadata", reason: "format non pris en charge" };

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createIndexRecord } from "../index-record.js";
 import { describeExperimentalResult } from "../experimental-result.js";
 import { IndexSession } from "../index-session.js";
+import { rankDocuments } from "../search-utils.js";
 
 test("résultat Drive : copie distincte, date de modification et accès non garanti", () => {
   const document = { id: "1", name: "Facture.pdf", type: "PDF", date: "9 oct. 2026",
@@ -41,6 +42,22 @@ test("métadonnées absentes, copie manquante et identités distinctes", () => {
   assert.equal(driveResult.canViewCopy, false);
   assert.ok(driveResult.details.includes("Accès actuel à l'original inconnu."));
   assert.throws(() => describeExperimentalResult(localMatch, driveRecord, local), TypeError);
+});
+
+test("résultat OneDrive garde la copie attribuée à son compte même si l'accès est inconnu", () => {
+  const document = {
+    id: "onedrive-one", name: "Facture piscine.txt", type: "Texte", date: "Date inconnue",
+    isLocal: true, oneDriveSource: true, oneDriveAccountFingerprint: "a".repeat(64),
+    content: "preuve piscine locale", summary: "", keywords: ""
+  };
+  const session = new IndexSession();
+  session.trustExtractedContent(document, [document.content]);
+  session.syncDocuments([document]);
+  const result = describeExperimentalResult(session.search("preuve")[0], session.getAllRecords()[0], document,
+    "Session OneDrive déconnectée ; révocation Microsoft non vérifiée.");
+  assert.ok(result.details.includes("Compte OneDrive d'origine (empreinte locale) : …aaaaaaaaaaaaaaaa."));
+  assert.ok(result.details.includes("Session OneDrive déconnectée ; révocation Microsoft non vérifiée."));
+  assert.ok(rankDocuments("piscine", [document])[0].provenance.includes("compte d'origine …aaaaaaaaaaaaaaaa"));
 });
 
 test("raisons et dates conservent provenance, estimation et preuve", () => {

@@ -26,6 +26,10 @@ export function describeExperimentalResult(match, record, document, sourceAccess
   details.push(`Type : ${typeof document?.type === "string" && document.type.trim() ? document.type : "inconnu"}`);
   const sourceName = match.sourceId === "drive" ? "Google Drive" : match.sourceId === "onedrive" ? "OneDrive" : "Local";
   details.push(`Source : ${sourceName}`);
+  if (match.sourceId === "onedrive") {
+    const fingerprint = formatOneDriveAccountFingerprint(document?.oneDriveAccountFingerprint);
+    details.push(`Compte OneDrive d'origine (empreinte locale) : ${fingerprint}.`);
+  }
   details.push(`Emplacement enregistré : ${typeof document?.sourceDir === "string" && document.sourceDir.trim() ? document.sourceDir : "non disponible"}`);
 
   const dates = Object.entries(record.dates);
@@ -67,5 +71,6 @@ export function describeExperimentalResult(match, record, document, sourceAccess
     canViewCopy: typeof document?.content === "string" && Boolean(document.content.trim())
   };
 }
+import { formatOneDriveAccountFingerprint } from "./onedrive-account.js";
 import { isPhotoDocument } from "./photo-annotations.js";
 import { getPhotoTimelineDateInfo, getTimelineDateLabel } from "./photo-timeline.js";

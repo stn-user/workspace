@@ -1,6 +1,6 @@
 # États et capacités des sources — 15.5bis.0.c et 15.5bis.0.d
 
-**Synthèse établie le 7 novembre 2026.** Les états du tableau sont des propositions de conception ; l'interface expérimentale n'en expose qu'un sous-ensemble décrit ci-dessous. Les lignes de la matrice distinguent les capacités observées dans le dépôt, les possibilités relevées dans des études antérieures et les éléments à vérifier. Les études fournisseurs citées datent d'octobre 2026 ; leurs API, règles et autorisations doivent être revérifiées avant implémentation ou lancement. Aucun essai sur appareil ni appel fournisseur réel n'a été réalisé pour cette synthèse.
+**Synthèse actualisée le 9 novembre 2026.** Les états du tableau sont des propositions de conception ; l'interface expérimentale n'en expose qu'un sous-ensemble décrit ci-dessous. Les lignes de la matrice distinguent les capacités observées dans le dépôt, les possibilités relevées dans des études antérieures et les éléments à vérifier. Les études fournisseurs citées datent d'octobre 2026 ; leurs API, règles et autorisations doivent être revérifiées avant implémentation ou lancement. Aucun appel fournisseur réel n'a été réalisé pour les nouveaux tests automatisés décrits ici.
 
 ## Dimensions indépendantes
 
@@ -35,13 +35,15 @@ Le parcours Drive Web utilise un [connecteur expérimental limité](contrat-conn
 
 | Source | Identité conservée et périmètre | Conséquence pour l'actualisation |
 |---|---|---|
-| Local | Identifiant applicatif généré à l'import ; sélection explicite, sans identité durable garantie du fichier d'origine. | Une nouvelle sélection peut créer une autre copie, même pour le même fichier ; ne pas interpréter son absence comme une suppression. |
-| Google Drive | `drive-` suivi de l'identifiant du fichier sélectionné ; l'identité du compte n'est pas conservée. Le périmètre est celui des fichiers explicitement sélectionnés. | Un changement de compte n'est pas détecté : l'identifiant d'une copie ne prouve pas quel compte l'a importée ni ses droits actuels. Ne pas déduire une suppression ou remplacer une copie sur cette seule base. |
-| OneDrive personnel | Identifiant calculé par empreinte de l'identifiant de compte MSAL et de l'identifiant de l'élément ; parcours volontaire du OneDrive personnel accessible. Le compte en clair n'est pas stocké dans la copie. | Un autre compte produit une identité distincte ; sans accès à l'identifiant de compte d'origine à partir de la copie, ne pas attribuer automatiquement les anciennes copies au compte actif. Les copies existantes ne sont pas actualisées. |
+| Local | Identifiant applicatif généré à l'import ; sélection explicite, sans identité durable garantie du fichier d'origine. | Pas de réidentification ni d'actualisation automatique. Une nouvelle sélection peut créer une autre copie, même pour le même fichier ; ne pas interpréter son absence comme une suppression. |
+| Google Drive | `drive-` suivi de l'identifiant du fichier sélectionné ; l'identité du compte n'est pas conservée. Le périmètre est celui des fichiers explicitement sélectionnés. | Le sélecteur n'expose pas de découverte ou de suivi des changements. Un changement de compte et l'accès actuel ne sont pas vérifiés ; une sélection déjà enregistrée est ignorée, pas actualisée. Ne pas déduire une suppression ni remplacer une copie sur la seule base de son absence. |
+| OneDrive personnel | Identifiant calculé à partir de l'identifiant de compte MSAL et de l'identifiant d'élément ; chaque nouvelle copie conserve l'empreinte SHA-256 complète du compte, mais pas l'identifiant en clair. Seul un préfixe de 16 caractères est affiché. | Les copies de comptes différents restent distinctes et recherchables. L'empreinte est pseudonymisée, pas anonyme, et ne prouve pas l'accès actuel. Les copies historiques sans empreinte restent non attribuées et ne sont pas actualisées. |
 
-Ces identités décrivent le fonctionnement actuel, pas une garantie universelle de stabilité ou d'isolation des foyers. Avant de mettre en œuvre une actualisation, définir une identité de source persistable, traiter les anciennes copies sans attribution fiable, et tester les changements de compte et de périmètre. Aucun scan partiel, échec réseau ou refus d'accès ne doit être interprété comme une suppression fournisseur.
+Ces identités décrivent le fonctionnement actuel, pas une garantie universelle de stabilité ou d'isolation des foyers. Seul le connecteur expérimental OneDrive personnel prend en charge une actualisation manuelle contrôlée. Les imports locaux et Google Drive restent hors de ce périmètre ; leur sélection, identité et capacités ne permettent pas une actualisation fiable.
 
-Pour les nouvelles copies OneDrive, la version `eTag` observée à la découverte est conservée si elle est disponible. Un nouveau parcours compare le nom et les versions observées des éléments retrouvés : même version, différence ou version inconnue. Ce bilan ne compare pas le contenu octet par octet ; la lecture peut avoir lieu après la découverte. Les anciennes copies sans version restent inconnues, sauf différence de nom constatée. Les éléments non retrouvés ne sont pas déclarés supprimés. Les copies existantes ne sont pas remplacées ; la comparaison détaillée et la confirmation de remplacement restent à implémenter.
+Pour OneDrive, une nouvelle copie conserve l'`eTag` découvert si disponible. Un parcours compare nom et versions pour les seuls éléments retrouvés du compte actif : inchangé, changement proposé, ou version inconnue. Un changement de nom ou d'`eTag` est présenté par élément, décoché par défaut, puis relu uniquement après sélection et confirmation. Une copie est remplacée seulement après lecture réussie ; ses annotations photo saisies sont conservées et les métadonnées/provenances issues de l'ancienne version qui ne sont pas fournies à nouveau sont écartées. Un échec conserve la copie précédente.
+
+Un parcours incomplet n'ouvre pas la revue des changements ; les nouvelles copies déjà enregistrées restent présentes et une nouvelle action recommence depuis la racine, sans curseur durable. L'absence d'un élément, un accès refusé ou une interruption ne prouve ni suppression ni perte d'accès ; aucune copie n'est supprimée ou marquée comme telle sur cette base. Les copies historiques sans empreinte ne sont pas actualisées ; une version absente reste inconnue, sauf renommage observé. Le chemin n'étant pas conservé, les déplacements ne sont pas suivis séparément. La comparaison d'`eTag` ne vérifie pas le contenu octet par octet ni l'accès actuel à l'original.
 
 ### Audit des dépendances
 
@@ -49,7 +51,7 @@ L'audit npm du projet signale quatre dépendances : `xlsx` 0.18.5 en production 
 
 ### Tests navigateur ciblés
 
-`tests/connector-initialization.spec.js` utilise deux serveurs Vite locaux : port 5188 sans configuration Google, port 5189 avec configuration Google fictive ; les deux utilisent un identifiant Microsoft fictif. Il bloque les scripts Google, teste la purge dans des profils de navigateur isolés et simule Microsoft Graph pour vérifier qu'un changement ne remplace pas la copie. Ces tests ne valident pas les comptes réels. Depuis le répertoire du projet, lancer les serveurs dans deux terminaux PowerShell distincts :
+`tests/connector-initialization.spec.js` utilise trois serveurs Vite locaux : port 5188 sans configuration Google, port 5189 avec configuration Google fictive, tous deux avec un identifiant Microsoft fictif, et port 5190 sans identifiant Microsoft pour vérifier le message de configuration et le bouton désactivé. Les tests bloquent les scripts Google, simulent Microsoft Graph, et couvrent le changement de compte, la revue et confirmation de changements, l'échec de remplacement, les copies historiques non attribuées, l'interruption/reprise, le refus d'accès, l'absence d'inférence de suppression et la purge concurrente. Ils ne valident pas les comptes réels. Depuis le répertoire du projet, lancer les serveurs dans trois terminaux PowerShell distincts :
 
 ```powershell
 $env:VITE_GOOGLE_CLIENT_ID=''; $env:VITE_GOOGLE_API_KEY=''; $env:VITE_GOOGLE_APP_ID=''; $env:VITE_MICROSOFT_CLIENT_ID='00000000-0000-0000-0000-000000000001'
@@ -61,7 +63,12 @@ $env:VITE_GOOGLE_CLIENT_ID='test.invalid'; $env:VITE_GOOGLE_API_KEY='synthetic';
 npm run dev -- --host 127.0.0.1 --port 5189 --strictPort
 ```
 
-Puis exécuter `npx playwright test connector-initialization --workers=1` et arrêter les deux serveurs.
+```powershell
+$env:VITE_GOOGLE_CLIENT_ID=''; $env:VITE_GOOGLE_API_KEY=''; $env:VITE_GOOGLE_APP_ID=''; $env:VITE_MICROSOFT_CLIENT_ID=''
+npm run dev -- --host 127.0.0.1 --port 5190 --strictPort
+```
+
+Puis exécuter `npx playwright test tests/connector-initialization.spec.js --workers=1` et arrêter les trois serveurs.
 
 | Source et contexte | État du projet et périmètre | Métadonnées / contenu | Recherche / actualisation / original | Limite et prochaine action |
 |---|---|---|---|---|

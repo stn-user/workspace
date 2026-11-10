@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { compareOneDriveCopy, oneDriveDocumentId, readOneDriveDocument } from "../onedrive-document.js";
+import {
+  canRefreshOneDriveCopy, compareOneDriveCopy, describeOneDriveChanges,
+  mergeOneDriveDocumentUpdate, oneDriveDocumentId, readOneDriveDocument
+} from "../onedrive-document.js";
+import { formatOneDriveAccountFingerprint, getOneDriveAccountFingerprint } from "../onedrive-account.js";
 import { IndexSession } from "../index-session.js";
 import { getInventorySource, filterSearchResultsByChips } from "../data-inventory.js";
 
@@ -18,6 +22,14 @@ test("texte OneDrive recherché et provenance restaurée, isolé par compte", as
   assert.equal(calls[1].init.headers, undefined);
   assert.equal(result.coverage, "partial");
   assert.equal(result.document.contentProvenance.method, "onedrive-text");
+  assert.equal(result.document.oneDriveAccountFingerprint, await getOneDriveAccountFingerprint("account-a"));
+  assert.equal(JSON.stringify(result.document).includes("account-a"), false);
+  assert.notEqual(
+    result.document.oneDriveAccountFingerprint,
+    await getOneDriveAccountFingerprint("account-b")
+  );
+  assert.match(formatOneDriveAccountFingerprint(result.document.oneDriveAccountFingerprint), /^…[0-9a-f]{16}$/);
+  assert.equal(formatOneDriveAccountFingerprint(undefined), "compte d’origine non identifié");
   assert.equal(getInventorySource(result.document), "onedrive");
   assert.notEqual(await oneDriveDocumentId("account-b", item.id), result.document.id);
   assert.equal(filterSearchResultsByChips([{ document: result.document }], { source: "onedrive" }).length, 1);
@@ -78,6 +90,32 @@ test("compare les copies par nom et version fournisseur sans présumer les ancie
   assert.equal(compareOneDriveCopy(copy, { name: "test.txt" }), "unknown");
   assert.equal(copy.content, "correction locale");
   assert.throws(() => compareOneDriveCopy(null, current), /invalide/);
+});
+
+test("propose les différences sans actualiser une copie attribuée à un autre compte", () => {
+  const fingerprint = "a".repeat(64);
+  const copy = {
+    id: "onedrive-item", oneDriveSource: true, oneDriveAccountFingerprint: fingerprint,
+    name: "ancien.txt", oneDriveETag: '"v1"',
+    contentProvenance: { schemaVersion: 1 }, photoMetadata: { schemaVersion: 1 },
+    photoAnnotations: { source: "user", eventTags: ["Vacances"] }
+  };
+  const refreshed = {
+    id: copy.id, oneDriveSource: true, oneDriveAccountFingerprint: fingerprint,
+    name: "nouveau.txt", oneDriveETag: '"v2"', content: "nouveau texte"
+  };
+  assert.deepEqual(describeOneDriveChanges(copy, { name: "nouveau.txt", eTag: '"v2"' }), [
+    "nom : ancien.txt → nouveau.txt", "version fournisseur différente"
+  ]);
+  assert.equal(canRefreshOneDriveCopy(copy, fingerprint), true);
+  assert.equal(canRefreshOneDriveCopy({ ...copy, oneDriveAccountFingerprint: undefined }, fingerprint), false);
+  assert.equal(canRefreshOneDriveCopy(copy, "b".repeat(64)), false);
+  assert.deepEqual(mergeOneDriveDocumentUpdate(copy, refreshed), {
+    ...refreshed, photoAnnotations: copy.photoAnnotations
+  });
+  assert.throws(() => mergeOneDriveDocumentUpdate(copy, {
+    ...refreshed, oneDriveAccountFingerprint: "b".repeat(64)
+  }), /compte d'origine non vérifié/);
 });
 
 test("conserve la version fournisseur pour les nouvelles copies seulement si disponible", async () => {

@@ -261,9 +261,9 @@ export async function deleteEquipment(id) {
 export async function addDocument(document) {
   document = normalizePhotoDocument(document);
   const existingIndex = state.documents.findIndex(existing => existing.id === document.id);
+  await put('documents', document);
   if (existingIndex === -1) state.documents.push(document);
   else state.documents[existingIndex] = document;
-  await put('documents', document);
 
   // Logique de classification automatique
   if (document.type && document.provider) {
