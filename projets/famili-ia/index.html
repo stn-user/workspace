@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
@@ -74,7 +74,7 @@
               <button class="onboarding-back-btn" type="button" data-wizard-prev="0" aria-label="Retour">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
               </button>
-              <span>Découvrir Famili-IA</span>
+              <span class="onboarding-progress">Étape 1 sur 3 · Personnalisation</span>
             </div>
             <span class="ui-icon onboarding-person-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg></span>
             <h2 id="step-1-title" tabindex="-1">Comment pouvons-nous vous appeler ?</h2>
@@ -91,7 +91,7 @@
               <button class="onboarding-back-btn" type="button" data-wizard-prev="1" aria-label="Retour">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
               </button>
-              <span>Découvrir Famili-IA</span>
+              <span class="onboarding-progress">Étape 2 sur 3 · Choix du parcours</span>
             </div>
             <p class="onboarding-greeting" id="wizard-greeting" hidden>Bonjour <span id="wizard-user-greeting"></span> !</p>
             <h2 id="step-2-title" tabindex="-1">Comment souhaitez-vous commencer ?</h2>
@@ -116,7 +116,7 @@
               <button class="onboarding-back-btn" type="button" data-wizard-prev="2" aria-label="Retour au choix du parcours">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
               </button>
-              <span>Démo Famili-IA</span>
+              <span class="onboarding-progress">Étape 3 sur 3 · Démo avec exemples fictifs</span>
             </div>
             <h2 id="step-3-title" tabindex="-1">Découvrez une recherche</h2>
             <p>Choisissez un exemple pour voir les résultats. Tout est fictif : aucun compte n'est connecté.</p>
@@ -156,6 +156,8 @@
               <div class="document-list" id="demo-document-list"></div>
             </section>
             <p class="onboarding-demo-note">Exemples fictifs : les sources et les résultats illustrent le fonctionnement de Famili-IA.</p>
+            <p class="view-tour-invitation">Vous pouvez aussi parcourir les autres vues. Certaines peuvent afficher les données déjà présentes sur cet appareil.</p>
+            <button class="ui-button ui-button--secondary ui-button--full" type="button" id="start-view-tour-demo">Visiter les autres vues</button>
             <button class="ui-button ui-button--primary ui-button--full" type="button" id="finish-onboarding-demo">Terminer et accéder à mon espace</button>
           </div>
         </section>
@@ -213,7 +215,7 @@
         <form class="search-form" id="search-form" role="search">
           <label class="visually-hidden" for="question">Votre question</label>
           <input id="question" name="question" type="search" autocomplete="off" placeholder="Ex. : combien ai-je payé pour ma piscine ?" aria-describedby="privacy-note">
-          <button class="submit-button" type="submit">
+          <button class="submit-button" type="submit" aria-label="Rechercher">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -562,7 +564,7 @@
               </span>
               <span>Dossier complet</span>
             </button>
-            <input type="file" id="folder-input" class="visually-hidden" webkitdirectory directory multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
+            <input type="file" id="folder-input" class="visually-hidden" aria-label="Choisir un dossier complet à indexer" webkitdirectory directory multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
             <button class="import-option" type="button" data-action="camera" id="btn-camera">
               <span class="option-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -572,7 +574,7 @@
               </span>
               <span>Capture (Photo/Scan)</span>
             </button>
-            <input type="file" id="camera-input" class="visually-hidden" accept="image/*" capture="environment">
+            <input type="file" id="camera-input" class="visually-hidden" aria-label="Prendre une photo ou scanner un document" accept="image/*" capture="environment">
             <button class="import-option" type="button" data-action="manual">
               <span class="option-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -647,11 +649,11 @@
               <div class="section-heading"><h2>Confidentialité & Indexation Proactive</h2></div>
               <div class="privacy-option">
                 <div class="option-text"><strong>Accès local</strong><small>Autoriser le scan des dossiers Documents/Téléchargements</small></div>
-                <input type="checkbox" id="pref-local-access">
+                <input type="checkbox" id="pref-local-access" aria-label="Accès local aux dossiers Documents et Téléchargements">
               </div>
               <div class="privacy-option">
                 <div class="option-text"><strong>Indexation automatique en fond</strong><small>Scanner régulièrement les dossiers pour synchroniser les nouveaux documents</small></div>
-                <input type="checkbox" id="pref-auto-scan">
+                <input type="checkbox" id="pref-auto-scan" aria-label="Indexation automatique en fond">
               </div>
               <div class="field" style="margin-top: 1rem;">
                 <label for="pref-scan-dirs" style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Répertoires à scanner (séparés par des virgules)</label>
@@ -659,10 +661,11 @@
               </div>
               <div class="privacy-option" style="margin-top: 1rem;">
                 <div class="option-text"><strong>Connexion Drive</strong><small>Lier mon compte Google Drive</small></div>
-                <input type="checkbox" id="pref-drive-conn">
+                <input type="checkbox" id="pref-drive-conn" aria-label="Connexion Google Drive">
               </div>
               <button class="text-button" type="button" data-open-view="vos-donnees" style="margin-top: 1rem;">Gérer mes données</button>
               <button class="ui-button ui-button--secondary ui-button--full" type="button" id="reset-onboarding-btn" style="margin-top: 1rem;">Revoir la découverte</button>
+              <button class="ui-button ui-button--secondary ui-button--full" type="button" id="start-view-tour-profile" style="margin-top: 0.75rem;">Visiter les autres vues</button>
             </section>
           </section>
         </div>
@@ -823,6 +826,21 @@
         </div>
       </section>
     </main>
+    <section class="view-tour" id="view-tour" role="region" aria-labelledby="view-tour-title" hidden>
+      <div class="view-tour-copy">
+        <h2 id="view-tour-title">Visite guidée des vues</h2>
+        <div class="view-tour-status" role="status" aria-live="polite" aria-atomic="true">
+          <p id="view-tour-progress"></p>
+          <p id="view-tour-description"></p>
+        </div>
+        <p class="view-tour-privacy">Lecture seule : aucune donnée n’est modifiée, aucun fichier importé, aucune connexion ni permission demandée. Les vues peuvent afficher des données locales déjà présentes.</p>
+      </div>
+      <div class="view-tour-actions">
+        <button class="ui-button ui-button--secondary" type="button" id="view-tour-prev" hidden>Précédent</button>
+        <button class="ui-button ui-button--primary" type="button" id="view-tour-next">Suivant</button>
+        <button class="ui-button ui-button--text" type="button" id="view-tour-exit">Quitter</button>
+      </div>
+    </section>
     <nav class="bottom-nav" aria-label="Navigation principale (mobile)">
         <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
         <button class="nav-item" type="button" data-nav="recherche"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche</button>
@@ -899,7 +917,7 @@
       <button class="ui-button ui-button--secondary" id="keep-onedrive-copies" type="button">Conserver les copies actuelles</button>
     </section>
   </dialog>
-  <input type="file" id="local-files-input" class="visually-hidden" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
+  <input type="file" id="local-files-input" class="visually-hidden" aria-label="Choisir des fichiers locaux à indexer" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
 
   <dialog class="source-dialog drive-picker-dialog" id="equipment-dialog" aria-labelledby="equipment-dialog-title">
     <div class="dialog-header">

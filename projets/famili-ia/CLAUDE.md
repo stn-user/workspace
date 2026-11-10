@@ -93,3 +93,4 @@ Les surfaces utilisent des dégradés discrets de blanc vers gris clair ; réser
 - [ ] **Interface de recherche** : La barre de recherche et les résultats s'affichent correctement sur desktop et mobile.
 - [ ] **États d'erreur** : Les composants affichent un état vide/erreur significatif si les données manquent.
 - [ ] **Accessibilité** : Les contrastes respectent les ratios minimaux (texte: 4.5:1, UI components: 3:1).
+- [ ] **Cibles et clavier** : Tout contrôle interactif fait au moins 48 × 48 px (case à cocher : zone de 48 px, carré visible de 24 px), expose un nom accessible, a un focus visible et respecte `prefers-reduced-motion`. `tests/accessibility-audit.spec.js` le vérifie sur chaque écran.

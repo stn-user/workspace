@@ -178,7 +178,15 @@ function initOnboardingWizard() {
     });
   }
 
-  // Bouton "Continuer sans prénom" - saute directement à l'étape 2
+  // Entrée dans le champ prénom = « Continuer »
+  if (userNameInput) {
+    userNameInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || event.isComposing) return;
+      event.preventDefault();
+      wizard.querySelector('#step-1 [data-wizard-next="2"]').click();
+    });
+  }
+  // Bouton "Passer cette étape" - saute directement à l'étape 2
   const skipPersonalization = document.querySelector('#skip-personalization');
   if (skipPersonalization) {
     skipPersonalization.addEventListener('click', () => {
@@ -229,12 +237,19 @@ function initOnboardingWizard() {
     if (demoGuideStep === 1) {
       setDemoGuideStep(2);
       document.querySelector('#demo-result-heading').focus();
+    } else if (demoGuideStep === 2) {
+      setDemoGuideStep(3);
     } else {
       setDemoGuideStep(0);
       document.querySelector('#demo-guide-restart').focus();
     }
   });
   document.querySelector('#demo-guide-prev').addEventListener('click', () => {
+    if (demoGuideStep === 3) {
+      setDemoGuideStep(2);
+      document.querySelector('#demo-result-heading').focus();
+      return;
+    }
     setDemoGuideStep(1);
     document.querySelector('.demo-question[aria-pressed="true"]').focus();
   });
@@ -2029,6 +2044,50 @@ const NAV_SECTION_OF = {
   "vos-donnees": "plus"
 };
 
+const VIEW_TOUR_STEPS = [
+  {
+    view: "recherche",
+    headingId: "page-title",
+    title: "Recherche",
+    description: "La recherche locale porte sur les contenus indexés disponibles. Sa couverture dépend des sources et des éléments effectivement indexés."
+  },
+  {
+    view: "maison",
+    headingId: "house-title",
+    title: "Maison",
+    description: "Retrouvez ici les biens et équipements du foyer. La visite ne modifie aucun élément."
+  },
+  {
+    view: "famille",
+    headingId: "family-title",
+    title: "Famille",
+    description: "Cette vue présente l’espace privé et partagé. Les informations affichées peuvent provenir des données déjà présentes sur cet appareil."
+  },
+  {
+    view: "alertes",
+    headingId: "alerts-title",
+    title: "Alertes",
+    description: "Consultez les rappels et échéances. Aucune alerte n’est créée ni modifiée pendant la visite."
+  },
+  {
+    view: "vos-donnees",
+    headingId: "data-title",
+    title: "Vos données",
+    description: "L’inventaire indique les fichiers visibles et leur provenance. Cette vue peut afficher des données locales déjà présentes."
+  },
+  {
+    view: "importer",
+    headingId: "import-title",
+    title: "Importer",
+    description: "Les commandes d’ajout ne sont pas utilisées pendant la visite : aucun fichier n’est sélectionné ni importé."
+  }
+];
+let viewTourActive = false;
+let viewTourNavigating = false;
+let viewTourStepIndex = 0;
+let viewTourReturnView = "accueil";
+let viewTourReturnFocus = null;
+
 /**
  * Parses the URL hash into a view and parameters.
  * Supports formats:
@@ -2174,6 +2233,10 @@ function renderPlusBadges() {
 function showView(name, { addHistory = true, params = {} } = {}) {
   console.log("showView called for:", name);
   if (!Object.hasOwn(pageTitles, name)) return;
+  const currentTourStep = VIEW_TOUR_STEPS[viewTourStepIndex];
+  if (viewTourActive && !viewTourNavigating && name !== currentTourStep?.view) {
+    finishViewTour({ restoreView: false, restoreFocus: false });
+  }
   if (name !== "vos-donnees") suspendPhotoThumbnailRendering();
 
   // Gestion spéciale : Si un document est demandé, l'ouvrir dans le sourceDialog
@@ -2263,6 +2326,84 @@ function showView(name, { addHistory = true, params = {} } = {}) {
 
   // Mettre à jour la visibilité des boutons de gestion de fichiers
   updateClearFilesButtonsVisibility();
+}
+
+function showViewTourStep(stepIndex) {
+  viewTourStepIndex = stepIndex;
+  const step = VIEW_TOUR_STEPS[stepIndex];
+  const panel = document.querySelector("#view-tour");
+  panel.hidden = false;
+  document.querySelector("#view-tour-progress").textContent =
+    `Étape ${stepIndex + 1} sur ${VIEW_TOUR_STEPS.length} · ${step.title}`;
+  document.querySelector("#view-tour-description").textContent = step.description;
+  document.querySelector("#view-tour-prev").hidden = stepIndex === 0;
+  document.querySelector("#view-tour-next").textContent =
+    stepIndex === VIEW_TOUR_STEPS.length - 1 ? "Terminer la visite" : "Suivant";
+  document.querySelectorAll(".view-tour-highlight").forEach((heading) => {
+    heading.classList.remove("view-tour-highlight");
+  });
+
+  viewTourNavigating = true;
+  try {
+    showView(step.view, { addHistory: false });
+  } finally {
+    viewTourNavigating = false;
+  }
+
+  const heading = document.getElementById(step.headingId);
+  heading.classList.add("view-tour-highlight");
+  heading.tabIndex = -1;
+  heading.focus();
+}
+
+function startViewTour(returnFocus = document.activeElement) {
+  viewTourReturnView = Object.hasOwn(pageTitles, activeView) ? activeView : "accueil";
+  viewTourReturnFocus = returnFocus instanceof HTMLElement ? returnFocus : null;
+  viewTourActive = true;
+  document.body.classList.add("view-tour-active");
+  showViewTourStep(0);
+}
+
+function finishViewTour({ restoreView = true, restoreFocus = true } = {}) {
+  if (!viewTourActive) return;
+
+  const returnView = viewTourReturnView;
+  const returnFocus = viewTourReturnFocus;
+  viewTourActive = false;
+  document.body.classList.remove("view-tour-active");
+  document.querySelector("#view-tour").hidden = true;
+  document.querySelectorAll(".view-tour-highlight").forEach((heading) => {
+    heading.classList.remove("view-tour-highlight");
+  });
+  viewTourReturnFocus = null;
+
+  if (restoreView && activeView !== returnView) showView(returnView, { addHistory: false });
+  if (restoreFocus && returnFocus?.isConnected && !returnFocus.closest("[hidden]")) {
+    returnFocus.focus();
+  } else if (restoreFocus) {
+    const headingId = VIEW_TOUR_STEPS.find(step => step.view === activeView)?.headingId;
+    if (headingId) document.getElementById(headingId)?.focus();
+  }
+}
+
+function initViewTour() {
+  document.querySelector("#start-view-tour-profile").addEventListener("click", (event) => {
+    startViewTour(event.currentTarget);
+  });
+  document.querySelector("#start-view-tour-demo").addEventListener("click", (event) => {
+    startViewTour(event.currentTarget);
+  });
+  document.querySelector("#view-tour-prev").addEventListener("click", () => {
+    if (viewTourStepIndex > 0) showViewTourStep(viewTourStepIndex - 1);
+  });
+  document.querySelector("#view-tour-next").addEventListener("click", () => {
+    if (viewTourStepIndex < VIEW_TOUR_STEPS.length - 1) {
+      showViewTourStep(viewTourStepIndex + 1);
+    } else {
+      finishViewTour();
+    }
+  });
+  document.querySelector("#view-tour-exit").addEventListener("click", () => finishViewTour());
 }
 
 
@@ -4728,6 +4869,12 @@ function startOnboardingReplay(stepIndex = 0) {
  */
 let demoGuideStep = 0;
 
+const DEMO_GUIDE_STEPS = {
+  1: { instruction: 'Choisissez une question fictive ci-dessous, ou découvrez le résultat déjà affiché.', next: 'Voir le résultat' },
+  2: { instruction: 'Ce résultat fictif montre une source, une date et un extrait. Choisissez une autre question pour comparer.', next: 'Voir la suite' },
+  3: { instruction: 'Dans votre espace, une échéance trouvée ne devient une alerte qu’après votre confirmation. Ici, aucune alerte n’est créée. Terminez quand vous êtes prêt : rien n’est connecté ni enregistré.', next: 'Explorer librement' }
+};
+
 function setDemoGuideStep(step) {
   demoGuideStep = step;
   const guide = document.querySelector('#demo-guide');
@@ -4735,13 +4882,12 @@ function setDemoGuideStep(step) {
   document.querySelector('#demo-guide-restart').hidden = step !== 0;
   document.querySelector('.demo-questions').classList.toggle('demo-guide-highlight', step === 1);
   document.querySelector('#demo-results').classList.toggle('demo-guide-highlight', step === 2);
+  document.querySelector('#finish-onboarding-demo').classList.toggle('demo-guide-highlight', step === 3);
   if (step === 0) return;
-  document.querySelector('#demo-guide-progress').textContent = `Guide · étape ${step} sur 2`;
-  document.querySelector('#demo-guide-instruction').textContent = step === 1
-    ? 'Choisissez une question fictive ci-dessous, ou découvrez le résultat déjà affiché.'
-    : 'Ce résultat fictif montre une source, une date et un extrait. Choisissez une autre question pour comparer.';
+  document.querySelector('#demo-guide-progress').textContent = `Guide · étape ${step} sur 3`;
+  document.querySelector('#demo-guide-instruction').textContent = DEMO_GUIDE_STEPS[step].instruction;
   document.querySelector('#demo-guide-prev').hidden = step === 1;
-  document.querySelector('#demo-guide-next').textContent = step === 1 ? 'Voir le résultat' : 'Explorer librement';
+  document.querySelector('#demo-guide-next').textContent = DEMO_GUIDE_STEPS[step].next;
 }
 
 function startDemoGuide() {
@@ -4868,7 +5014,7 @@ function getDemoResultsPhotosAaron() {
     {
       id: 'photo-aaron-1',
       title: 'Aaron - Vacances d\'été 2023',
-      content: 'Photo de famille prise aujourd\'hui. Filtre appliqué : couleurs vives.',
+      content: 'Photo de famille prise pendant les vacances. Filtre appliqué : couleurs vives.',
       date: '15 juillet 2023',
       source: 'Local',
       provenance: 'Démo'
@@ -4876,7 +5022,7 @@ function getDemoResultsPhotosAaron() {
     {
       id: 'photo-aaron-2',
       title: 'Aaron - À l\'école',
-      content: 'Photo scolaire d\'Aaron avec sa nouvelle uniforme.',
+      content: 'Photo scolaire d\'Aaron avec son nouvel uniforme.',
       date: '3 octobre 2023',
       source: 'Local',
       provenance: 'Démo'
@@ -4896,3 +5042,4 @@ function initResetOnboardingButton() {
 
 // Initialiser le bouton de réinitialisation de l'onboarding
 initResetOnboardingButton();
+initViewTour();

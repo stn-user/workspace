@@ -1,5 +1,22 @@
 # [Non publié] - Recherche multi-sources : socle expérimental
 
+### Lot E — visite guidée des vues
+- Ajout d'une visite facultative en six étapes (Recherche, Maison, Famille, Alertes, Vos données, Importer), accessible depuis le profil et proposée à la fin de la démo.
+- La visite navigue dans les vues existantes, met leur titre en évidence, permet précédent/suivant/quitter et revient au point de départ. Elle est non modale et n'active ni import, ni connexion, ni demande de permission.
+- Les messages précisent que les vues peuvent afficher des données locales et décrivent les limites réelles de la recherche et de l'inventaire.
+- Ajout de tests Playwright couvrant les quatre largeurs de référence, le clavier, la reprise, la sortie, le lancement depuis la démo, la navigation manuelle, l'absence d'écriture IndexedDB et l'absence de requêtes externes supplémentaires. Validation manuelle sur tablette et mesures de contraste restent à faire.
+
+### Lot E — E2/E3 : progression de l'accueil et guide de démo
+- Accueil : progression « Étape N sur 3 » avec intitulé dans l'en-tête des trois étapes du wizard ; Entrée dans le champ du prénom facultatif valide l'étape.
+- Démo : le guide facultatif passe de deux à trois étapes. La troisième rappelle qu'aucune alerte n'est créée sans confirmation, qu'aucun compte n'est connecté ni donnée enregistrée, et met le bouton « Terminer » en évidence. Textes des exemples photos corrigés.
+- Tests Playwright mis à jour (guide en 3 étapes, retour, progression, touche Entrée) : 56 tests onboarding, démo et accessibilité passent. La visite des autres vues et la validation manuelle sur appareils restent ouvertes.
+
+### Lot E — accessibilité transversale (première tranche)
+- Cibles tactiles interactives portées à 48 × 48 px sur l'ensemble des écrans (navigation, puces, onglets, boutons texte, avatar, fil d'Ariane, liens et résumés) ; cases à cocher redessinées avec une zone de 48 px et un carré visible de 24 px à bordure contrastée.
+- Focus clavier visible de 3 px sur tous les contrôles ; `prefers-reduced-motion` neutralise transitions et animations globalement.
+- Noms accessibles ajoutés aux champs de fichiers masqués, aux préférences de profil et au bouton de recherche de l'assistant.
+- Audit automatisé `tests/accessibility-audit.spec.js` : 9 écrans × 4 largeurs (390, 768, 1280, 1920 px) pour cibles, noms accessibles et absence de débordement, plus mouvement réduit et parcours clavier. Les contrastes de couleur, les lecteurs d'écran et les appareils réels restent à vérifier ; l'audit ne couvre ni les modales ni les états dynamiques.
+
 ### Lot D — première tranche : filtres de recherche locale
 - La recherche expérimentale permet de filtrer par source, type document/photo, couverture, nature et période inclusive de date, personne explicitement annotée et lieu explicitement annoté. Les mêmes filtres s'appliquent aux noms, champs d'index et segments à provenance vérifiée.
 - Les choix de personne et lieu proviennent des annotations disponibles ; aucune identité, date ou localisation manquante n'est inférée. Le périmètre demeure les copies présentes dans Famili-IA, sans vérification de l'accès actuel aux originaux.

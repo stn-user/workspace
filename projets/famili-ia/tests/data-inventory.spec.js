@@ -128,7 +128,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
 
     await expect(page.locator('.data-stat-card')).toHaveCount(4);
     await expect(page.locator('.data-file-row')).toHaveCount(5);
-    await expect(page.locator('.data-view .chip').first()).toHaveCSS('min-height', '44px');
+    await expect(page.locator('.data-view .chip').first()).toHaveCSS('min-height', '48px');
     await expect(page.locator('.data-badge--type')).toHaveCount(5);
     await expect(page.locator('.data-badge--source')).toHaveCount(5);
     await expect(page.locator('.data-badge--index')).toHaveCount(5);
@@ -162,7 +162,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
   test('relie les chips de recherche unifiée aux types et provenances des documents', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('http://localhost:5179/#/recherche');
-    await expect(page.locator('#filter-type-group .chip').first()).toHaveCSS('min-height', '44px');
+    await expect(page.locator('#filter-type-group .chip').first()).toHaveCSS('min-height', '48px');
     await page.locator('#question').fill('Combien ai-je payé pour ma piscine ?');
     await page.locator('#search-form button[type="submit"]').click();
 

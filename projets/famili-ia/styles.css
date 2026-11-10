@@ -5060,7 +5060,132 @@ body {
   outline-offset: 3px;
 }
 
+.view-tour-invitation {
+  margin: 0.75rem 0 0.25rem;
+  color: var(--ui-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.view-tour {
+  position: fixed;
+  z-index: 90;
+  left: calc(260px + (100vw - 260px) / 2);
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  display: flex;
+  width: min(34rem, calc(100vw - 2rem));
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+}
+.view-tour[hidden] { display: none; }
+.view-tour-copy { min-width: 0; }
+.view-tour h2 { margin: 0; color: var(--ui-ink); font-size: 1rem; }
+.view-tour-status p { margin: 0.35rem 0 0; line-height: 1.4; }
+.view-tour-status p:first-child { color: var(--ui-brand-hover); font-weight: 700; }
+.view-tour-privacy { margin: 0.45rem 0 0; color: var(--color-text-secondary); font-size: 0.8rem; line-height: 1.35; }
+.view-tour-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
+.view-tour-actions .ui-button { min-width: 48px; min-height: 48px; }
+.view-tour-highlight {
+  border-radius: 4px;
+  outline: 3px solid var(--ui-brand);
+  outline-offset: 6px;
+}
+body.view-tour-active .main-content { padding-bottom: 15rem; }
+
+@media (max-width: 1024px) {
+  .view-tour {
+    right: 0.5rem;
+    left: 0.5rem;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: 45vh;
+    overflow-y: auto;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.75rem;
+    transform: none;
+  }
+  .view-tour-actions { justify-content: stretch; }
+  .view-tour-actions .ui-button { flex: 1 1 auto; }
+  body.view-tour-active .main-content { padding-bottom: 18rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .onboarding-page-white button { transition: none; }
   .onboarding-page-white button:hover { transform: none; }
+}
+
+/* Accessibilité transversale : cibles tactiles >= 48 px, focus clavier et mouvement réduit */
+:is(
+  .nav-item, .chip, .category-tab, .alert-filter-tab, .alert-status-action, .alert-action,
+  .text-button, .submit-button, .assistant-suggestion-chip, .secondary-button, .primary-button,
+  .danger-button, .property-edit-btn, .data-file-open
+) {
+  min-height: 48px;
+  min-width: 48px;
+}
+.avatar { min-width: 48px; min-height: 48px; width: 48px; height: 48px; }
+:is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"]), select, textarea) {
+  min-height: 48px;
+}
+/* Case à cocher : zone cliquable de 48 px, carré visible de 24 px à bordure contrastée (>= 3:1) */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 2px;
+  border: 12px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  background:
+    linear-gradient(#fff, #fff) content-box,
+    linear-gradient(#595959, #595959) padding-box;
+  background-clip: content-box, padding-box;
+}
+input[type="checkbox"]:checked {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M4 10.5l4 4 8-9' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 20px 20px no-repeat content-box,
+    linear-gradient(#171717, #171717) content-box,
+    linear-gradient(#171717, #171717) padding-box;
+  background-clip: content-box, content-box, padding-box;
+}
+input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }.breadcrumbs button, .data-view .chip, .search-filter-row .chip, .data-view .data-file-open,
+.data-inventory .danger-panel .danger-button {
+  min-height: 48px;
+  min-width: 48px;
+}
+:is(summary, .view a[href], .modal a[href], dialog a[href]) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+}
+:is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-primary, #171717);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+.onboarding-progress {
+  color: var(--ui-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
