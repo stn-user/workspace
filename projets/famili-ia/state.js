@@ -7,6 +7,8 @@ import { getAlertLevelForDate, normalizeAlertNotificationPreferences, refreshAle
 import { createPhotoMetadata, mergePhotoMetadata, normalizePhotoDocument } from './photo-metadata.js';
 import { normalizeOptionalBirthDate } from './family-members.js';
 import { isPhotoDocument, normalizePhotoAnnotations, removePhotoMemberAssociation } from './photo-annotations.js';
+import { createDocumentIndexRecord } from './document-index.js';
+import { migrateDocumentIndexes } from './document-index-migration.js';
 
 export function reconcileDocumentAlerts(existingAlerts, generatedAlerts) {
   const generatedById = new Map(generatedAlerts.map(alert => [alert.id, alert]));
@@ -100,6 +102,7 @@ let state = { ...defaultState };
  * Initialise l'état depuis IndexedDB ou peuple avec les défauts
  */
 export async function initState() {
+  let documentIndexMigrationInProgress = false;
   try {
     await initDB();
     const family = await getAll('family');
@@ -121,6 +124,9 @@ export async function initState() {
         documents.push(storedDocument);
       }
     }
+    documentIndexMigrationInProgress = true;
+    const indexedDocuments = await migrateDocumentIndexes(documents, document => put('documents', document));
+    documentIndexMigrationInProgress = false;
 
     if (family.length > 0) state.family = family;
     else for (const m of defaultState.family) await put('family', m);
@@ -137,15 +143,16 @@ export async function initState() {
     if (users.length > 0) state.currentUser = users[0];
     else await put('users', defaultState.currentUser);
 
-    state.documents = documents;
+    state.documents = indexedDocuments;
     if (state.currentUser.privacy?.photoLocationConsent !== true
-      && documents.some(document => document.photoMetadata?.location?.status === "available")) {
+      && indexedDocuments.some(document => document.photoMetadata?.location?.status === "available")) {
       await updatePhotoLocationConsent(false);
     }
-    await synchronizeDocumentAlerts(documents);
+    await synchronizeDocumentAlerts(indexedDocuments);
 
   } catch (e) {
-    console.warn('Erreur lors de l\'initialisation IndexedDB, utilisation des valeurs par défaut:', e);
+    console.error('Erreur lors de l\'initialisation IndexedDB:', e);
+    if (documentIndexMigrationInProgress) throw e;
   }
   return state;
 }
@@ -260,6 +267,7 @@ export async function deleteEquipment(id) {
 
 export async function addDocument(document) {
   document = normalizePhotoDocument(document);
+  document.indexRecord = await createDocumentIndexRecord(document);
   const existingIndex = state.documents.findIndex(existing => existing.id === document.id);
   await put('documents', document);
   if (existingIndex === -1) state.documents.push(document);

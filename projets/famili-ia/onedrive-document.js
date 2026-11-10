@@ -111,6 +111,7 @@ export async function readOneDriveDocument({ item, accountId, accountFingerprint
   const document = {
     id, name: item.name, type, date: modified && !Number.isNaN(modified.getTime())
       ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(modified) : "Date inconnue",
+    ...(modified && !Number.isNaN(modified.getTime()) ? { modificationDate: modified.toISOString() } : {}),
     isLocal: true, oneDriveSource: true, oneDriveAccountFingerprint: originFingerprint,
     content: "", summary: "", keywords: ""
   };

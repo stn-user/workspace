@@ -4,7 +4,7 @@ async function seedPhotoRecords(page, count = 1) {
   await page.goto('http://localhost:5179/#/vos-donnees');
   await expect(page.locator('.data-file-row')).toHaveCount(5);
   await page.evaluate(async photoCount => {
-    const request = indexedDB.open('FamiliIADatabase', 2);
+    const request = indexedDB.open('FamiliIADatabase', 3);
     const database = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -54,6 +54,74 @@ async function seedPhotoRecords(page, count = 1) {
 }
 
 test.describe('Vue Vos données et recherche unifiée', () => {
+  test('migre un document IndexedDB v2 vers une fiche durable en v3', async ({ page }) => {
+    await page.goto('http://localhost:5179/styles.css');
+    await page.evaluate(async () => {
+      const request = indexedDB.open('FamiliIADatabase', 2);
+      const database = await new Promise((resolve, reject) => {
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          for (const store of ['users', 'family', 'equipment', 'documents', 'alerts', 'logs', 'access_logs']) {
+            if (!db.objectStoreNames.contains(store)) {
+              db.createObjectStore(store, { keyPath: 'id' });
+            }
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      await new Promise((resolve, reject) => {
+        const transaction = database.transaction('documents', 'readwrite');
+        transaction.objectStore('documents').put({
+          id: 'legacy-local',
+          name: 'ancien.txt',
+          isLocal: true,
+          content: 'Contenu historique à conserver'
+        });
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error);
+      });
+      database.close();
+    });
+
+    await page.goto('http://localhost:5179/#/vos-donnees');
+    await expect(page.locator('.data-file-row')).toHaveCount(1);
+    const migrated = await page.evaluate(async () => {
+      const { getAll, put } = await import('/db.js');
+      const { rollbackDocumentIndexes } = await import('/document-index-migration.js');
+      const request = indexedDB.open('FamiliIADatabase');
+      const database = await new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const version = database.version;
+      database.close();
+      const documents = await getAll('documents');
+      const document = documents.find(entry => entry.id === 'legacy-local');
+      const rolledBack = await rollbackDocumentIndexes(
+        documents,
+        entry => put('documents', entry)
+      );
+      const afterRollback = (await getAll('documents')).find(entry => entry.id === 'legacy-local');
+      return {
+        version,
+        document,
+        rollback: {
+          recordRemoved: !Object.hasOwn(rolledBack.find(entry => entry.id === 'legacy-local'), 'indexRecord'),
+          contentPreserved: afterRollback.content === 'Contenu historique à conserver',
+          recordAbsent: !Object.hasOwn(afterRollback, 'indexRecord')
+        }
+      };
+    });
+
+    expect(migrated.version).toBe(3);
+    expect(migrated.document.content).toBe('Contenu historique à conserver');
+    expect(migrated.document.indexRecord.sourceId).toBe('local');
+    expect(migrated.document.indexRecord.itemId).toBe('legacy-local');
+    expect(migrated.document.indexRecord.coverage).toBe('metadata');
+    expect(migrated.rollback).toEqual({ recordRemoved: true, contentPreserved: true, recordAbsent: true });
+  });
+
   test('adapte les cartes et les filtres aux petits écrans sans débordement', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('http://localhost:5179/#/vos-donnees');
@@ -120,7 +188,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
 
     const dialog = page.locator('#purge-confirmation');
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText('Les fichiers d’origine dans vos dossiers ou sur Google Drive ne seront pas supprimés');
+    await expect(dialog).toContainText('Les fichiers d’origine locaux, Google Drive et OneDrive ne seront pas supprimés.');
     await page.locator('#cancel-purge').click();
     await expect(dialog).toBeHidden();
     await expect(page.locator('.data-file-row')).toHaveCount(5);
@@ -131,7 +199,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await expect(page.locator('#summary-demo')).toHaveText('5');
     await page.evaluate(async () => {
       localStorage.setItem('famili-ia-family', JSON.stringify([{ id: 'custom-family-member' }]));
-      const request = indexedDB.open('FamiliIADatabase', 2);
+      const request = indexedDB.open('FamiliIADatabase', 3);
       const database = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -152,7 +220,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await reload;
 
     const storedState = await page.evaluate(async () => {
-      const request = indexedDB.open('FamiliIADatabase', 2);
+      const request = indexedDB.open('FamiliIADatabase', 3);
       const database = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -230,7 +298,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await expect(confirmation).toBeHidden();
     await expect(page.locator('#moments-life-search-status')).toContainText('Les fichiers originaux sont préservés');
     const remainingPhotoIds = await page.evaluate(async () => {
-      const request = indexedDB.open('FamiliIADatabase', 2);
+      const request = indexedDB.open('FamiliIADatabase', 3);
       const database = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);

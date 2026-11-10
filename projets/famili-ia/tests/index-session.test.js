@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { IndexSession } from "../index-session.js";
 import { createIndexRecord } from "../index-record.js";
+import { createContentProvenance } from "../content-index.js";
+import { createDocumentIndexRecord } from "../document-index.js";
 import { GoogleDriveClient, googleDriveScope, prepareDriveDocumentForIndex } from "../google-drive.js";
 import { GoogleDriveSource } from "../google-drive-source.js";
 
@@ -119,4 +121,32 @@ test("contenus vérifiés, anciens documents, corrections et suppression", () =>
   session.syncDocuments([]);
   assert.deepEqual(session.search("résilier"), []);
   assert.throws(() => session.trustExtractedContent(driveDoc, ["extrait inventé"]), TypeError);
+});
+
+test("les faits persistés sont restaurés après redémarrage seulement si le contenu reste vérifié", async () => {
+  const document = {
+    id: "persistent-invoice",
+    name: "facture.txt",
+    isLocal: true,
+    content: "Facture EDF\nTotal TTC : 123,45 EUR"
+  };
+  document.contentProvenance = await createContentProvenance(
+    document, [document.content], "local-text"
+  );
+  document.indexRecord = await createDocumentIndexRecord(document);
+
+  const restored = JSON.parse(JSON.stringify(document));
+  const restarted = new IndexSession();
+  assert.equal(await restarted.restoreDocumentContent(restored), "verified");
+  restarted.syncDocuments([restored]);
+  assert.equal(restarted.search("edf")[0].coverage, "partial");
+  assert.ok(restarted.search("edf")[0].reasons.some(reason =>
+    reason.location === "field.provider" && reason.proof.excerpt === "Facture EDF"));
+
+  const altered = { ...restored, content: `${restored.content}\nTexte ajouté` };
+  const unverified = new IndexSession();
+  assert.equal(await unverified.restoreDocumentContent(altered), "invalid");
+  unverified.syncDocuments([altered]);
+  assert.deepEqual(unverified.search("edf"), []);
+  assert.equal(unverified.search("facture")[0].coverage, "metadata");
 });

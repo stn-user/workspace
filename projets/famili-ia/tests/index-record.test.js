@@ -22,8 +22,9 @@ test("fiche document complète : dates, provenance, preuve et estimation distinc
   const record = createIndexRecord("src", "id", options);
   assert.deepEqual(options, inputCopy);
   assert.deepEqual(record, {
-    schema: "1.0.0", sourceId: "src", itemId: "id", type: "document",
+    schema: "1.1.0", sourceId: "src", itemId: "id", type: "document",
     name: { value: "facture.pdf", source: "provider", estimated: false, proof: null },
+    location: null,
     dates: {
       creation: { value: "2024-01-01", source: "provider", estimated: false, proof: null },
       modification: { value: "2024-01-02T13:00:00Z", source: "provider", estimated: false, proof: null },
@@ -43,12 +44,14 @@ test("fiche document complète : dates, provenance, preuve et estimation distinc
 test("photo et informations inconnues : aucune date ni preuve inventée", () => {
   const photo = createIndexRecord("local", "photo", {
     type: "photo",
+    location: { value: "Photos/Vacances", source: "provider" },
     dates: { priseDeVue: { value: "2024-07-14", source: "provider", estimated: true } }
   });
   assert.deepEqual(photo.dates, { priseDeVue: {
     value: "2024-07-14", source: "provider", estimated: true, proof: null
   } });
   assert.equal(photo.name, null);
+  assert.deepEqual(photo.location, { value: "Photos/Vacances", source: "provider", estimated: false, proof: null });
   assert.equal(photo.coverage, null);
   assert.equal(photo.lastCheck, null);
   assert.deepEqual(photo.fields, []);
@@ -113,9 +116,9 @@ test("conversion de plusieurs pages fictives sans lire le contenu ni déduire le
   assert.equal(discovered.pagesRead, 2);
   const records = fakeConnectorAdapter({ items: discovered.items }, "source-a");
   assert.deepEqual(records, ["facture.pdf", "photo.jpg"].map((name, index) => ({
-    schema: "1.0.0", sourceId: "source-a", itemId: String(index + 1), type: null,
+    schema: "1.1.0", sourceId: "source-a", itemId: String(index + 1), type: null,
     name: { value: name, source: "provider", estimated: false, proof: null },
-    dates: {}, coverage: "metadata", lastCheck: null, fields: []
+    location: null, dates: {}, coverage: "metadata", lastCheck: null, fields: []
   })));
   assert.equal(records.every(isValidIndexRecord), true);
   assert.throws(() => fakeConnectorAdapter({ items: [{ id: "x" }] }, "source-a"), TypeError);

@@ -1,6 +1,7 @@
 import { isValidCoverageLevel } from "./index-coverage.js";
 
-const SCHEMA_VERSION = "1.0.0";
+export const INDEX_RECORD_SCHEMA_VERSION = "1.1.0";
+const PREVIOUS_SCHEMA_VERSION = "1.0.0";
 const DATE_TYPES = ["creation", "modification", "priseDeVue", "achat", "echeance"];
 const SOURCES = ["provider", "extracted", "user-input", "auto-estimate"];
 
@@ -61,8 +62,8 @@ export function createIndexRecord(sourceId, itemId, options = {}) {
   if (!isNonEmptyString(sourceId) || !isNonEmptyString(itemId)) {
     throw new TypeError("sourceId et itemId doivent être des chaînes non vides");
   }
-  assertKeys(options, ["type", "name", "dates", "coverage", "lastCheck", "fields"], "options");
-  const { type = null, name = null, dates = {}, coverage = null, lastCheck = null, fields = [] } = options;
+  assertKeys(options, ["type", "name", "location", "dates", "coverage", "lastCheck", "fields"], "options");
+  const { type = null, name = null, location = null, dates = {}, coverage = null, lastCheck = null, fields = [] } = options;
   if (type !== null && !["document", "photo"].includes(type)) throw new TypeError("type invalide");
   if (coverage !== null && !isValidCoverageLevel(coverage)) throw new TypeError("couverture invalide");
   if (lastCheck !== null && !isValidDate(lastCheck)) throw new TypeError("dernière vérification invalide");
@@ -80,11 +81,12 @@ export function createIndexRecord(sourceId, itemId, options = {}) {
     return { name: fieldName, ...normalizeValue(value, "champ") };
   });
   return {
-    schema: SCHEMA_VERSION,
+    schema: INDEX_RECORD_SCHEMA_VERSION,
     sourceId,
     itemId,
     type,
     name: name === null ? null : normalizeValue(name, "nom"),
+    location: location === null ? null : normalizeValue(location, "emplacement"),
     dates: normalizedDates,
     coverage,
     lastCheck,
@@ -95,19 +97,53 @@ export function createIndexRecord(sourceId, itemId, options = {}) {
 export function isValidIndexRecord(record) {
   if (!isObject(record)) return false;
   try {
-    assertKeys(record, ["schema", "sourceId", "itemId", "type", "name", "dates", "coverage", "lastCheck", "fields"], "fiche");
-    if (record.schema !== SCHEMA_VERSION ||
-        ["type", "name", "dates", "coverage", "lastCheck", "fields"].some((key) =>
+    assertKeys(record, ["schema", "sourceId", "itemId", "type", "name", "location", "dates", "coverage", "lastCheck", "fields"], "fiche");
+    if (record.schema !== INDEX_RECORD_SCHEMA_VERSION ||
+        ["type", "name", "location", "dates", "coverage", "lastCheck", "fields"].some((key) =>
           !Object.prototype.hasOwnProperty.call(record, key) || record[key] === undefined)) {
       return false;
     }
     createIndexRecord(record.sourceId, record.itemId, {
-      type: record.type, name: record.name, dates: record.dates,
+      type: record.type, name: record.name, location: record.location, dates: record.dates,
       coverage: record.coverage, lastCheck: record.lastCheck, fields: record.fields
     });
     return true;
   } catch (error) {
     if (error instanceof TypeError) return false;
+    throw error;
+  }
+}
+
+export function migrateIndexRecord(record) {
+  if (!isObject(record)) throw new TypeError("Fiche d'index invalide");
+  if (record.schema === INDEX_RECORD_SCHEMA_VERSION) {
+    if (!isValidIndexRecord(record)) throw new TypeError("Fiche d'index invalide");
+    return createIndexRecord(record.sourceId, record.itemId, {
+      type: record.type,
+      name: record.name,
+      location: record.location,
+      dates: record.dates,
+      coverage: record.coverage,
+      lastCheck: record.lastCheck,
+      fields: record.fields
+    });
+  }
+  if (record.schema !== PREVIOUS_SCHEMA_VERSION) {
+    throw new TypeError(`Version de fiche d'index non prise en charge : ${record.schema ?? "absente"}`);
+  }
+  assertKeys(record, ["schema", "sourceId", "itemId", "type", "name", "dates", "coverage", "lastCheck", "fields"], "fiche historique");
+  try {
+    return createIndexRecord(record.sourceId, record.itemId, {
+      type: record.type,
+      name: record.name,
+      location: null,
+      dates: record.dates,
+      coverage: record.coverage,
+      lastCheck: record.lastCheck,
+      fields: record.fields
+    });
+  } catch (error) {
+    if (error instanceof TypeError) throw new TypeError("Fiche d'index historique invalide");
     throw error;
   }
 }
@@ -123,6 +159,7 @@ export function fakeConnectorAdapter(discoveryPage, sourceId) {
     }
     return createIndexRecord(sourceId, item.id, {
       name: { value: item.name, source: "provider" },
+      location: null,
       coverage: "metadata"
     });
   });

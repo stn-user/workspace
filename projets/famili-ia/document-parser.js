@@ -37,6 +37,46 @@ const extractAmount = (text) => {
     return match && match[1] ? parseFloat(match[1].replace(',', '.')) : null;
 };
 
+const findEvidenceLine = (text, predicate) => {
+    const lines = text.split(/\r?\n/);
+    const index = lines.findIndex(predicate);
+    return index < 0 ? null : { excerpt: lines[index].trim(), location: `ligne ${index + 1}` };
+};
+
+const extractLabeledDates = (text) => {
+    const labels = {
+        creation: /\b(date de creation|date facture|emise le|emis le)\b/,
+        modification: /\b(date de modification|modifie le|mise a jour le|mis a jour le)\b/,
+        achat: /\b(date d'achat|date achat|achete le|achetee le|acquis le)\b/
+    };
+    const datePattern = /\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{1,2}\s+[a-zA-ZÀ-ÿ]+\s+\d{4})\b/i;
+    const facts = {};
+
+    for (const [type, pattern] of Object.entries(labels)) {
+        for (const [index, line] of text.split(/\r?\n/).entries()) {
+            const normalizedLine = normalizeForClassification(line);
+            if (!pattern.test(normalizedLine)) continue;
+            const match = line.match(datePattern);
+            const value = match && normalizeAlertDate(match[0]);
+            if (!value) continue;
+            facts[type] = { value, proof: { excerpt: line.trim(), location: `ligne ${index + 1}` } };
+            break;
+        }
+    }
+    return facts;
+};
+
+const extractLabeledEquipment = (text) => {
+    for (const [index, line] of text.split(/\r?\n/).entries()) {
+        const match = line.match(/^\s*(?:équipement|appareil|matériel)\s*[:\-]\s*(.+?)\s*$/i);
+        const value = match?.[1]?.trim();
+        if (value && value.length <= 180) {
+            return { value, proof: { excerpt: line.trim(), location: `ligne ${index + 1}` } };
+        }
+    }
+    return null;
+};
+
 const extractProvider = (text, providers) => {
     return providers.find(p => text.toLowerCase().includes(p.toLowerCase())) || null;
 };
@@ -105,10 +145,17 @@ export function parseDocument(text, filename) {
         id: crypto.randomUUID(),
         originalName: filename,
         type: bestDetector ? bestDetector.type : 'autre',
+        typeEvidence: bestDetector ? findEvidenceLine(text, line =>
+            bestDetector.keywords.some(word => normalizeForClassification(line).includes(normalizeForClassification(word)))
+        ) : null,
         date: extractDate(text),
+        dateFacts: extractLabeledDates(text),
+        equipment: extractLabeledEquipment(text),
         expiryDate: null,
         amount: null,
+        amountEvidence: null,
         provider: null,
+        providerEvidence: null,
         category: 'autre',
         tags: [],
         isProactive: false
@@ -116,6 +163,13 @@ export function parseDocument(text, filename) {
 
     if (bestDetector) {
         Object.assign(context, bestDetector.extract(text));
+        if (context.amount !== null) {
+            context.amountEvidence = findEvidenceLine(text, line => /(?:\d+[\.,]\d{2})?\s?(?:€|EUR)/i.test(line));
+        }
+        if (context.provider) {
+            const provider = normalizeForClassification(context.provider);
+            context.providerEvidence = findEvidenceLine(text, line => normalizeForClassification(line).includes(provider));
+        }
     }
 
     return context;

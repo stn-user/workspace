@@ -5,7 +5,7 @@
 import { encryptData, decryptData } from './crypto.js';
 
 const DB_NAME = 'FamiliIADatabase';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const initDB = () => {
   return new Promise((resolve, reject) => {

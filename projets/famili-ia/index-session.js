@@ -1,11 +1,24 @@
 import { getInventorySource } from "./data-inventory.js";
 import { createIndexRecord, isValidIndexRecord } from "./index-record.js";
 import { reconcileIndex } from "./index-reconciliation.js";
+import { preserveUserValues } from "./document-index.js";
 import { searchIndex } from "./index-search.js";
 import { searchContentInDocuments } from "./content-search.js";
 import { restoreContentSegments } from "./content-index.js";
 
 export const INDEX_SOURCES = Object.freeze({ local: "local", drive: "drive", onedrive: "onedrive" });
+
+function copyIndexRecord(record, { coverage = record.coverage, fields = record.fields, dates = record.dates } = {}) {
+  return createIndexRecord(record.sourceId, record.itemId, {
+    type: record.type,
+    name: record.name,
+    location: record.location,
+    dates,
+    coverage,
+    lastCheck: record.lastCheck,
+    fields
+  });
+}
 
 export class IndexSession {
   #records = [];
@@ -42,6 +55,9 @@ export class IndexSession {
     const sources = new Map();
     const contents = new Map();
     const activeTrust = new WeakMap();
+    const recordsByIdentity = new Map(this.#records.map(record => [
+      JSON.stringify([record.sourceId, record.itemId]), record
+    ]));
     for (const document of documents) {
       if (!document || typeof document !== "object" || Array.isArray(document)) {
         throw new TypeError("Document invalide");
@@ -61,14 +77,41 @@ export class IndexSession {
       const segments = unchanged
         ? trusted.segments.filter(segment => segment.trim()) : [];
       contents.get(source).set(document.id, segments);
-      sources.get(source).set(document.id, createIndexRecord(INDEX_SOURCES[source], document.id, {
+      const sourceId = INDEX_SOURCES[source];
+      const discovery = createIndexRecord(sourceId, document.id, {
         name: { value: document.name, source: "provider" },
+        location: typeof document.sourceDir === "string" && document.sourceDir.trim() &&
+          !["Saisie manuelle", "Background Sync"].includes(document.sourceDir.trim())
+          ? { value: document.sourceDir, source: "provider" }
+          : null,
         coverage: "metadata"
-      }));
+      });
+      sources.get(source).set(document.id, discovery);
+
+      const identity = JSON.stringify([sourceId, document.id]);
+      const previous = recordsByIdentity.get(identity) || null;
+      if (document.indexRecord !== undefined) {
+        if (!isValidIndexRecord(document.indexRecord) ||
+            document.indexRecord.sourceId !== sourceId || document.indexRecord.itemId !== document.id) {
+          throw new TypeError("La fiche d'index persistée est invalide ou liée à une autre identité");
+        }
+        let persisted = copyIndexRecord(document.indexRecord);
+        if (!segments.length) {
+          persisted = copyIndexRecord(persisted, {
+            coverage: "metadata",
+            fields: persisted.fields.filter(field => !["extracted", "auto-estimate"].includes(field.source)),
+            dates: Object.fromEntries(Object.entries(persisted.dates)
+              .filter(([, value]) => !["extracted", "auto-estimate"].includes(value.source)))
+          });
+        } else if (persisted.coverage === null || persisted.coverage === "metadata") {
+          persisted = copyIndexRecord(persisted, { coverage: "partial" });
+        }
+        recordsByIdentity.set(identity, preserveUserValues(persisted, previous));
+      }
     }
 
     const discovered = [...sources.values()].flatMap(items => [...items.values()]);
-    const next = reconcileIndex(this.#records, discovered)
+    const next = reconcileIndex([...recordsByIdentity.values()], discovered)
       .filter(({ record }) => sources.get(record.sourceId)?.has(record.itemId))
       .map(({ record }) => ({ ...record, coverage: contents.get(record.sourceId).get(record.itemId).length
         ? "partial" : "metadata" }));

@@ -18,7 +18,7 @@ function validateRecords(records, label) {
 
 function copyRecord(record, name = record.name) {
   return createIndexRecord(record.sourceId, record.itemId, {
-    type: record.type, name, dates: record.dates, coverage: record.coverage,
+    type: record.type, name, location: record.location, dates: record.dates, coverage: record.coverage,
     lastCheck: record.lastCheck, fields: record.fields
   });
 }

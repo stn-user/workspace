@@ -14,9 +14,9 @@ test("conversion exacte, sans contenu ni date inventée", () => {
   for (const date of ["15 janv. 2024", "Date inconnue"]) {
     const record = adaptDriveResult("source", result("drive-123", "facture.pdf", date));
     assert.deepEqual(record, {
-      schema: "1.0.0", sourceId: "source", itemId: "drive-123", type: null,
+      schema: "1.1.0", sourceId: "source", itemId: "drive-123", type: null,
       name: { value: "facture.pdf", source: "provider", estimated: false, proof: null },
-      dates: {}, coverage: "metadata", lastCheck: null, fields: []
+      location: null, dates: {}, coverage: "metadata", lastCheck: null, fields: []
     });
     assert.equal(isValidIndexRecord(record), true);
     assert.equal(JSON.stringify(record).includes("privé"), false);
@@ -96,8 +96,8 @@ test("sortie réelle du client Drive simulé sans appel réseau supplémentaire"
   const [record] = adaptDriveResults("instance", [loaded]);
   assert.equal(calls.length, 2);
   assert.deepEqual(record, {
-    schema: "1.0.0", sourceId: "instance", itemId: "drive-picker-id", type: null,
+    schema: "1.1.0", sourceId: "instance", itemId: "drive-picker-id", type: null,
     name: { value: "facture.txt", source: "provider", estimated: false, proof: null },
-    dates: {}, coverage: "metadata", lastCheck: null, fields: []
+    location: null, dates: {}, coverage: "metadata", lastCheck: null, fields: []
   });
 });

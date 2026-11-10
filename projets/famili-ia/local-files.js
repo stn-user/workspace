@@ -98,7 +98,10 @@ async function readPdfFile(fileBlob) {
 async function readDocxFile(fileBlob) {
   const arrayBuffer = await fileBlob.arrayBuffer();
   const mammoth = await loadMammoth();
-  const result = await mammoth.extractRawText({ arrayBuffer });
+  const input = typeof window === "undefined"
+    ? { buffer: new Uint8Array(arrayBuffer) }
+    : { arrayBuffer };
+  const result = await mammoth.extractRawText(input);
   return result.value;
 }
 
@@ -151,17 +154,16 @@ async function readFileContent(fileBlob, filename) {
       }
       break;
     case 'docx':
+      textContent = await readDocxFile(fileBlob);
+      extractedSegments = textContent.trim() ? [textContent] : [];
+      break;
     case 'doc':
-      try {
-        textContent = await readDocxFile(fileBlob);
-        extractedSegments = [textContent];
-      } catch {
-        textContent = "Fichier Word au format ancien (.doc). Veuillez l'enregistrer au format .docx pour une lecture optimale.";
-      }
+      textContent = "Fichier Word au format ancien (.doc), non pris en charge. Enregistrez-le au format .docx pour extraire son texte.";
       break;
     case 'xlsx':
     case 'xls':
       textContent = await readExcelFile(fileBlob);
+      extractedSegments = textContent.trim() ? [textContent] : [];
       break;
     case 'txt':
     case 'md':

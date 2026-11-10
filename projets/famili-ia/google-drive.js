@@ -284,6 +284,9 @@ export class GoogleDriveClient {
       date: metadata.modifiedTime
         ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(metadata.modifiedTime))
         : "Date inconnue",
+      ...(typeof metadata.modifiedTime === "string" && !Number.isNaN(Date.parse(metadata.modifiedTime))
+        ? { modificationDate: new Date(metadata.modifiedTime).toISOString() }
+        : {}),
       keywords: "",
       summary: "",
       content,

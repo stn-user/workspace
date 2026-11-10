@@ -1,5 +1,16 @@
 # [Non publié] - Recherche multi-sources : socle expérimental
 
+### Lot C — index durable et analyse locale explicable (expérimental, périmètre partiel)
+- Schéma d'index `1.1.0` : emplacement sourcé facultatif, compatibilité `1.0.0` et conservation des fiches dans les documents IndexedDB v3.
+- Migration v2→v3 idempotente et reprenable ; retour arrière applicatif qui retire seulement `indexRecord`, sans rétrograder IndexedDB ni toucher au contenu, aux annotations ou aux vignettes du document.
+- Règle de conservation documentée : preuves et autres données associées sont conservées avec la copie Famili-IA jusqu'à sa suppression/purge explicite, sans expiration automatique ; l'original fournisseur n'est pas touché.
+- La recherche recharge les faits persistés après redémarrage uniquement si la provenance du contenu reste vérifiée ; sans preuve valide, les champs extraits/estimés sont écartés. Les corrections utilisateur sont conservées à la réindexation.
+- Extraction à partir des segments vérifiés : classification/catégorie explicitement estimées, émetteur, montant, dates, échéance et équipement explicitement étiqueté avec preuves. Le texte XLS/XLSX local devient indexable. Le parcours DOCX a été testé de bout en bout avec un fichier OOXML synthétique sous Node et Chromium ; les formats `.doc` et les erreurs DOCX restent sans segments indexables. Les fichiers Word réels variés et l'OCR natif sur appareil ne sont pas validés.
+- Détection exacte si les empreintes existent et suggestions incertaines par nom normalisé, sans fusion ; aucune empreinte systématique ni interface de revue.
+- Corpus fictif de 7 cas (5 avec contenu vérifié, 2 métadonnées seules), 17 faits attendus/prédits, aucune erreur sur ce jeu ; une exécution a mesuré environ 71 ms et 1,08 Mo de delta mémoire. Ces mesures synthétiques ne prédisent pas la qualité en production.
+- Validation : 279 tests Node réussis, build Vite réussi et 4 tests navigateur ciblés réussis : extraction DOCX, migration+retour arrière, confirmation de suppression et purge. La suite `data-inventory.spec.js` passe 8 tests sur 9 ; son unique échec est une attente de 4 cartes statistiques alors que l'interface en affiche 5. La navigation de faits persistés après redémarrage est couverte par un test Node ; la suite navigateur complète du projet n'a pas été exécutée.
+- Le lot reste ouvert pour les critères non validés : essais sur un corpus représentatif de vrais fichiers, OCR natif sur appareils, classification/extraction générale, politique complète de conservation, et extension de la couverture et de l'évaluation avant toute revendication de qualité.
+
 ### Architecture et prototypes
 - Correction du bloc de variables CSS pour rétablir la compilation de l'application.
 - Cadrage de la cible multi-sources, scénarios fictifs, états et limites des sources, et proposition de contrat de connecteurs.
