@@ -156,6 +156,7 @@ export class IndexSession {
 
   search(query, options = {}) {
     const matches = searchIndex(this.#records, query, options);
+    if (!query.trim()) return matches;
     const eligible = this.#content.filter(doc => {
       const record = this.#records.find(entry => entry.sourceId === doc.sourceId && entry.itemId === doc.itemId);
       return record && matchesIndexFilters(record, options);

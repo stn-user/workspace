@@ -9,7 +9,6 @@ import { clearFamilyState, loadFamilyState } from "./family-storage.js";
 import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, updatePhotoAnnotations, resetState } from "./state.js";
 import { redactPhotoLocationsForExport } from "./photo-metadata.js";
 import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
-import { searchMomentsLife } from "./moments-life-search.js";
 import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
 import { getPhotoThumbnailDataUrl } from "./photo-thumbnails.js";
 import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline } from "./photo-timeline.js";
@@ -20,6 +19,7 @@ import { describeSources } from "./source-status.js";
 import { describeExperimentalResult } from "./experimental-result.js";
 import { findDocumentDuplicateCandidates } from "./document-deduplication.js";
 import { findIndexDeadlines } from "./index-deadline-search.js";
+import { createUnifiedIndexQuery, isWithinDateRange, mergeUnifiedIndexFilters } from "./unified-index-query.js";
 import { ALERT_CATEGORIES, getAlertLevelForDate } from "./alert-engine.js";
 import { OneDriveAuth } from "./onedrive-auth.js";
 import { scanOneDrive } from "./onedrive-graph.js";
@@ -32,6 +32,7 @@ import { formatOneDriveAccountFingerprint, getOneDriveAccountFingerprint } from 
 const activeScanWorkers = new Map();
 let suspendPhotoThumbnailRendering = () => {};
 let resumePhotoThumbnailRendering = () => {};
+let renderUnifiedPhotoResults = () => {};
 let replayOnboarding = false;
 
 /**
@@ -372,7 +373,7 @@ function initOnboardingWizard() {
     initAddMemberDialog();
     initPhotoAnnotationsDialog();
     initPhotoDetailsDialog();
-    initMomentsLifeSearch();
+    renderUnifiedPhotoResults = initUnifiedPhotoResults();
     console.log('[DEBUG] Async init - dialogs initialized');
 
     // Initialiser l'onboarding wizard si ce n'est pas déjà fait
@@ -577,8 +578,10 @@ const invalidContentProvenance = new WeakSet();
 let driveSelectionGeneration = 0;
 let driveSelectionSettled = null;
 let removingSessionFiles = false;
-const experimentalIndexForm = document.querySelector("#experimental-index-form");
-const experimentalIndexQuery = document.querySelector("#experimental-index-query");
+const form = document.querySelector("#experimental-index-form");
+const input = document.querySelector("#experimental-index-query");
+const experimentalIndexForm = form;
+const experimentalIndexQuery = input;
 const experimentalIndexSource = document.querySelector("#experimental-index-source");
 const experimentalIndexType = document.querySelector("#experimental-index-type");
 const experimentalIndexCoverage = document.querySelector("#experimental-index-coverage");
@@ -647,6 +650,28 @@ function getExperimentalIndexFilters() {
     ["place", experimentalIndexPlace.value]
   ].filter(([, value]) => value));
 }
+
+function getUnifiedIndexSearchRequest(query) {
+  const photos = mergeInventoryDocuments(uploadedDocuments, getDocuments()).filter(isPhotoDocument);
+  return createUnifiedIndexQuery(query, { members: getFamilyMembers(), photos });
+}
+
+function getPhotoQueryClarification(reason) {
+  const messages = {
+    "person-required": "Précisez le membre de la famille concerné.",
+    "person-ambiguous": "Plusieurs personnes correspondent. Précisez le prénom ou vérifiez les profils.",
+    "birth-date-required": "La date de naissance de cette personne manque dans les profils ; renseignez-la pour rechercher par âge.",
+    "year-required": "Précisez l'année pour compléter cette période.",
+    "invalid-date": "La date indiquée n'est pas valide.",
+    "invalid-birth-date": "La date de naissance indiquée n'est pas valide.",
+    "age-out-of-range": "L'âge demandé dépasse la plage de dates prise en charge.",
+    "place-ambiguous": "Plusieurs lieux correspondent. Précisez le lieu ou vérifiez les annotations.",
+    "event-ambiguous": "Plusieurs événements correspondent. Précisez l'événement ou vérifiez les annotations.",
+    "season-ambiguous": "Précisez une seule saison."
+  };
+  return messages[reason] || "Une précision est nécessaire pour interpréter cette recherche photo.";
+}
+
 let oneDriveScanController = null;
 let oneDriveScanSettled = null;
 
@@ -857,13 +882,48 @@ function refreshExperimentalIndex() {
     experimentalIndexResults.replaceChildren();
     const records = experimentalIndex.getAllRecords();
     refreshExperimentalFacets(records);
-    if (!experimentalQuery) {
+    const selectedFilters = getExperimentalIndexFilters();
+    if (!experimentalQuery.trim() && Object.keys(selectedFilters).length === 0) {
+      renderUnifiedPhotoResults([], { kind: "empty" });
       experimentalIndexStatus.textContent = "";
       return;
     }
-    const matches = experimentalIndex.search(experimentalQuery, getExperimentalIndexFilters());
+    const request = getUnifiedIndexSearchRequest(experimentalQuery);
+    if (request.kind === "clarification") {
+      renderUnifiedPhotoResults([], request);
+      experimentalIndexStatus.textContent = getPhotoQueryClarification(request.clarificationReason);
+      return;
+    }
+    if (request.profileMismatch) {
+      renderUnifiedPhotoResults([], { kind: "clarification" });
+      experimentalIndexStatus.textContent = "L'année de naissance indiquée ne correspond pas au profil enregistré. Vérifiez le profil familial ou reformulez la recherche par âge.";
+      return;
+    }
+    const filters = mergeUnifiedIndexFilters(request.filters, selectedFilters);
+    if (!filters) {
+      renderUnifiedPhotoResults([], { kind: "clarification" });
+      experimentalIndexStatus.textContent = "Les filtres interprétés et les filtres choisis se contredisent. Modifiez l'un d'eux puis relancez la recherche.";
+      return;
+    }
+    let matches = experimentalIndex.search(request.query, filters);
     const matchKey = ({ sourceId, itemId }) => JSON.stringify([sourceId, itemId]);
-    const matchedKeys = new Set(matches.map(matchKey));
+    const documentsByMatch = new Map(matches.map(match =>
+      [matchKey(match), findExperimentalDocument(match.sourceId, match.itemId)]
+    ));
+    if (request.importDateRange) {
+      matches = matches.filter(match => isWithinDateRange(
+        documentsByMatch.get(matchKey(match))?.importedAt,
+        request.importDateRange
+      ));
+    }
+    const photoMatches = matches.filter(match =>
+      isPhotoDocument(documentsByMatch.get(matchKey(match)))
+    );
+    const documentMatches = matches.filter(match =>
+      !isPhotoDocument(documentsByMatch.get(matchKey(match)))
+    );
+    renderUnifiedPhotoResults(photoMatches, request, documentsByMatch);
+    const matchedKeys = new Set(documentMatches.map(matchKey));
     const duplicateDocuments = uploadedDocuments
       .map(document => ({ ...document, sourceId: INDEX_SOURCES[getInventorySource(document)] }))
       .filter(document => document.sourceId);
@@ -873,7 +933,7 @@ function refreshExperimentalIndex() {
     const renderedKeys = new Set();
     const renderMatch = (match, tagName = "li") => {
       const item = document.createElement(tagName);
-      const sourceDocument = findExperimentalDocument(match.sourceId, match.itemId);
+      const sourceDocument = documentsByMatch.get(matchKey(match));
       const record = records.find(entry => entry.sourceId === match.sourceId && entry.itemId === match.itemId);
       const sourceAccess = sourceStatuses.find(status => status.sourceId === match.sourceId)?.access;
       const result = describeExperimentalResult(match, record, sourceDocument, sourceAccess);
@@ -911,7 +971,7 @@ function refreshExperimentalIndex() {
       }
       return item;
     };
-    for (const match of matches) {
+    for (const match of documentMatches) {
       const key = matchKey(match);
       if (renderedKeys.has(key)) continue;
       const duplicatePair = duplicatePairs.find(pair => {
@@ -934,7 +994,7 @@ function refreshExperimentalIndex() {
         : "Rapprochement à vérifier — nom normalisé identique");
       addTextElement(group, "p", "", "Copies et sources conservées séparément ; aucune fusion n'a été effectuée.");
       for (const identity of [duplicatePair.first, duplicatePair.second]) {
-        const pairedMatch = matches.find(candidate => matchKey(candidate) === matchKey(identity));
+        const pairedMatch = documentMatches.find(candidate => matchKey(candidate) === matchKey(identity));
         if (!pairedMatch) continue;
         group.appendChild(renderMatch(pairedMatch, "div"));
         renderedKeys.add(matchKey(pairedMatch));
@@ -944,10 +1004,18 @@ function refreshExperimentalIndex() {
     experimentalIndexStatus.textContent = matches.length
       ? `${matches.length} résultat${matches.length === 1 ? "" : "s"} dans les fichiers présents dans Famili-IA.`
       : "Aucun résultat dans les données recherchées ; certains textes ne sont pas disponibles et d'autres fichiers peuvent exister dans les sources.";
+    if (request.kind === "photo" && request.explanations?.length) {
+      const criteria = request.explanations.map(item => item.phrase).filter(Boolean).join(", ");
+      experimentalIndexStatus.textContent += ` Critères photo explicites : ${criteria}.`;
+    }
+    if (request.kind === "photo" && request.importDateRange) {
+      experimentalIndexStatus.textContent += " La période porte sur la date d'import enregistrée dans Famili-IA.";
+    }
     const invalidCount = uploadedDocuments.filter(doc => invalidContentProvenance.has(doc)).length;
     if (invalidCount) experimentalIndexStatus.textContent += ` Provenance de ${invalidCount} document${invalidCount === 1 ? "" : "s"} invalide : recherche par nom uniquement.`;
   } catch (error) {
     experimentalIndexResults.replaceChildren();
+    renderUnifiedPhotoResults([], { kind: "error" });
     experimentalSourceStatus.textContent = "État des sources indisponible : l'index n'a pas pu être actualisé.";
     const reason = error instanceof Error ? error.message : "Erreur non détaillée";
     experimentalIndexStatus.textContent = `Recherche expérimentale indisponible : ${reason}`;
@@ -969,8 +1037,6 @@ const maxDriveFiles = 50;
 const maxTextFileSize = 1024 * 1024;
 const maxPdfFileSize = 10 * 1024 * 1024;
 const maxPdfPages = 20;
-const form = document.querySelector("#search-form");
-const input = document.querySelector("#question");
 const results = document.querySelector("#results");
 const noResults = document.querySelector("#no-results");
 const answerText = document.querySelector("#answer-text");
@@ -1201,35 +1267,9 @@ function initPhotoDetailsDialog() {
 }
 
 function search(question) {
-  const trimmedQuestion = question.trim();
-  if (!trimmedQuestion) {
-    input.focus();
-    return;
-  }
-
-  const matches = findDocuments(trimmedQuestion);
-
-  // Apply filters if any
-  const filteredMatches = applyFilters(matches);
-
-  results.hidden = filteredMatches.length === 0;
-  noResults.hidden = filteredMatches.length !== 0;
-  if (filteredMatches.length === 0) return;
-
-  const bestMatch = filteredMatches[0];
-  const response = buildSearchResponse(filteredMatches);
-  answerLabel.textContent = response.label;
-  answerLabel.dataset.status = response.status;
-  answerText.textContent = response.answer;
-  const resultEyebrow = document.querySelector("#results .eyebrow");
-  if (resultEyebrow) {
-    resultEyebrow.textContent = filteredMatches.every(match => !match.document.isLocal && !match.document.driveSource)
-      ? "RÉSULTATS LOCAUX — EXEMPLES FICTIFS"
-      : "RÉSULTATS LOCAUX — SOURCES SÉLECTIONNÉES";
-  }
-  resultCount.textContent = `${filteredMatches.length} ${filteredMatches.length === 1 ? "document trouvé" : "documents trouvés"}`;
-  renderDocuments(filteredMatches);
-  results.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  input.value = question;
+  experimentalQuery = question;
+  refreshExperimentalIndex();
 }
 
 /**
@@ -1897,15 +1937,10 @@ if (openSourceDemoButton) {
   });
 }
 
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-  search(input.value);
-});
-
 document.querySelectorAll("[data-question]").forEach((button) => {
   button.addEventListener("click", () => {
     input.value = button.dataset.question;
-    search(input.value);
+    form.requestSubmit();
     input.focus();
   });
 });
@@ -1937,11 +1972,11 @@ async function clearSessionFiles() {
     dialogMeta.textContent = "";
     dialogContent.textContent = "";
     updateClearFilesButtonsVisibility();
-    documentList.replaceChildren();
-    answerText.textContent = "";
-    resultCount.textContent = "";
-    results.hidden = true;
-    noResults.hidden = true;
+    documentList?.replaceChildren();
+    if (answerText) answerText.textContent = "";
+    if (resultCount) resultCount.textContent = "";
+    if (results) results.hidden = true;
+    if (noResults) noResults.hidden = true;
     setFileStatus("Fichiers locaux retirés de cette page.", "success");
     if (localFilesInput) localFilesInput.value = "";
     updateGoogleDriveButton();
@@ -2132,18 +2167,11 @@ function initializeViewWithParams(viewName, params) {
       break;
 
     case 'recherche':
-      // Initialize search view with query from params
       const searchQuery = params.q;
       if (searchQuery !== undefined) {
-        const searchInput = document.querySelector("#question");
-        if (searchInput) {
-          searchInput.value = searchQuery;
-          // Trigger search if there's a query
-          if (searchQuery.trim()) {
-            search(searchQuery);
-          }
-        }
-      }
+        input.value = searchQuery;
+        if (searchQuery.trim()) form.requestSubmit();
+      } else input.focus({ preventScroll: true });
       break;
 
     case 'famille':
@@ -2237,7 +2265,7 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   if (viewTourActive && !viewTourNavigating && name !== currentTourStep?.view) {
     finishViewTour({ restoreView: false, restoreFocus: false });
   }
-  if (name !== "vos-donnees") suspendPhotoThumbnailRendering();
+  suspendPhotoThumbnailRendering();
 
   // Gestion spéciale : Si un document est demandé, l'ouvrir dans le sourceDialog
   if (params.docId) {
@@ -2289,7 +2317,7 @@ function showView(name, { addHistory = true, params = {} } = {}) {
       view.setAttribute('hidden', 'true');
     }
   });
-  if (name === "vos-donnees") resumePhotoThumbnailRendering();
+  resumePhotoThumbnailRendering();
 
   navigationButtons.forEach((button) => {
     const isActive = button.dataset.nav === name;
@@ -2770,7 +2798,6 @@ document.querySelector("#quick-search-form").addEventListener("submit", (event) 
   showView("recherche", { params: { q: question } });
   input.value = question;
   input.focus();
-  if (question) search(question);
 });
 
 // The house category filtering is now handled by initCategoryTabs() and renderEquipmentList()
@@ -3975,25 +4002,7 @@ function renderDataInventory(filters = {}) {
   });
 }
 
-function getMomentsLifeClarificationMessage(reason) {
-  const messages = {
-    "empty-query": "Écrivez une recherche pour commencer.",
-    "unsupported-query": "Je ne peux pas interpréter cette recherche. Essayez un nom, une date, un lieu ou un événement annoté.",
-    "person-required": "Précisez le membre de la famille concerné.",
-    "person-ambiguous": "Plusieurs membres portent ce nom. Précisez lequel.",
-    "birth-date-required": "Renseignez d’abord une date de naissance pour ce membre, ou recherchez par date.",
-    "year-required": "Précisez l’année recherchée.",
-    "invalid-date": "La date indiquée n’existe pas. Vérifiez le jour, le mois et l’année.",
-    "place-ambiguous": "Plusieurs lieux correspondent. Précisez le libellé du lieu.",
-    "event-ambiguous": "Plusieurs événements correspondent. Précisez lequel.",
-    "season-ambiguous": "Précisez une seule saison."
-  };
-  return messages[reason] || "Une précision est nécessaire pour interpréter cette recherche.";
-}
-
-function initMomentsLifeSearch() {
-  const form = document.querySelector('#moments-life-search-form');
-  const input = document.querySelector('#moments-life-query');
+function initUnifiedPhotoResults() {
   const status = document.querySelector('#moments-life-search-status');
   const results = document.querySelector('#moments-life-search-results');
   const pagination = document.querySelector('#moments-life-pagination');
@@ -4013,7 +4022,7 @@ function initMomentsLifeSearch() {
   const deleteStatus = document.querySelector('#photo-delete-status');
   const confirmDeleteButton = document.querySelector('#confirm-photo-delete');
   const selectedPhotoIds = new Set();
-  if (!form || !input || !status || !results) return;
+  if (!status || !results) return () => {};
 
   const pageSize = 24;
   let photoResults = [];
@@ -4059,7 +4068,7 @@ function initMomentsLifeSearch() {
   }
 
   function resumeThumbnails() {
-    if (document.querySelector('#view-vos-donnees')?.hidden) return;
+    if (results.closest('[data-view]')?.hidden) return;
     thumbnailObserver?.disconnect();
     thumbnailObserver = typeof IntersectionObserver === 'function'
       ? new IntersectionObserver(entries => {
@@ -4084,6 +4093,7 @@ function initMomentsLifeSearch() {
     if (pageStatus) pageStatus.textContent = '';
     if (pagination) pagination.hidden = true;
     if (groupingControls) groupingControls.hidden = true;
+    if (actions) actions.hidden = true;
     selectedPhotoIds.clear();
     if (selectPageCheckbox) {
       selectPageCheckbox.checked = false;
@@ -4155,10 +4165,13 @@ function initMomentsLifeSearch() {
       row.append(detail);
     }
 
-    const confidence = document.createElement('span');
-    confidence.className = `moments-life-confidence moments-life-confidence--${item.confidence.level}`;
-    confidence.textContent = `Confiance ${item.confidence.label}${item.confidence.reasons.length ? ` · ${item.confidence.reasons.join(' ')}` : ''}`;
-    row.append(confidence);
+    const criteria = item.reasons.map(reason => reason.phrase).filter(Boolean).join(', ');
+    const metadata = document.createElement('span');
+    metadata.className = 'moments-life-confidence';
+    metadata.textContent = criteria
+      ? `Critères interprétés : ${criteria}`
+      : 'Métadonnées et annotations explicites indexées dans Famili-IA.';
+    row.append(metadata);
 
     const actions = document.createElement('div');
     actions.className = 'moments-life-result-actions';
@@ -4212,41 +4225,6 @@ function initMomentsLifeSearch() {
 
   suspendPhotoThumbnailRendering = suspendThumbnails;
   resumePhotoThumbnailRendering = resumeThumbnails;
-
-  form.addEventListener('submit', event => {
-    event.preventDefault();
-    clearResults();
-    if (actions) actions.hidden = true;
-
-    try {
-      const photos = mergeInventoryDocuments(uploadedDocuments, getDocuments())
-        .filter(isPhotoDocument);
-      const result = searchMomentsLife(input.value, {
-        photos,
-        members: getFamilyMembers()
-      });
-
-      if (result.status === 'clarification') {
-        status.textContent = getMomentsLifeClarificationMessage(result.clarificationReason);
-        return;
-      }
-      if (result.status === 'not-found') {
-        const criteria = result.explanations.map(item => item.phrase).filter(Boolean).join(', ');
-        status.textContent = `Aucune photo ne correspond à ces critères parmi les photos disponibles${criteria ? ` (filtres : ${criteria})` : ''}. Une date ou une association manquante peut expliquer l'absence de résultat.`;
-        if (actions) actions.hidden = false;
-        return;
-      }
-
-      const matchedPhrases = result.explanations.map(item => item.phrase).filter(Boolean);
-      status.textContent = `${result.results.length} photo${result.results.length === 1 ? '' : 's'} trouvée${result.results.length === 1 ? '' : 's'}. Filtres exacts : ${matchedPhrases.join(', ')}. Triées par date de prise de vue puis d'import ; aucune date manquante n'est inventée. La confiance décrit la provenance des données, pas une probabilité de pertinence.`;
-      photoResults = result.results;
-      renderResultsPage();
-    } catch (error) {
-      console.error("La recherche Moments de vie a échoué :", error);
-      status.textContent = "La recherche a échoué. Vérifiez les données locales puis réessayez.";
-      clearResults();
-    }
-  });
 
   previousPageButton?.addEventListener('click', () => {
     if (currentPage === 0) return;
@@ -4305,7 +4283,6 @@ function initMomentsLifeSearch() {
         for (let index = uploadedDocuments.length - 1; index >= 0; index -= 1) {
           if (uploadedDocuments[index].id === id) uploadedDocuments.splice(index, 1);
         }
-        refreshExperimentalIndex();
         selectedPhotoIds.delete(id);
         photoResults = photoResults.filter(item => item.photo.id !== id);
         deletedCount += 1;
@@ -4317,6 +4294,7 @@ function initMomentsLifeSearch() {
 
     currentPage = Math.min(currentPage, Math.max(0, Math.ceil(photoResults.length / pageSize) - 1));
     renderResultsPage();
+    refreshExperimentalIndex();
     if (deletedCount > 0) {
       status.textContent = `${deletedCount} photo${deletedCount === 1 ? '' : 's'} supprimée${deletedCount === 1 ? '' : 's'} de Famili-IA. Les fichiers originaux sont préservés.`;
     }
@@ -4345,6 +4323,30 @@ function initMomentsLifeSearch() {
   correctAnnotationsButton?.addEventListener('click', () => {
     showView('vos-donnees', { params: { category: 'Images' } });
   });
+
+  return (matches, request = {}, documentsByMatch = new Map()) => {
+    clearResults();
+    const photos = matches
+      .map(match => documentsByMatch.get(JSON.stringify([match.sourceId, match.itemId])))
+      .filter(isPhotoDocument)
+      .map((photo, index) => ({
+        photo,
+        rank: index + 1,
+        reasons: request.explanations ?? [],
+        confidence: { level: 'high', label: 'index local', reasons: [] }
+      }));
+    if (!photos.length) {
+      status.textContent = request.kind === 'photo'
+        ? "Aucune photo ne correspond à ces critères parmi les photos indexées dans Famili-IA."
+        : "";
+      return;
+    }
+    photoResults = photos;
+    const criteria = request.explanations?.map(item => item.phrase).filter(Boolean).join(', ');
+    status.textContent = `${photos.length} photo${photos.length === 1 ? '' : 's'} trouvée${photos.length === 1 ? '' : 's'} dans les résultats multi-sources${criteria ? `. Critères : ${criteria}` : ''}.`;
+    if (actions) actions.hidden = false;
+    renderResultsPage();
+  };
 }
 
 function openPhotoAnnotationsDialog(photo) {
@@ -4423,10 +4425,7 @@ function initPhotoAnnotationsDialog() {
       else uploadedDocuments.push(updatedDocument);
       dialog.close();
       renderDataInventory(parseHash().params);
-      const momentsSearchForm = document.querySelector('#moments-life-search-form');
-      if (momentsSearchForm && document.querySelector('#moments-life-query').value.trim()) {
-        momentsSearchForm.requestSubmit();
-      }
+      refreshExperimentalIndex();
       showDemoNotice(`Associations enregistrées pour ${updatedDocument.name}.`);
     } catch (error) {
       console.error("Impossible d'enregistrer les associations de la photo :", error);
@@ -4594,11 +4593,11 @@ function initDataView(filters = {}) {
 
       if (sourceDialog.open) sourceDialog.close();
       if (localFilesInput) localFilesInput.value = '';
-      documentList.replaceChildren();
-      answerText.textContent = '';
-      resultCount.textContent = '';
-      results.hidden = true;
-      noResults.hidden = true;
+      documentList?.replaceChildren();
+      if (answerText) answerText.textContent = '';
+      if (resultCount) resultCount.textContent = '';
+      if (results) results.hidden = true;
+      if (noResults) noResults.hidden = true;
       updateClearFilesButtonsVisibility();
       updateGoogleDriveButton();
       updateModeBanner();

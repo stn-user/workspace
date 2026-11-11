@@ -63,7 +63,8 @@ test("filtres par date et nature, personne annotée et lieu connu", () => {
       dates: { priseDeVue: { value: "2024-07-14", source: "provider" } },
       fields: [
         { name: "personIds", value: "member-1, member-2", source: "user-input" },
-        { name: "place", value: "Québec", source: "user-input" }
+        { name: "place", value: "Québec", source: "user-input" },
+        { name: "eventTag", value: "Vacances", source: "user-input" }
       ]
     }),
     make("drive", "contract", {
@@ -83,6 +84,8 @@ test("filtres par date et nature, personne annotée et lieu connu", () => {
   assert.deepEqual(ids({ dateType: "echeance" }), ["contract"]);
   assert.deepEqual(ids({ personId: "member-2" }), ["photo"]);
   assert.deepEqual(ids({ place: "Quebec" }), ["photo"]);
+  assert.deepEqual(ids({ eventTag: "vacances" }), ["photo"]);
+  assert.deepEqual(searchIndex(records, "", { type: "photo" }).map(record => record.itemId), ["photo", "unknown"]);
   assert.deepEqual(ids({
     sourceId: "local", type: "photo", coverage: "metadata",
     dateType: "priseDeVue", dateFrom: "2024-07-01", dateTo: "2024-07-31",
@@ -94,7 +97,8 @@ test("filtres par date et nature, personne annotée et lieu connu", () => {
     { dateFrom: "2024-02-31" },
     { dateFrom: "2025-01-01", dateTo: "2024-01-01" },
     { personId: "" },
-    { place: "" }
+    { place: "" },
+    { eventTag: "" }
   ]) assert.throws(() => searchIndex(records, "vacances", options), TypeError);
 });
 

@@ -18,3 +18,13 @@ Pour simuler une véritable intelligence de gestion domestique, des règles de r
 
 ## 🛠 Implémentation technique
 Le calcul est réalisé par la fonction `calculateSemanticScore(docA, docB)` située dans [search-utils.js](projets/famili-ia/search-utils.js).
+
+## Recherche unifiée multi-sources
+
+La vue « Recherche » expose un seul formulaire relié à `IndexSession` et `searchIndex`. Les documents et les photos passent par les mêmes filtres de source, type, couverture et date. Il n'y a pas de mode question ni de formulaire Moments de vie séparé, et « Vos données » ne propose plus de raccourci vers une autre recherche.
+
+`unified-index-query.js` réutilise `interpretMomentsLifeQuery` pour traduire des requêtes photo en critères exacts de l'index : personne associée, lieu et événement annotés, période de prise de vue et type photo. Une requête photo peut donc être satisfaite par des filtres seuls, sans mot-clé résiduel. Les requêtes sur la date d'import utilisent `importedAt`, disponible sur les copies présentes dans Famili-IA, sans ajouter de date au schéma durable de l'index. Les critères interprétés sont combinés aux filtres manuels ; un conflit ou une ambiguïté est signalé, pas silencieusement ignoré.
+
+Les résultats photo gardent leur présentation avec vignettes, regroupement, pagination, détails, correction d'annotations et suppression confirmée. Cette présentation n'effectue pas une seconde recherche : elle affiche les mêmes correspondances retournées par l'index commun. Seules les métadonnées et annotations explicites sont utilisées ; aucune reconnaissance visuelle ni couverture intégrale de l'appareil ou des fournisseurs n'est promise. Les recherches restent locales et ne transmettent pas les requêtes ou les annotations à un service externe.
+
+Aucun historique persistant de requêtes n'est actuellement implémenté ; il reste hors du périmètre initial.

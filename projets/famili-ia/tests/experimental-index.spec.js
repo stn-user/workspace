@@ -20,7 +20,7 @@ test('recherche locale et Drive simulé, puis purge sans résultats résiduels',
   });
   await expect(page.locator('#scan-progress-text')).toHaveText('Indexation terminée : 1/1 fichiers indexés');
   await page.locator('#experimental-index-query').fill('facture');
-  await page.locator('#experimental-index-form button').click();
+  await page.locator('#experimental-index-form .submit-button').click();
   const entries = page.locator('#experimental-index-results li');
   await expect(entries).toHaveCount(2);
   await expect(entries.filter({ hasText: 'Facture locale.txt' })).toContainText('Local');
@@ -42,9 +42,10 @@ test('filtres multi-sources disponibles par source, type, couverture, date, pers
     const { put } = await import('/db.js');
     const { createContentProvenance } = await import('/content-index.js');
     const { createIndexRecord } = await import('/index-record.js');
+    const { createPhotoMetadata } = await import('/photo-metadata.js');
     const photo = {
       id: 'filters-photo',
-      name: 'Souvenir vacances.jpg',
+      name: 'Archive vacances.jpg',
       type: 'Image',
       isLocal: true,
       content: 'Souvenir vacances en famille'
@@ -52,6 +53,14 @@ test('filtres multi-sources disponibles par source, type, couverture, date, pers
     photo.contentProvenance = await createContentProvenance(
       photo, [photo.content], 'local-text'
     );
+    photo.photoMetadata = createPhotoMetadata(photo.id, {
+      captureDate: {
+        raw: '2024:07:14 12:00:00',
+        localDateTime: '2024-07-14T12:00:00',
+        offsetMinutes: null,
+        source: { kind: 'exif', field: 'DateTimeOriginal' }
+      }
+    });
     photo.indexRecord = createIndexRecord('local', photo.id, {
       type: 'photo',
       name: { value: photo.name, source: 'provider' },
@@ -64,7 +73,7 @@ test('filtres multi-sources disponibles par source, type, couverture, date, pers
     });
     const drive = {
       id: 'filters-drive',
-      name: 'Souvenir contrat.txt',
+      name: 'Archive contrat.txt',
       type: 'Texte',
       isLocal: true,
       driveSource: true,
@@ -82,10 +91,15 @@ test('filtres multi-sources disponibles par source, type, couverture, date, pers
   await page.reload();
   await initialized;
 
-  await page.locator('#experimental-index-query').fill('souvenir');
-  await page.locator('#experimental-index-form button[type="submit"]').click();
-  const results = page.locator('#experimental-index-results li');
-  await expect(results).toHaveCount(2);
+  await page.locator('#experimental-index-query').fill('archive');
+  await page.locator('#experimental-index-form .submit-button').click();
+  const documentResults = page.locator('#experimental-index-results li');
+  const photoResults = page.locator('#moments-life-search-results .moments-life-result');
+  await expect(documentResults).toHaveCount(1);
+  await expect(documentResults).toContainText('Archive contrat.txt');
+  await expect(documentResults).toContainText('Google Drive');
+  await expect(photoResults).toHaveCount(1);
+  await expect(photoResults).toContainText('Archive vacances.jpg');
 
   await page.locator('#experimental-index-source').selectOption('local');
   await page.locator('#experimental-index-type').selectOption('photo');
@@ -95,10 +109,11 @@ test('filtres multi-sources disponibles par source, type, couverture, date, pers
   await page.locator('#experimental-index-date-to').fill('2024-07-31');
   await page.locator('#experimental-index-person').selectOption('member-filter-test');
   await page.locator('#experimental-index-place').selectOption({ label: 'Québec' });
-  await page.locator('#experimental-index-form button[type="submit"]').click();
-  await expect(results).toHaveCount(1);
-  await expect(results.first()).toContainText('Souvenir vacances.jpg');
-  await expect(results.first()).toContainText('Prise de vue : 2024-07-14');
+  await page.locator('#experimental-index-form .submit-button').click();
+  await expect(documentResults).toHaveCount(0);
+  await expect(photoResults).toHaveCount(1);
+  await expect(photoResults.first()).toContainText('Archive vacances.jpg');
+  await expect(photoResults.first()).toContainText('2024-07-14');
 });
 
 test('rapproche les noms identiques sans fusionner les copies ni leurs sources', async ({ page }) => {
@@ -123,7 +138,7 @@ test('rapproche les noms identiques sans fusionner les copies ni leurs sources',
   await initialized;
 
   await page.locator('#experimental-index-query').fill('contrat maison');
-  await page.locator('#experimental-index-form button[type="submit"]').click();
+  await page.locator('#experimental-index-form .submit-button').click();
   const group = page.locator('#experimental-index-results .experimental-result-duplicate-group');
   await expect(group).toHaveCount(1);
   await expect(group).toContainText('Rapprochement à vérifier');
@@ -143,7 +158,7 @@ test('texte local extrait et preuve littérale conservés après redémarrage', 
   });
   await expect(page.locator('#scan-progress-text')).toHaveText('Indexation terminée : 1/1 fichiers indexés');
   await page.locator('#experimental-index-query').fill('résilier');
-  await page.locator('#experimental-index-form button').click();
+  await page.locator('#experimental-index-form .submit-button').click();
   const entries = page.locator('#experimental-index-results li');
   await expect(entries).toHaveCount(1);
   await expect(entries.first()).toContainText('Impossible de résilier');
@@ -160,15 +175,15 @@ test('texte local extrait et preuve littérale conservés après redémarrage', 
   await page.reload();
   await initialized;
   await page.locator('#experimental-index-query').fill('résilier');
-  await page.locator('#experimental-index-form button').click();
+  await page.locator('#experimental-index-form .submit-button').click();
   await expect(entries).toHaveCount(1);
   await expect(entries.first()).toContainText('Impossible de résilier');
   await expect(entries.locator('img')).toHaveCount(0);
   await page.locator('#experimental-index-query').fill('motancienunique');
-  await page.locator('#experimental-index-form button').click();
+  await page.locator('#experimental-index-form .submit-button').click();
   await expect(entries).toHaveCount(0);
   await page.locator('#experimental-index-query').fill('ancien.txt');
-  await page.locator('#experimental-index-form button').click();
+  await page.locator('#experimental-index-form .submit-button').click();
   await expect(entries).toHaveCount(1);
 });
 
@@ -191,7 +206,7 @@ test('fiches de résultat, copie locale et original non vérifié', async ({ pag
   await page.reload();
   await initialized;
   await page.locator('#experimental-index-query').fill('contrat-unique');
-  await page.locator('#experimental-index-form button').click();
+  await page.locator('#experimental-index-form .submit-button').click();
   const results = page.locator('#experimental-index-results');
   const drive = results.locator('li').filter({ hasText: 'contrat-unique-drive.txt' });
   const local = results.locator('li').filter({ hasText: 'contrat-unique-local.txt' });
@@ -214,26 +229,34 @@ test('preuve de contenu et détail photo sans ouverture de l’original', async 
   await page.evaluate(async () => {
     const { put } = await import('/db.js');
     const { createContentProvenance } = await import('/content-index.js');
+    const { createIndexRecord } = await import('/index-record.js');
     const doc = { id: 'local-proof-test', name: 'preuve-test.txt', type: 'Texte',
       date: 'Session locale', content: 'Assurance unique <b>preuve</b>',
       isLocal: true, keywords: '', summary: '' };
     doc.contentProvenance = await createContentProvenance(doc, [doc.content], 'local-text');
     await put('documents', doc);
-    await put('documents', { id: 'local-photo-test', name: 'photo-unique.jpg', type: 'Image',
-      date: 'Session locale', isLocal: true, keywords: '', summary: '' });
+    const photo = { id: 'local-photo-test', name: 'photo-unique.jpg', type: 'Image',
+      date: 'Session locale', isLocal: true, keywords: '', summary: '' };
+    photo.indexRecord = createIndexRecord('local', photo.id, {
+      type: 'photo',
+      name: { value: photo.name, source: 'provider' },
+      coverage: 'metadata'
+    });
+    await put('documents', photo);
   });
   const initialized = page.waitForEvent('console', message => message.text().includes('dialogs initialized'));
   await page.reload();
   await initialized;
   await page.locator('#experimental-index-query').fill('assurance');
-  await page.locator('#experimental-index-form button').click();
+  await page.locator('#experimental-index-form .submit-button').click();
   const result = page.locator('#experimental-index-results li');
   await expect(result).toHaveCount(1);
   await expect(result).toContainText('Assurance unique <b>preuve</b>');
   await expect(result.locator('b')).toHaveCount(0);
   await page.locator('#experimental-index-query').fill('photo-unique');
-  await page.locator('#experimental-index-form button').click();
-  await result.getByRole('button', { name: 'Voir le détail de la photo' }).click();
+  await page.locator('#experimental-index-form .submit-button').click();
+  await page.locator('#moments-life-search-results')
+    .getByRole('button', { name: 'Voir le détail de photo-unique.jpg' }).click();
   const dialog = page.locator('#photo-detail-dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('photo-unique.jpg');

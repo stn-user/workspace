@@ -6,10 +6,19 @@
 - Les messages précisent que les vues peuvent afficher des données locales et décrivent les limites réelles de la recherche et de l'inventaire.
 - Ajout de tests Playwright couvrant les quatre largeurs de référence, le clavier, la reprise, la sortie, le lancement depuis la démo, la navigation manuelle, l'absence d'écriture IndexedDB et l'absence de requêtes externes supplémentaires. Validation manuelle sur tablette et mesures de contraste restent à faire.
 
+### Lot E — E4 : point d’entrée unifié des recherches
+- Un seul formulaire multi-sources recherche désormais les documents et les photos ; retrait des sélecteurs de mode et du raccourci photo dans Vos données.
+- Les requêtes photo utilisent les annotations explicites de l'index commun pour filtrer personne, lieu, événement, période de prise de vue ou date d'import. Les critères seuls peuvent retourner des photos, et les ambiguïtés ou conflits sont signalés.
+- Les résultats photo gardent leurs vignettes, pagination, détails, correction d'annotations et suppression confirmée, mais proviennent des correspondances du même index que les documents.
+- Aucune reconnaissance visuelle ni couverture complète des sources n'est annoncée ; les requêtes et annotations restent locales.
+- Aucun historique persistant des requêtes n’est ajouté : il n’existe pas actuellement dans l’application et reste hors du périmètre initial.
+- La validation automatisée et manuelle de cette nouvelle tranche reste à effectuer.
+- Validation automatisée après regroupement : 289 tests Node, build Vite, 38 tests d’accessibilité, les six tests d’entrée unifiée et les tests photo ciblés réussis. La suite complète d’inventaire conserve une assertion distincte à vérifier sur le nombre de cartes statistiques. Essais manuels restant à faire.
+
 ### Lot E — E2/E3 : progression de l'accueil et guide de démo
 - Accueil : progression « Étape N sur 3 » avec intitulé dans l'en-tête des trois étapes du wizard ; Entrée dans le champ du prénom facultatif valide l'étape.
 - Démo : le guide facultatif passe de deux à trois étapes. La troisième rappelle qu'aucune alerte n'est créée sans confirmation, qu'aucun compte n'est connecté ni donnée enregistrée, et met le bouton « Terminer » en évidence. Textes des exemples photos corrigés.
-- Tests Playwright mis à jour (guide en 3 étapes, retour, progression, touche Entrée) : 56 tests onboarding, démo et accessibilité passent. La visite des autres vues et la validation manuelle sur appareils restent ouvertes.
+- Tests Playwright mis à jour (guide en 3 étapes, retour, progression, touche Entrée) : 56 tests onboarding, démo et accessibilité passent. La visite des autres vues est implémentée ; sa validation manuelle sur appareils reste ouverte.
 
 ### Lot E — accessibilité transversale (première tranche)
 - Cibles tactiles interactives portées à 48 × 48 px sur l'ensemble des écrans (navigation, puces, onglets, boutons texte, avatar, fil d'Ariane, liens et résumés) ; cases à cocher redessinées avec une zone de 48 px et un carré visible de 24 px à bordure contrastée.

@@ -5189,3 +5189,41 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }.breadcrum
   font-size: 0.9rem;
   font-weight: 600;
 }
+
+.unified-search-form {
+  display: grid;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+.search-mode-field {
+  display: grid;
+  gap: 0.25rem;
+}
+.search-mode-field label { font-weight: 600; }
+.search-mode-field select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.search-mode-help {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.unified-search-query {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+.unified-search-query input { min-width: 0; }
+.unified-search-query .submit-button {
+  min-width: 48px;
+  min-height: 48px;
+}

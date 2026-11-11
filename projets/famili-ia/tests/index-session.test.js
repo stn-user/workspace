@@ -169,13 +169,15 @@ test("les filtres avancés s'appliquent aux résultats de texte comme aux fiches
     coverage: "partial",
     fields: [
       { name: "personIds", value: "member-1", source: "user-input" },
-      { name: "place", value: "Québec", source: "user-input" }
+      { name: "place", value: "Québec", source: "user-input" },
+      { name: "eventTag", value: "Vacances", source: "user-input" }
     ]
   });
   const session = new IndexSession();
   await session.restoreDocumentContent(photo);
   session.syncDocuments([photo]);
   assert.equal(session.search("souvenir", { type: "photo", personId: "member-1", place: "Quebec" }).length, 1);
+  assert.equal(session.search("", { type: "photo", eventTag: "vacances" }).length, 1);
   assert.equal(session.search("souvenir", { dateType: "priseDeVue", dateFrom: "2024-01-01" }).length, 1);
   assert.deepEqual(session.search("souvenir", { dateType: "echeance" }), []);
 });

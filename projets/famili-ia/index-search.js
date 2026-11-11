@@ -26,7 +26,7 @@ function validateOptions(options) {
     throw new TypeError("Options invalides");
   }
   for (const key of Reflect.ownKeys(options)) {
-    if (!["sourceId", "type", "coverage", "dateType", "dateFrom", "dateTo", "personId", "place"].includes(key)) {
+    if (!["sourceId", "type", "coverage", "dateType", "dateFrom", "dateTo", "personId", "place", "eventTag"].includes(key)) {
       throw new TypeError("Option inconnue");
     }
     const value = options[key];
@@ -37,7 +37,7 @@ function validateOptions(options) {
     if (key === "coverage" && !isValidCoverageLevel(value)) throw new TypeError("Couverture du filtre invalide");
     if (key === "dateType" && !VALID_DATE_TYPES.includes(value)) throw new TypeError("Nature de date invalide");
     if (["dateFrom", "dateTo"].includes(key) && !isValidDate(value)) throw new TypeError("Filtre de date invalide");
-    if (["personId", "place"].includes(key) && (typeof value !== "string" || !value.trim())) {
+    if (["personId", "place", "eventTag"].includes(key) && (typeof value !== "string" || !value.trim())) {
       throw new TypeError(`Filtre ${key} invalide`);
     }
   }
@@ -74,6 +74,11 @@ export function matchesIndexFilters(record, options = {}) {
     if (!record.fields.some(field => field.name === "place" &&
         normalizeText(field.value) === normalizedPlace)) return false;
   }
+  if (options.eventTag !== undefined) {
+    const normalizedTag = normalizeText(options.eventTag);
+    if (!record.fields.some(field => field.name === "eventTag" &&
+        normalizeText(field.value) === normalizedTag)) return false;
+  }
   return true;
 }
 
@@ -82,8 +87,10 @@ export function searchIndex(records, query, options = {}) {
   validateOptions(options);
   if (typeof query !== "string") throw new TypeError("Requête invalide");
   const normalized = normalizeText(query);
-  if (!normalized) throw new TypeError("Requête vide après normalisation");
-  const words = [...new Set(normalized.split(" "))];
+  if (!normalized && Object.keys(options).length === 0) {
+    throw new TypeError("Requête vide après normalisation");
+  }
+  const words = normalized ? [...new Set(normalized.split(" "))] : [];
   const results = [];
 
   for (const record of records) {

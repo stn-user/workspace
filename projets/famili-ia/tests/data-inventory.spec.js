@@ -1,9 +1,40 @@
 import { test, expect } from '@playwright/test';
 
 async function seedPhotoRecords(page, count = 1) {
-  await page.goto('http://localhost:5179/#/vos-donnees');
-  await expect(page.locator('.data-file-row')).toHaveCount(5);
+  const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.goto('http://localhost:5179/#/recherche');
+  await initialized;
   await page.evaluate(async photoCount => {
+    const { createDocumentIndexRecord } = await import('/document-index.js');
+    const documents = [];
+    for (let index = 0; index < photoCount; index += 1) {
+      const photo = {
+        id: `gallery-test-photo-${index}`,
+        type: 'Image',
+        name: `vacances-${index}.jpg`,
+        isLocal: true,
+        importedAt: '2024-06-15T10:00:00.000Z',
+        photoAnnotations: {
+          schemaVersion: 1,
+          personIds: [],
+          eventTags: ['Vacances'],
+          captureDateOverride: null,
+          placeLabel: null,
+          placeSource: null,
+          source: 'user'
+        },
+        photoThumbnail: {
+          schemaVersion: 1,
+          mimeType: 'image/jpeg',
+          width: 1,
+          height: 1,
+          byteLength: 3,
+          dataUrl: 'data:image/jpeg;base64,AQID'
+        }
+      };
+      photo.indexRecord = await createDocumentIndexRecord(photo);
+      documents.push(photo);
+    }
     const request = indexedDB.open('FamiliIADatabase', 3);
     const database = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
@@ -12,45 +43,20 @@ async function seedPhotoRecords(page, count = 1) {
     await new Promise((resolve, reject) => {
       const transaction = database.transaction('documents', 'readwrite');
       const store = transaction.objectStore('documents');
-      for (let index = 0; index < photoCount; index += 1) {
-        const id = `gallery-test-photo-${index}`;
-        store.put({
-          id,
-          type: 'Image',
-          name: `vacances-${index}.jpg`,
-          importedAt: '2024-06-15T10:00:00.000Z',
-          photoAnnotations: {
-            schemaVersion: 1,
-            personIds: [],
-            eventTags: ['Vacances'],
-            captureDateOverride: null,
-            placeLabel: null,
-            placeSource: null,
-            source: 'user'
-          },
-          photoThumbnail: {
-            schemaVersion: 1,
-            mimeType: 'image/jpeg',
-            width: 1,
-            height: 1,
-            byteLength: 3,
-            dataUrl: 'data:image/jpeg;base64,AQID'
-          }
-        });
-      }
+      for (const document of documents) store.put(document);
       transaction.oncomplete = resolve;
       transaction.onerror = () => reject(transaction.error);
       transaction.onabort = () => reject(transaction.error);
     });
     database.close();
   }, count);
-  const initialized = page.waitForEvent('console', message =>
+  const dialogsInitialized = page.waitForEvent('console', message =>
     message.type() === 'log' && message.text().includes('dialogs initialized')
   );
   await page.reload();
-  await initialized;
-  await page.locator('#moments-life-query').fill('photos importées en 2024');
-  await page.locator('#moments-life-search-form button[type="submit"]').click();
+  await dialogsInitialized;
+  await page.locator('#experimental-index-query').fill('photos importées en 2024');
+  await page.locator('#experimental-index-form .submit-button').click();
 }
 
 test.describe('Vue Vos données et recherche unifiée', () => {
@@ -126,7 +132,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('http://localhost:5179/#/vos-donnees');
 
-    await expect(page.locator('.data-stat-card')).toHaveCount(4);
+    await expect(page.locator('.data-stat-card')).toHaveCount(5);
     await expect(page.locator('.data-file-row')).toHaveCount(5);
     await expect(page.locator('.data-view .chip').first()).toHaveCSS('min-height', '48px');
     await expect(page.locator('.data-badge--type')).toHaveCount(5);
@@ -159,22 +165,36 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await expect(page.locator('#view-vos-donnees [data-filter-type="Facture"]')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  test('relie les chips de recherche unifiée aux types et provenances des documents', async ({ page }) => {
+  test('la recherche unique combine les mots-clés et les filtres multi-sources', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
+    const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
     await page.goto('http://localhost:5179/#/recherche');
-    await expect(page.locator('#filter-type-group .chip').first()).toHaveCSS('min-height', '48px');
-    await page.locator('#question').fill('Combien ai-je payé pour ma piscine ?');
-    await page.locator('#search-form button[type="submit"]').click();
+    await initialized;
+    await page.evaluate(async () => {
+      const { put } = await import('/db.js');
+      const { createIndexRecord } = await import('/index-record.js');
+      const document = { id: 'unified-search-test', name: 'Facture locale.txt', type: 'Texte',
+        isLocal: true, content: '', keywords: '', summary: '' };
+      document.indexRecord = createIndexRecord('local', document.id, {
+        type: 'document',
+        name: { value: document.name, source: 'provider' },
+        coverage: 'metadata'
+      });
+      await put('documents', document);
+    });
+    const dialogsInitialized = page.waitForEvent('console', message => message.text().includes('dialogs initialized'));
+    await page.reload();
+    await dialogsInitialized;
 
-    await expect(page.locator('#result-count')).toHaveText('1 document trouvé');
-    await page.locator('#filter-type-group [data-filter-type="Facture"]').click();
-    await page.locator('#filter-source-group [data-filter-source="demo"]').click();
-    await expect(page.locator('#result-count')).toHaveText('1 document trouvé');
-    await expect(page.locator('.document-name')).toHaveText('Facture - Installation piscine.pdf');
-
-    await page.locator('#filter-source-group [data-filter-source="local"]').click();
-    await expect(page.locator('#no-results')).toBeVisible();
-    await expect(page.locator('#filter-source-group [data-filter-source="local"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#experimental-index-form')).toBeVisible();
+    await expect(page.locator('#search-mode')).toHaveCount(0);
+    await expect(page.locator('#moments-life-query')).toHaveCount(0);
+    await page.locator('#experimental-index-source').selectOption('local');
+    await page.locator('#experimental-index-type').selectOption('document');
+    await page.locator('#experimental-index-query').fill('facture');
+    await page.locator('#experimental-index-form .submit-button').click();
+    await expect(page.locator('#experimental-index-results li')).toHaveCount(1);
+    await expect(page.locator('#experimental-index-results')).toContainText('Facture locale.txt');
 
     const hasHorizontalOverflow = await page.evaluate(() =>
       document.documentElement.scrollWidth > document.documentElement.clientWidth
@@ -390,8 +410,10 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await page.keyboard.press('Escape');
     await expect(detailDialog).toBeHidden();
 
+    await page.goto('http://localhost:5179/#/vos-donnees');
     const inventoryPhoto = page.locator('#data-inventory-list .data-file-row')
       .filter({ hasText: 'vacances-0.jpg' });
+    await expect(inventoryPhoto).toHaveCount(1);
     await expect(inventoryPhoto.getByRole('button', { name: 'Voir le détail de vacances-0.jpg' })).toBeVisible();
     await inventoryPhoto.getByRole('button', { name: 'Voir le détail de vacances-0.jpg' }).click();
     await expect(detailDialog).toBeVisible();
@@ -399,8 +421,10 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await page.keyboard.press('Escape');
     await expect(detailDialog).toBeHidden();
 
-    await page.locator('#moments-life-query').fill('photos importées en 2099');
-    await page.locator('#moments-life-search-form button[type="submit"]').click();
+    await page.goto('http://localhost:5179/#/recherche');
+    await expect(page.locator('#moments-life-search')).toBeVisible();
+    await page.locator('#experimental-index-query').fill('photos importées en 2099');
+    await page.locator('#experimental-index-form .submit-button').click();
     await expect(page.locator('#moments-life-search-results .moments-life-result')).toHaveCount(0);
     await expect(page.locator('#moments-life-selection-toolbar')).toBeHidden();
   });

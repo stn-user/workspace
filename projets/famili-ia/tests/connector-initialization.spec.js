@@ -231,7 +231,7 @@ test('préserve et recherche les copies OneDrive après le changement de compte'
 
   await page.locator('#close-source-choice').click();
   await page.locator('#experimental-index-query').fill('photo-fictive');
-  await page.locator('#experimental-index-form button[type="submit"]').click();
+  await page.locator('#experimental-index-form .submit-button').click();
   const results = page.locator('#experimental-index-results');
   await expect(results.locator('li')).toHaveCount(2);
   await expect(results).toContainText(`Compte OneDrive d'origine (empreinte locale) : …${firstFingerprint.slice(0, 16)}`);

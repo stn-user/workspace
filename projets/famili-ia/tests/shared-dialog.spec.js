@@ -24,7 +24,7 @@ for (const viewport of [
     await page.reload();
     await reinitialized;
     await page.locator('#experimental-index-query').fill('contrat-test');
-    await page.locator('#experimental-index-form button').click();
+    await page.locator('#experimental-index-form .submit-button').click();
     const result = page.locator('#experimental-index-results li').filter({ hasText: name });
     const open = result.getByRole('button', { name: 'Voir la copie dans Famili-IA' });
     await open.click();
