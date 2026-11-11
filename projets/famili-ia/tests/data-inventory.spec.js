@@ -1,5 +1,30 @@
 import { test, expect } from '@playwright/test';
 
+async function openInventory(page) {
+  await page.route('https://**/*', route => route.abort());
+  const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.goto('http://127.0.0.1:5179/#/vos-donnees');
+  await ready;
+}
+
+async function expectUsablePanel(panel) {
+  const result = await panel.evaluate(root => {
+    const undersized = [...root.querySelectorAll('button, a[href], input:not([type="hidden"]), textarea')]
+      .filter(el => {
+        const bounds = el.getBoundingClientRect();
+        return bounds.width > 0 && bounds.height > 0 && (bounds.width < 47.5 || bounds.height < 47.5);
+      }).map(el => el.id || el.textContent);
+    const bounds = root.getBoundingClientRect();
+    return {
+      undersized,
+      overflow: root.scrollWidth > root.clientWidth + 1,
+      outsideViewport: bounds.left < 0 || bounds.right > innerWidth + 1
+        || (root.tagName === 'DIALOG' && (bounds.top < 0 || bounds.bottom > innerHeight + 1))
+    };
+  });
+  expect(result).toEqual({ undersized: [], overflow: false, outsideViewport: false });
+}
+
 async function seedPhotoRecords(page, count = 1) {
   const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
   await page.goto('http://localhost:5179/#/recherche');
@@ -60,6 +85,136 @@ async function seedPhotoRecords(page, count = 1) {
 }
 
 test.describe('Vue Vos données et recherche unifiée', () => {
+  for (const width of [390, 768, 1280, 1920]) {
+    test(`identité partagée, aperçu et confirmation accessibles à ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: width < 600 ? 800 : 900 });
+      await openInventory(page);
+      await expect(page.locator('#data-inventory-status')).toHaveText('5 fichiers affichés sur 5');
+      const firstFile = await page.locator('.data-file-row').first().boundingBox();
+      const contentViewport = await page.locator('.main-content').boundingBox();
+      expect(firstFile.y + firstFile.height).toBeLessThanOrEqual(contentViewport.y + contentViewport.height);
+      await expectUsablePanel(page.locator('#view-vos-donnees'));
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+      const addButton = page.getByRole('button', { name: 'Ajouter des fichiers', exact: true });
+      await addButton.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('#source-choice-dialog')).toBeVisible();
+      await expectUsablePanel(page.locator('#source-choice-dialog'));
+      await page.keyboard.press('Escape');
+      await expect(addButton).toBeFocused();
+
+      const preview = page.locator('.data-file-row').first().getByRole('button');
+      await preview.click();
+      const dialog = page.locator('#source-dialog');
+      await expect(dialog).toContainText("contenu d'exemple inventé");
+      await expectUsablePanel(dialog);
+      await page.keyboard.press('Escape');
+      await expect(preview).toBeFocused();
+
+      await page.locator('#purge-all-data').click();
+      await expect(page.locator('#cancel-purge')).toBeFocused();
+      await expectUsablePanel(page.locator('#purge-confirmation'));
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#purge-all-data')).toBeFocused();
+      await expect(page.locator('.data-file-row')).toHaveCount(5);
+    });
+  }
+
+  test('état vide : réinitialiser les filtres retrouve les fichiers et actualise le résumé', async ({ page }) => {
+    await openInventory(page);
+    await page.locator('#view-vos-donnees [data-filter-category="Images"]').click();
+    await expect(page.locator('#data-inventory-status')).toHaveText('0 fichier affiché sur 5');
+    await page.getByRole('button', { name: 'Afficher tous les fichiers' }).click();
+    await expect(page.locator('#data-inventory-status')).toHaveText('5 fichiers affichés sur 5');
+    await expect(page.locator('#view-vos-donnees [data-filter-type="document"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#view-vos-donnees [data-filter-type="document"]')).toBeFocused();
+    await expect(page).toHaveURL(/#\/vos-donnees$/);
+  });
+
+  test('ajout depuis l’inventaire : fichier local, aperçu et export JSON conservés', async ({ page }) => {
+    await openInventory(page);
+    await page.getByRole('button', { name: 'Ajouter des fichiers', exact: true }).click();
+    const chooser = page.waitForEvent('filechooser');
+    await page.locator('#choose-local-files').click();
+    await (await chooser).setFiles({
+      name: 'document-fictif.txt', mimeType: 'text/plain',
+      buffer: Buffer.from('Document fictif pour la refonte UX. Référence : UX-E5.')
+    });
+    await expect(page.locator('#scan-progress-text')).toContainText('1/1 fichiers indexés');
+    await page.goto('http://127.0.0.1:5179/#/vos-donnees');
+    await expect(page.locator('#summary-total')).toHaveText('1');
+    await expect(page.locator('#summary-local')).toHaveText('1');
+    await expect(page.locator('#summary-demo')).toHaveText('0');
+    await page.getByRole('button', { name: 'Consulter document-fictif.txt' }).click();
+    await expect(page.locator('#dialog-content')).toContainText('UX-E5');
+    await expect(page.locator('#dialog-notice-text')).toContainText("Ce n'est pas l'original");
+    await page.keyboard.press('Escape');
+
+    const downloading = page.waitForEvent('download');
+    await page.locator('#export-all-data').click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe('famili-ia-data.json');
+    const chunks = [];
+    for await (const chunk of await download.createReadStream()) chunks.push(chunk);
+    const content = Buffer.concat(chunks).toString('utf8');
+    expect(JSON.parse(content).documents).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'document-fictif.txt', isLocal: true })
+    ]));
+  });
+
+  test('photo et annotations sur mobile : noms longs, annulation et enregistrement local', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await openInventory(page);
+    await page.evaluate(async () => {
+      const { put } = await import('/db.js');
+      await put('documents', {
+        id: 'e5-photo', name: `Photo fictive ${'vacances'.repeat(20)}.jpg`, type: 'Image', isLocal: true,
+        importedAt: '2026-01-01T10:00:00Z',
+        photoAnnotations: {
+          schemaVersion: 1, personIds: [], eventTags: [], captureDateOverride: null,
+          placeLabel: null, placeSource: null, source: 'user'
+        }
+      });
+    });
+    const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+    await page.reload();
+    await ready;
+    await expect(page.locator('#summary-total')).toHaveText('1');
+    await expect(page.locator('.data-badge--index')).toHaveText('Métadonnées seules');
+    await expect(page.locator('.data-badge--source')).toHaveText('Fichier local');
+    await expectUsablePanel(page.locator('#view-vos-donnees'));
+    const detailButton = page.getByRole('button', { name: /Voir le détail de Photo fictive/ });
+    await detailButton.click();
+    const detail = page.locator('#photo-detail-dialog');
+    await expect(detail).toContainText('Aucun aperçu');
+    await expectUsablePanel(detail);
+    await page.locator('#photo-detail-edit-annotations').click();
+    const annotations = page.locator('#photo-annotations-dialog');
+    await expect(annotations).toBeVisible();
+    await expectUsablePanel(annotations);
+    await page.locator('#photo-event-tags-input').fill('Voyage fictif');
+    await page.locator('#cancel-photo-annotations-dialog').click();
+    const associate = page.getByRole('button', { name: /Associer des membres/ });
+    await associate.click();
+    await expect(page.locator('#photo-event-tags-input')).toHaveValue('');
+    await page.locator('#photo-event-tags-input').fill('Voyage fictif');
+    await page.locator('#photo-place-input').fill('Lieu fictif');
+    await page.getByRole('button', { name: 'Enregistrer les associations' }).click();
+    await expect(annotations).toBeHidden();
+    await expect(associate).toBeFocused();
+    await expect(page.locator('.data-file-annotations')).toContainText('Voyage fictif');
+    const stored = await page.evaluate(async () => {
+      const { getAll } = await import('/db.js');
+      return (await getAll('documents')).find(doc => doc.id === 'e5-photo').photoAnnotations;
+    });
+    expect(stored.eventTags).toEqual(['Voyage fictif']);
+    expect(stored.placeLabel).toBe('Lieu fictif');
+    await detailButton.click();
+    await page.keyboard.press('Escape');
+    await expect(detailButton).toBeFocused();
+  });
+
   test('migre un document IndexedDB v2 vers une fiche durable en v3', async ({ page }) => {
     await page.goto('http://localhost:5179/styles.css');
     await page.evaluate(async () => {
@@ -189,6 +344,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await expect(page.locator('#experimental-index-form')).toBeVisible();
     await expect(page.locator('#search-mode')).toHaveCount(0);
     await expect(page.locator('#moments-life-query')).toHaveCount(0);
+    await page.locator('#search-filters-panel > summary').click();
     await page.locator('#experimental-index-source').selectOption('local');
     await page.locator('#experimental-index-type').selectOption('document');
     await page.locator('#experimental-index-query').fill('facture');
@@ -302,8 +458,11 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await anotherPhoto.focus();
     await anotherPhoto.press('Space');
     await expect(page.locator('#moments-life-selection-status')).toHaveText('2 photos sélectionnées');
-    await expect(anotherPhoto.locator('xpath=..')).toHaveCSS('min-height', '44px');
-    await expect(page.locator('#moments-life-delete-selected')).toHaveCSS('min-height', '44px');
+    for (const control of [anotherPhoto.locator('xpath=..'), page.locator('#moments-life-delete-selected')]) {
+      const bounds = await control.boundingBox();
+      expect(bounds.width).toBeGreaterThanOrEqual(48);
+      expect(bounds.height).toBeGreaterThanOrEqual(48);
+    }
     await page.locator('#moments-life-delete-selected').click();
 
     const confirmation = page.locator('#photo-delete-confirmation');
@@ -404,7 +563,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
       .getByRole('button', { name: 'Voir le détail de vacances-0.jpg' }).click();
     const detailDialog = page.getByRole('dialog', { name: 'vacances-0.jpg' });
     await expect(detailDialog).toBeVisible();
-    await expect(detailDialog.locator('#close-photo-detail')).toHaveCSS('height', '44px');
+    await expect(detailDialog.locator('#close-photo-detail')).toHaveCSS('height', '48px');
     await expect(detailDialog.locator('#photo-detail-image')).toHaveAttribute('src', 'data:image/jpeg;base64,AQID');
     await expect(detailDialog.locator('a')).toHaveCount(0);
     await page.keyboard.press('Escape');

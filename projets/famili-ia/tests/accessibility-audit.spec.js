@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const views = ['accueil', 'recherche', 'maison', 'famille', 'alertes', 'assistant', 'importer', 'profil', 'vos-donnees'];
+const views = ['accueil', 'recherche', 'maison', 'famille', 'alertes', 'assistant', 'importer', 'profil', 'vos-donnees', 'plus'];
 const viewports = [390, 768, 1280, 1920];
 const interactive = 'button, a[href], input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab]';
 

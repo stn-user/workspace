@@ -367,6 +367,14 @@ function initOnboardingWizard() {
     console.log('[DEBUG] Async init - documents loaded, count:', uploadedDocuments.length);
     if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
     startAlertScheduler();
+    if (activeView === 'alertes') initAlertsView(parseHash().params);
+    if (activeView === 'maison') initHouseView(parseHash().params);
+    if (activeView === 'famille') initFamilyView();
+    if (activeView === 'detail') initEquipmentDetailView(parseHash().params.id);
+    if (activeView === 'profil') initProfileView();
+    if (activeView === 'plus') renderPlusBadges();
+    if (activeView === 'accueil') renderAccueilDashboard();
+    if (activeView === 'assistant') refreshAssistantContext();
 
     console.log('[DEBUG] Async init - About to init dialogs');
     initEquipmentDialog();
@@ -484,31 +492,46 @@ function initEquipmentDialog() {
     const category = document.querySelector('#eq-category-input').value;
     const status = document.querySelector('#eq-status-input').value;
 
+    const existingEquipment = id ? getEquipmentDetail(id) : null;
     const equipment = {
+      ...existingEquipment,
       id: id || `eq-${Date.now()}`,
       name,
       category,
       status,
-      docs: []
+      docs: existingEquipment?.docs || []
     };
 
-    if (id) {
-      await updateEquipment(equipment);
-      showDemoNotice(`Équipement mis à jour : ${name}`);
-    } else {
-      await addEquipment(equipment);
-      showDemoNotice(`Équipement ajouté : ${name}`);
+    try {
+      if (id) {
+        if (!existingEquipment) throw new Error("Cet équipement n'existe plus.");
+        await updateEquipment(equipment);
+        showDemoNotice(`Équipement mis à jour : ${name}`);
+      } else {
+        await addEquipment(equipment);
+        showDemoNotice(`Équipement ajouté : ${name}`);
+      }
+    } catch (error) {
+      console.error("Impossible d'enregistrer l'équipement :", error);
+      document.querySelector('#equipment-form-status').textContent = error.message;
+      return;
     }
 
     dialog.close();
-    renderEquipmentList(); // Refresh list
-    if (activeView === 'detail') initEquipmentDetailView(equipment.id);
+    initHouseView(parseHash().params);
+    if (activeView === 'detail') {
+      initEquipmentDetailView(equipment.id);
+      document.querySelector('#edit-equipment').focus();
+    } else {
+      document.querySelector('#add-equipment-btn').focus();
+    }
   });
 }
 
 function openEquipmentForm(equipment = null) {
   const dialog = document.querySelector('#equipment-dialog');
-  const form = document.querySelector('#equipment-form');
+  document.querySelector('#equipment-dialog-title').textContent = equipment ? 'Modifier un équipement' : 'Ajouter un équipement';
+  document.querySelector('#equipment-form-status').textContent = '';
   document.querySelector('#eq-id-input').value = equipment ? equipment.id : '';
   document.querySelector('#eq-name-input').value = equipment ? equipment.name : '';
   document.querySelector('#eq-category-input').value = equipment ? equipment.category : 'pompe';
@@ -718,7 +741,7 @@ function addDeadlineCopyAction(item, sourceId, itemId) {
     addTextElement(item, "p", "", "Copie textuelle indisponible dans Famili-IA.");
     return;
   }
-  const button = addTextElement(item, "button", "source-button", "Voir la copie dans Famili-IA");
+  const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir la copie dans Famili-IA");
   button.type = "button";
   button.addEventListener("click", () => {
     const current = findExperimentalDocument(sourceId, itemId);
@@ -796,7 +819,7 @@ function addDeadlineAlertAction(item, candidate) {
   const buttonLabel = candidate.estimated
     ? "Confirmer l’estimation et créer l’alerte"
     : "Confirmer la date et créer l’alerte";
-  const button = addTextElement(item, "button", "source-button", buttonLabel);
+  const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", buttonLabel);
   button.type = "button";
   button.addEventListener("click", async () => {
     const currentDocuments = getDocuments().filter(entry => entry.id === candidate.itemId);
@@ -867,6 +890,7 @@ function addDeadlineAlertAction(item, candidate) {
 }
 
 function refreshExperimentalIndex() {
+  document.querySelector('#reset-empty-search').hidden = true;
   try {
     experimentalIndex.syncDocuments(uploadedDocuments);
     const sourceStatuses = renderExperimentalSources();
@@ -883,6 +907,9 @@ function refreshExperimentalIndex() {
     const records = experimentalIndex.getAllRecords();
     refreshExperimentalFacets(records);
     const selectedFilters = getExperimentalIndexFilters();
+    const selectedFilterCount = Object.keys(selectedFilters).length;
+    document.querySelector('#search-filter-count').textContent = selectedFilterCount ? `(${selectedFilterCount})` : '';
+    document.querySelector('#search-start').hidden = Boolean(experimentalQuery.trim() || selectedFilterCount);
     if (!experimentalQuery.trim() && Object.keys(selectedFilters).length === 0) {
       renderUnifiedPhotoResults([], { kind: "empty" });
       experimentalIndexStatus.textContent = "";
@@ -942,7 +969,7 @@ function refreshExperimentalIndex() {
       for (const detail of result.details) addTextElement(item, "p", "", detail);
       for (const reason of result.reasons) addTextElement(item, "p", "search-evidence", reason);
       if (result.canViewCopy) {
-        const button = addTextElement(item, "button", "source-button", "Voir la copie dans Famili-IA");
+        const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir la copie dans Famili-IA");
         button.type = "button";
         button.addEventListener("click", () => {
           const current = findExperimentalDocument(match.sourceId, match.itemId);
@@ -957,7 +984,7 @@ function refreshExperimentalIndex() {
         addTextElement(item, "p", "", "Copie textuelle indisponible dans Famili-IA.");
       }
       if (sourceDocument && isPhotoDocument(sourceDocument)) {
-        const button = addTextElement(item, "button", "source-button", "Voir le détail de la photo");
+        const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir le détail de la photo");
         button.type = "button";
         button.addEventListener("click", () => {
           const current = findExperimentalDocument(match.sourceId, match.itemId);
@@ -1004,6 +1031,7 @@ function refreshExperimentalIndex() {
     experimentalIndexStatus.textContent = matches.length
       ? `${matches.length} résultat${matches.length === 1 ? "" : "s"} dans les fichiers présents dans Famili-IA.`
       : "Aucun résultat dans les données recherchées ; certains textes ne sont pas disponibles et d'autres fichiers peuvent exister dans les sources.";
+    document.querySelector('#reset-empty-search').hidden = matches.length > 0;
     if (request.kind === "photo" && request.explanations?.length) {
       const criteria = request.explanations.map(item => item.phrase).filter(Boolean).join(", ");
       experimentalIndexStatus.textContent += ` Critères photo explicites : ${criteria}.`;
@@ -1027,6 +1055,21 @@ function refreshExperimentalIndex() {
 }
 
 document.querySelector("#experimental-deadline-refresh").addEventListener("click", refreshExperimentalIndex);
+
+function resetSearchFilters(clearQuery = false) {
+  for (const control of document.querySelectorAll('#search-filters-panel select, #search-filters-panel input')) {
+    control.value = '';
+  }
+  if (clearQuery) {
+    experimentalQuery = '';
+    experimentalIndexQuery.value = '';
+  }
+  refreshExperimentalIndex();
+  experimentalIndexQuery.focus();
+}
+
+document.querySelector('#reset-search-filters').addEventListener('click', () => resetSearchFilters());
+document.querySelector('#reset-empty-search').addEventListener('click', () => resetSearchFilters(true));
 
 experimentalIndexForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1499,9 +1542,7 @@ function updateGoogleDriveButton() {
 
 function completeOnboarding() {
   localStorage.setItem(onboardingCompleteKey, "true");
-  document.querySelector("#welcome-panel").hidden = true;
   document.querySelector("#dashboard-content").hidden = false;
-  document.querySelector("#view-accueil").setAttribute("aria-labelledby", "dashboard-title");
 }
 
 function openSourceChoices() {
@@ -1937,14 +1978,6 @@ if (openSourceDemoButton) {
   });
 }
 
-document.querySelectorAll("[data-question]").forEach((button) => {
-  button.addEventListener("click", () => {
-    input.value = button.dataset.question;
-    form.requestSubmit();
-    input.focus();
-  });
-});
-
 if (localFilesInput) {
   localFilesInput.addEventListener("change", () => {
     loadLocalFiles(localFilesInput.files);
@@ -2178,41 +2211,20 @@ function initializeViewWithParams(viewName, params) {
       initFamilyView();
       break;
 
+    case 'profil':
+      initProfileView();
+      break;
+
+    case 'assistant':
+      refreshAssistantContext();
+      break;
+
     case 'alertes':
-      initAlertsView();
-      // Apply filter from URL params if present
-      const hashFilter = params?.filter;
-      if (hashFilter) {
-        const matchingTab = document.querySelector(`.alert-filter-tab[data-filter="${hashFilter}"]`);
-        if (matchingTab) {
-          const tabs = document.querySelectorAll('.alert-filter-tab');
-          tabs.forEach(t => t.classList.remove('is-selected'));
-          matchingTab.classList.add('is-selected');
-          renderAlerts(hashFilter);
-        }
-      }
+      initAlertsView(params);
       break;
 
     case 'maison':
-      initHouseView();
-      // Apply filter from URL params if present
-      const categoryFilter = params?.filter;
-      if (categoryFilter) {
-        const matchingTab = document.querySelector(`[data-house-category="${categoryFilter}"]`);
-        if (matchingTab) {
-          const tabs = document.querySelectorAll('[data-house-category]');
-          tabs.forEach(t => {
-            t.classList.toggle('is-selected', t === matchingTab);
-            t.setAttribute('aria-pressed', String(t === matchingTab));
-          });
-          renderEquipmentList(categoryFilter);
-          // Update pool illustration visibility
-          const poolIllustration = document.querySelector('.pool-illustration');
-          if (poolIllustration) {
-            poolIllustration.hidden = categoryFilter !== 'tout' && categoryFilter !== 'piscine';
-          }
-        }
-      }
+      initHouseView(params);
       break;
 
     case 'accueil':
@@ -2280,19 +2292,6 @@ function showView(name, { addHistory = true, params = {} } = {}) {
     }
   }
 
-  // Cacher le welcome panel lorsqu'on navigue hors de la vue accueil
-  const welcomePanel = document.querySelector("#welcome-panel");
-  // Si l'onboarding est terminé, le welcome panel doit rester caché
-  const onboardingDone = localStorage.getItem(onboardingCompleteKey) === "true";
-  if (welcomePanel) {
-    if (name === 'accueil' && !onboardingDone) {
-      // S'assurer que le welcome panel est visible uniquement si c'est la vue actuelle ET si onboarding n'est pas terminé
-      welcomePanel.hidden = false;
-    } else {
-      welcomePanel.hidden = true;
-    }
-  }
-
   // Build the new URL hash
   let hash = `#/${name}`;
   if (params && Object.keys(params).length > 0) {
@@ -2310,6 +2309,8 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   }
 
   activeView = name;
+  document.body.classList.toggle('ui-theme', ['accueil', 'recherche', 'alertes', 'vos-donnees', 'maison', 'detail', 'famille', 'assistant', 'importer', 'profil', 'plus'].includes(name));
+  if (name !== 'alertes') document.querySelector('#alert-preferences-dialog')?.close();
 
   views.forEach((view) => {
     view.removeAttribute('hidden');
@@ -2587,11 +2588,19 @@ document.querySelectorAll("[data-nav~='profil']").forEach((button) => {
  * Handle profile updates
  */
 function initProfileHandlers() {
-  const saveBtn = document.querySelector("#save-profile");
-  if (!saveBtn) return;
+  const profileForm = document.querySelector("#profile-form");
+  if (!profileForm) return;
 
-  saveBtn.addEventListener("click", async () => {
+  profileForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
     const newName = document.querySelector("#edit-name").value.trim();
+    const status = document.querySelector("#profile-save-status");
+    status.textContent = '';
+    if (!newName) {
+      status.textContent = "Saisissez un nom d'affichage.";
+      document.querySelector("#edit-name").focus();
+      return;
+    }
     if (newName) {
       // Update current user in state
       const user = getCurrentUser();
@@ -2627,13 +2636,13 @@ function initProfileHandlers() {
         renderAccueilDashboard();
       }
 
-      const status = document.querySelector("#profile-save-status");
       try {
         await updatePhotoLocationConsent(photoLocationConsent);
         await updatePrivacyConsent({
           telemetryEnabled: user.privacy.telemetryEnabled,
           dataSharingConsent: user.privacy.dataSharingConsent
         });
+        initProfileView();
         if (status) status.textContent = "Préférences enregistrées.";
         showDemoNotice(`Profil mis à jour : ${newName}`);
       } catch (error) {
@@ -2648,52 +2657,23 @@ function initProfileHandlers() {
     }
   });
 
-  // Initialize profile view with data from state
-  document.querySelectorAll("[data-nav~='profil']").forEach((button) => {
-    button.addEventListener("click", () => {
-      showView("profil");
-      // Populate profile data from state
-      const user = getCurrentUser();
-      const avatar = document.querySelector("#profile-avatar");
-      const nameInput = document.querySelector("#edit-name");
-      const addressInput = document.querySelector("#edit-profile-address");
-      const postalInput = document.querySelector("#edit-profile-postal");
-      const cityInput = document.querySelector("#edit-profile-city");
-      const roleEl = document.querySelector("#profile-role");
+}
 
-      if (avatar && nameInput) {
-        avatar.textContent = user.avatar || (user.name ? user.name.charAt(0).toUpperCase() : 'S');
-        nameInput.value = user.name || 'Steve';
-      }
-      if (addressInput && user.address) {
-        addressInput.value = user.address;
-      }
-      if (postalInput && user.postalCode) {
-        postalInput.value = user.postalCode;
-      }
-      if (cityInput && user.city) {
-        cityInput.value = user.city;
-      }
-      if (roleEl) {
-        roleEl.textContent = user.role || 'Administrateur';
-      }
-
-      // Set checkboxes based on consent
-      const telemetryCheckbox = document.querySelector('#consent-telemetry');
-      const sharingCheckbox = document.querySelector('#consent-sharing');
-      const photoGpsCheckbox = document.querySelector("#consent-photo-gps");
-
-      if (telemetryCheckbox && user.privacy) {
-        telemetryCheckbox.checked = user.privacy.telemetryEnabled ?? false;
-      }
-      if (sharingCheckbox && user.privacy) {
-        sharingCheckbox.checked = user.privacy.dataSharingConsent ?? false;
-      }
-      if (photoGpsCheckbox && user.privacy) {
-        photoGpsCheckbox.checked = user.privacy.photoLocationConsent === true;
-      }
-    });
-  });
+function initProfileView() {
+  const user = getCurrentUser();
+  document.querySelector('#profile-save-status').textContent = '';
+  document.querySelector('#profile-avatar').textContent = user.avatar || user.name?.charAt(0).toUpperCase() || '?';
+  document.querySelector('#profile-name').textContent = user.name || '';
+  document.querySelector('#edit-name').value = user.name || '';
+  document.querySelector('#edit-profile-address').value = user.address || '';
+  document.querySelector('#edit-profile-postal').value = user.postalCode || '';
+  document.querySelector('#edit-profile-city').value = user.city || '';
+  const role = user.role === 'Admin' ? 'Administrateur' : user.role === 'Member' ? 'Membre' : user.role || 'Non renseigné';
+  document.querySelector('#profile-role').textContent = role;
+  document.querySelector('#profile-role-readonly').textContent = role;
+  document.querySelector('#consent-telemetry').checked = user.privacy?.telemetryEnabled === true;
+  document.querySelector('#consent-sharing').checked = user.privacy?.dataSharingConsent === true;
+  document.querySelector('#consent-photo-gps').checked = user.privacy?.photoLocationConsent === true;
 }
 
 document.querySelectorAll("[data-nav~='vos-donnees']").forEach((button) => {
@@ -2703,12 +2683,16 @@ document.querySelectorAll("[data-nav~='vos-donnees']").forEach((button) => {
   });
 });
 
-/**
- * Get equipment icon - checks for asset image first, falls back to SVG
- * @param {string} category - Equipment category
- * @param {string} eqId - Equipment ID (to potentially look up specific image)
- * @returns {string} HTML img tag or SVG icon
- */
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
+
 function getEquipmentIcon(category, eqId) {
   const svgFallbacks = {
     'pompe': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
@@ -2730,6 +2714,13 @@ function renderEquipmentList(category = 'tout') {
   if (!equipmentList || !equipmentEmpty) return;
 
   const equipment = getEquipmentByCategory(category);
+  document.querySelectorAll('[data-house-category]').forEach(tab => {
+    const selected = tab.dataset.houseCategory === category;
+    tab.classList.toggle('is-selected', selected);
+    tab.setAttribute('aria-pressed', String(selected));
+  });
+  document.querySelector('#equipment-list-status').textContent =
+    `${equipment.length} équipement${equipment.length > 1 ? 's' : ''}`;
 
   if (equipment.length === 0) {
     equipmentList.innerHTML = '';
@@ -2747,10 +2738,10 @@ function renderEquipmentList(category = 'tout') {
     else if (eq.category === 'assurance') { iconClass = 'amber'; }
 
     return `
-      <button class="equipment-row" type="button" data-equipment="${eq.id}" data-open-view="detail">
-        <span class="row-icon ${iconClass}">${icon}</span>
-        <span class="row-copy"><strong>${eq.name}</strong><small>${eq.status}</small></span>
-        <span class="stat-arrow">›</span>
+      <button class="ui-button ui-button--secondary equipment-row" type="button" data-equipment="${escapeHtml(eq.id)}" data-open-view="detail?id=${escapeHtml(encodeURIComponent(eq.id))}">
+        <span class="ui-icon row-icon ${iconClass}" aria-hidden="true">${icon}</span>
+        <span class="row-copy"><strong>${escapeHtml(eq.name)}</strong><small>${escapeHtml(eq.status)}</small></span>
+        <span class="stat-arrow" aria-hidden="true">›</span>
       </button>
     `;
   }).join('');
@@ -2764,31 +2755,14 @@ function renderEquipmentList(category = 'tout') {
 function initCategoryTabs() {
   const tabs = document.querySelectorAll('[data-house-category]');
   tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      // Update active tab
-      document.querySelectorAll('[data-house-category]').forEach(t => {
-        const isSelected = t === tab;
-        t.classList.toggle('is-selected', isSelected);
-        t.setAttribute('aria-pressed', String(isSelected));
-      });
-
-      // Get category and render equipment list
+    tab.onclick = () => {
       const category = tab.dataset.houseCategory;
       renderEquipmentList(category);
-
-      // Update pool illustration visibility
-      const poolIllustration = document.querySelector('.pool-illustration');
-      if (poolIllustration) {
-        poolIllustration.hidden = category !== 'tout' && category !== 'piscine';
-      }
-
-      // Update equipment empty state (handled by renderEquipmentList)
-      // Update URL hash to preserve filter state
       const hash = `#/maison?filter=${encodeURIComponent(category)}`;
       if (window.location.hash !== hash) {
-        window.history.pushState({ view: 'maison', filter: category }, "", hash);
+        window.history.pushState({ view: 'maison', params: { filter: category } }, "", hash);
       }
-    });
+    };
   });
 }
 
@@ -2800,17 +2774,18 @@ document.querySelector("#quick-search-form").addEventListener("submit", (event) 
   input.focus();
 });
 
+document.querySelector('[data-replay-demo]').addEventListener('click', () => startOnboardingReplay(3));
+
 // The house category filtering is now handled by initCategoryTabs() and renderEquipmentList()
 // This duplicate event listener is removed to avoid conflicts
 
-document.querySelectorAll("[data-alert-card]").forEach((card) => {
-  card.addEventListener("click", () => {
-    card.classList.toggle("is-read");
-  });
-});
-
 document.querySelector("#mark-alerts-read").addEventListener("click", (event) => {
-  document.querySelectorAll("[data-alert-card]").forEach((card) => card.classList.add("is-read"));
+  document.querySelectorAll("[data-alert-card]").forEach((card) => {
+    card.classList.add("is-read");
+    const readButton = card.querySelector('[data-toggle-alert-read]');
+    readButton.setAttribute('aria-pressed', 'true');
+    readButton.textContent = "Marquer comme non lue";
+  });
   event.currentTarget.textContent = "Toutes les alertes sont lues";
   event.currentTarget.disabled = true;
 });
@@ -2821,62 +2796,36 @@ document.querySelector("#mark-alerts-read").addEventListener("click", (event) =>
  */
 function renderAccueilDashboard() {
   const user = getCurrentUser();
-  const members = getFamilyMembers();
-  const equipment = getEquipmentByCategory('tout');
-  const alerts = getAlerts();
+  const alerts = getAlerts().filter(alert => !alert.status || alert.status === 'active');
+  const inventory = mergeInventoryDocuments(uploadedDocuments.length === 0 ? documents : [], uploadedDocuments);
 
-  // Update dashboard greeting
-  const greetingName = document.querySelector('#dashboard-title strong, #dashboard-title');
-  if (greetingName) {
-    // Vérifier si le prénom est déjà connu (onboarding terminé ou sauté)
-    const userName = getCurrentUser().name;
-    if (userName) {
-      // Icône d'étincelles ✨ pour marquer l'accueil
-      greetingName.innerHTML = `Bonjour ${userName} <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true" style="display:inline-block; vertical-align:-3px; margin-left:6px; color: var(--color-primary, #0f7173);"><path d="M12 0C12 6.627 17.373 12 24 12C17.373 12 12 17.373 12 24C12 17.373 6.627 12 0 12C6.627 12 12 6.627 12 0Z"/></svg>`;
-    } else {
-      // Pendant l'onboarding, afficher un message de bienvenue générique
-      greetingName.textContent = 'Bienvenue dans Famili-IA';
-    }
-  }
-
-  // Update stats grid with real data (preserving SVG icons)
-  const statCards = document.querySelectorAll('.stat-card');
-  if (statCards[0]) {
-    statCards[0].querySelector('strong').textContent = `${equipment.length + 5}`;
-  }
-  if (statCards[1]) {
-    const activeWarranties = alerts.filter(a => a.type === 'amber' || a.type === 'red').length;
-    statCards[1].querySelector('strong').textContent = activeWarranties.toString();
-  }
-  if (statCards[2]) {
-    statCards[2].querySelector('strong').textContent = '2';
-  }
-  if (statCards[3]) {
-    statCards[3].querySelector('strong').textContent = '1';
-  }
-  if (statCards[4]) {
-    statCards[4].querySelector('strong').textContent = '18 642';
-  }
-  if (statCards[5]) {
-    statCards[5].querySelector('strong').textContent = '31';
-  }
+  document.querySelector('#dashboard-user-name').textContent = user.name || '';
+  document.querySelector('#home-file-count').textContent = inventory.length;
+  document.querySelector('#home-warranty-count').textContent = filterInventoryDocuments(inventory, { type: 'Garantie' }).length;
+  document.querySelector('#home-contract-count').textContent = filterInventoryDocuments(inventory, { type: 'Contrat' }).length;
+  const exampleCount = countInventorySources(inventory).demo;
+  document.querySelector('#dashboard-data-note').textContent = exampleCount
+    ? `${exampleCount} exemple${exampleCount > 1 ? 's' : ''} fictif${exampleCount > 1 ? 's' : ''} inclus. Les exemples ne sont pas vos fichiers personnels et ne sont pas recherchés dans l'index.`
+    : `${inventory.length} fichier${inventory.length > 1 ? 's' : ''} enregistré${inventory.length > 1 ? 's' : ''} dans Famili-IA. Ces compteurs ne garantissent pas la validité des contrats ou garanties.`;
 
   // Update "Vos prochaines échéances" section with event delegation
   const verifyPanel = document.querySelector('#view-accueil .verify-panel');
   if (verifyPanel) {
     verifyPanel.innerHTML = `
       <div class="section-heading">
-        <h2 id="verify-title">Vos prochaines échéances</h2>
-        <button class="text-button" type="button" data-open-view="alertes">Voir tout</button>
+        <h2 id="verify-title">Vos rappels</h2>
+        <button class="ui-button ui-button--text" type="button" data-open-view="alertes">Toutes les alertes</button>
       </div>
-      ${alerts.map(alert => `
-        <button class="verify-row" type="button" data-open-view="alertes" data-alert-type="${alert.type}">
-          <span class="row-icon ${alert.type}" aria-hidden="true">${getAlertIcon(alert.type)}</span>
-          <div class="row-copy">
-            <strong>${alert.title}</strong>
-            <small>${alert.detail}</small>
-          </div>
-          <span class="stat-arrow">›</span>
+      <p class="household-note">${alerts.length ? 'Aperçu des rappels actifs, y compris ceux reportés. Consultez Alertes pour leurs dates et leurs sources.' : 'Aucun rappel actif enregistré. Cela ne garantit pas que toutes vos échéances sont couvertes.'}</p>
+      ${alerts.slice(0, 3).map(alert => `
+        <button class="verify-row" type="button" data-open-view="alertes">
+          <span class="ui-icon row-icon" aria-hidden="true">${getAlertIcon(calculateAlertType(alert.dueDate, alert.type, alert.documentType))}</span>
+          <span class="row-copy">
+            <strong>${escapeHtml(alert.title)}</strong>
+            <small>${escapeHtml(alert.detail)}</small>
+            ${alert.source !== 'document' ? `<small>${documents.some(document => document.id === alert.docId) ? 'Exemple fictif' : 'Source non renseignée'}</small>` : ''}
+          </span>
+          <span class="stat-arrow" aria-hidden="true">›</span>
         </button>
       `).join('')}
     `;
@@ -2945,16 +2894,16 @@ function initEquipmentDetailView(eqId) {
   const colorClass = getCategoryColorClass(eqDetail.category);
 
   detailContent.innerHTML = `
-    <div class="equipment-specs">
+    <div class="ui-card equipment-specs">
       <div class="spec-header">
         <span class="spec-icon ${colorClass}">${categoryIcon}</span>
-        <h3>${eqDetail.name}</h3>
+        <h3>${escapeHtml(eqDetail.name)}</h3>
       </div>
       <div class="spec-grid">
-        <div class="spec-item"><label>Catégorie</label><span>${eqDetail.category.charAt(0).toUpperCase() + eqDetail.category.slice(1)}</span></div>
-        <div class="spec-item"><label>Statut</label><span class="status-pill">${eqDetail.status}</span></div>
-        <div class="spec-item"><label>Installation</label><span>Janvier 2023</span></div>
-        <div class="spec-item"><label>Référence</label><span>#${eqId.split('-').pop().toUpperCase()}</span></div>
+        <div class="spec-item"><span class="spec-label">Catégorie</span><span>${escapeHtml(eqDetail.category.charAt(0).toUpperCase() + eqDetail.category.slice(1))}</span></div>
+        <div class="spec-item"><span class="spec-label">Statut</span><span class="status-pill">${escapeHtml(eqDetail.status)}</span></div>
+        <div class="spec-item"><span class="spec-label">Installation</span><span>Non renseignée</span></div>
+        <div class="spec-item"><span class="spec-label">Référence</span><span>#${escapeHtml(eqId.split('-').pop().toUpperCase())}</span></div>
       </div>
 
       <div class="spec-docs">
@@ -2965,10 +2914,10 @@ function initEquipmentDetailView(eqId) {
                 const doc = [...documents, ...uploadedDocuments].find(d => d.id === docId);
                 const docName = doc ? doc.name : docId;
                 return `
-                  <button class="doc-link-card" type="button" data-doc-id="${docId}">
-                    <span class="doc-icon">ðŸ“„</span>
-                    <span class="doc-name">${docName}</span>
-                    <span class="doc-arrow">›</span>
+                  <button class="ui-button ui-button--secondary doc-link-card" type="button" data-doc-id="${escapeHtml(docId)}">
+                    <span class="ui-icon doc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6v20h12V6zM14 2v5h5M8 12h8m-8 4h6"/></svg></span>
+                    <span class="doc-name">${escapeHtml(docName)}</span>
+                    <span class="doc-arrow" aria-hidden="true">›</span>
                   </button>
                 `;
               }).join('')
@@ -2977,17 +2926,17 @@ function initEquipmentDetailView(eqId) {
       </div>
 
       <div class="equipment-actions">
-        <button class="context-action-button" type="button" id="edit-equipment">
-          <span>âœŽ</span> Modifier
+        <button class="ui-button ui-button--primary" type="button" id="edit-equipment">
+          Modifier
         </button>
-        <button class="context-action-button" type="button" id="delete-equipment" style="color: var(--color-danger, #ef4444);">
-          <span>ðŸ—‘</span> Supprimer
+        <button class="ui-button ui-button--danger" type="button" id="delete-equipment">
+          Supprimer
         </button>
-        <button class="context-action-button" type="button" data-demo-action>
-          <span>+</span> Lier un document
+        <button class="ui-button ui-button--secondary" type="button" data-demo-action>
+          Lier un document (démo)
         </button>
-        <button class="context-action-button" type="button" data-demo-action>
-          <span>â†»</span> Historique
+        <button class="ui-button ui-button--secondary" type="button" data-demo-action>
+          Historique (démo)
         </button>
       </div>
     </div>
@@ -2999,10 +2948,14 @@ function initEquipmentDetailView(eqId) {
 
   document.querySelector('#delete-equipment').addEventListener('click', async () => {
     if (confirm(`Voulez-vous vraiment supprimer "${eqDetail.name}" ?`)) {
-      await deleteEquipment(eqId);
-      showDemoNotice(`Équipement supprimé : ${eqDetail.name}`);
-      showView("maison");
-      renderEquipmentList();
+      try {
+        await deleteEquipment(eqId);
+        showDemoNotice(`Équipement supprimé : ${eqDetail.name}`);
+        showView("maison");
+      } catch (error) {
+        console.error("Impossible de supprimer l'équipement :", error);
+        showDemoNotice(`Suppression impossible : ${error.message}`);
+      }
     }
   });
 
@@ -3011,6 +2964,7 @@ function initEquipmentDetailView(eqId) {
       const docId = btn.dataset.docId;
       const doc = [...documents, ...uploadedDocuments].find(d => d.id === docId);
       if (doc) openDocumentPreview(doc);
+      else showDemoNotice("Ce document n'est pas disponible sur cet appareil.");
     });
   });
 
@@ -3028,14 +2982,7 @@ try {
 } catch (e) {
   // localStorage unavailable - not first run by default
 }
-document.querySelector("#welcome-panel").hidden = true; // Caché par défaut
-
-// Montrer le welcome panel UNIQUEMENT sur la vue accueil AU CHARGEMENT INITIAL
-if (firstRun && initialView === 'accueil') {
-  document.querySelector("#welcome-panel").hidden = false;
-}
 document.querySelector("#dashboard-content").hidden = firstRun;
-document.querySelector("#view-accueil").setAttribute("aria-labelledby", firstRun ? "welcome-title" : "dashboard-title");
 showView(Object.hasOwn(pageTitles, initialView) ? initialView : "accueil", {
   addHistory: false,
   params: initialParams
@@ -3047,11 +2994,12 @@ if (!firstRun || initialView === 'accueil') {
 }
 
 function getAlertIcon(type) {
-  let iconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
-  if (type === 'red') {
-    iconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-  }
-  return iconSvg;
+  const paths = type === 'red'
+    ? '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/><path d="M12 8v5m0 3h.01"/>'
+    : type === 'amber'
+      ? '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+      : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8m-8 4h5"/>';
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 }
 
 /**
@@ -3060,6 +3008,16 @@ function getAlertIcon(type) {
 function initAlertsView(params = {}) {
   const alertList = document.querySelector('#alert-list');
   if (!alertList) return;
+  const preferencesDialog = document.querySelector('#alert-preferences-dialog');
+  document.querySelector('#open-alert-preferences').onclick = () => preferencesDialog.showModal();
+  document.querySelector('#close-alert-preferences').onclick = () => preferencesDialog.close();
+  preferencesDialog.onclick = event => {
+    if (event.target === preferencesDialog) {
+      const bounds = preferencesDialog.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right
+        || event.clientY < bounds.top || event.clientY > bounds.bottom) preferencesDialog.close();
+    }
+  };
   const preferencesForm = document.querySelector("#alert-notification-preferences");
   if (preferencesForm) {
     const preferences = normalizeAlertNotificationPreferences(getCurrentUser().preferences?.alertNotifications);
@@ -3128,8 +3086,6 @@ function initAlertsView(params = {}) {
   const tabs = document.querySelectorAll('.alert-filter-tab');
   tabs.forEach(tab => {
     tab.onclick = () => {
-      tabs.forEach(t => t.classList.remove('is-selected'));
-      tab.classList.add('is-selected');
       renderAlerts(tab.dataset.filter);
 
       // Update URL hash to preserve filter state
@@ -3140,25 +3096,15 @@ function initAlertsView(params = {}) {
     };
   });
 
-  // Render initial alerts (default: à-traiter)
-  renderAlerts('à-traiter');
-
-  // Apply filter from URL hash if present
-  const hashFilter = params?.filter;
-  if (hashFilter) {
-    const matchingTab = document.querySelector(`.alert-filter-tab[data-filter="${hashFilter}"]`);
-    if (matchingTab) {
-      tabs.forEach(t => t.classList.remove('is-selected'));
-      matchingTab.classList.add('is-selected');
-      renderAlerts(hashFilter);
-    }
-  }
+  const initialFilter = [...tabs].some(tab => tab.dataset.filter === params?.filter)
+    ? params.filter : 'à-traiter';
+  renderAlerts(initialFilter);
 }
 
 /**
  * Render alerts based on filter
  */
-function renderAlerts(filter) {
+function renderAlerts(filter, restoreFocus = false) {
   const alertList = document.querySelector('#alert-list');
   if (!alertList) return;
 
@@ -3186,6 +3132,8 @@ function renderAlerts(filter) {
   // Update badges
   document.querySelectorAll('.alert-filter-tab').forEach(tab => {
     const f = tab.dataset.filter;
+    tab.classList.toggle('is-selected', f === filter);
+    tab.setAttribute('aria-pressed', String(f === filter));
     const count = (f === "historique"
       ? alerts.filter(a => a.status !== "active")
       : f === "reportées"
@@ -3199,27 +3147,32 @@ function renderAlerts(filter) {
     tab.querySelector('.alert-badge').textContent = count.toString();
   });
 
+  const selectedTab = document.querySelector('.alert-filter-tab[aria-pressed="true"]');
+  const filterLabel = selectedTab.firstChild.textContent.trim().toLocaleLowerCase('fr');
+  document.querySelector('#alert-list-status').textContent =
+    `${filteredAlerts.length} alerte${filteredAlerts.length > 1 ? 's' : ''} · ${filterLabel}`;
+  const markReadButton = document.querySelector('#mark-alerts-read');
+  markReadButton.disabled = filteredAlerts.length === 0;
+  markReadButton.textContent = "Tout marquer comme lu";
+  if (restoreFocus) selectedTab.focus({ preventScroll: true });
+
   if (filteredAlerts.length === 0) {
-    alertList.innerHTML = '<p class="empty-state">Aucune alerte dans cette catégorie.</p>';
+    alertList.innerHTML = `<section class="ui-card alerts-empty">
+      <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+      <h2>Aucune alerte dans cette catégorie</h2>
+      <p>Vous pouvez consulter les autres catégories à tout moment.</p>
+    </section>`;
     return;
   }
-
-  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[character]);
 
   alertList.innerHTML = filteredAlerts.map(alert => {
     const iconSvg = getAlertIcon(alert.type);
     const isSnoozed = alert.snoozedUntil && alert.snoozedUntil > todayIso;
     const statusAction = alert.status !== "active"
-      ? '<button class="alert-status-action" type="button" data-alert-status="active">Réactiver</button>'
+      ? '<button class="ui-button ui-button--secondary alert-status-action" type="button" data-alert-status="active">Réactiver</button>'
       : isSnoozed
-        ? '<button class="alert-status-action" type="button" data-unsnooze>Réactiver maintenant</button>'
-        : '<button class="alert-status-action" type="button" data-alert-status="ignored">Ignorer</button><button class="alert-status-action" type="button" data-alert-status="resolved">Terminée</button><button class="alert-status-action" type="button" data-snooze-days="1">Reporter 1 jour</button><button class="alert-status-action" type="button" data-snooze-days="7">Reporter 7 jours</button>';
+        ? '<button class="ui-button ui-button--secondary alert-status-action" type="button" data-unsnooze>Réactiver maintenant</button>'
+        : '<button class="ui-button ui-button--secondary alert-status-action" type="button" data-alert-status="ignored">Ignorer</button><button class="ui-button ui-button--secondary alert-status-action" type="button" data-alert-status="resolved">Terminée</button><button class="ui-button ui-button--secondary alert-status-action" type="button" data-snooze-days="1">Reporter 1 jour</button><button class="ui-button ui-button--secondary alert-status-action" type="button" data-snooze-days="7">Reporter 7 jours</button>';
     const dueDate = alert.dueDate
       ? new Date(`${alert.dueDate}T00:00:00`).toLocaleDateString("fr-FR")
       : "";
@@ -3231,42 +3184,54 @@ function renderAlerts(filter) {
       ? `<p class="alert-snooze-note">Reportée jusqu'au ${escapeHtml(new Date(`${alert.snoozedUntil}T00:00:00`).toLocaleDateString("fr-FR"))}.</p>`
       : "";
     const correctionForm = alert.source === "document" && alert.docId
-      ? `<details class="alert-date-correction"><summary>Corriger la date</summary><form data-alert-date-form><label>Date d'échéance confirmée<input type="date" name="dueDate" value="${escapeHtml(alert.dueDate)}" required></label><button class="alert-status-action" type="submit">Enregistrer la date</button></form></details>`
+      ? `<details class="alert-date-correction"><summary>Corriger la date</summary><form data-alert-date-form><label class="ui-label">Date d'échéance confirmée<input class="ui-input" type="date" name="dueDate" value="${escapeHtml(alert.dueDate)}" required></label><button class="ui-button ui-button--primary alert-status-action" type="submit">Enregistrer la date</button></form></details>`
       : "";
+    const stateLabel = alert.status === 'resolved' ? 'Terminée'
+      : alert.status === 'ignored' ? 'Ignorée'
+        : isSnoozed ? 'Reportée'
+          : alert.type === 'red' ? 'À traiter'
+            : alert.type === 'amber' ? 'À anticiper' : 'À surveiller';
+    const isExample = alert.source !== 'document' && documents.some(document => document.id === alert.docId);
 
     return `
-      <article class="alert-card ${escapeHtml(alert.type)}${isSnoozed ? " is-snoozed" : ""}" data-alert-card data-alert-id="${escapeHtml(alert.id)}">
-        <div class="alert-icon ${escapeHtml(alert.type)}">
+      <article class="ui-card alert-card ${escapeHtml(alert.type)}${isSnoozed ? " is-snoozed" : ""}" data-alert-card data-alert-id="${escapeHtml(alert.id)}">
+        <div class="ui-icon alert-icon" aria-hidden="true">
           ${iconSvg}
         </div>
         <div class="alert-content">
           <div class="alert-header">
             <strong>${escapeHtml(alert.title)}</strong>
+          </div>
+          <div class="alert-meta">
+            <span class="alert-state">${stateLabel}</span>
             ${dueDate ? `<span class="alert-date">Échéance : ${escapeHtml(dueDate)}</span>` : ''}
+            ${alert.source !== 'document' ? `<span class="alert-demo-label">${isExample ? 'Exemple fictif' : 'Source non renseignée'}</span>` : ''}
           </div>
           <p>${escapeHtml(alert.detail)}</p>
           ${sourceExcerpt}
           ${snoozeNotice}
-          <div class="alert-status-actions">${statusAction}</div>
-          ${correctionForm}
         </div>
-        <button class="alert-action" type="button" data-open-view="vos-donnees?docId=${escapeHtml(encodeURIComponent(alert.docId || ""))}" aria-label="Voir le détail">›</button>
+        <button class="ui-button ui-button--secondary alert-action" type="button" data-open-view="vos-donnees?docId=${escapeHtml(encodeURIComponent(alert.docId || ""))}" aria-label="Voir le détail de ${escapeHtml(alert.title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+        <details class="alert-management">
+          <summary>Gérer cette alerte<span class="visually-hidden"> : ${escapeHtml(alert.title)}</span></summary>
+          <div class="alert-status-actions">
+            ${statusAction}
+            <button class="ui-button ui-button--secondary alert-status-action" type="button" data-toggle-alert-read aria-pressed="false">Marquer comme lue</button>
+          </div>
+          ${correctionForm}
+        </details>
       </article>
     `;
   }).join('');
 
-  // Re-bind alert card click listeners for read toggle
-  document.querySelectorAll("[data-alert-card]").forEach((card) => {
-    card.addEventListener("click", (e) => {
-      // Si l'utilisateur clique sur le bouton d'action, on ne fait rien ici
-      // et on laisse le gestionnaire du bouton (délégation globale) agir.
-      if (e.target.closest('button')) {
-          return;
-      }
-
-      // Sinon, on bascule l'état "lu"
-      card.classList.toggle("is-read");
-    }, true); // Le paramètre 'true' active la capture, ce qui est plus robuste
+  alertList.querySelectorAll('[data-toggle-alert-read]').forEach(button => {
+    button.addEventListener('click', () => {
+      const isRead = button.closest('[data-alert-card]').classList.toggle('is-read');
+      button.setAttribute('aria-pressed', String(isRead));
+      button.textContent = isRead ? "Marquer comme non lue" : "Marquer comme lue";
+      markReadButton.disabled = false;
+      markReadButton.textContent = "Tout marquer comme lu";
+    });
   });
 
   // Handle alert action button navigation explicitly
@@ -3302,7 +3267,7 @@ function renderAlerts(filter) {
         const updatedAlert = { ...alert, status: button.dataset.alertStatus };
         if (updatedAlert.status !== "active") delete updatedAlert.snoozedUntil;
         await updateAlert(updatedAlert);
-        renderAlerts(filter);
+        renderAlerts(filter, true);
       } catch (error) {
         console.error("Impossible de mettre à jour le statut de l'alerte.", error);
         showDemoNotice("Le statut de cette alerte n'a pas pu être enregistré.");
@@ -3327,7 +3292,7 @@ function renderAlerts(filter) {
       }
       try {
         await updateAlert(updatedAlert);
-        renderAlerts(filter);
+        renderAlerts(filter, true);
       } catch (error) {
         console.error("Impossible de reporter cette alerte.", error);
         showDemoNotice("Le report de cette alerte n'a pas pu être enregistré.");
@@ -3357,7 +3322,7 @@ function renderAlerts(filter) {
           expiryDateEvidence: `Échéance corrigée manuellement : ${correctedDate}`,
           expiryDateSource: "user"
         });
-        renderAlerts(filter);
+        renderAlerts(filter, true);
       } catch (error) {
         console.error("Impossible d'enregistrer la correction de date.", error);
         showDemoNotice("La date corrigée n'a pas pu être enregistrée.");
@@ -3393,16 +3358,22 @@ loadSavedFamilyState();
 /**
  * Initialize house view
  */
-function initHouseView() {
-  renderEquipmentList();
+function initHouseView(params = {}) {
+  const category = [...document.querySelectorAll('[data-house-category]')]
+    .some(tab => tab.dataset.houseCategory === params.filter) ? params.filter : 'tout';
+  renderEquipmentList(category);
   initCategoryTabs();
 
   const addBtn = document.querySelector('#add-equipment-btn');
   if (addBtn) {
-    addBtn.addEventListener('click', () => {
+    addBtn.onclick = () => {
       openEquipmentForm();
-    });
+    };
   }
+  document.querySelector('#show-all-equipment').onclick = () => {
+    showView('maison');
+    document.querySelector('[data-house-category="tout"]').focus();
+  };
 
   // Synchroniser l'adresse, le code postal et la ville avec l'état global de l'utilisateur
   const user = getCurrentUser();
@@ -3428,8 +3399,9 @@ function renderFamilyMembers() {
 
   const members = getFamilyMembers();
   const currentUser = getCurrentUser();
+  document.querySelector('#family-members-count').textContent =
+    `${members.length} membre${members.length > 1 ? 's' : ''}`;
 
-  // Always show empty state or member list, then always show add-member button
   if (members.length === 0) {
     memberList.innerHTML = '<p class="empty-state">Aucun membre de famille.</p>';
   } else {
@@ -3439,9 +3411,9 @@ function renderFamilyMembers() {
       const accessText = member.access === 'full' ? 'Accès complet' : 'Accès limité';
 
       return `
-        <article class="member-card">
-          <div class="member-avatar">${avatarText}</div>
-          <strong>${member.name}</strong>
+        <article class="ui-card member-card">
+          <div class="member-avatar" aria-hidden="true">${escapeHtml(avatarText)}</div>
+          <strong>${escapeHtml(member.name)}</strong>
           <span>${accessText}</span>
           ${isCurrentUser ? '<span class="member-you">Vous</span>' : ''}
         </article>
@@ -3449,14 +3421,6 @@ function renderFamilyMembers() {
     }).join('');
   }
 
-  // Always show the add-member button, even when list is empty
-  memberList.innerHTML += `
-    <button class="member-card add-member" type="button">
-      <span class="add-member-icon">+</span>
-      <strong>Gérer les accès</strong>
-      <span>Famille et invités</span>
-    </button>
-  `;
 }
 
 function refreshUploadedDocumentsFromState() {
@@ -3491,6 +3455,7 @@ function initAddMemberDialog() {
           form.reset();
           renderFamilyMembers();
           attachAddMemberListener();
+          if (document.querySelector('#manage-members-dialog')?.open) updateManageMembersList(id);
           if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
         } catch (error) {
           console.error("Impossible de supprimer le membre :", error);
@@ -3543,7 +3508,7 @@ function initAddMemberDialog() {
     renderFamilyMembers(); // Refresh list
     attachAddMemberListener(); // Re-attach listener
     if (document.querySelector('#manage-members-dialog')?.open) {
-      updateManageMembersList();
+      updateManageMembersList(id);
     }
   });
 
@@ -3556,11 +3521,11 @@ function initAddMemberDialog() {
 
 // Add event listener to the add-member button after rendering
 function attachAddMemberListener() {
-  const addBtn = document.querySelector('#member-list .add-member');
+  const addBtn = document.querySelector('#manage-family-btn');
   if (addBtn) {
-    addBtn.addEventListener('click', () => {
+    addBtn.onclick = () => {
       openManageMembersModal();
-    });
+    };
   }
 }
 
@@ -3569,16 +3534,17 @@ function openManageMembersModal() {
   if (!modal) {
     modal = document.createElement('dialog');
     modal.id = 'manage-members-dialog';
-    modal.className = 'source-dialog';
+    modal.className = 'ui-dialog';
     modal.setAttribute('aria-labelledby', 'manage-members-title');
     modal.innerHTML = `
-      <div class="dialog-header">
+      <div class="ui-dialog__header">
         <div><p class="eyebrow">FAMILLE</p><h2 id="manage-members-title">Gérer les membres et accès</h2></div>
-        <button class="close-button" id="close-manage-members" type="button" aria-label="Fermer">Ã—</button>
+        <button class="ui-dialog__close" id="close-manage-members" type="button" aria-label="Fermer les membres" autofocus>×</button>
       </div>
-      <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-        <div id="manage-members-list" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 300px; overflow-y: auto;"></div>
-        <button class="primary-button" id="open-add-member-from-manager" type="button" style="background: var(--color-primary, #171717); color: white; padding: 0.75rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">+ Ajouter un membre</button>
+      <p class="household-note">Ces niveaux sont déclaratifs et locaux ; ils ne configurent pas de droits sur les fichiers originaux.</p>
+      <div class="household-form">
+        <div id="manage-members-list"></div>
+        <button class="ui-button ui-button--primary" id="open-add-member-from-manager" type="button">Ajouter un membre</button>
       </div>
     `;
     document.body.appendChild(modal);
@@ -3589,6 +3555,7 @@ function openManageMembersModal() {
       document.querySelector('#member-id-input').value = '';
       document.querySelector('#delete-member-btn').hidden = true;
       document.querySelector('#member-form-status').textContent = '';
+      document.querySelector('#add-member-title').textContent = 'Ajouter un membre';
       document.querySelector('#add-member-dialog').showModal();
     });
   }
@@ -3597,7 +3564,7 @@ function openManageMembersModal() {
   modal.showModal();
 }
 
-function updateManageMembersList() {
+function updateManageMembersList(restoreFocusId = null) {
   const listContainer = document.querySelector('#manage-members-list');
   if (!listContainer) return;
 
@@ -3607,21 +3574,26 @@ function updateManageMembersList() {
   listContainer.innerHTML = members.map(member => {
     const isCurrentUser = member.id === currentUser.id;
     return `
-      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--color-surface-hover, #f8fafc); border: 1px solid var(--color-border, #e2e8f0); border-radius: 8px;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-primary-light, #f1f1f1); color: var(--color-primary, #171717); display: flex; align-items: center; justify-content: center; font-weight: 600;">${member.avatar}</div>
-          <div>
-            <strong>${member.name}</strong> ${isCurrentUser ? '<span style="font-size: 0.75rem; background: #e2e8f0; padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.5rem;">Vous</span>' : ''}
-            <div style="font-size: 0.8rem; color: var(--color-text-secondary, #64748b);">${member.access === 'full' ? 'Accès complet' : 'Accès limité'}</div>
+      <div class="managed-member" data-member-id="${escapeHtml(member.id)}">
+        <div class="managed-member-info">
+          <div class="member-avatar" aria-hidden="true">${escapeHtml(member.avatar || member.name.charAt(0))}</div>
+          <div class="managed-member-copy">
+            <strong>${escapeHtml(member.name)}</strong> ${isCurrentUser ? '<span class="member-you">Vous</span>' : ''}
+            <div class="household-note">${member.access === 'full' ? 'Accès complet' : 'Accès limité'}</div>
           </div>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button type="button" class="edit-member-item secondary-button" data-id="${member.id}" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; border-radius: 6px;">Modifier</button>
-          ${!isCurrentUser ? `<button type="button" class="delete-member-item text-button" data-id="${member.id}" style="color: var(--color-danger, #dc2626); padding: 0.4rem 0.75rem; font-size: 0.85rem;">Supprimer</button>` : ''}
+        <div class="managed-member-actions">
+          <button type="button" class="edit-member-item ui-button ui-button--secondary" data-id="${escapeHtml(member.id)}" aria-label="Modifier ${escapeHtml(member.name)}">Modifier</button>
+          ${!isCurrentUser ? `<button type="button" class="delete-member-item ui-button ui-button--danger" data-id="${escapeHtml(member.id)}" aria-label="Supprimer ${escapeHtml(member.name)}">Supprimer</button>` : ''}
         </div>
       </div>
     `;
   }).join('');
+  if (restoreFocusId !== null) {
+    const focusTarget = listContainer.querySelector(`.edit-member-item[data-id="${CSS.escape(restoreFocusId)}"]`)
+      || document.querySelector('#open-add-member-from-manager');
+    focusTarget.focus();
+  }
 
   listContainer.querySelectorAll('.edit-member-item').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -3633,6 +3605,7 @@ function updateManageMembersList() {
         document.querySelector('#member-birth-date-input').value = member.birthDate || '';
         document.querySelector('#member-access-input').value = member.access;
         document.querySelector('#member-form-status').textContent = '';
+        document.querySelector('#add-member-title').textContent = 'Modifier un membre';
         document.querySelector('#delete-member-btn').hidden = false;
         document.querySelector('#add-member-dialog').showModal();
       }
@@ -3647,7 +3620,7 @@ function updateManageMembersList() {
           await deleteFamilyMember(id);
           refreshUploadedDocumentsFromState();
           showDemoNotice('Membre supprimé');
-          updateManageMembersList();
+          updateManageMembersList(id);
           renderFamilyMembers();
           if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
         } catch (error) {
@@ -3682,8 +3655,9 @@ function initImportView() {
   const isMobileDevice = Capacitor.isNativePlatform() || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if (folderSelectionHelp) folderSelectionHelp.hidden = !isMobileDevice;
 
+  document.querySelector('#choose-import-files').addEventListener('click', () => importInput.click());
   dropZone.addEventListener('click', (event) => {
-    if (event.target === importInput || event.target.closest('label[for="import-input"]')) return;
+    if (event.target === importInput || event.target.closest('button')) return;
     importInput.click();
   });
 
@@ -3773,20 +3747,26 @@ function initImportView() {
  * Ouvre un dialoge de saisie manuelle de texte
  */
 function openManualEntryDialog() {
+  const returnFocus = document.activeElement;
+  const documentId = `manual-${Date.now()}`;
   const dialog = document.createElement('dialog');
+  dialog.id = 'manual-entry-dialog';
+  dialog.className = 'ui-dialog';
+  dialog.setAttribute('aria-labelledby', 'manual-entry-title');
   dialog.innerHTML = `
-    <div class="panel" style="max-width: 90%; padding: 1.5rem;">
-      <div class="section-heading" style="margin-bottom: 1rem;">
-        <h2 style="margin: 0; font-size: 1.25rem;">Saisie manuelle de document</h2>
+      <div class="ui-dialog__header">
+        <div><p class="eyebrow">AJOUT LOCAL</p><h2 id="manual-entry-title">Saisie manuelle</h2></div>
+        <button class="ui-dialog__close" type="button" data-close-manual aria-label="Fermer la saisie manuelle">×</button>
       </div>
-      <form id="manual-form">
-        <div style="margin-bottom: 1rem;">
-          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Titre du document</label>
-          <input type="text" id="manual-title" placeholder="Ex: Facture EDF janvier" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+      <p class="household-note">Une fiche texte sera enregistrée sur cet appareil, sans fichier PDF original.</p>
+      <form id="manual-form" class="household-form">
+        <div class="field">
+          <label class="ui-label" for="manual-title">Titre du document</label>
+          <input class="ui-input" type="text" id="manual-title" placeholder="Ex. : Facture électricité janvier" required autofocus>
         </div>
-        <div style="margin-bottom: 1rem;">
-          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Type de document</label>
-          <select id="manual-type" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+        <div class="field">
+          <label class="ui-label" for="manual-type">Type de document</label>
+          <select class="ui-input" id="manual-type">
             <option value="Facture">Facture</option>
             <option value="Garantie">Garantie</option>
             <option value="Contrat">Contrat</option>
@@ -3799,47 +3779,45 @@ function openManualEntryDialog() {
             <option value="Autre">Autre</option>
           </select>
         </div>
-        <div style="margin-bottom: 1rem;">
-          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Contenu principal (optionnel)</label>
-          <textarea id="manual-content" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: inherit;"></textarea>
+        <div class="field">
+          <label class="ui-label" for="manual-content">Contenu principal (facultatif)</label>
+          <textarea class="ui-input" id="manual-content" rows="3"></textarea>
         </div>
-        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-          <button type="button" class="text-button" style="flex: 1;">Annuler</button>
-          <button type="submit" class="primary-button" style="flex: 1;">Enregistrer</button>
+        <p id="manual-form-status" role="status" aria-live="polite"></p>
+        <div class="household-form-actions">
+          <button type="button" class="ui-button ui-button--secondary" data-close-manual>Annuler</button>
+          <button type="submit" class="ui-button ui-button--primary">Enregistrer</button>
         </div>
       </form>
-    </div>
   `;
 
   document.body.appendChild(dialog);
   dialog.showModal();
-
-  // Gestion du bouton Annuler - retour à l'écran précédent
-  const cancelBtn = dialog.querySelector('button.text-button');
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      dialog.close();
-      document.body.removeChild(dialog);
-    });
-  }
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+    if (returnFocus instanceof HTMLElement && returnFocus.isConnected) returnFocus.focus();
+  }, { once: true });
+  dialog.querySelectorAll('[data-close-manual]').forEach(button => {
+    button.addEventListener('click', () => dialog.close());
+  });
 
   // Gestion de la soumission
   dialog.querySelector('#manual-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const title = document.querySelector('#manual-title').value;
+    const title = dialog.querySelector('#manual-title').value.trim();
     const type = document.querySelector('#manual-type').value;
     const content = document.querySelector('#manual-content').value;
 
     if (!title) {
-      showDemoNotice("Veuillez entrer un titre pour le document.");
+      dialog.querySelector('#manual-form-status').textContent = "Veuillez entrer un titre pour le document.";
+      dialog.querySelector('#manual-title').focus();
       return;
     }
 
     const context = parseDocument(content || `Document saisi manuellement : ${title}`, `${title}.pdf`);
     // Créer un document factice mais complet
     const newDoc = {
-      id: `manual-${Date.now()}`,
+      id: documentId,
       name: `${title}.pdf`,
       type: type,
       date: new Date().toLocaleDateString('fr-FR'),
@@ -3854,20 +3832,26 @@ function openManualEntryDialog() {
       sourceDir: "Saisie manuelle"
     };
 
-    // Ajouter à la liste des documents locaux
+    const submit = dialog.querySelector('[type="submit"]');
+    submit.disabled = true;
+    try {
+      await addDocument(newDoc);
+    } catch (error) {
+      console.error("Impossible d'enregistrer la saisie manuelle :", error);
+      dialog.querySelector('#manual-form-status').textContent = "L'enregistrement n'a pas pu être terminé. Réessayez.";
+      submit.disabled = false;
+      return;
+    }
     uploadedDocuments.push(newDoc);
     refreshExperimentalIndex();
-    await addDocument(newDoc);
 
     dialog.close();
-    document.body.removeChild(dialog);
     showDemoNotice(`Document "${title}" créé avec succès (saisie manuelle).`);
   });
 }
 
 // Initialize the application
 initHouseView();
-initAlertsView();
 initFamilyView();
 initProfileHandlers();
 initImportView();
@@ -3891,12 +3875,21 @@ function renderDataInventory(filters = {}) {
   document.querySelector('#summary-demo').textContent = String(counts.demo);
 
   const docs = filterInventoryDocuments(allDocuments, filters);
+  document.querySelector('#data-inventory-status').textContent =
+    `${docs.length} fichier${docs.length > 1 ? 's' : ''} affiché${docs.length > 1 ? 's' : ''} sur ${counts.total}`;
 
   if (docs.length === 0) {
     dataList.replaceChildren();
-    const emptyState = document.createElement('p');
+    const emptyState = document.createElement('div');
     emptyState.className = 'empty-state';
-    emptyState.textContent = 'Aucun document trouvé pour ces critères.';
+    const message = document.createElement('p');
+    message.textContent = 'Aucun document trouvé pour ces critères.';
+    const clearButton = document.createElement('button');
+    clearButton.className = 'ui-button ui-button--secondary';
+    clearButton.type = 'button';
+    clearButton.dataset.filterClear = '';
+    clearButton.textContent = 'Afficher tous les fichiers';
+    emptyState.append(message, clearButton);
     dataList.append(emptyState);
     return;
   }
@@ -3913,11 +3906,12 @@ function renderDataInventory(filters = {}) {
         : doc.driveDemo ? 'Drive simulé' : 'Démonstration';
     const row = document.createElement('div');
     row.className = 'data-file-row';
+    row.dataset.documentId = doc.id;
 
     const info = document.createElement('div');
     info.className = 'data-file-info';
     const icon = document.createElement('span');
-    icon.className = 'data-file-icon';
+    icon.className = 'ui-icon data-file-icon';
     icon.setAttribute('aria-hidden', 'true');
     icon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>';
 
@@ -3972,7 +3966,7 @@ function renderDataInventory(filters = {}) {
     actions.className = 'data-file-actions';
     const isPhoto = isPhotoDocument(doc);
     const previewButton = document.createElement('button');
-    previewButton.className = 'secondary-button data-file-open';
+    previewButton.className = 'ui-button ui-button--secondary data-file-open';
     previewButton.type = 'button';
     previewButton.textContent = isPhoto ? 'Détail' : 'Aperçu';
     previewButton.setAttribute('aria-label', isPhoto ? `Voir le détail de ${doc.name}` : `Consulter ${doc.name}`);
@@ -3983,9 +3977,10 @@ function renderDataInventory(filters = {}) {
 
     if (isPhoto) {
       const associateButton = document.createElement('button');
-      associateButton.className = 'secondary-button data-file-open';
+      associateButton.className = 'ui-button ui-button--secondary data-file-open';
       associateButton.type = 'button';
       associateButton.textContent = 'Associer';
+      associateButton.dataset.photoAnnotations = '';
       associateButton.setAttribute('aria-label', `Associer des membres ou événements à ${doc.name}`);
       associateButton.addEventListener('click', () => {
         try {
@@ -4113,7 +4108,7 @@ function initUnifiedPhotoResults() {
 
   function renderPhotoResult(item) {
     const row = document.createElement('li');
-    row.className = 'moments-life-result';
+    row.className = 'ui-card moments-life-result';
     const selectionLabel = document.createElement('label');
     selectionLabel.className = 'moments-life-photo-select';
     const selectionCheckbox = document.createElement('input');
@@ -4177,13 +4172,13 @@ function initUnifiedPhotoResults() {
     actions.className = 'moments-life-result-actions';
     const openButton = document.createElement('button');
     openButton.type = 'button';
-    openButton.className = 'secondary-button';
+    openButton.className = 'ui-button ui-button--secondary';
     openButton.textContent = 'Détail';
     openButton.setAttribute('aria-label', `Voir le détail de ${item.photo.name || item.photo.originalName || 'la photo'}`);
     openButton.addEventListener('click', () => openPhotoDetailsDialog(item.photo));
     const correctButton = document.createElement('button');
     correctButton.type = 'button';
-    correctButton.className = 'secondary-button';
+    correctButton.className = 'ui-button ui-button--secondary';
     correctButton.textContent = 'Corriger les annotations';
     correctButton.addEventListener('click', () => openPhotoAnnotationsDialog(item.photo));
     actions.append(openButton, correctButton);
@@ -4335,6 +4330,7 @@ function initUnifiedPhotoResults() {
         reasons: request.explanations ?? [],
         confidence: { level: 'high', label: 'index local', reasons: [] }
       }));
+    document.querySelector('#moments-life-search').hidden = !photos.length && request.kind !== 'photo';
     if (!photos.length) {
       status.textContent = request.kind === 'photo'
         ? "Aucune photo ne correspond à ces critères parmi les photos indexées dans Famili-IA."
@@ -4425,6 +4421,9 @@ function initPhotoAnnotationsDialog() {
       else uploadedDocuments.push(updatedDocument);
       dialog.close();
       renderDataInventory(parseHash().params);
+      if (activeView === 'vos-donnees') {
+        document.querySelector(`[data-document-id="${CSS.escape(documentId)}"] [data-photo-annotations]`)?.focus();
+      }
       refreshExperimentalIndex();
       showDemoNotice(`Associations enregistrées pour ${updatedDocument.name}.`);
     } catch (error) {
@@ -4473,6 +4472,9 @@ function initDataView(filters = {}) {
       }
 
       showView('vos-donnees', { params: nextFilters });
+      if (chip.hasAttribute('data-filter-clear')) {
+        dataView.querySelector('[data-filter-type="document"]').focus();
+      }
     });
   }
 
@@ -4727,12 +4729,15 @@ function initAssistantView() {
   const suggestionChips = document.querySelectorAll('.assistant-suggestion-chip');
 
   if (!form || !input || !chatContainer) return;
+  refreshAssistantContext();
 
   // Handle suggestion chips
   suggestionChips.forEach(chip => {
     chip.addEventListener('click', () => {
       const question = chip.dataset.question;
       input.value = question;
+      document.querySelector('.assistant-ideas').open = false;
+      document.querySelector('#assistant-status').textContent = 'Question préparée. Vous pouvez la modifier avant de l’envoyer.';
       input.focus();
     });
   });
@@ -4740,19 +4745,36 @@ function initAssistantView() {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const question = input.value.trim();
-    if (!question) return;
+    const status = document.querySelector('#assistant-status');
+    if (!question) {
+      status.textContent = 'Saisissez une question avant de l’envoyer.';
+      input.focus();
+      return;
+    }
 
-    // Add user message
-    addUserMessage(question, chatContainer);
-    input.value = '';
-
-    // Get AI response
-    const aiResponse = getAssistantResponse(question);
-    // Simulate a small delay for realism
-    setTimeout(() => {
+    try {
+      refreshAssistantContext();
+      const aiResponse = getAssistantResponse(question);
+      addUserMessage(question, chatContainer);
       addAIMessage(aiResponse, chatContainer);
-    }, 500);
+      input.value = '';
+      status.textContent = 'Réponse affichée dans la conversation.';
+    } catch (error) {
+      console.error("Impossible de préparer la réponse de l'assistant :", error);
+      status.textContent = 'La réponse n’a pas pu être préparée. Votre question est conservée ; vous pouvez réessayer.';
+    }
+    input.focus({ preventScroll: true });
   });
+}
+
+function refreshAssistantContext() {
+  const context = document.querySelector('#assistant-context');
+  if (!uploadedDocuments.length) {
+    context.textContent = 'Mode exemples fictifs : aucun fichier personnel chargé. Les réponses utilisent uniquement les documents de démonstration.';
+  } else {
+    const counts = countInventorySources(uploadedDocuments);
+    context.textContent = `${counts.total} fichier${counts.total > 1 ? 's' : ''} chargé${counts.total > 1 ? 's' : ''} dans Famili-IA. Recherche documentaire locale limitée aux informations disponibles, pas à tout l'appareil ni au cloud.${counts.demo ? ' Certains fichiers sont des exemples fictifs ; consultez la provenance de chaque source.' : ''}`;
+  }
 }
 
 /**
@@ -4761,9 +4783,11 @@ function initAssistantView() {
 function addUserMessage(text, container) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'chat-message user';
-  const avatar = addTextElement(msgDiv, "div", "chat-avatar", "S");
+  const avatar = addTextElement(msgDiv, "div", "chat-avatar", getCurrentUser().name?.trim().charAt(0).toUpperCase() || 'V');
   avatar.setAttribute("aria-hidden", "true");
-  addTextElement(msgDiv, "div", "chat-bubble", text);
+  const bubble = addTextElement(msgDiv, "div", "chat-bubble", "");
+  addTextElement(bubble, "p", "chat-speaker", "Vous");
+  addTextElement(bubble, "p", "assistant-answer", text);
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
 }
@@ -4771,31 +4795,50 @@ function addUserMessage(text, container) {
 /**
  * Add an AI message to the chat container
  */
-function addAIMessage(text, container) {
+function addAIMessage(response, container) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'chat-message ai';
-  const avatar = addTextElement(msgDiv, "div", "chat-avatar", "✦");
+  const avatar = addTextElement(msgDiv, "div", "ui-icon chat-avatar", "");
+  avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>';
   avatar.setAttribute("aria-hidden", "true");
-  addTextElement(msgDiv, "div", "chat-bubble", text);
+  const bubble = addTextElement(msgDiv, "div", "chat-bubble", "");
+  addTextElement(bubble, "p", "chat-speaker", "Famili-IA");
+  addTextElement(bubble, "p", "assistant-response-label", response.label);
+  addTextElement(bubble, "p", "assistant-answer", response.answer);
+  for (const match of response.matches) {
+    const source = addTextElement(bubble, "div", "assistant-source", "");
+    addTextElement(source, "p", "assistant-source-name", `Source : ${match.document.name}`);
+    addTextElement(source, "p", "household-note", match.provenance);
+    if (match.evidence) addTextElement(source, "p", "assistant-answer", `« ${match.evidence} »`);
+    if (typeof match.document.content === 'string' && match.document.content.trim()) {
+      const button = addTextElement(source, "button", "ui-button ui-button--secondary", "Voir la copie");
+      button.type = 'button';
+      button.setAttribute('aria-label', `Voir la copie de ${match.document.name}`);
+      button.addEventListener('click', () => {
+        const available = uploadedDocuments.length ? uploadedDocuments : documents;
+        const current = available.find(document =>
+          document.id === match.document.id && getInventorySource(document) === getInventorySource(match.document));
+        if (!current || typeof current.content !== 'string' || !current.content.trim()) {
+          document.querySelector('#assistant-status').textContent = 'Cette copie n’est plus disponible. Relancez une question pour actualiser les sources.';
+          return;
+        }
+        openSource(current);
+      });
+    }
+  }
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
 }
 
 /**
  * Get a response from the assistant based on the question
- * Uses the same search logic as the main search view
+ * Uses document ranking; the unified photo index remains in Recherche.
  */
 function getAssistantResponse(question) {
   const trimmed = question.trim();
-  if (!trimmed) return "Posez une question pour obtenir une réponse.";
-
   const matches = findDocuments(trimmed);
   const response = buildSearchResponse(matches);
-  const citations = matches.slice(0, 2).map(match => {
-    const excerpt = match.evidence ? ` — « ${match.evidence} »` : "";
-    return `Source : ${match.document.name} (${match.provenance})${excerpt}`;
-  }).join("\n");
-  return `${response.answer}\n${citations}`;
+  return { ...response, matches: matches.slice(0, 2) };
 }
 
 /**

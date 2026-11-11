@@ -50,14 +50,14 @@ Parcours principal d'un utilisateur au démarrage de l'application :
 
 ### Écran «Plus» (vue dédiée, `#/plus`)
 
-Liste verticale de destinations, chacune avec icône, libellé, sous-titre et badge de compteur :
+Destinations dans des cartes partagées bleu/marine : une colonne sur mobile/tablette, deux au-dessus de 900 px. Chaque carte conserve son icône, son libellé et son sous-titre complet, avec un compteur lorsqu'il est disponible :
 
 | Destination | Badge | Raccourci d'écran |
 |-------------|-------|-------------------|
-| **Alertes** | nombre d'alertes actives (ambre) | Bannière d'accueil, alertes d'un équipement |
+| **Alertes** | nombre d'alertes actives | Bannière d'accueil |
 | **Famille** | nombre de membres | Card «Famille» de l'accueil |
 | **Assistant** | — | Suggestion de question (poste plus tard sur l'accueil — tâche 10.7.d) |
-| **Profil** | prénom du connecteur | Menu du profil |
+| **Profil** | — | Menu du profil |
 | **Vos données** | volume/count documents | Boutons d'accueil liant aux données |
 
 Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour rend vers la vue d'origine).
@@ -72,88 +72,129 @@ Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour r
 ## 📺 Vues détaillées et interactions
 
 ### 1. Accueil (Dashboard contextuel)
-- **Contenu** : bienvenue, bannière «À surveiller» (si alertes), stats clés (documents, équipements, alertes actives), documents récents.
+- **Identité** : en-tête bleu/marine, recherche dans une carte claire légèrement teintée, compteurs et contrôles partagés. Le formulaire reste visible sans défilement aux quatre largeurs testées, pour le profil de référence.
+- **Contenu réel** : accueil nominatif, recherche rapide, ajout, démo fictive, trois compteurs (fichiers visibles, garanties, contrats), aperçu de trois rappels actifs au maximum et accès au foyer. Aucun compteur approximatif, document récent ou garantie « active » n'est inventé.
+- **Périmètre** : les compteurs reprennent l'inventaire visible, avec exemples intégrés en repli lorsqu'aucun fichier n'est enregistré ; les exemples sont signalés et ne sont pas recherchés dans l'index personnel. Profils et équipements peuvent encore contenir les exemples initiaux du prototype.
 - **Interactions** :
-  - Tap bannière «À surveiller» → **Alertes**
-  - Tap card stat :
-    - Documents → **Vos données**
-    - Équipements → **Maison**
-    - Alertes → **Alertes**
-    - Famille → **Famille**
-  - Tap document récent → détail du document (aperçu + actions : lier à équipement, ouverture)
-  - **Action rapide «+» / FAB** → **Importer**
+  - Soumission rapide → formulaire unique **Recherche**, question transmise et soumise une seule fois.
+  - « Ajouter des fichiers » → choix des sources existant ; « Essayer un exemple fictif » → démo rejouable, sans permission ni écriture de données applicatives.
+  - Compteurs → **Vos données**, avec filtre Garantie ou Contrat correspondant si nécessaire.
+  - Rappel ou « Toutes les alertes » → **Alertes** ; l'aperçu inclut les rappels reportés, sans prétendre couvrir toutes les échéances.
+  - « Ma maison » / « Ma famille » → destinations correspondantes.
 
-### 2. Recherche IA
-- **Contenu** : barre de question, suggestions, résultats (source, extrait, note de similarité).
+### 2. Recherche unifiée
+- **Contenu réel** : en-tête compact et ajout, formulaire unique, périmètre explicite et résultats prioritaires. Filtres repliables (source, type, couverture, dates, personne, lieu), sources et échéances expérimentales se consultent séparément. Aucune reconnaissance visuelle ni couverture de tout l'appareil/cloud n'est annoncée.
 - **Interactions** :
-  - Soumission → résultats inline (pas de navigation)
-  - Tap résultat → aperçu document + actions («Lier à un équipement» → modale de choix équipement, «Ouvrir le document»)
-  - 0/peu de résultats → call-to-action «**Importer un document**» → **Importer**
-  - Chip filtre (type, source) : filtrage inline
+  - Soumission → résultats dans la même vue, provenance et preuves conservées ; les volets repliés ne modifient pas les filtres appliqués.
+  - Copie disponible → aperçu local existant, sans prétendre ouvrir l'original. Les photos conservent détail, annotations, regroupement, pagination et sélection/suppression confirmée.
+  - « Effacer les filtres » conserve la question ; le bouton d'état vide efface aussi la question. Le focus revient au champ et l'état initial explique comment commencer.
+  - « Sources et limites de la recherche » → état réel des sources et limites de couverture/fraîcheur ; « Échéances proposées — expérimental » → preuves et confirmation explicite existante avant création d'alerte.
+
+### Validation de la tranche Accueil / Recherche
+- Douze tests dans `tests/unified-search-entry.spec.js`, seize d'inventaire et huit d'onboarding passent, ainsi que 44 tests de non-régression et dix audits ciblés (quatre largeurs 390, 768, 1280 et 1920 px, clavier et mouvement réduit), compilation et contrôle du diff.
+- Données fictives uniquement : démo sans écriture, nom littéral long après rechargement, compteurs/destinations, soumission unique, filtres et état vide, preuves, confirmations et bibliothèque de 1 000 photos. Cibles d'au moins 48 px vérifiées sur l'accueil hors onboarding et la recherche avec photos/filtres ouverts.
+- Assistant et le dernier dialogue sont traités dans la tranche décrite plus bas. Appareils physiques, lecteur d'écran, contrastes complets et comptes externes réels ne sont pas validés. Les limites historiques PDF et tests du choix des sources restent signalées dans les tranches précédentes.
 
 ### 3. Importer
-- **Contenu** : zone de drop / bouton parcourir, sélecteur Google Drive, accès à l'inventaire central « Vos données ».
+- **Identité** : en-tête compact et socle bleu/marine de l'onboarding ; carte d'ajout prioritaire, options secondaires sur deux colonnes sur smartphone et quatre sur grand écran. Les limites de format se déplient pour laisser l'action principale visible à 390 × 800 px.
+- **Contenu** : choix de fichiers, dépôt, dossier, capture et saisie manuelle ; accès à l'inventaire et au choix des sources existant. Les originaux ne sont pas déplacés ni supprimés.
 - **Interactions** :
-  - Sélection fichiers → lecture + classification auto → retour au parcours de recherche
-  - Gestion et consultation des fichiers importés depuis « Vos données »
-  - Bouton fin de flux : «Retour à l'accueil»
-  - État d'erreur explicit par fichier (pas d'échec silencieux)
+  - « Choisir des fichiers » est un bouton utilisable au clavier ; sélection ou dépôt → traitement local existant, progression dans **Recherche**, puis consultation depuis **Vos données**.
+  - Dossier sur navigateur de bureau compatible → sélecteur de dossier ; sur navigateur mobile détecté ou plateforme native → sélection multiple avec explication. La capture utilise le sélecteur photo existant ; aucun OCR mobile réel n'est validé ici.
+  - « Saisir manuellement » → `ui-dialog` nommé, champs et boutons partagés, titre requis, choix du type et contenu facultatif. Annuler/Échap supprime le dialogue sans écriture et restaure le focus ; enregistrer attend le stockage, annonce les erreurs et conserve la saisie pour réessayer.
+  - La saisie crée une fiche texte locale, pas un PDF original : le nom en `.pdf` reste celui du modèle existant, sans génération de fichier.
+  - « Voir mes fichiers » → inventaire ; « Choisir une autre source » → dialogue des sources existant, sans déclencher de connexion.
 
 ### 4. Maison
-- **Contenu** : liste des équipements, chips de catégories, recherche inline.
+- **Identité** : en-tête aligné à gauche, palette bleu/marine, cartes partagées et action d'ajout dans l'en-tête (icône nommée sur smartphone). La photographie de maison est une illustration, masquée sur petit écran ; l'adresse vient du profil.
+- **Contenu** : équipements et compteur annoncé, huit filtres de catégorie défilants horizontalement. Pas de recherche inline implémentée.
 - **Interactions** :
-  - Tap équipement → **Détail équipement**
-  - Tap «+ Ajouter» → modale formulaire équipement
-  - État vide → CTA «Ajouter votre premier équipement»
+  - Équipement → **Détail équipement**, avec identifiant dans l'URL.
+  - « Ajouter un équipement » → formulaire partagé (nom, catégorie, statut), fermeture par bouton ou Échap avec retour du focus.
+  - Filtres → `aria-pressed`, URL, rechargement et historique cohérents ; filtre inconnu affiché comme « Tout ».
+  - État vide → « Voir tous les équipements », avec retour du focus sur « Tout ». L'ajout reste disponible dans l'en-tête.
+  - « Modifier dans le profil » → **Profil**, lui aussi harmonisé.
 
 ### 5. Détail équipement (sous-vue)
-- **Contenu** : nom, catégorie, documents associés (facture, garantie, notice), état de garantie, alertes de l'équipement.
+- **Contenu** : nom, catégorie, statut, référence et documents liés dans une carte partagée. L'installation inconnue est explicitement non renseignée ; aucun état de garantie ou historique réel n'est déduit.
 - **Interactions** :
-  - Retour → **Maison**
-  - Tap document → aperçu
-  - «Ajouter un document» → **Importer** (filtre pré-rempli sur l'équipement)
-  - Alertes listées → tap → **Alertes**
+  - Fil d'Ariane → **Maison** ; document lié → aperçu existant ou message d'indisponibilité.
+  - « Modifier » → formulaire prérempli ; les liens documentaires sont conservés et le focus revient à l'action.
+  - « Supprimer » → confirmation native existante, puis retour Maison ; annuler conserve la fiche.
+  - « Lier un document (démo) » et « Historique (démo) » → information de prototype, sans liaison ni historique opérationnels.
+  - Les erreurs d'enregistrement sont affichées dans le formulaire, qui reste ouvert.
 
 ### 6. Alertes (issue du menu «Plus»)
-- **Contenu** : liste des échéances (garanties, contrats), statuts (à venir / bientôt / expiré / traité).
+- **Identité** : logo officiel recadré, bleu/marine et fond clair de l'onboarding ; ce thème est aussi utilisé par les autres vues déjà migrées. Cartes teintées rouge, ambre ou bleu selon l'urgence, avec état textuel et échéance ; largeur de lecture limitée à 960 px.
+- **Contenu** : cinq filtres avec compteurs (à traiter, à anticiper, à surveiller, reportées, ignorées / terminées), résumé de la liste, preuves disponibles et état vide. Les exemples liés aux documents fictifs intégrés sont identifiés ; les autres alertes sans provenance documentaire indiquent « Source non renseignée ».
 - **Interactions** :
-  - Tap alerte → détail + équipement lié
-  - «Marquer traité» → update inline (pas de navigation)
-  - Filtrage par statut (chips)
+  - Chevron nommé → aperçu du document lorsqu'il est disponible, sinon inventaire existant.
+  - « Gérer cette alerte » → ignorer, terminer, reporter ou réactiver selon l'état, marquer lue/non lue, corriger la date d'une alerte documentaire. La lecture est temporaire, réinitialisée au prochain rendu ; cliquer sur la carte ne change plus implicitement cet état.
+  - Filtres → URL conservée dans l'historique et au rechargement ; après une mise à jour, retour du focus au filtre actif.
+  - Roue des réglages → dialogue des notifications, catégories et plages silencieuses. Aucune demande automatique de permission ; fermeture par bouton, Échap ou fond extérieur, avec retour du focus.
+- **Composants partagés** : `ui-card`, `ui-icon`, `ui-button`, `ui-input`, `ui-label`, `ui-dialog`. Filtres sélectionnés et lecture exposés avec `aria-pressed` ; résumé de liste annoncé avec `role="status"`. Cibles de 48 px, filtres défilants horizontalement sur mobile et actions repliées pour privilégier les échéances.
+- **Validation** : `tests/alerts-ui.spec.js` couvre les quatre largeurs de référence, réglages, refus de permission simulé, persistance, reports, historique, clavier, noms longs, correction et aperçu. Contrastes mesurés sur une carte critique et ses actions ; audit complet, lecteur d'écran et essais sur appareils réels restent nécessaires.
 
 ### 7. Famille (issue du menu «Plus»)
-- **Contenu** : membres, rôles (admin/membre).
+- **Identité** : composants partagés, cartes de membres sur deux colonnes sur smartphone, action principale « Gérer les membres » dans l'en-tête ; compteur annoncé et avatars sobres.
+- **Contenu** : membres et niveaux d'accès déclaratifs locaux (complet/limité). Les cartes ne sont pas des boutons. Aucun compte réel, invitation ni partage familial n'est créé.
 - **Interactions** :
-  - «Inviter / Ajouter un membre» → modale
-  - Tap membre → détails + changement de rôle (si admin)
+  - « Gérer les membres » → dialogue partagé, puis ajout/édition dans un second dialogue : nom, date de naissance facultative et niveau d'accès. Les rôles existants sont conservés, sans éditeur de rôle ni modification des permissions.
+  - Suppression → confirmation native existante ; annuler préserve le membre et ses associations. La suppression confirmée conserve le mécanisme de nettoyage des associations photo.
+  - Fermeture par bouton/Échap et retour du focus au lanceur ; après sauvegarde, retour à l'action d'édition ou d'ajout dans le gestionnaire.
+  - Contrats, Factures, Garanties et Notices → inventaire filtré ; « Voir tout » → inventaire complet. Aucun partage automatique.
+  - Mode urgence → « À venir », explicitement non opérationnel ; « Découvrir » affiche seulement l'information de démonstration.
+- **Validation foyer** : huit tests `tests/household-ui.spec.js` et huit audits Maison/Famille passent à 390, 768, 1280 et 1920 px ; formulaires également vérifiés à 390 × 660 px. Ajout, modification, suppression annulée/confirmée, persistance, rôles, documents liés, noms longs, erreurs explicites, focus et cibles de 48 px couverts avec des données fictives. 41 tests navigateur liés, un test unitaire familial et compilation passent. Appareils physiques, lecteur d'écran et audit complet des contrastes restent nécessaires.
 
 ### 8. Assistant (issue du menu «Plus»)
-- **Contenu** : conversation + suggestions de questions types.
+- **Identité** : en-tête compact, palette bleu/marine et composants partagés ; conversation défilable et focalisable au clavier, champ de question dans une carte, suggestions repliables. Le formulaire initial reste visible aux quatre formats de référence.
+- **Contenu réel** : réponses issues du moteur documentaire local existant, statut de vérification, extraits et jusqu'à deux sources. Sans fichier chargé, un mode exemples fictifs est indiqué ; après lecture de la base, le périmètre est réactualisé. Aucun appel à une IA distante.
 - **Interactions** :
-  - Soumission de question → réponse inline (réponses issues de la recherche locale)
-  - Tap suggestion → envoi immédiat
-  - Note : la brique proactive de l'assistant sera ensuite présentée sur l'**Accueil** (tâche 10.7.d) — l'écran conversation reste accessible ici.
+  - Soumission par bouton ou Entrée → réponse et preuves dans la conversation, sans délai simulé ; le focus reste dans le champ.
+  - Suggestion → prépare la question et referme les idées, sans soumettre ni déclencher la recherche de l'autre écran. La question peut être modifiée avant l'envoi.
+  - Copie disponible → dialogue d'extrait partagé, distinction avec l'original et retour du focus au bouton. Une copie devenue indisponible est signalée explicitement.
+  - Question blanche → message et focus ; erreur locale → message, question conservée et nouvelle tentative possible. Ambiguïtés, absence de preuve ou de résultat restent explicites.
+  - La conversation reste dans la page lors d'une navigation et disparaît au rechargement ; aucun historique n'est persisté.
+  - « Rechercher » → recherche unifiée pour les filtres multi-sources et annotations photo ; l'Assistant ne prétend pas utiliser ce moteur photo. La brique proactive sur l'Accueil (10.7.d) n'est pas ajoutée ici.
+- **Dernier dialogue applicatif** : l'ancien aperçu de scan, sans point d'entrée ni traitement relié, adopte `ui-dialog`, avec champs désactivés et case non précochée. Aucun bouton d'autorisation ni nouveau scan ; fermeture nommée, Échap et retour du focus. Les confirmations natives des suppressions et échéances restent inchangées.
+- **Validation** : neuf tests `tests/assistant-ui.spec.js` passent : quatre largeurs, petite hauteur 390 × 480, clavier, sources, copie, données fictives/réelles de test, noms longs littéraux, incertitude, erreur/reprise et conservation des données. La suite réunie passe 131 tests navigateur, dont 42 audits des dix vues aux quatre formats et clavier/mouvement réduit. Cinq tests unitaires du moteur documentaire et compilation réussis. Pas de requête externe liée aux interactions testées.
+- **Limites** : appareils physiques, clavier virtuel réel, lecteur d'écran et contrastes complets restent à vérifier. Les limites historiques PDF/tests des sources ne sont pas corrigées ni revalidées dans cette tranche ; les comptes réels et le scan automatique ne sont pas validés.
 
 ### 9. Profil (issue du menu «Plus»)
-- **Contenu** : identité utilisateur, rôle, préférences.
+- **Identité** : formulaire partagé et cartes bleu/marine, colonne secondaire sur grand écran, empilement sous 900 px. Nom et adresse occupent la largeur ; code postal et ville restent côte à côte.
+- **Contenu** : identité locale, rôle en lecture seule et préférences de confidentialité existantes. Aucune création de compte, modification de rôle ou nouvelle permission.
 - **Interactions** :
-  - Édition identité → modale/inline
-  - Lien vers «Vos données»
+  - Formulaire renseigné depuis l'état sur route directe, après chargement de la base et depuis toute navigation (y compris Maison). Champs vides conservés, nom constitué d'espaces refusé avec message et focus.
+  - Enregistrement par bouton ou Entrée → mécanismes existants ; résultat annoncé. Rôle et préférences de scan/connexion restent inchangés. Le consentement GPS conserve son traitement existant de retrait des coordonnées.
+  - Télémétrie/partage : préférences enregistrées, sans prétendre activer un envoi ou un partage familial réel.
+  - Les anciens contrôles non reliés d'accès local, scan automatique, répertoires et connexion Drive sont désactivés dans un aperçu explicitement non opérationnel. Aucun nouveau branchement de scan ou d'authentification.
+  - « Gérer mes données », « Revoir la découverte » et « Visiter les autres vues » conservent leurs parcours.
 
 ### 10. Vos données (issue du menu «Plus»)
-- **Contenu** : inventaire unifié des fichiers locaux, sources Google Drive sélectionnées et exemples fictifs, avec leur provenance et des compteurs par source.
-- **Présentation** : en-tête éditorial aligné à gauche, repère de confidentialité, cartes de synthèse par source, filtres dans une surface dédiée, inventaire principal et panneau de gestion séparé. Chaque fichier porte des badges de type, provenance et couverture d'indexation (« Texte indexé » ou « Métadonnées seules »). Sur mobile, les compteurs passent en grille 2×2, les filtres défilent horizontalement et les badges reviennent à la ligne.
+- **Contenu** : fichiers enregistrés dans Famili-IA (locaux, copies Google Drive et OneDrive, ou exemples fictifs), avec provenance et compteurs par source. L'inventaire ne représente pas l'ensemble des comptes.
+- **Présentation** : logo et identité bleu/marine communs à l'onboarding et aux Alertes, en-tête compact, ajout principal, synthèse par source et filtres dans une surface partagée. L'inventaire occupe la largeur de lecture ; la gestion se trouve dessous, sans colonne latérale. Chaque fichier conserve ses badges de type, provenance et couverture (« Texte indexé » ou « Métadonnées seules »). Sur smartphone, le total occupe deux rangées à côté des quatre compteurs ; les filtres défilent horizontalement et les badges reviennent à la ligne. Le bouton d'ajout devient un « + » nommé pour l'accessibilité.
 - **Interactions** :
-  - «Exporter (JSON)» / «Tout effacer» → modale de **confirmation explicite** (destruction irréversible) ; la purge vise IndexedDB et les données de foyer Famili-IA, arrête les scans actifs et ne supprime jamais les fichiers originaux du dossier choisi ni ceux de Google Drive
-  - Tap «Aperçu» sur un document → aperçu de son contenu
-  - Chips de type et catégorie → filtres partageables dans l’URL, restaurés avec Retour navigateur
+  - « Ajouter des fichiers » → choix des sources existant. L'import local conserve sa navigation vers Recherche ; revenir à Vos données affiche les nouvelles copies.
+  - Export JSON → téléchargement direct. « Supprimer toutes mes données » → **confirmation explicite**, avec focus initial sur « Annuler » ; la purge vise les données applicatives, arrête les scans actifs et ne supprime jamais les originaux locaux, Google Drive ou OneDrive. Aucun changement de logique de suppression.
+  - « Aperçu » → texte documentaire, avec distinction copie/exemple. « Détail » d'une photo → vignette locale si disponible, métadonnées et limite de l'original. « Associer » → formulaire d'annotations manuelles, sans reconnaissance visuelle ; après enregistrement depuis l'inventaire, retour du focus au bouton de la photo.
+  - Chips de type et catégorie → filtres partageables dans l’URL, restaurés avec Retour navigateur. Un compteur annonce le nombre affiché ; l'état vide propose de réinitialiser les filtres et replace le focus sur « Tout ».
   - Les filtres de type et de provenance de la recherche réutilisent les mêmes règles que l'inventaire
+- **Modales partagées** : `ui-dialog`, en-tête et fermeture communs ; champs `ui-input`/`ui-label`, boutons `ui-button`, variante `ui-button--danger` pour confirmer une suppression. Le dialogue natif conserve Échap et le retour du focus ; les contrôles font au moins 48 px, avec défilement interne sur écran court.
+- **Validation** : 16 tests de `tests/data-inventory.spec.js` passent : quatre largeurs de référence et première ligne complète dans le viewport à 390 × 800, filtres, état vide, aperçu/confirmation, import fictif, export JSON, édition photo mobile avec nom long et bibliothèque de 1 000 photos. Les tests existants des Alertes, de l'onboarding, des extraits et de la visite guidée passent également, ainsi que les audits ciblés des deux vues et les tests unitaires inventaire/annotations.
+- **Limites** : l'essai de l'export PDF a échoué sur une référence préexistante à `Buffer` dans le générateur navigateur ; son bouton reste disponible mais cet export n'est pas validé et sa réparation reste hors de cette tranche UX. Appareils physiques, lecteur d'écran, audit complet des contrastes et connexions réelles non validés ici.
 
 ### 11. Écran «Plus» *(nouveauté 9.16)*
-- **Contenu** : liste des 5 destinations (voir ci-dessus) avec badges.
+- **Contenu** : cinq cartes de destination (voir ci-dessus), icônes SVG et badges bleu/marine ; sous-titres sans troncature.
 - **Interactions** :
   - Tap destination → navigation correspondante (le menu «Plus» perd son état actif, la vue d'origine reprend l'état actif au retour)
   - Bouton retour → vue d'origine
+
+### Validation de la tranche Importer / Profil / Plus
+- `tests/management-ui.spec.js` : onze scénarios passent, dont les quatre largeurs 390, 768, 1280 et 1920 px, la saisie à 390 × 480 px, clavier/focus, annulation, stockage indisponible et reprise, import TXT fictif, profil persistant et navigation depuis Plus.
+- Douze audits ciblés Importer/Profil/Plus et 49 tests de non-régression (foyer, Alertes, données, onboarding, extraits et visite guidée), ainsi que la compilation, complètent cette validation.
+- Le repli de dossier mobile est simulé par user-agent ; il ne valide ni le sélecteur natif ni la caméra sur appareil réel. Aucun compte externe réel n'est connecté pour ces tests.
+- Le test historique `tests/source-choice-dialog.spec.js` conserve quatre échecs hors de cette refonte : trois attentes d'un ancien texte OneDrive et une comparaison de données avant/après migration automatique d'index. Le dialogue et ces mécanismes n'ont pas été modifiés dans cette tranche ; l'ouverture/fermeture depuis Importer est vérifiée séparément.
+- Appareils physiques, lecteur d'écran, contrastes complets et connexions réelles restent à vérifier. Les tranches Accueil/Recherche et Assistant/dernier dialogue sont décrites plus haut.
 
 ---
 

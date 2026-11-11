@@ -101,6 +101,7 @@ test('filtres multi-sources disponibles par source, type, couverture, date, pers
   await expect(photoResults).toHaveCount(1);
   await expect(photoResults).toContainText('Archive vacances.jpg');
 
+  await page.locator('#search-filters-panel > summary').click();
   await page.locator('#experimental-index-source').selectOption('local');
   await page.locator('#experimental-index-type').selectOption('photo');
   await page.locator('#experimental-index-coverage').selectOption('partial');
@@ -292,6 +293,7 @@ test('propositions sourcées restaurées sans modifier les alertes', async ({ pa
   await expect(candidates.filter({ hasText: 'garantie-drive-test.txt' })).toContainText('Source : Google Drive');
   await expect(candidates.first()).toContainText(`Échéance : ${dueDate}`);
   await expect(page.locator('#experimental-deadline-review-list')).toContainText('ancienne-garantie.txt');
+  await page.locator('#search-deadline-panel > summary').click();
   await page.locator('#experimental-deadline-refresh').click();
   const alertsAfter = await page.evaluate(async () => (await import('/state.js')).getAlerts());
   expect(alertsAfter).toEqual(alertsBefore);
@@ -339,6 +341,7 @@ test('une alerte sourcée nécessite une confirmation explicite et conserve le c
   const cancelled = results.filter({ hasText: 'cancel-deadline.txt' });
   const sentence = results.filter({ hasText: 'sentence-deadline.txt' });
   const estimated = results.filter({ hasText: 'estimated-deadline.txt' });
+  await page.locator('#search-deadline-panel > summary').click();
   await expect(confirmed.getByRole('button', { name: 'Confirmer la date et créer l’alerte' })).toBeVisible();
   await expect(cancelled.getByRole('button', { name: 'Confirmer la date et créer l’alerte' })).toBeVisible();
   await expect(sentence.getByRole('button', { name: 'Confirmer la date et créer l’alerte' })).toBeVisible();

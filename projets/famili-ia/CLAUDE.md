@@ -19,6 +19,10 @@ Famili-IA est une application de gestion de documents familiaux et d'équipement
 Pour maintenir la cohérence visuelle, suivez ces règles basées sur les maquettes officielles :
 
 ### Couleurs & Thèmes
+**Migration progressive du lot E :** l'onboarding, l'Accueil, la Recherche, l'Assistant, les Alertes, Vos données, Famille, Maison, les fiches équipement, Importer, Profil et Plus utilisent désormais l'identité bleu/marine du logo officiel : `--ui-brand` (`#245be8`), `--ui-brand-hover` (`#1948bd`), `--ui-ink` (`#12285c`), `--ui-muted` (`#40547b`), `--ui-border` (`#d7e2f6`), `--ui-tint` (`#eaf1ff`) et `--ui-page` (`#f5f8ff`). Réutiliser les composants `ui-*` dans ces parcours ; `--ui-danger` et `ui-button--danger` signalent une action destructive. Le thème `body.ui-theme` est activé pour `accueil`, `recherche`, `assistant`, `alertes`, `vos-donnees`, `famille`, `maison`, `detail`, `importer`, `profil` et `plus` ; la palette historique ci-dessous demeure pour les vues non migrées. Ne pas recolorer globalement les autres vues.
+
+Tous les dialogues HTML déclarés et les dialogues dynamiques de gestion familiale/saisie manuelle utilisent `ui-dialog`. L'ancien dialogue de scan reste un aperçu sans point d'entrée, désactivé et non opérationnel. Ne pas le relier à une permission ou à un scan dans une simple tâche graphique. Les confirmations natives du navigateur restent natives. L'Assistant conserve son moteur documentaire local et ses exemples de repli, distincts de l'index unifié de Recherche ; une suggestion prépare la question sans l'envoyer.
+
 **Couleurs de marque principales (tokens CSS dans `styles.css`) :**
 - **Primaire (Noir) :** `#171717` - Logo, liens, éléments interactifs
 - **Primaire Sombre :** `#000000` - États hover et contraste fort
@@ -87,7 +91,7 @@ Les surfaces utilisent des dégradés discrets de blanc vers gris clair ; réser
 - [ ] **Structure des modules** : `state.js`, `app.js`, `search-utils.js`, `local-files.js` sont présents et exportent les fonctions attendues.
 - [ ] **Documentation à jour** : Les schémas Mermaid ([overview.mmd](docs/architecture/mermaid/overview.mmd)) et fichiers techniques ([integration.md](docs/architecture/integration.md)) reflètent les changements récents.
 - [ ] **Pas de fichiers orphelins** : Aucun fichier `.bak`, `.tmp`, ou backup à la racine du projet ou dans `projets/famili-ia/`.
-- [ ] **Respect des tokens CSS** : Les couleurs de marque respectent la palette monochrome (`#171717`, `#f6f6f6`, dégradés blancs) ; les couleurs sémantiques sont définies dans les variables CSS.
+- [ ] **Respect des tokens CSS** : Utiliser les tokens `--ui-*` pour l'onboarding, l'Accueil, la Recherche, l'Assistant, les Alertes, Vos données, le foyer, Importer, Profil et Plus ; préserver la palette historique des vues non migrées. Les couleurs sémantiques sont définies dans les variables CSS.
 - [ ] **Navigation hash** : `parseHash()` gère correctement `#/view` et `#view` sans régression.
 - [ ] **Capacitor safety** : `Capacitor.isNativePlatform()` vérifié avant tout appel API native.
 - [ ] **Interface de recherche** : La barre de recherche et les résultats s'affichent correctement sur desktop et mobile.
