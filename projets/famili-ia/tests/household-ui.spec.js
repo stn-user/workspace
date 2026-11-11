@@ -52,6 +52,20 @@ for (const width of [390, 768, 1280, 1920]) {
     await page.evaluate(() => { location.hash = '#/maison'; });
     await expect(page.locator('#house-title')).toBeVisible();
     await expectUsable(page.locator('#view-maison'));
+    const housePhoto = page.locator('.property-photo');
+    await expect(housePhoto).toBeVisible();
+    expect(await housePhoto.evaluate(async image => {
+      await image.decode();
+      return image.naturalWidth > 0;
+    })).toBe(true);
+    const pumpPhoto = page.locator('[data-equipment="eq-piscine-pompe"] img');
+    await pumpPhoto.scrollIntoViewIfNeeded();
+    expect(await pumpPhoto.evaluate(async image => {
+      await image.decode();
+      return image.naturalWidth > 0;
+    })).toBe(true);
+    await expect(page.locator('[data-equipment="eq-bambu-a1"] svg')).toBeVisible();
+    await expect(page.locator('#view-maison')).toContainText("pas des photos de vos équipements");
     await page.locator('#add-equipment-btn').click();
     await expect(page.locator('#eq-name-input')).toBeFocused();
     await expectUsable(page.locator('#equipment-dialog'));

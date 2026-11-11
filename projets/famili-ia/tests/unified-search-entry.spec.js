@@ -100,7 +100,9 @@ for (const width of [390, 768, 1280, 1920]) {
       await expect(page.locator('body')).toHaveClass(/ui-theme/);
       await expectUsable(page.locator('#view-accueil'));
       await expect(page.locator('#dashboard-data-note')).toContainText('exemples fictifs');
-      const form = await page.locator('#quick-search-form').boundingBox();
+      await expect(page.locator('#view-accueil [role="search"]')).toHaveCount(0);
+      await expect(page.locator('.fab-add-document')).toHaveCount(0);
+      const form = await page.getByRole('button', { name: 'Ouvrir la recherche', exact: true }).boundingBox();
       const main = await page.locator('.main-content').boundingBox();
       expect(form.y + form.height).toBeLessThanOrEqual(main.y + main.height);
       const before = await page.evaluate(async () => {
@@ -114,6 +116,15 @@ for (const width of [390, 768, 1280, 1920]) {
         const { getAll } = await import('/db.js');
         return Promise.all(['users', 'documents', 'equipment', 'family', 'alerts'].map(getAll));
       })).toEqual(before);
+      await page.locator('#finish-onboarding-demo').click();
+      await page.getByRole('button', { name: 'Ouvrir la recherche', exact: true }).click();
+      await expect(page.locator('#experimental-index-query')).toBeFocused();
+      await expect(page.locator('#view-recherche [data-open-import]')).toHaveCount(1);
+      await page.locator('#view-recherche [data-open-import]').click();
+      await expect(page.locator('#import-title')).toBeFocused();
+      await expectUsable(page.locator('#view-importer'));
+      await page.locator('#return-from-import').click();
+      await expect(page.locator('#view-recherche [data-open-import]')).toBeFocused();
     });
   }
 
@@ -184,26 +195,46 @@ test('Vos données ne propose plus un raccourci vers une recherche photo distinc
   await expect(page.getByRole('button', { name: 'Ouvrir la recherche photo' })).toHaveCount(0);
 });
 
-test('la recherche rapide de l’accueil ouvre le formulaire multisource unique', async ({ page }) => {
+test('ajout depuis Recherche : retour, filtres et question conserves, puis import local', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => {
     localStorage.setItem('famili-ia-source-choice-complete', 'true');
   });
   const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
-  await page.goto('http://127.0.0.1:5179/#/accueil');
+  await page.goto('http://127.0.0.1:5179/#/recherche?q=question-initiale');
   await initialized;
-  await expect(page.locator('#quick-search-form label')).toHaveText('Rechercher dans Famili-IA');
-  await page.locator('#experimental-index-form').evaluate(form => {
-    form.dataset.submits = '0';
-    form.addEventListener('submit', () => { form.dataset.submits = String(Number(form.dataset.submits) + 1); });
+  await page.locator('#search-filters-panel > summary').click();
+  await page.locator('#experimental-index-source').selectOption('local');
+  await page.getByRole('button', { name: 'Appliquer les filtres', exact: true }).click();
+  await page.locator('#experimental-index-query').fill('filtre');
+  await page.locator('#experimental-index-query').press('Enter');
+  const snapshot = () => page.evaluate(async () => {
+    const { getAll } = await import('/db.js');
+    return Promise.all(['users', 'documents', 'equipment', 'family', 'alerts'].map(getAll));
   });
-  await page.locator('#quick-question').fill('facture pergola');
-  await page.locator('#quick-search-form [type="submit"]').click();
-  await expect(page).toHaveURL(/#\/recherche\?q=/);
-  await expect(page.locator('#experimental-index-query')).toHaveValue('facture pergola');
-  await expect(page.locator('#experimental-index-query')).toBeFocused();
-  await expect(page.locator('#experimental-index-form')).toHaveAttribute('data-submits', '1');
+  const before = await snapshot();
+  const add = page.locator('#view-recherche [data-open-import]');
+  await add.click();
+  await expect(page).toHaveURL(/#\/importer$/);
+  await expect(page.locator('#source-choice-dialog')).toBeHidden();
+  await page.locator('#return-from-import').click();
+  await expect(add).toBeFocused();
+  await expect(page.locator('#experimental-index-query')).toHaveValue('filtre');
+  await expect(page.locator('#experimental-index-source')).toHaveValue('local');
+  expect(await snapshot()).toEqual(before);
+  await add.click();
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('#choose-import-files').click();
+  await (await chooser).setFiles({
+    name: 'filtre-fictif.txt', mimeType: 'text/plain',
+    buffer: Buffer.from('Notice fictive : nettoyer le filtre.')
+  });
+  await expect(page.locator('#scan-progress-text')).toContainText('1/1 fichiers indexés');
+  await expect(page.locator('#view-recherche')).toBeVisible();
+  await expect(page.locator('#experimental-index-query')).toHaveValue('filtre');
+  await expect(page.locator('#experimental-index-source')).toHaveValue('local');
+  await expect(page.locator('#return-from-import')).toBeHidden();
   expect(errors).toEqual([]);
   await expect(page.locator('#search-mode')).toHaveCount(0);
 });

@@ -72,12 +72,12 @@ Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour r
 ## 📺 Vues détaillées et interactions
 
 ### 1. Accueil (Dashboard contextuel)
-- **Identité** : en-tête bleu/marine, recherche dans une carte claire légèrement teintée, compteurs et contrôles partagés. Le formulaire reste visible sans défilement aux quatre largeurs testées, pour le profil de référence.
-- **Contenu réel** : accueil nominatif, recherche rapide, ajout, démo fictive, trois compteurs (fichiers visibles, garanties, contrats), aperçu de trois rappels actifs au maximum et accès au foyer. Aucun compteur approximatif, document récent ou garantie « active » n'est inventé.
+- **Identité** : en-tête bleu/marine, raccourcis dans une carte claire légèrement teintée, compteurs et contrôles partagés. Aucun formulaire de recherche ni bouton flottant : Accueil reste un tableau de bord.
+- **Contenu réel** : accueil nominatif, raccourcis Recherche et Importer, démo fictive, trois compteurs (fichiers visibles, garanties, contrats), aperçu de trois rappels actifs au maximum et accès au foyer. Aucun compteur approximatif, document récent ou garantie « active » n'est inventé.
 - **Périmètre** : les compteurs reprennent l'inventaire visible, avec exemples intégrés en repli lorsqu'aucun fichier n'est enregistré ; les exemples sont signalés et ne sont pas recherchés dans l'index personnel. Profils et équipements peuvent encore contenir les exemples initiaux du prototype.
 - **Interactions** :
-  - Soumission rapide → formulaire unique **Recherche**, question transmise et soumise une seule fois.
-  - « Ajouter des fichiers » → choix des sources existant ; « Essayer un exemple fictif » → démo rejouable, sans permission ni écriture de données applicatives.
+  - « Ouvrir la recherche » → vue **Recherche**, avec focus dans le formulaire unique. L'Assistant reste accessible séparément, sans nouveau raccourci concurrent sur Accueil.
+  - « Ajouter des fichiers » → **Importer** ; « Essayer un exemple fictif » → démo rejouable, sans permission ni écriture de données applicatives.
   - Compteurs → **Vos données**, avec filtre Garantie ou Contrat correspondant si nécessaire.
   - Rappel ou « Toutes les alertes » → **Alertes** ; l'aperçu inclut les rappels reportés, sans prétendre couvrir toutes les échéances.
   - « Ma maison » / « Ma famille » → destinations correspondantes.
@@ -85,28 +85,38 @@ Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour r
 ### 2. Recherche unifiée
 - **Contenu réel** : en-tête compact et ajout, formulaire unique, périmètre explicite et résultats prioritaires. Filtres repliables (source, type, couverture, dates, personne, lieu), sources et échéances expérimentales se consultent séparément. Aucune reconnaissance visuelle ni couverture de tout l'appareil/cloud n'est annoncée.
 - **Interactions** :
+  - Un seul raccourci « Ajouter des fichiers », dans l'en-tête, mène à **Importer**. Aucun bouton d'ajout flottant. Le retour explicite restaure la vue et le focus du raccourci ; question courante et filtres restent présents. Un import local lancé depuis ce parcours conserve aussi la question au retour dans Recherche.
   - Soumission → résultats dans la même vue, provenance et preuves conservées ; les volets repliés ne modifient pas les filtres appliqués.
   - Copie disponible → aperçu local existant, sans prétendre ouvrir l'original. Les photos conservent détail, annotations, regroupement, pagination et sélection/suppression confirmée.
   - « Effacer les filtres » conserve la question ; le bouton d'état vide efface aussi la question. Le focus revient au champ et l'état initial explique comment commencer.
   - « Sources et limites de la recherche » → état réel des sources et limites de couverture/fraîcheur ; « Échéances proposées — expérimental » → preuves et confirmation explicite existante avant création d'alerte.
 
-### Validation de la tranche Accueil / Recherche
+### Validation de la tranche initiale Accueil / Recherche (avant E5.a–d)
 - Douze tests dans `tests/unified-search-entry.spec.js`, seize d'inventaire et huit d'onboarding passent, ainsi que 44 tests de non-régression et dix audits ciblés (quatre largeurs 390, 768, 1280 et 1920 px, clavier et mouvement réduit), compilation et contrôle du diff.
 - Données fictives uniquement : démo sans écriture, nom littéral long après rechargement, compteurs/destinations, soumission unique, filtres et état vide, preuves, confirmations et bibliothèque de 1 000 photos. Cibles d'au moins 48 px vérifiées sur l'accueil hors onboarding et la recherche avec photos/filtres ouverts.
 - Assistant et le dernier dialogue sont traités dans la tranche décrite plus bas. Appareils physiques, lecteur d'écran, contrastes complets et comptes externes réels ne sont pas validés. Les limites historiques PDF et tests du choix des sources restent signalées dans les tranches précédentes.
 
+### Validation des corrections de cohérence E5.a–d
+- 111 scénarios UX/accessibilité validés : inventaire, foyer, gestion/import, recherche unifiée, onboarding, dialogues, visite et 42 audits sur les dix vues aux quatre largeurs. Après un premier passage à 108/111, les cinq tests des sources passent avec des attentes adaptées au dialogue d'un seul fournisseur (qui peut n'avoir que la fermeture active).
+- Deux scénarios OneDrive supplémentaires passent : indisponibilité sans configuration et copies de deux comptes simulés préservées/recherchables. Les tests suivent le nouveau passage par Importer puis le retour explicite vers Recherche. Le scénario de documents utilise un fichier à métadonnées seules, sans attendre une photo dans la liste documentaire.
+- Cinq tests unitaires du moteur documentaire, compilation et chargement/décodage des images Maison/pompe/piscine dans la version compilée réussis. Les flux de données et les permissions n'ont pas changé. Une erreur de sélection des champs masqués dans l'audit ciblé d'import a été corrigée dans le test ; les boutons visibles restent contrôlés à au moins 48 px.
+- Les données de validation sont fictives. Pas d'essai physique, de compte cloud réel, de lecteur d'écran ni de mesure complète des contrastes dans cette tranche ; l'export PDF historique reste hors périmètre.
+
 ### 3. Importer
-- **Identité** : en-tête compact et socle bleu/marine de l'onboarding ; carte d'ajout prioritaire, options secondaires sur deux colonnes sur smartphone et quatre sur grand écran. Les limites de format se déplient pour laisser l'action principale visible à 390 × 800 px.
-- **Contenu** : choix de fichiers, dépôt, dossier, capture et saisie manuelle ; accès à l'inventaire et au choix des sources existant. Les originaux ne sont pas déplacés ni supprimés.
+- **Identité** : en-tête compact et socle bleu/marine de l'onboarding ; trois cartes de sources avec les icônes officielles existantes, empilées jusqu'à 900 px et sur trois colonnes au-delà. Le choix local reste prioritaire et les formats sont repliables.
+- **Contenu** : appareil, Google Drive et OneDrive personnel, disponibilité réelle des connecteurs et explications avant connexion. Options locales secondaires : dossier, capture et saisie manuelle ; le doublon « Plusieurs fichiers » est retiré. Les originaux ne sont pas déplacés ni supprimés.
 - **Interactions** :
   - « Choisir des fichiers » est un bouton utilisable au clavier ; sélection ou dépôt → traitement local existant, progression dans **Recherche**, puis consultation depuis **Vos données**.
   - Dossier sur navigateur de bureau compatible → sélecteur de dossier ; sur navigateur mobile détecté ou plateforme native → sélection multiple avec explication. La capture utilise le sélecteur photo existant ; aucun OCR mobile réel n'est validé ici.
   - « Saisir manuellement » → `ui-dialog` nommé, champs et boutons partagés, titre requis, choix du type et contenu facultatif. Annuler/Échap supprime le dialogue sans écriture et restaure le focus ; enregistrer attend le stockage, annonce les erreurs et conserve la saisie pour réessayer.
   - La saisie crée une fiche texte locale, pas un PDF original : le nom en `.pdf` reste celui du modèle existant, sans génération de fichier.
-  - « Voir mes fichiers » → inventaire ; « Choisir une autre source » → dialogue des sources existant, sans déclencher de connexion.
+  - « Options Google Drive » / « Options OneDrive » → dialogue partagé limité au fournisseur choisi. Il conserve les contrôles de connexion et d'indexation existants, sans les déclencher à l'ouverture. Fermeture par Échap/bouton/fond et retour du focus ; les permissions restent distinctes selon le fournisseur. Les options restent consultables lorsqu'un connecteur n'est pas disponible, mais ne permettent pas de le connecter.
+  - Les états affichés réutilisent la disponibilité Google et l'état de session/action OneDrive, sans nouveau compte, accès ou synchronisation. Une configuration présente ne prouve pas qu'un compte réel a été validé.
+  - « Voir mes fichiers » → inventaire. Les raccourcis d'ajout d'Accueil, Recherche et Vos données convergent vers Importer, avec retour explicite vers leur écran d'origine. Une entrée directe dans Importer ne présente pas de faux retour.
 
 ### 4. Maison
-- **Identité** : en-tête aligné à gauche, palette bleu/marine, cartes partagées et action d'ajout dans l'en-tête (icône nommée sur smartphone). La photographie de maison est une illustration, masquée sur petit écran ; l'adresse vient du profil.
+- **Identité** : en-tête aligné à gauche, palette bleu/marine, cartes partagées et action d'ajout dans l'en-tête (icône nommée sur smartphone). L'illustration de maison reste visible sur mobile ; l'adresse vient du profil. Les équipements réutilisent les images locales de catégorie disponibles (pompe, piscine, pergola, volets/store, chauffage/chaudière), sinon une icône.
+- **Provenance des visuels** : la maison et les équipements sont explicitement présentés comme des illustrations, pas des photos du foyer. Aucun import, association ni stockage de photo personnelle n'est ajouté.
 - **Contenu** : équipements et compteur annoncé, huit filtres de catégorie défilants horizontalement. Pas de recherche inline implémentée.
 - **Interactions** :
   - Équipement → **Détail équipement**, avec identifiant dans l'URL.

@@ -1,5 +1,14 @@
 # [Non publié] - Recherche multi-sources : socle expérimental
 
+### Lot E — E5.a–d : cohérence des parcours après refonte
+- Accueil redevient un tableau de bord : formulaire de recherche retiré, raccourci vers Recherche conservé, compteurs, rappels, foyer et démo inchangés. Aucun raccourci Assistant concurrent ajouté.
+- Le bouton d'ajout flottant est retiré. Un seul ajout reste dans l'en-tête de Recherche ; les ajouts d'Accueil, Recherche et Vos données convergent vers Importer. Le retour explicite restaure la route et le focus ; question courante et filtres sont conservés, y compris si l'URL contenait une ancienne question.
+- Importer présente appareil, Google Drive et OneDrive avec les icônes existantes et leurs états de disponibilité. Les options cloud réutilisent le dialogue partagé, limité au fournisseur choisi, sans connexion ni indexation à l'ouverture. Les permissions, l'authentification, les mécanismes d'indexation et de suppression restent inchangés.
+- Le doublon « Plusieurs fichiers » et le second choix général des sources dans Importer sont retirés. Sélection multiple, dépôt, dossier, capture et saisie manuelle restent disponibles.
+- La maison retrouve son illustration sur mobile, avec texte mieux empilé. Les équipements réutilisent les images locales de catégorie disponibles et une icône sinon. Visuels explicitement illustratifs, pas de nouvelle personnalisation photo ni de stockage personnel ; images incluses dans la compilation Vite.
+- Validation : 111 scénarios UX/accessibilité validés (42 audits inclus), deux scénarios OneDrive simulés, cinq tests unitaires du moteur et compilation réussis. Reprise ciblée des cinq tests des sources après les trois attentes clavier devenues inadaptées au dialogue à un seul fournisseur. Les tests de parcours ont été adaptés à Importer ; le test multi-comptes utilise un document à métadonnées seules plutôt que d'attendre des photos dans la liste documentaire.
+- Contrôle navigateur de la version compilée : images maison/pompe/piscine chargées et décodées. Appareils physiques, lecteur d'écran, audit complet des contrastes et comptes externes réels non validés ; limite historique de l'export PDF inchangée. E5 reste ouvert.
+
 ### Lot E — E5 : Assistant et dernier dialogue applicatif
 - L'Assistant adopte le logo officiel dans la navigation, la palette bleu/marine et les cartes, champs et boutons partagés. Conversation défilable au clavier, champ de question visible aux quatre formats de référence et suggestions repliables, sans délai artificiel de réponse.
 - Les réponses conservent le moteur documentaire local et exposent le statut de vérification, les preuves et jusqu'à deux sources. Une copie disponible peut être consultée dans le dialogue partagé ; une copie devenue indisponible produit un message explicite.

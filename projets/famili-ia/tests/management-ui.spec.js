@@ -41,6 +41,8 @@ for (const width of [390, 768, 1280, 1920]) {
   test(`gestion : trois vues et saisie accessibles a ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: width < 600 ? 800 : 900 });
     const errors = [];
+    let externalRequests = 0;
+    page.on('request', request => { if (request.url().startsWith('https://')) externalRequests++; });
     page.on('pageerror', error => errors.push(error.message));
     await openView(page, 'importer');
     await expect(page.locator('body')).toHaveClass(/ui-theme/);
@@ -63,12 +65,28 @@ for (const width of [390, 768, 1280, 1920]) {
     await page.getByRole('button', { name: 'Annuler', exact: true }).click();
     await expect(manual).toBeFocused();
     await expect(page.locator('#manual-entry-dialog')).toHaveCount(0);
-    const sources = page.getByRole('button', { name: 'Choisir une autre source', exact: true });
+    const before = await snapshot(page);
+    const requestsBeforeOptions = externalRequests;
+    await expect(page.locator('#import-google-availability')).not.toHaveText('Vérification de la disponibilité…');
+    await expect(page.locator('#import-onedrive-availability')).not.toHaveText('Vérification de la disponibilité…');
+    const sources = page.getByRole('button', { name: 'Options OneDrive', exact: true });
     await sources.click();
     await expect(page.locator('#source-choice-dialog')).toBeVisible();
+    await expect(page.locator('#source-choice-dialog .source-choice:visible')).toHaveCount(1);
+    await expect(page.locator('#source-choice-dialog')).toContainText('Files.Read');
     await expect(page.locator('#close-source-choice')).toBeFocused();
+    await expectUsable(page.locator('#source-choice-dialog'));
     await page.keyboard.press('Escape');
     await expect(sources).toBeFocused();
+    const google = page.getByRole('button', { name: 'Options Google Drive', exact: true });
+    await google.click();
+    await expect(page.locator('#connect-google-drive')).toBeVisible();
+    await expect(page.locator('#onedrive-options')).toBeHidden();
+    await expectUsable(page.locator('#source-choice-dialog'));
+    await page.keyboard.press('Escape');
+    await expect(google).toBeFocused();
+    expect(await snapshot(page)).toEqual(before);
+    expect(externalRequests).toBe(requestsBeforeOptions);
     await page.evaluate(() => { location.hash = '#/profil'; });
     await expect(page.locator('#profile-title')).toBeVisible();
     await expectUsable(page.locator('#view-profil'));
@@ -144,7 +162,7 @@ test('saisie manuelle : stockage indisponible garde la saisie et permet de reess
 test('import : selecteurs uniques, annulation et fichier local toujours indexes', async ({ page }) => {
   await openView(page, 'importer');
   const before = await snapshot(page);
-  for (const selector of ['#choose-import-files', '[data-action="drag-drop"]', '#btn-folder', '#btn-camera']) {
+  for (const selector of ['#choose-import-files', '#btn-folder', '#btn-camera']) {
     const chooser = page.waitForEvent('filechooser');
     await page.locator(selector).click();
     const control = await chooser;

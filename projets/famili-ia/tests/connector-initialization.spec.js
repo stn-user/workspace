@@ -27,7 +27,8 @@ test('explique pourquoi OneDrive reste indisponible sans identifiant configuré'
   const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
   await page.goto('http://127.0.0.1:5190/#/recherche');
   await initialized;
-  await page.getByRole('button', { name: 'Ajouter un document' }).click();
+  await page.getByRole('button', { name: 'Ajouter des fichiers', exact: true }).click();
+  await page.getByRole('button', { name: 'Options OneDrive', exact: true }).click();
   await expect(page.locator('#source-choice-dialog')).toBeVisible();
   await expect(page.locator('#connect-onedrive')).toBeDisabled();
   await expect(page.locator('#onedrive-status')).toContainText('VITE_MICROSOFT_CLIENT_ID');
@@ -194,14 +195,17 @@ test('préserve et recherche les copies OneDrive après le changement de compte'
     }`
   }));
   await page.route('https://graph.microsoft.com/**', route => route.fulfill({
-    json: { value: [{ id: 'meme-element', name: 'photo-fictive.jpg', file: {}, eTag: '"v1"' }] }
+    json: { value: [{ id: 'meme-element', name: 'fiche-fictive.docx', file: {}, eTag: '"v1"' }] }
   }));
   const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
   await page.goto('http://127.0.0.1:5188/#/recherche');
   await initialized;
 
   const connectAndIndex = async () => {
-    await page.getByRole('button', { name: 'Ajouter un document' }).click();
+    if (!await page.locator('#view-importer').isVisible()) {
+      await page.getByRole('button', { name: 'Ajouter des fichiers', exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Options OneDrive', exact: true }).click();
     await page.locator('#connect-onedrive').click();
     await expect(page.locator('#onedrive-status')).toContainText('Compte connecté');
     await expect(page.locator('#start-onedrive')).toBeEnabled();
@@ -230,7 +234,8 @@ test('préserve et recherche les copies OneDrive après le changement de compte'
   );
 
   await page.locator('#close-source-choice').click();
-  await page.locator('#experimental-index-query').fill('photo-fictive');
+  await page.locator('#return-from-import').click();
+  await page.locator('#experimental-index-query').fill('fiche-fictive');
   await page.locator('#experimental-index-form .submit-button').click();
   const results = page.locator('#experimental-index-results');
   await expect(results.locator('li')).toHaveCount(2);
@@ -241,7 +246,7 @@ test('préserve et recherche les copies OneDrive après le changement de compte'
     const { getAll } = await import('/db.js');
     return getAll('documents');
   });
-  const copies = documents.filter(document => document.name === 'photo-fictive.jpg');
+  const copies = documents.filter(document => document.name === 'fiche-fictive.docx');
   expect(copies).toHaveLength(2);
   expect(copies.map(document => document.oneDriveAccountFingerprint).sort())
     .toEqual([firstFingerprint, secondFingerprint].sort());

@@ -165,22 +165,12 @@
           </div>
         </section>
 
-        <section class="ui-card home-search-panel" aria-labelledby="home-search-title">
-          <h2 id="home-search-title">Que souhaitez-vous retrouver ?</h2>
-          <p>Un document, une photo, une information. Commencez par quelques mots.</p>
-        <form class="search-form shared-search-form" id="quick-search-form" role="search">
-          <label class="visually-hidden" for="quick-question">Rechercher dans Famili-IA</label>
-          <input class="ui-input" id="quick-question" type="search" placeholder="Ex. : facture de la piscine" autocomplete="off">
-          <button class="ui-button ui-button--primary submit-button" type="submit" aria-label="Ouvrir la recherche">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </button>
-        </form>
-          <p class="household-note">La recherche porte uniquement sur les fichiers présents et indexés dans Famili-IA, pas sur tout votre appareil.</p>
+        <section class="ui-card home-actions-panel" aria-labelledby="home-actions-title">
+          <h2 id="home-actions-title">Votre quotidien, plus simple</h2>
+          <p>Vos rappels et votre foyer en un coup d’œil. Un fichier à retrouver ou à ajouter ?</p>
           <div class="management-actions">
-            <button class="ui-button ui-button--secondary" type="button" data-open-source-dialog>Ajouter des fichiers</button>
+            <button class="ui-button ui-button--primary" type="button" data-open-view="recherche">Ouvrir la recherche</button>
+            <button class="ui-button ui-button--secondary" type="button" data-open-import>Ajouter des fichiers</button>
             <button class="ui-button ui-button--text" type="button" data-replay-demo>Essayer un exemple fictif</button>
           </div>
         </section>
@@ -218,7 +208,7 @@
             <h1 id="page-title">Que cherchez-vous&nbsp;?</h1>
             <p>Documents et photos, dans une seule recherche locale.</p>
           </div>
-          <button class="ui-button ui-button--primary household-header-action" type="button" data-open-source-dialog aria-label="Ajouter des fichiers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter des fichiers</span></button>
+          <button class="ui-button ui-button--primary household-header-action" type="button" data-open-import aria-label="Ajouter des fichiers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter des fichiers</span></button>
         </header>
 
         <form class="search-form shared-search-form unified-search-form" id="experimental-index-form" role="search">
@@ -380,6 +370,7 @@
           <div class="property-content">
             <div class="property-copy">
               <strong>Ma maison</strong>
+              <small>Visuel d'illustration</small>
               <span id="display-address"></span>
               <span id="display-city"></span>
             </div>
@@ -398,6 +389,7 @@
         </div>
         <section class="ui-card equipment-panel household-panel" aria-labelledby="equipment-title">
           <div class="section-heading"><h2 id="equipment-title">Équipements</h2><span id="equipment-list-status" role="status" aria-live="polite"></span></div>
+          <p class="household-note">Visuels d'illustration par catégorie, pas des photos de vos équipements.</p>
           <div class="equipment-list" id="equipment-list">
             <!-- Equipment list will be populated dynamically by app.js -->
           </div>
@@ -526,38 +518,44 @@
         <header class="household-header">
           <div class="view-titles">
             <p class="eyebrow">UN ESPACE PLUS ORGANISÉ</p>
-            <h1 id="import-title">Importer</h1>
+            <h1 id="import-title" tabindex="-1">Importer</h1>
             <p>Vos fichiers à portée de main, sur cet appareil.</p>
           </div>
+          <button class="ui-button ui-button--secondary" id="return-from-import" type="button" hidden>Retour</button>
         </header>
         <div class="import-container">
+          <section aria-labelledby="import-sources-title">
+          <h2 class="management-section-title" id="import-sources-title">Où se trouvent vos fichiers ?</h2>
+          <div class="import-source-grid">
           <div class="ui-card drop-zone" id="drop-zone">
             <span class="ui-icon drop-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
+              <svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/Dossier.svg" width="1440" height="810"></image></svg>
             </span>
-            <h2 class="drop-text">Ajoutez vos premiers fichiers… ou les suivants</h2>
+            <h3 class="drop-text">Sur cet appareil</h3>
             <p class="import-intro">Choisissez des fichiers ou glissez-les ici depuis votre ordinateur.</p>
             <button type="button" class="ui-button ui-button--primary" id="choose-import-files">Choisir des fichiers</button>
             <input type="file" id="import-input" class="visually-hidden" aria-label="Choisir des fichiers à importer" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
             <p class="import-intro">Traitement local. Les originaux ne sont ni déplacés ni supprimés.</p>
           </div>
+          <article class="ui-card import-source-card">
+            <span class="ui-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/google-drive.svg" width="1440" height="810"></image></svg></span>
+            <h3>Google Drive</h3>
+            <p class="import-intro" id="import-google-availability">Vérification de la disponibilité…</p>
+            <p class="import-intro">Accès limité aux fichiers choisis. Les permissions sont expliquées avant la connexion.</p>
+            <button class="ui-button ui-button--secondary" type="button" data-import-source="drive">Options Google Drive</button>
+          </article>
+          <article class="ui-card import-source-card">
+            <span class="ui-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/onedrive.svg" width="1440" height="810"></image></svg></span>
+            <h3>OneDrive personnel</h3>
+            <p class="import-intro" id="import-onedrive-availability">Vérification de la disponibilité…</p>
+            <p class="import-intro">La permission Microsoft peut couvrir tous les fichiers du compte. L'indexation reste sur demande.</p>
+            <button class="ui-button ui-button--secondary" type="button" data-import-source="onedrive">Options OneDrive</button>
+          </article>
+          </div>
+          </section>
           <section aria-labelledby="import-options-title">
           <h2 class="management-section-title" id="import-options-title">D'autres façons d'ajouter</h2>
           <div class="import-options">
-            <button class="ui-button ui-button--secondary import-option" type="button" data-action="drag-drop">
-              <span class="option-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-              </span>
-              <span>Plusieurs fichiers</span>
-            </button>
             <button class="ui-button ui-button--secondary import-option" type="button" data-action="folder" id="btn-folder">
               <span class="option-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -595,10 +593,9 @@
           </details>
           <section class="ui-card import-library-note" aria-labelledby="import-library-title">
             <h2 class="management-section-title" id="import-library-title">Tout retrouver, au même endroit</h2>
-            <p>Consultez les copies enregistrées et leur couverture d'indexation, ou choisissez une autre source.</p>
+            <p>Consultez les copies enregistrées et leur couverture d'indexation.</p>
             <div class="management-actions">
               <button class="ui-button ui-button--secondary" type="button" data-open-view="vos-donnees">Voir mes fichiers</button>
-              <button class="ui-button ui-button--text" type="button" data-open-source-dialog>Choisir une autre source</button>
             </div>
           </section>
         </div>
@@ -709,7 +706,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
             <span>Vos originaux restent à leur emplacement</span>
           </div>
-          <button class="ui-button ui-button--primary data-add-button" type="button" data-open-source-dialog aria-label="Ajouter des fichiers">
+          <button class="ui-button ui-button--primary data-add-button" type="button" data-open-import aria-label="Ajouter des fichiers">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter des fichiers</span>
           </button>
         </header>
@@ -933,7 +930,8 @@
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
     </div>
-    <p class="source-choice-footnote">Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive peut autoriser l'accès à tous les fichiers du compte personnel.</p>
+    <p class="source-choice-footnote" id="source-choice-permissions">Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive peut autoriser l'accès à tous les fichiers du compte personnel.</p>
+    <div id="onedrive-options">
     <p>OneDrive : l'indexation complète est facultative et s'arrête à la fermeture de l'onglet. TXT/Markdown : 1 Mo maximum ; PDF texte : 10 Mo et 20 pages maximum, sans OCR web. Les autres fichiers ne fournissent que leurs métadonnées. Les changements détectés sont proposés ici avant remplacement. Les éléments absents du parcours ne sont pas déclarés supprimés.</p>
     <button class="ui-button ui-button--secondary" id="start-onedrive" type="button" disabled>Indexer ou vérifier les changements OneDrive</button>
     <button class="ui-button ui-button--secondary" id="stop-onedrive" type="button" hidden>Arrêter l'indexation</button>
@@ -946,6 +944,7 @@
       <button class="ui-button ui-button--primary" id="apply-onedrive-updates" type="button">Actualiser les éléments sélectionnés</button>
       <button class="ui-button ui-button--secondary" id="keep-onedrive-copies" type="button">Conserver les copies actuelles</button>
     </section>
+    </div>
   </dialog>
   <input type="file" id="local-files-input" class="visually-hidden" aria-label="Choisir des fichiers locaux à indexer" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
 
@@ -1105,7 +1104,6 @@
     </form>
   </dialog>
 
-  <button class="fab-add-document" type="button" data-open-source-dialog aria-label="Ajouter un document">＋</button>
 
 </body>
 </html>

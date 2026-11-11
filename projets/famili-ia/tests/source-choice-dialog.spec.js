@@ -5,21 +5,21 @@ for (const viewport of [
   { width: 768, height: 1024 },
   { width: 1280, height: 800 }
 ]) {
-  test(`choix des sources accessible à ${viewport.width}px`, async ({ page }) => {
+  test(`options OneDrive accessibles à ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.route('https://**/*', route => route.abort());
     const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
-    await page.goto('http://127.0.0.1:5179/#/recherche');
+    await page.goto('http://127.0.0.1:5179/#/importer');
     await initialized;
-    const open = page.getByRole('button', { name: 'Ajouter un document' });
+    const open = page.getByRole('button', { name: 'Options OneDrive', exact: true });
     await open.click();
-    const dialog = page.getByRole('dialog', { name: 'Où se trouvent vos documents ?' });
+    const dialog = page.getByRole('dialog', { name: 'OneDrive — accès aux fichiers' });
     const close = dialog.getByRole('button', { name: 'Fermer le choix des sources' });
     await expect(dialog).toBeVisible();
     await expect(close).toBeFocused();
-    await expect(dialog).toHaveAccessibleDescription('Choisissez uniquement les fichiers que vous souhaitez rechercher.');
+    await expect(dialog).toHaveAccessibleDescription('Vérifiez les permissions avant de continuer. Ouvrir ces options ne connecte aucun compte.');
     await expect(dialog).toContainText('permission Microsoft Files.Read');
-    await expect(dialog).toContainText('Les copies existantes ne sont pas actualisées automatiquement.');
+    await expect(dialog).toContainText('Les changements détectés sont proposés ici avant remplacement.');
     await expect(page.locator('#stop-onedrive')).toBeHidden();
     const box = await dialog.boundingBox();
     expect(box.x).toBeGreaterThanOrEqual(0);
@@ -42,9 +42,6 @@ for (const viewport of [
         return img.naturalWidth > 0;
       })).toBe(true);
     }
-    await page.keyboard.press('Tab');
-    await expect(dialog.locator('#choose-local-files')).toBeFocused();
-    await expect(dialog.locator('#choose-local-files')).toHaveCSS('outline-style', 'solid');
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await expect(open).toBeFocused();
@@ -59,40 +56,43 @@ for (const viewport of [
 }
 
 test('choix local ouvre le sélecteur sans importer automatiquement', async ({ page }) => {
+  await page.route('https://**/*', route => route.abort());
   const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
-  await page.goto('http://127.0.0.1:5179/#/recherche');
+  await page.goto('http://127.0.0.1:5179/#/importer');
   await initialized;
-  for (const id of ['choose-local-files', 'choose-local-files-native']) {
-    await page.getByRole('button', { name: 'Ajouter un document' }).click();
-    const chooser = page.waitForEvent('filechooser');
-    await page.locator(`#${id}`).click();
-    expect((await chooser).isMultiple()).toBe(true);
-    await expect(page.locator('#source-choice-dialog')).toBeHidden();
-  }
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('#choose-import-files').click();
+  const control = await chooser;
+  expect(control.isMultiple()).toBe(true);
+  await control.setFiles([]);
+  await expect(page.locator('#source-choice-dialog')).toBeHidden();
+  await expect(page.locator('#view-importer')).toBeVisible();
 });
 
-test('démo depuis les sources reste fictive et préserve les données', async ({ page }) => {
+test('démo depuis Accueil reste fictive et préserve les données', async ({ page }) => {
   let externalRequests = 0;
   await page.route('https://**/*', route => {
     externalRequests++;
     return route.abort();
   });
   const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
-  await page.goto('http://127.0.0.1:5179/#/recherche');
+  await page.goto('http://127.0.0.1:5179/#/accueil');
   await initialized;
   await page.evaluate(async () => {
     const { put } = await import('/db.js');
     await put('documents', { id: 'existing-test', name: 'fichier existant.txt', isLocal: true });
     localStorage.setItem('famili-ia-source-choice-complete', 'true');
   });
+  const restored = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.reload();
+  await restored;
   const snapshot = () => page.evaluate(async () => {
     const { getAll } = await import('/db.js');
     return Promise.all(['users', 'documents', 'equipment', 'family', 'alerts'].map(getAll));
   });
   const before = await snapshot();
   const requestsBefore = externalRequests;
-  await page.getByRole('button', { name: 'Ajouter un document' }).click();
-  await page.locator('#open-drive-picker').click();
+  await page.locator('[data-replay-demo]').click();
   await expect(page.locator('#source-choice-dialog')).toBeHidden();
   await expect(page.locator('#step-3')).toBeVisible();
   await expect(page.locator('#step-3-title')).toBeFocused();

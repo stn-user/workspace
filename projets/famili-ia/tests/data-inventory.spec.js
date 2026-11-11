@@ -9,7 +9,7 @@ async function openInventory(page) {
 
 async function expectUsablePanel(panel) {
   const result = await panel.evaluate(root => {
-    const undersized = [...root.querySelectorAll('button, a[href], input:not([type="hidden"]), textarea')]
+    const undersized = [...root.querySelectorAll('button, a[href], input:not([type="hidden"]):not(.visually-hidden), textarea')]
       .filter(el => {
         const bounds = el.getBoundingClientRect();
         return bounds.width > 0 && bounds.height > 0 && (bounds.width < 47.5 || bounds.height < 47.5);
@@ -99,9 +99,10 @@ test.describe('Vue Vos données et recherche unifiée', () => {
       const addButton = page.getByRole('button', { name: 'Ajouter des fichiers', exact: true });
       await addButton.focus();
       await page.keyboard.press('Enter');
-      await expect(page.locator('#source-choice-dialog')).toBeVisible();
-      await expectUsablePanel(page.locator('#source-choice-dialog'));
-      await page.keyboard.press('Escape');
+      await expect(page.locator('#view-importer')).toBeVisible();
+      await expect(page.locator('#source-choice-dialog')).toBeHidden();
+      await expectUsablePanel(page.locator('#view-importer'));
+      await page.locator('#return-from-import').click();
       await expect(addButton).toBeFocused();
 
       const preview = page.locator('.data-file-row').first().getByRole('button');
@@ -136,7 +137,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await openInventory(page);
     await page.getByRole('button', { name: 'Ajouter des fichiers', exact: true }).click();
     const chooser = page.waitForEvent('filechooser');
-    await page.locator('#choose-local-files').click();
+    await page.locator('#choose-import-files').click();
     await (await chooser).setFiles({
       name: 'document-fictif.txt', mimeType: 'text/plain',
       buffer: Buffer.from('Document fictif pour la refonte UX. Référence : UX-E5.')

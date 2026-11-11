@@ -1481,7 +1481,7 @@ function startBackgroundImport(files) {
   completeOnboarding();
   manageOnboardingWizardVisibility();
   if (sourceChoiceDialog.open) sourceChoiceDialog.close();
-  showView("recherche", { params: { q: "" } });
+  showView("recherche", { params: { q: importReturnContext?.view === "recherche" ? input.value : "" } });
   setFileStatus(`${files.length} fichier${files.length === 1 ? "" : "s"} sélectionné${files.length === 1 ? "" : "s"}. Indexation locale démarrée en arrière-plan.`);
 
   task.then((result) => {
@@ -1537,6 +1537,7 @@ function updateGoogleDriveButton() {
     } else {
       googleDriveChoiceDescription.textContent = "Connecter votre compte puis choisir les fichiers à consulter.";
     }
+    document.querySelector("#import-google-availability").textContent = googleDriveChoiceDescription.textContent;
   }
 }
 
@@ -1545,7 +1546,23 @@ function completeOnboarding() {
   document.querySelector("#dashboard-content").hidden = false;
 }
 
-function openSourceChoices() {
+function openSourceChoices(source) {
+  const providerButton = source === "drive" ? "connect-google-drive" : source === "onedrive" ? "connect-onedrive" : null;
+  document.querySelector("#source-choice-title").textContent = source === "drive"
+    ? "Google Drive — accès aux fichiers"
+    : source === "onedrive" ? "OneDrive — accès aux fichiers" : "Où se trouvent vos documents ?";
+  document.querySelector("#source-choice-intro").textContent = providerButton
+    ? "Vérifiez les permissions avant de continuer. Ouvrir ces options ne connecte aucun compte."
+    : "Choisissez uniquement les fichiers que vous souhaitez rechercher.";
+  sourceChoiceDialog.querySelectorAll(".source-choice").forEach(button => {
+    button.hidden = Boolean(providerButton) && button.id !== providerButton;
+  });
+  document.querySelector("#onedrive-options").hidden = source === "drive";
+  document.querySelector("#source-choice-permissions").textContent = source === "drive"
+    ? "Google Drive ne donne accès qu'aux fichiers sélectionnés."
+    : source === "onedrive"
+      ? "OneDrive peut autoriser l'accès à tous les fichiers du compte personnel. La connexion ne lance pas l'indexation."
+      : "Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive peut autoriser l'accès à tous les fichiers du compte personnel.";
   sourceChoiceDialog.showModal();
 }
 
@@ -1630,6 +1647,12 @@ function updateOneDriveActions() {
   oneDriveReviewList.querySelectorAll("input").forEach(input => { input.disabled = Boolean(oneDriveScanSettled) || removingSessionFiles; });
   oneDriveApplyUpdatesButton.disabled = Boolean(oneDriveScanSettled) || removingSessionFiles;
   oneDriveKeepCopiesButton.disabled = Boolean(oneDriveScanSettled) || removingSessionFiles;
+  document.querySelector("#import-onedrive-availability").textContent = !oneDriveReady
+    ? "Connexion indisponible dans cette version."
+    : oneDriveConnecting ? "Connexion en cours…"
+      : oneDriveScanSettled ? "Indexation en cours, consultable dans les options."
+        : oneDriveAuth?.connected ? "Session connectée. Indexation sur demande."
+          : "Connexion facultative disponible, sur demande.";
 }
 
 function renderOneDriveReview(candidates) {
@@ -1875,7 +1898,27 @@ oneDriveDisconnectButton.addEventListener("click", async () => {
   }
 });
 document.querySelectorAll("[data-open-source-dialog]").forEach((button) => {
-  button.addEventListener("click", openSourceChoices);
+  button.addEventListener("click", () => openSourceChoices());
+});
+document.querySelectorAll("[data-import-source]").forEach(button => {
+  button.addEventListener("click", () => openSourceChoices(button.dataset.importSource));
+});
+document.querySelectorAll("[data-open-import]").forEach(button => {
+  button.addEventListener("click", () => {
+    importReturnContext = { ...parseHash(), trigger: button };
+    if (importReturnContext.view === "recherche") importReturnContext.params.q = input.value;
+    const back = document.querySelector("#return-from-import");
+    back.textContent = `Retour — ${pageTitles[importReturnContext.view]}`;
+    back.hidden = false;
+    showView("importer");
+    document.querySelector("#import-title").focus();
+  });
+});
+document.querySelector("#return-from-import").addEventListener("click", () => {
+  const target = importReturnContext;
+  if (!target) return;
+  showView(target.view, { params: target.params });
+  target.trigger.focus();
 });
 document.querySelector("#close-source-choice").addEventListener("click", () => sourceChoiceDialog.close());
 sourceChoiceDialog.addEventListener("click", (event) => {
@@ -2089,6 +2132,7 @@ const pageTitles = {
 };
 let toastTimeout;
 // Initialiser activeView dès le départ en parsant le hash
+let importReturnContext = null;
 let activeView = (() => {
   const hash = window.location.hash.substring(1);
   if (!hash || hash === '' || hash === '#') return 'accueil';
@@ -2215,6 +2259,11 @@ function initializeViewWithParams(viewName, params) {
       initProfileView();
       break;
 
+    case 'importer':
+      updateGoogleDriveButton();
+      updateOneDriveActions();
+      break;
+
     case 'assistant':
       refreshAssistantContext();
       break;
@@ -2309,6 +2358,10 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   }
 
   activeView = name;
+  if (name !== "importer") {
+    importReturnContext = null;
+    document.querySelector("#return-from-import").hidden = true;
+  }
   document.body.classList.toggle('ui-theme', ['accueil', 'recherche', 'alertes', 'vos-donnees', 'maison', 'detail', 'famille', 'assistant', 'importer', 'profil', 'plus'].includes(name));
   if (name !== 'alertes') document.querySelector('#alert-preferences-dialog')?.close();
 
@@ -2342,13 +2395,6 @@ function showView(name, { addHistory = true, params = {} } = {}) {
     mainContent.scrollTo({ top: 0, behavior: 'smooth' });
   } else {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  // Show FAB only on Accueil and Recherche views
-  const fab = document.querySelector('.fab-add-document');
-  if (fab) {
-    const showFab = name === 'accueil' || name === 'recherche';
-    fab.hidden = !showFab;
   }
 
   initializeViewWithParams(name, params);
@@ -2693,7 +2739,7 @@ function escapeHtml(value) {
   })[character]);
 }
 
-function getEquipmentIcon(category, eqId) {
+function getEquipmentIcon(category) {
   const svgFallbacks = {
     'pompe': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
     'piscine': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/></svg>`,
@@ -2728,9 +2774,18 @@ function renderEquipmentList(category = 'tout') {
     return;
   }
 
+  const illustrations = {
+    pompe: new URL('./assets/pompe/pompe-photo.jpg', import.meta.url).href,
+    piscine: new URL('./assets/piscine/piscine-photo.jpg', import.meta.url).href,
+    pergola: new URL('./assets/pergola/pergola-photo.jpg', import.meta.url).href,
+    volets: new URL('./assets/store/store-photo.jpg', import.meta.url).href,
+    chauffage: new URL('./assets/chaudiere/chaudiere-photo.jpg', import.meta.url).href
+  };
   equipmentList.innerHTML = equipment.map(eq => {
-    // Determine icon based on category - check for asset image first
-    let icon = getEquipmentIcon(eq.category, eq.id);
+    const illustration = Object.hasOwn(illustrations, eq.category) ? illustrations[eq.category] : null;
+    const icon = illustration
+      ? `<img src="${illustration}" alt="" loading="lazy" decoding="async">`
+      : getEquipmentIcon(eq.category);
     let iconClass = 'blue';
     if (eq.category === 'pompe') { iconClass = 'green'; }
     else if (eq.category === 'piscine') { iconClass = 'violet'; }
@@ -2739,7 +2794,7 @@ function renderEquipmentList(category = 'tout') {
 
     return `
       <button class="ui-button ui-button--secondary equipment-row" type="button" data-equipment="${escapeHtml(eq.id)}" data-open-view="detail?id=${escapeHtml(encodeURIComponent(eq.id))}">
-        <span class="ui-icon row-icon ${iconClass}" aria-hidden="true">${icon}</span>
+        <span class="ui-icon row-icon ${iconClass}${illustration ? ' equipment-visual' : ''}" aria-hidden="true">${icon}</span>
         <span class="row-copy"><strong>${escapeHtml(eq.name)}</strong><small>${escapeHtml(eq.status)}</small></span>
         <span class="stat-arrow" aria-hidden="true">›</span>
       </button>
@@ -2765,14 +2820,6 @@ function initCategoryTabs() {
     };
   });
 }
-
-document.querySelector("#quick-search-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const question = document.querySelector("#quick-question").value.trim();
-  showView("recherche", { params: { q: question } });
-  input.value = question;
-  input.focus();
-});
 
 document.querySelector('[data-replay-demo]').addEventListener('click', () => startOnboardingReplay(3));
 
@@ -3713,11 +3760,6 @@ function initImportView() {
       e.preventDefault();
 
       switch (action) {
-        case 'drag-drop':
-          // Already handled - just focus the drop zone
-          dropZone.click();
-          break;
-
         case 'camera':
           cameraInput.click();
           if (!isMobileDevice) {
