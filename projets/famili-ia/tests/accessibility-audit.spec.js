@@ -85,3 +85,58 @@ test('clavier : le focus est visible et suit les contrôles de la navigation', a
   }
   expect(outlines.size).toBeGreaterThan(3);
 });
+
+for (const width of [390, 1280]) {
+  test(`contrastes des textes visibles des dix vues à ${width}px`, async ({ page }) => {
+    for (const view of views) {
+      await openView(page, width, view);
+      await page.waitForFunction(() => document.body.classList.contains('ui-theme'));
+      const failures = await page.evaluate(() => {
+        const parse = color => {
+          const values = color.match(/[\d.]+/g)?.map(Number);
+          return values?.length >= 3 ? [...values.slice(0, 3), values[3] ?? 1] : null;
+        };
+        const over = (front, back) => front.slice(0, 3).map((value, i) =>
+          value * front[3] + back[i] * (1 - front[3]));
+        const luminance = rgb => rgb.map(value => {
+          const s = value / 255;
+          return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+        }).reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i], 0);
+        const failures = [];
+        for (const el of document.querySelectorAll('body *')) {
+          if (!el.childNodes.length || ![...el.childNodes].some(node =>
+            node.nodeType === Node.TEXT_NODE && node.textContent.trim())) continue;
+          const rect = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          if (!rect.width || !rect.height || style.visibility !== 'visible'
+            || el.closest('[hidden], :disabled, .visually-hidden, svg, script, style')) continue;
+          let colors = [[255, 255, 255]];
+          const ancestors = [];
+          for (let ancestor = el; ancestor; ancestor = ancestor.parentElement) ancestors.unshift(ancestor);
+          for (const ancestor of ancestors) {
+            const background = getComputedStyle(ancestor);
+            const solid = parse(background.backgroundColor);
+            if (solid) colors = colors.map(color => over(solid, color));
+            const stops = background.backgroundImage.match(/rgba?\([^)]+\)/g);
+            if (stops) colors = colors.flatMap(color => stops.map(stop => over(parse(stop), color)));
+          }
+          const foreground = parse(style.color);
+          if (!foreground) continue;
+          const minimum = colors.reduce((min, color) => {
+            const front = luminance(over(foreground, color));
+            const back = luminance(color);
+            return Math.min(min, (Math.max(front, back) + 0.05) / (Math.min(front, back) + 0.05));
+          }, Infinity);
+          const size = parseFloat(style.fontSize);
+          const threshold = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700) ? 3 : 4.5;
+          if (minimum < threshold) failures.push({
+            text: el.textContent.trim().slice(0, 65), ratio: Number(minimum.toFixed(2)),
+            threshold, selector: el.id || el.className
+          });
+        }
+        return failures;
+      });
+      expect.soft(failures, `${view} : contrastes du texte, fonds unis et bornes des dégradés`).toEqual([]);
+    }
+  });
+}

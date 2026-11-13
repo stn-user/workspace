@@ -3,47 +3,70 @@
  */
 
 import { getAll, put, initDB, remove, purgeDatabase } from './db.js';
-import { getAlertLevelForDate, normalizeAlertNotificationPreferences, refreshAlerts } from './alert-engine.js';
+import { generateAlertForDoc, getAlertLevelForDate, normalizeAlertNotificationPreferences, refreshAlerts } from './alert-engine.js';
 import { createPhotoMetadata, mergePhotoMetadata, normalizePhotoDocument } from './photo-metadata.js';
 import { normalizeOptionalBirthDate } from './family-members.js';
 import { isPhotoDocument, normalizePhotoAnnotations, removePhotoMemberAssociation } from './photo-annotations.js';
 import { createDocumentIndexRecord } from './document-index.js';
 import { migrateDocumentIndexes } from './document-index-migration.js';
+import { restoreContentSegments } from './content-index.js';
+import { getInventorySource } from './data-inventory.js';
 
-export function reconcileDocumentAlerts(existingAlerts, generatedAlerts) {
+export function reconcileDocumentAlerts(existingAlerts, generatedAlerts, documents = null) {
   const generatedById = new Map(generatedAlerts.map(alert => [alert.id, alert]));
-  const generatedIds = new Set(generatedById.keys());
-  const previousDocumentAlerts = existingAlerts.filter(alert => (
-    alert.source === "document" || generatedIds.has(alert.id) || alert.id?.startsWith("alert-")
-  ));
-  const previousById = new Map(previousDocumentAlerts.map(alert => [alert.id, alert]));
-  const retainedAlerts = existingAlerts.filter(alert => !previousDocumentAlerts.includes(alert));
-
-  const synchronizedAlerts = generatedAlerts.map((alert) => {
-    const previous = previousById.get(alert.id);
-    if (!previous) return alert;
-    const sameDueDate = previous.dueDate === alert.dueDate;
+  const synchronizedAlerts = existingAlerts.map(previous => {
+    if (previous.source !== "document" && !generatedById.has(previous.id)
+      && !previous.id?.startsWith("alert-")) return previous;
+    const copies = documents?.filter(document => document.id === previous.docId);
+    const current = generatedById.get(previous.id);
+    const candidate = copies?.length === 1
+      ? generateAlertForDoc(copies[0], new Date(), { includeUpcoming: true })
+      : current;
+    let sourceReview = null;
+    if (copies && copies.length !== 1) sourceReview = copies.length ? "source-ambiguous" : "source-missing";
+    else if (!candidate) sourceReview = "proof-unavailable";
+    else if (previous.dueDate !== candidate.dueDate
+      || (previous.sourceExcerpt && previous.sourceExcerpt !== candidate.sourceExcerpt)
+      || (previous.sourceId && copies && previous.sourceId !== getInventorySource(copies[0]))
+      || (previous.sourceContentHash && previous.sourceContentHash !== candidate.sourceContentHash)
+      || (previous.sourceAccountFingerprint && previous.sourceAccountFingerprint !== candidate.sourceAccountFingerprint)
+      || (previous.documentType && previous.documentType !== candidate.documentType)) sourceReview = "source-changed";
     return {
-      ...alert,
-      status: sameDueDate ? previous.status || alert.status : alert.status,
-      notificationSentFor: sameDueDate ? previous.notificationSentFor : undefined,
-      notificationSentAt: sameDueDate ? previous.notificationSentAt : undefined,
-      snoozedUntil: sameDueDate ? previous.snoozedUntil : undefined
+      ...previous, source: "document", sourceReview,
+      sourceContentHash: previous.sourceContentHash || (!sourceReview ? candidate?.sourceContentHash : null),
+      sourceAccountFingerprint: previous.sourceAccountFingerprint || (!sourceReview ? candidate?.sourceAccountFingerprint : null)
     };
   });
+  const existingIds = new Set(existingAlerts.map(alert => alert.id));
+  synchronizedAlerts.push(...generatedAlerts.filter(alert => !existingIds.has(alert.id)));
 
   return {
-    alerts: [...retainedAlerts, ...synchronizedAlerts],
-    alertsToRemove: previousDocumentAlerts.filter(alert => !generatedById.has(alert.id))
+    alerts: synchronizedAlerts,
+    alertsToRemove: []
   };
 }
 
 async function synchronizeDocumentAlerts(documents) {
-  const { alerts: synchronizedAlerts, alertsToRemove } = reconcileDocumentAlerts(
+  const verifiedDocuments = [];
+  for (const document of documents) {
+    const content = await restoreContentSegments(document);
+    const evidence = document.expiryDateEvidence;
+    const missingExtractedProof = content.status === "verified" && document.expiryDateSource !== "user"
+      && typeof evidence === "string" && !evidence.trim().split(/\r?\n/).every(line =>
+        content.segments.join("\n").split(/\r?\n/).some(extracted => extracted.trim() === line.trim()));
+    verifiedDocuments.push(content.status === "invalid" || missingExtractedProof
+      ? { ...document, expiryDate: null }
+      : document);
+  }
+  const generated = refreshAlerts(verifiedDocuments).map(alert => ({
+    ...alert,
+    sourceId: getInventorySource(verifiedDocuments.find(document => document.id === alert.docId))
+  }));
+  const { alerts: synchronizedAlerts } = reconcileDocumentAlerts(
     state.alerts,
-    refreshAlerts(documents)
+    generated,
+    verifiedDocuments
   );
-  for (const alert of alertsToRemove) await remove('alerts', alert.id);
   for (const alert of synchronizedAlerts.filter(alert => alert.source === "document")) await put('alerts', alert);
   state.alerts = synchronizedAlerts;
 }
@@ -296,11 +319,37 @@ export async function deleteDocument(id) {
   return state.documents;
 }
 
+export async function confirmDocumentAlert(documentId) {
+  const copies = state.documents.filter(document => document.id === documentId);
+  if (copies.length !== 1) throw new Error("La copie source est absente ou ambiguë.");
+  const document = copies[0];
+  const content = await restoreContentSegments(document);
+  if (content.status === "invalid") throw new Error("La preuve de la copie n'est plus vérifiable.");
+  if (state.documents.find(entry => entry.id === documentId) !== document) {
+    throw new Error("La copie a changé pendant la confirmation ; vérifiez-la à nouveau.");
+  }
+  const generated = generateAlertForDoc(document, new Date(), { includeUpcoming: true });
+  const previous = state.alerts.find(alert => alert.id === generated?.id);
+  if (!generated || !previous) throw new Error("L'alerte ne peut pas être confirmée avec cette copie.");
+  const changedDate = previous.dueDate !== generated.dueDate;
+  const confirmed = {
+    ...previous, ...generated,
+    sourceId: getInventorySource(document),
+    sourceReview: null,
+    status: previous.status || "active",
+    snoozedUntil: previous.snoozedUntil,
+    notificationSentFor: changedDate ? undefined : previous.notificationSentFor,
+    notificationSentAt: changedDate ? undefined : previous.notificationSentAt
+  };
+  await updateAlert(confirmed);
+  return confirmed;
+}
+
 export async function updateAlert(alert) {
   const index = state.alerts.findIndex(a => a.id === alert.id);
   if (index !== -1) {
-    state.alerts[index] = alert;
     await put('alerts', alert);
+    state.alerts[index] = alert;
   }
   return state.alerts;
 }

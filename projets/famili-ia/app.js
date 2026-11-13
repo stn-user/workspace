@@ -6,7 +6,7 @@ import { countInventorySources, filterInventoryDocuments, filterSearchResultsByC
 import { Capacitor } from "@capacitor/core";
 import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, updatePhotoAnnotations, resetState } from "./state.js";
+import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, confirmDocumentAlert, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, updatePhotoAnnotations, resetState } from "./state.js";
 import { redactPhotoLocationsForExport } from "./photo-metadata.js";
 import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
 import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
@@ -873,6 +873,7 @@ function addDeadlineAlertAction(item, candidate) {
         alertSourceId: candidate.sourceId
       };
       await addDocument(confirmedDocument);
+      await confirmDocumentAlert(confirmedDocument.id);
       const uploadedIndex = uploadedDocuments.findIndex(entry =>
         entry.id === candidate.itemId && getInventorySource(entry) === candidate.sourceId);
       if (uploadedIndex !== -1) uploadedDocuments[uploadedIndex] = confirmedDocument;
@@ -881,7 +882,7 @@ function addDeadlineAlertAction(item, candidate) {
         throw new Error("La provenance du contenu n’a pas pu être revérifiée après l’enregistrement.");
       }
       refreshExperimentalIndex();
-      deadlineStatus.textContent = "Échéance confirmée et alerte créée dans Famili-IA ; la preuve et la source sont conservées.";
+      deadlineStatus.textContent = "Échéance confirmée et alerte créée ou actualisée dans Famili-IA ; preuve, source et choix utilisateur conservés.";
     } catch (error) {
       console.error("Impossible de confirmer l'échéance et de créer l'alerte.", error);
       deadlineStatus.textContent = `Échec de l'enregistrement de l'alerte : ${error instanceof Error ? error.message : "erreur non détaillée"}`;
@@ -3233,6 +3234,15 @@ function renderAlerts(filter, restoreFocus = false) {
     const correctionForm = alert.source === "document" && alert.docId
       ? `<details class="alert-date-correction"><summary>Corriger la date</summary><form data-alert-date-form><label class="ui-label">Date d'échéance confirmée<input class="ui-input" type="date" name="dueDate" value="${escapeHtml(alert.dueDate)}" required></label><button class="ui-button ui-button--primary alert-status-action" type="submit">Enregistrer la date</button></form></details>`
       : "";
+    const reviewMessages = {
+      "source-missing": "Copie source absente de Famili-IA. L'alerte, sa date et vos choix sont conservés.",
+      "source-ambiguous": "Plusieurs copies correspondent à cette alerte. Sa date reste inchangée.",
+      "proof-unavailable": "La preuve de l'échéance n'est plus vérifiable dans la copie disponible. Sa date reste inchangée.",
+      "source-changed": "La copie ou sa preuve a changé depuis cette alerte. Sa date reste inchangée."
+    };
+    const reviewMessage = alert.sourceReview
+      ? reviewMessages[alert.sourceReview] || "La source de cette alerte doit être réexaminée."
+      : "";
     const stateLabel = alert.status === 'resolved' ? 'Terminée'
       : alert.status === 'ignored' ? 'Ignorée'
         : isSnoozed ? 'Reportée'
@@ -3256,6 +3266,8 @@ function renderAlerts(filter, restoreFocus = false) {
           </div>
           <p>${escapeHtml(alert.detail)}</p>
           ${sourceExcerpt}
+          ${alert.source === "document" ? `<p class="household-note">Vérification locale uniquement ; l'accès actuel à l'original n'est pas garanti.</p>` : ''}
+          ${reviewMessage ? `<p class="alert-source-review"><strong>Source à vérifier.</strong> ${escapeHtml(reviewMessage)} Notifications suspendues pour cette alerte jusqu'à confirmation.</p>` : ''}
           ${snoozeNotice}
         </div>
         <button class="ui-button ui-button--secondary alert-action" type="button" data-open-view="vos-donnees?docId=${escapeHtml(encodeURIComponent(alert.docId || ""))}" aria-label="Voir le détail de ${escapeHtml(alert.title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
@@ -3266,6 +3278,7 @@ function renderAlerts(filter, restoreFocus = false) {
             <button class="ui-button ui-button--secondary alert-status-action" type="button" data-toggle-alert-read aria-pressed="false">Marquer comme lue</button>
           </div>
           ${correctionForm}
+          ${alert.source === "document" ? `<button class="ui-button ui-button--secondary" type="button" data-open-view="recherche">Réexaminer les preuves dans Recherche</button>` : ''}
         </details>
       </article>
     `;
@@ -3369,6 +3382,7 @@ function renderAlerts(filter, restoreFocus = false) {
           expiryDateEvidence: `Échéance corrigée manuellement : ${correctedDate}`,
           expiryDateSource: "user"
         });
+        await confirmDocumentAlert(document.id);
         renderAlerts(filter, true);
       } catch (error) {
         console.error("Impossible d'enregistrer la correction de date.", error);

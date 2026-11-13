@@ -36,4 +36,7 @@ test("annotated fictional alert corpus meets baseline quality checks", () => {
     ? { ...alert, notificationSentFor: alert.dueDate, notificationSentAt: referenceDate.toISOString() }
     : alert);
   assert.deepEqual(getAlertsToNotify(afterFirstDelivery, referenceDate), [], "notifications do not repeat for the same due date");
+  assert.deepEqual(getAlertsToNotify(notifications.map(alert => ({
+    ...alert, sourceReview: "source-changed"
+  })), referenceDate), [], "unverifiable reminders do not send new notifications");
 });

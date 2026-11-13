@@ -2505,6 +2505,14 @@ body.ui-theme {
   font-size: 0.8rem;
 }
 
+.alert-card .alert-source-review {
+  padding: 0.75rem;
+  border: 1px solid var(--alert-accent);
+  border-radius: var(--radius-sm);
+  color: var(--ui-ink);
+  background: #fff;
+}
+
 .alert-management {
   grid-column: 2 / -1;
   min-width: 0;

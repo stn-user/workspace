@@ -1,6 +1,6 @@
 import { isValidDate, isValidIndexRecord } from "./index-record.js";
 import { isValidCoverageLevel } from "./index-coverage.js";
-import { normalizeText } from "./search-utils.js";
+import { getIndexSearchTerms, matchIndexTerm, normalizeText } from "./search-utils.js";
 
 const VALID_TYPES = Object.freeze(["document", "photo"]);
 const VALID_DATE_TYPES = Object.freeze(["creation", "modification", "priseDeVue", "achat", "echeance"]);
@@ -90,7 +90,8 @@ export function searchIndex(records, query, options = {}) {
   if (!normalized && Object.keys(options).length === 0) {
     throw new TypeError("Requête vide après normalisation");
   }
-  const words = normalized ? [...new Set(normalized.split(" "))] : [];
+  const words = getIndexSearchTerms(query);
+  if (normalized && !words.length) return [];
   const results = [];
 
   for (const record of records) {
@@ -108,14 +109,23 @@ export function searchIndex(records, query, options = {}) {
     const reasons = [];
     for (const { location, entry } of values) {
       const text = normalizeText(entry.value);
-      const matchedWords = words.filter((word) => text.includes(word));
+      const tokens = text.split(" ");
+      const approximateMatches = [];
+      const matchedWords = words.filter(word => {
+        if (text.includes(word)) return true;
+        const token = tokens.find(token => matchIndexTerm(word, token) === "approximate");
+        if (!token) return false;
+        approximateMatches.push({ queryTerm: word, matchedTerm: token });
+        return true;
+      });
       if (!matchedWords.length) continue;
       for (const word of matchedWords) matched.add(word);
       reasons.push({
         location, value: entry.value, source: entry.source,
         estimated: entry.estimated,
         proof: entry.proof ? { ...entry.proof } : null,
-        matchedWords
+        matchedWords,
+        ...(approximateMatches.length ? { approximateMatches } : {})
       });
     }
     if (matched.size !== words.length) continue;

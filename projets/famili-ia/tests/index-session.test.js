@@ -10,6 +10,33 @@ import { GoogleDriveSource } from "../google-drive-source.js";
 const local = { id: "1", name: "Facture locale.txt", isLocal: true, content: "secret local" };
 const drive = { id: "1", name: "Facture Drive.txt", isLocal: true, driveSource: true, content: "secret drive" };
 
+test("recherche approchée : filtres exacts et périmètre de contenu vérifié préservés", () => {
+  const session = new IndexSession();
+  const document = { id: "1", name: "annexe.txt", isLocal: true, content: "Entretien chaudière" };
+  const legacy = { ...document, driveSource: true, name: "ancienne-annexe.txt" };
+  session.trustExtractedContent(document, [document.content]);
+  session.syncDocuments([document, legacy]);
+  const record = createIndexRecord("local", "1", {
+    name: { value: document.name, source: "provider" }, type: "document", coverage: "partial",
+    dates: { echeance: { value: "2027-01-05", source: "user-input" } },
+    fields: [{ name: "place", value: "Lyon", source: "user-input" }]
+  });
+  session.updateRecord(record);
+  const filters = {
+    sourceId: "local", type: "document", coverage: "partial", place: "Lyon",
+    dateType: "echeance", dateFrom: "2027-01-01", dateTo: "2027-01-31"
+  };
+  assert.equal(session.search("l'entretien de la chaudierre", filters).length, 1);
+  for (const change of [
+    { sourceId: "drive" }, { type: "photo" }, { coverage: "metadata" },
+    { place: "Lyonn" }, { dateFrom: "2028-01-01", dateTo: "2028-01-31" }
+  ]) assert.deepEqual(session.search("chaudierre", { ...filters, ...change }), []);
+  assert.deepEqual(session.search("de la", filters), []);
+  document.content = "Copie remplacée sans nouvelle provenance.";
+  session.syncDocuments([document, legacy]);
+  assert.deepEqual(session.search("chaudierre"), []);
+});
+
 test("recherche des documents locaux et Drive sans lecture, avec identités distinctes", () => {
   const session = new IndexSession();
   const documents = [local, drive, { id: "demo", name: "Facture démo", driveDemo: true }];

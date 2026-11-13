@@ -76,6 +76,78 @@ Les extraits de preuve sont conservés dans `indexRecord` avec le document ; `co
 
 La détection de doublons de `document-deduplication.js` propose une correspondance exacte si les deux empreintes SHA-256 sont déjà disponibles, sinon une suggestion incertaine par nom normalisé. Les empreintes ne sont pas ajoutées systématiquement, les rapprochements n'entraînent aucune fusion et aucune interface de revue n'est livrée. L'évaluation du corpus fictif porte sur sept cas seulement ; elle ne démontre pas la qualité en production.
 
+### Première baseline multi-sources du lot D
+
+Mesure du 12 novembre 2026 avec Node v24.21.0 sous Windows. Depuis le répertoire du projet :
+
+```powershell
+node --test tests\multi-source-quality.test.js
+```
+
+Le [corpus annoté](../../tests/fixtures/multi-source-quality-corpus.js) réutilise les sept cas d'extraction ci-dessus et ajoute onze cas : identifiant identique sur deux sources, échéance positive sur chaque source, échéances ambiguë/invalide/niée/estimée, copie altérée, métadonnées seules, date corrigée et photo annotée explicitement. Les 18 copies fictives représentent huit imports locaux, quatre copies Drive et six OneDrive ; 13 ont un texte partiellement recherché et cinq restent en métadonnées seules. Les provenances et fiches sont construites puis restaurées par les mécanismes réels du modèle. Les fournisseurs, leurs connexions et les décodeurs PDF/DOCX ne sont **pas** exécutés par cette mesure.
+
+Les [tests](../../tests/multi-source-quality.test.js) évaluent `IndexSession`, pas le classement documentaire de l'Assistant. Les annotations attendues ne sont pas calculées à partir des résultats du moteur. Les identités sont comparées par paire source/élément ; les métriques sont micro-agrégées sur tous les résultats, sans classement ni coupure top-k. Une date, son extrait exact et le caractère estimé doivent tous correspondre pour qu'une proposition soit correcte.
+
+| Mesure sur ce petit corpus | Résultat |
+|---|---|
+| Requêtes et filtres | 20 cas ; 20 résultats pertinents attendus au total |
+| Recherche : vrais positifs / faux positifs / faux négatifs | 18 / 0 / 2 |
+| Précision / rappel | 100 % / 90 % |
+| Détail local / Drive / OneDrive : résultats corrects et manqués | 8 et 2 / 5 et 0 / 5 et 0 |
+| Abstentions justifiées | 4/4 cas dont l'annotation attend zéro résultat |
+| Preuves extraites vérifiées | 18 raisons de résultat, toutes littérales dans les segments vérifiés ; mot attendu également contrôlé pour les requêtes de contenu |
+| Propositions d'échéance | 5/5 correctes sur les trois sources, dont une estimation explicitement marquée ; aucun faux positif ni faux négatif sur ces annotations |
+| Autres échéances | Neuf documents à vérifier, trois hors période ; date corrigée non reproposée |
+| Recherche : moyenne / maximum observés | 4,18 ms / 41,82 ms |
+| Préparation des copies/fiches et restauration initiale / calcul des propositions | 266,07 ms / 8,85 ms |
+| Variation de tas Node après préparation, mesures et seconde session | +3 084 192 octets |
+
+Lors de cette première mesure, les deux faux négatifs étaient conservés dans le score : `chaudierre` ne retrouvait pas le document chaudière, et `facture de la piscine` ne retrouvait pas la facture pertinente. Le moteur initial exigeait tous les mots sans tolérance aux fautes ni retrait des mots-outils. Ces échecs n'étaient **pas** comptés comme de bonnes abstentions. Leur correction est mesurée ci-dessous, sans traitement distant.
+
+La suite contrôle aussi les résultats après restauration de session simulée par copie structurée (sans lecture IndexedDB), les preuves et propositions retirées après altération du contenu, la séparation des copies de sources différentes et l'absence de résidus après retrait de tout l'instantané. Aucun appel réseau n'est effectué, et un appel à `fetch` pendant la mesure échouerait. Garde-fous initiaux : précision 100 %, rappel au moins 85 %, aucune preuve invalide, recherche individuelle sous une seconde et préparation sous dix secondes sur ce petit corpus. Le seuil de rappel a depuis été porté à 100 % après correction des deux manques ci-dessous.
+
+Ces temps sont une exécution indicative de la sélection de 22 tests ciblés, pas un percentile ni une garantie mobile ; la charge des autres tests peut les influencer. La variation de tas dépend du ramasse-miettes, inclut les objets du test et la seconde session, et n'est pas un pic mémoire. Le corpus restreint ne valide ni une bibliothèque volumineuse, ni la pertinence générale du français, ni la qualité sémantique de toutes les preuves, ni les formats, accès ou révocations fournisseurs. Les propositions ne sont pas des alertes créées ou envoyées ; leurs seuils, confirmations et notifications restent couverts séparément. Les lots C et D restent ouverts pour un corpus représentatif et les validations réelles.
+
+### Améliorations lexicales après la baseline
+
+La recherche des noms/champs et des segments vérifiés partage désormais `getIndexSearchTerms` et `matchIndexTerm` dans [search-utils.js](../../search-utils.js). Elle retire les mots-outils de la liste existante et traite les élisions françaises `l'`/`d'` devant une lettre, sans retirer les mots courts significatifs ni les chiffres. Une requête composée uniquement de mots-outils ne renvoie aucun résultat, même avec des filtres ; une requête véritablement vide avec filtres conserve le parcours existant. Les termes retenus restent combinés par ET.
+
+Les sous-chaînes littérales restent admissibles comme auparavant. En complément, une substitution, insertion ou suppression de lettre est tolérée entre deux mots normalisés alphabétiques de 6 à 32 lettres. Il n'y a pas de correction approchée des mots courts, chiffres ou termes alphanumériques, ni des négations protégées (`aucune`, `aucuns`, `jamais`). Les autres négations courantes (`sans`, `pas`, `non`, `aucun`) restent des termes littéraux ; elles ne sont pas interprétées comme des commandes d'exclusion. Les filtres de source/type/couverture/date/personne/lieu/événement restent exacts et ne passent pas par ce rapprochement.
+
+Une raison approchée expose `approximateMatches: [{ queryTerm, matchedTerm }]`, avec les deux termes normalisés. [experimental-result.js](../../experimental-result.js) affiche « correspondance approchée » sans changer la question ni le texte de la preuve. Les extraits restent des sous-chaînes exactes des segments vérifiés ; dans le contenu, une correspondance littérale remplace une correspondance approchée trouvée plus tôt. Aucune réécriture de document, connexion ou nouvelle indexation n'est déclenchée. Le calcul de distance préexistant est partagé avec l'Assistant, dont les règles et seuils de classement restent inchangés.
+
+Mesure après correction sur **les mêmes 18 copies et 20 cas annotés**, le 12 novembre 2026 :
+
+| Mesure | Avant | Après |
+|---|---|---|
+| Résultats corrects / non pertinents / manqués | 18 / 0 / 2 | 20 / 0 / 0 |
+| Précision / rappel | 100 % / 90 % | 100 % / 100 % |
+| Abstentions justifiées | 4/4 | 4/4 |
+| Raisons extraites à preuve littérale valide | 18 | 22 |
+| Propositions d'échéance correctes | 5/5 | 5/5 |
+
+La sélection de 53 tests Node ciblés passe, y compris les cinq tests du classement documentaire de l'Assistant. Sur cette exécution indicative : moyenne de recherche 5,31 ms, maximum 25,96 ms ; préparation 135,13 ms, propositions 10,29 ms, variation du tas +2 403 304 octets. Ces valeurs ne permettent pas de conclure à un gain ou une régression de performance entre exécutions. 25 scénarios navigateur passent, dont trois nouveaux parcours à 390, 768 et 1280 px avec import TXT fictif, preuve inchangée, mention d'approximation, filtre source, rechargement et absence de résultats pour une référence numérique erronée, une négation non présente ou des mots-outils seuls. Compilation et contrôle du diff réussis.
+
+Limites : pas de synonymes supplémentaires, pas d'analyse générale des questions, pas d'opérateurs booléens ni de tolérance aux transpositions de deux lettres. Des mots ou codes purement alphabétiques voisins peuvent correspondre : la mention d'approximation invite à vérifier la preuve. Les identités et permissions ne sont pas élargies. Les métriques parfaites restent propres à ce petit corpus ; comptes externes, volumes, appareils physiques et lecteur d'écran ne sont pas validés par cette tranche.
+
+### Extension des requêtes annotées
+
+Le 13 novembre 2026, la même session de mesure a été rejouée avec **35 requêtes/filtres annotés sur les mêmes 18 copies fictives**. Les 15 cas ajoutés évaluent notamment les élisions, pluriels, fautes simples, mot-outil seul, termes courts, chiffres, transposition, combinaisons de termes et filtres exacts de source, couverture et date. Les annotations attendues ont été inscrites dans le jeu de tests ; aucune réponse du moteur n'est utilisée pour les calculer. Le corpus comprend maintenant 31 occurrences de résultats pertinentes et dix cas annotés sans résultat attendu, parmi lesquels des absences lexicales et des exclusions par filtres exacts.
+
+| Mesure sur les 35 requêtes/filtres | Résultat |
+|---|---|
+| Résultats pertinents attendus | 31 |
+| Vrais positifs / faux positifs / faux négatifs | 31 / 0 / 0 |
+| Précision / rappel | 100 % / 100 % |
+| Cas sans résultat attendu correctement vides | 10/10 |
+| Raisons extraites vérifiées littéralement | 53 ; aucune preuve invalide |
+| Propositions d'échéance | 5/5 toujours exactes, sans faux positif ni faux négatif |
+| Recherche : moyenne / maximum observés | 1,85 ms / 9,16 ms |
+| Préparation / propositions d'échéance | 58,51 ms / 9,05 ms |
+| Variation de tas Node | +2 292 832 octets |
+
+La commande `node --test tests\multi-source-quality.test.js` passe ses deux tests. Elle vérifie aussi le rejeu après restauration structurée, l'absence d'appel réseau, les preuves et échéances après redémarrage simulé, ainsi que l'absence de résidus après altération/retrait. Les temps et le delta de tas sont indicatifs, sensibles à l'hôte et au ramasse-miettes ; ils ne sont pas comparables comme un benchmark stable. Cette extension augmente la variété des questions mais **pas** le nombre de copies ni leur représentativité. Les résultats restent une mesure synthétique étroite, pas une certification du français naturel ni de la production.
+
 ## Structures existantes et décisions ouvertes
 
 - Dans [db.js](../../db.js), le store `documents` a pour clé `id` ; aucune clé composée n'est introduite par ce lot.

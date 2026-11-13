@@ -1,8 +1,8 @@
-import { normalizeText } from "./search-utils.js";
+import { getIndexSearchTerms, matchIndexTerm, normalizeText } from "./search-utils.js";
 
 function queryWords(query) {
   if (typeof query !== "string" || !normalizeText(query)) throw new TypeError("Requête invalide");
-  return [...new Set(normalizeText(query).split(" "))];
+  return getIndexSearchTerms(query);
 }
 
 function validateDocument(doc) {
@@ -16,23 +16,29 @@ function validateDocument(doc) {
 }
 
 function findEvidence(segments, words) {
+  if (!words.length) return [];
   const found = new Map();
   for (const text of segments) {
     for (const match of text.matchAll(/[\p{L}\p{M}\p{N}]+/gu)) {
       const token = normalizeText(match[0]);
       for (const word of words) {
-        if (!found.has(word) && token.includes(word)) {
+        const previous = found.get(word);
+        if (previous && (!previous.approximate || !token.includes(word))) continue;
+        const kind = matchIndexTerm(word, token);
+        if (kind && (!found.has(word) || (found.get(word).approximate && kind === "exact"))) {
           const start = Math.max(0, match.index - 60);
           const end = Math.min(text.length, match.index + match[0].length + 60);
-          found.set(word, text.slice(start, end));
+          found.set(word, { excerpt: text.slice(start, end), token, approximate: kind === "approximate" });
         }
       }
     }
   }
   if (found.size !== words.length) return [];
   return words.map(word => ({
-    location: "content", value: found.get(word), source: "extracted",
-    estimated: false, proof: { excerpt: found.get(word), location: null }, matchedWords: [word]
+    location: "content", value: found.get(word).excerpt, source: "extracted",
+    estimated: false, proof: { excerpt: found.get(word).excerpt, location: null }, matchedWords: [word],
+    ...(found.get(word).approximate
+      ? { approximateMatches: [{ queryTerm: word, matchedTerm: found.get(word).token }] } : {})
   }));
 }
 

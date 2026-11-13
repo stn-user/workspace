@@ -122,7 +122,7 @@ export function getAlertLevelForDate(value, documentType, now = new Date()) {
 /**
  * Generates an alert only for a valid, explicitly sourced due date.
  */
-export function generateAlertForDoc(doc, now = new Date()) {
+export function generateAlertForDoc(doc, now = new Date(), { includeUpcoming = false } = {}) {
   if (!doc?.id || !doc.expiryDate) return null;
   const dueDate = normalizeAlertDate(doc.expiryDate);
   const evidence = typeof doc.expiryDateEvidence === "string" ? doc.expiryDateEvidence.trim() : "";
@@ -131,7 +131,7 @@ export function generateAlertForDoc(doc, now = new Date()) {
   if (!dueDate || (!evidence && !isUserConfirmed)) return null;
 
   const level = getAlertLevelForDate(dueDate, documentType, now);
-  if (level !== "red" && level !== "amber") return null;
+  if (!level || (!includeUpcoming && level !== "red" && level !== "amber")) return null;
 
   return {
     id: `alert-${doc.id}`,
@@ -141,6 +141,8 @@ export function generateAlertForDoc(doc, now = new Date()) {
     source: "document",
     sourceExcerpt: evidence || "Échéance confirmée manuellement.",
     confidence: isUserConfirmed ? "confirmed" : "high",
+    sourceContentHash: doc.contentProvenance?.hash || null,
+    sourceAccountFingerprint: doc.oneDriveAccountFingerprint || null,
     title: `${String(documentType).charAt(0).toLocaleUpperCase("fr")}${String(documentType).slice(1)} : ${doc.provider || doc.originalName || doc.name || "Document"}`,
     detail: level === "red" ? "Échéance dépassée ou imminente." : "Échéance à prévoir.",
     type: level,
@@ -187,6 +189,7 @@ export function getAlertsToNotify(alerts, now = new Date(), notificationPreferen
     const daysUntil = getDaysUntilDate(alert.dueDate, now);
     const snoozedUntil = normalizeAlertDate(alert.snoozedUntil);
     return alert.source === "document"
+      && !alert.sourceReview
       && alert.status !== "ignored"
       && alert.status !== "resolved"
       && !preferences.disabledCategories.includes(alert.documentType)

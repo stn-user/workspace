@@ -1,5 +1,105 @@
 import { test, expect } from '@playwright/test';
 
+for (const width of [390, 768, 1280]) {
+  test(`mots-outils et faute expliquée sans modifier la preuve à ${width}px`, async ({ page }) => {
+    await page.route('https://**/*', route => route.abort());
+    await page.setViewportSize({ width, height: 800 });
+    const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+    await page.goto('http://127.0.0.1:5179/#/recherche');
+    await ready;
+    await page.locator('#local-files-input').setInputFiles({
+      name: 'annexe-fictive.txt', mimeType: 'text/plain',
+      buffer: Buffer.from('Facture\nÉquipement : Pompe piscine\nEntretien chaudière.\nRéférence : AB123456.\nGarantie avec preuve.')
+    });
+    await expect(page.locator('#scan-progress-text')).toHaveText('Indexation terminée : 1/1 fichiers indexés');
+    const query = page.locator('#experimental-index-query');
+    const submit = page.locator('#experimental-index-form .submit-button');
+    const entries = page.locator('#experimental-index-results li');
+    await query.fill('facture de la piscine');
+    await submit.click();
+    await expect(entries).toHaveCount(1);
+    await expect(entries).toContainText('Pompe piscine');
+    await query.fill('chaudierre');
+    await submit.click();
+    await expect(entries).toHaveCount(1);
+    await expect(entries).toContainText('correspondance approchée : « chaudierre » → « chaudiere »');
+    await expect(entries).toContainText('Entretien chaudière.');
+    await expect(query).toHaveValue('chaudierre');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.locator('#search-filters-panel > summary').click();
+    await page.locator('#experimental-index-source').selectOption('drive');
+    await submit.click();
+    await expect(entries).toHaveCount(0);
+    await page.locator('#experimental-index-source').selectOption('');
+    await submit.click();
+    await expect(entries).toHaveCount(1);
+    const restored = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+    await page.reload();
+    await restored;
+    await query.fill('chaudierre');
+    await submit.click();
+    await expect(entries).toContainText('correspondance approchée');
+    await expect(entries).toContainText('Entretien chaudière.');
+    for (const text of ['AB123457', 'garantie sans preuve', 'de la']) {
+      await query.fill(text);
+      await submit.click();
+      await expect(entries).toHaveCount(0);
+    }
+  });
+}
+
+for (const width of [390, 1280]) {
+  test(`parcours fictif import → recherche → preuve → confirmation → alerte à ${width}px`, async ({ page }) => {
+    await page.route('https://**/*', route => route.abort());
+    await page.clock.setFixedTime(new Date('2026-11-11T12:00:00Z'));
+    await page.setViewportSize({ width, height: 800 });
+    const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+    await page.goto('http://127.0.0.1:5179/#/recherche');
+    await ready;
+    await page.locator('#view-recherche [data-open-import]').click();
+    await expect(page.locator('#import-title')).toBeFocused();
+    const chooser = page.waitForEvent('filechooser');
+    await page.locator('#choose-import-files').click();
+    await (await chooser).setFiles({
+      name: 'garantie-pergola-fictive.txt', mimeType: 'text/plain',
+      buffer: Buffer.from('CERTIFICAT DE GARANTIE\nFin de garantie : 16/11/2026\nÉquipement fictif : pergola.')
+    });
+    await expect(page.locator('#scan-progress-text')).toHaveText('Indexation terminée : 1/1 fichiers indexés');
+    await expect(page.locator('#view-recherche')).toBeVisible();
+    const query = page.locator('#experimental-index-query');
+    await query.fill('pergola');
+    await page.locator('#experimental-index-form .submit-button').click();
+    const result = page.locator('#experimental-index-results li').filter({ hasText: 'garantie-pergola-fictive.txt' });
+    await expect(result).toHaveCount(1);
+    await expect(result).toContainText('Local');
+    await page.locator('#search-deadline-panel > summary').click();
+    const candidate = page.locator('#experimental-deadline-results li').filter({ hasText: 'garantie-pergola-fictive.txt' });
+    await expect(candidate).toContainText('Fin de garantie : 16/11/2026');
+    await candidate.getByRole('button', { name: 'Voir la copie dans Famili-IA' }).click();
+    await expect(page.locator('#source-dialog')).toContainText('Fin de garantie : 16/11/2026');
+    await page.locator('#close-dialog').click();
+    page.once('dialog', dialog => dialog.accept());
+    await candidate.getByRole('button', { name: 'Confirmer la date et créer l’alerte' }).click();
+    await expect(candidate).toHaveCount(0);
+    await page.evaluate(() => { location.hash = '#/alertes'; });
+    const card = page.locator('[data-alert-card]').filter({ hasText: 'garantie-pergola-fictive.txt' });
+    await expect(card).toContainText('Échéance : 16/11/2026');
+    await expect(card).toContainText('Source — Local');
+    await expect(card.locator('.alert-source-review')).toHaveCount(0);
+    const reloaded = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+    await page.reload();
+    await reloaded;
+    await expect(card).toContainText('Fin de garantie : 16/11/2026');
+    await expect(card.locator('.alert-source-review')).toHaveCount(0);
+    await page.evaluate(() => { location.hash = '#/vos-donnees'; });
+    await page.locator('#purge-all-data').click();
+    await page.locator('#confirm-purge').click();
+    await expect(page.locator('#purge-status')).toContainText('supprimées');
+    const remainingAlerts = await page.evaluate(async () => (await import('/db.js')).getAll('alerts'));
+    expect(remainingAlerts).toEqual([]);
+  });
+}
+
 test('recherche locale et Drive simulé, puis purge sans résultats résiduels', async ({ page }) => {
   const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
   await page.goto('http://localhost:5179/#/recherche');
@@ -388,6 +488,7 @@ test('une alerte sourcée nécessite une confirmation explicite et conserve le c
     dialog.accept();
   });
   await estimated.getByRole('button', { name: 'Confirmer l’estimation et créer l’alerte' }).click();
+  await expect(estimated).toHaveCount(0);
   expect(estimateConfirmation).toContain('estimation');
   const estimatePersisted = await page.evaluate(async () => {
     const database = await import('/db.js');

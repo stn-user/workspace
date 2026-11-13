@@ -63,7 +63,10 @@ export function describeExperimentalResult(match, record, document, sourceAccess
     const evidence = reason.proof && reason.proof.excerpt !== reason.value
       ? ` ; preuve : « ${reason.proof.excerpt} »` : "";
     const location = reason.proof?.location ? ` (${reason.proof.location})` : "";
-    return `${label} : « ${reason.value} » — ${provenanceLabels[reason.source] || "provenance inconnue"}${reason.estimated ? ", estimation non confirmée" : ""}${evidence}${location}`;
+    const approximation = reason.approximateMatches?.length
+      ? ` ; correspondance approchée : ${reason.approximateMatches.map(match => `« ${match.queryTerm} » → « ${match.matchedTerm} »`).join(", ")}`
+      : "";
+    return `${label} : « ${reason.value} » — ${provenanceLabels[reason.source] || "provenance inconnue"}${reason.estimated ? ", estimation non confirmée" : ""}${evidence}${location}${approximation}`;
   });
   return {
     name: match.name || "Nom inconnu",

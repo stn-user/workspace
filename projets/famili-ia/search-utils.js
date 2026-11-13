@@ -143,6 +143,35 @@ export function getQuestionTerms(question) {
   )))];
 }
 
+export function getIndexSearchTerms(query) {
+  const withoutElisions = query.replace(/\b[ld]['’](?=\p{L})/giu, "");
+  return [...new Set(normalizeText(withoutElisions).split(" ").filter(term => term && !stopWords.has(term)))];
+}
+
+function isWithinEditDistance(queryTerm, term, maxDistance) {
+  if (Math.abs(term.length - queryTerm.length) > maxDistance) return false;
+  let previousRow = Array.from({ length: term.length + 1 }, (_, index) => index);
+  for (let queryIndex = 1; queryIndex <= queryTerm.length; queryIndex += 1) {
+    const currentRow = [queryIndex];
+    for (let termIndex = 1; termIndex <= term.length; termIndex += 1) {
+      currentRow[termIndex] = Math.min(
+        currentRow[termIndex - 1] + 1,
+        previousRow[termIndex] + 1,
+        previousRow[termIndex - 1] + Number(queryTerm[queryIndex - 1] !== term[termIndex - 1])
+      );
+    }
+    previousRow = currentRow;
+  }
+  return previousRow[term.length] <= maxDistance;
+}
+
+export function matchIndexTerm(queryTerm, token) {
+  if (token.includes(queryTerm)) return "exact";
+  if (!/^[a-z]{6,32}$/.test(queryTerm) || !/^[a-z]{6,32}$/.test(token)) return null;
+  if (["aucune", "aucuns", "jamais"].includes(queryTerm) || ["aucune", "aucuns", "jamais"].includes(token)) return null;
+  return isWithinEditDistance(queryTerm, token, 1) ? "approximate" : null;
+}
+
 function isCloseTermMatch(queryTerm, documentTerms) {
   if (documentTerms.some((term) => term === queryTerm || term.startsWith(queryTerm) || queryTerm.startsWith(term))) {
     return true;
@@ -151,23 +180,7 @@ function isCloseTermMatch(queryTerm, documentTerms) {
   if (queryTerm.length < 6) return false;
   const maxDistance = queryTerm.length >= 9 ? 2 : 1;
 
-  return documentTerms.some((term) => {
-    if (Math.abs(term.length - queryTerm.length) > maxDistance) return false;
-
-    let previousRow = Array.from({ length: term.length + 1 }, (_, index) => index);
-    for (let queryIndex = 1; queryIndex <= queryTerm.length; queryIndex += 1) {
-      const currentRow = [queryIndex];
-      for (let termIndex = 1; termIndex <= term.length; termIndex += 1) {
-        currentRow[termIndex] = Math.min(
-          currentRow[termIndex - 1] + 1,
-          previousRow[termIndex] + 1,
-          previousRow[termIndex - 1] + Number(queryTerm[queryIndex - 1] !== term[termIndex - 1])
-        );
-      }
-      previousRow = currentRow;
-    }
-    return previousRow[term.length] <= maxDistance;
-  });
+  return documentTerms.some(term => isWithinEditDistance(queryTerm, term, maxDistance));
 }
 
 export function getSearchMatch(question, searchableText, hasUploadedDocuments = false, refDoc = null) {

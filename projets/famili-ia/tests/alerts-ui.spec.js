@@ -177,6 +177,105 @@ test('correction de date, preuves, lecture clavier et navigation hors de la page
   await expect(page.locator('body')).toHaveClass(/ui-theme/);
 });
 
+test('copie modifiée : date et choix conservés, puis correction explicite durable même hors seuil', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await openAlerts(page);
+  await page.evaluate(async () => {
+    const { addDocument, getDocuments, getAlerts, updateAlert } = await import('/state.js');
+    const { createContentProvenance } = await import('/content-index.js');
+    const document = {
+      id: 'lifecycle-document', name: 'contrat-fictif.txt', isLocal: true, type: 'assurance',
+      expiryDate: '2026-11-12', expiryDateEvidence: 'Fin du contrat : 12/11/2026',
+      content: 'Fin du contrat : 12/11/2026'
+    };
+    document.contentProvenance = await createContentProvenance(document, [document.content], 'local-text');
+    await addDocument(document);
+    await updateAlert({
+      ...getAlerts().find(alert => alert.docId === document.id),
+      status: 'ignored', snoozedUntil: '2026-11-20', notificationSentFor: '2026-11-12', read: true
+    });
+    const changed = {
+      ...getDocuments().find(entry => entry.id === document.id),
+      content: 'Fin du contrat : 13/11/2026',
+      expiryDate: '2026-11-13', expiryDateEvidence: 'Fin du contrat : 13/11/2026'
+    };
+    changed.contentProvenance = await createContentProvenance(changed, [changed.content], 'local-text');
+    await addDocument(changed);
+  });
+  await reloadReady(page);
+  await page.locator('[data-filter="historique"]').click();
+  const card = page.locator('[data-alert-id="alert-lifecycle-document"]');
+  await expect(card).toContainText('Source à vérifier');
+  await expect(card).toContainText('Échéance : 12/11/2026');
+  await expect(card).toContainText('Fin du contrat : 12/11/2026');
+  await expect(card).toContainText('Notifications suspendues');
+  await card.locator('.alert-management > summary').click();
+  await card.getByText('Corriger la date', { exact: true }).click();
+  await card.getByLabel("Date d'échéance confirmée").fill('2027-11-13');
+  await card.getByRole('button', { name: 'Enregistrer la date' }).click();
+  await expect(card).toContainText('Échéance : 13/11/2027');
+  await expect(card.locator('.alert-source-review')).toHaveCount(0);
+  await reloadReady(page);
+  await expect(card).toContainText('Échéance : 13/11/2027');
+  await expect(card.locator('.alert-source-review')).toHaveCount(0);
+  const persisted = await page.evaluate(async () =>
+    (await (await import('/db.js')).getAll('alerts')).find(alert => alert.docId === 'lifecycle-document'));
+  expect(persisted).toMatchObject({
+    status: 'ignored', read: true, snoozedUntil: '2026-11-20', sourceReview: null, dueDate: '2027-11-13'
+  });
+  expect(persisted.notificationSentFor).toBeUndefined();
+  await card.locator('.alert-management > summary').click();
+  await card.getByRole('button', { name: 'Réexaminer les preuves dans Recherche' }).click();
+  await expect(page.locator('#view-recherche')).toBeVisible();
+});
+
+for (const width of [390, 1280]) {
+  test(`preuve invalide et copie absente : alerte préservée avec avertissement à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openAlerts(page);
+    await page.evaluate(async () => {
+      const { addDocument } = await import('/state.js');
+      const { createContentProvenance } = await import('/content-index.js');
+      const document = {
+        id: 'missing-proof', name: 'garantie-fictive.txt', isLocal: true, type: 'garantie',
+        expiryDate: '2026-11-12', expiryDateEvidence: 'Fin de garantie : 12/11/2026',
+        content: 'Fin de garantie : 12/11/2026'
+      };
+      document.contentProvenance = await createContentProvenance(document, [document.content], 'local-text');
+      await addDocument(document);
+      await addDocument({ ...document, content: 'Copie altérée sans nouvelle provenance.' });
+    });
+    await reloadReady(page);
+    const card = page.locator('[data-alert-id="alert-missing-proof"]');
+    await expect(card).toContainText("La preuve de l'échéance n'est plus vérifiable");
+    await expect(card).toContainText('Échéance : 12/11/2026');
+    const eligibility = await page.evaluate(async () => {
+      const { getAlerts, getDocuments, confirmDocumentAlert } = await import('/state.js');
+      const { getAlertsToNotify } = await import('/alert-engine.js');
+      let confirmationError;
+      try { await confirmDocumentAlert('missing-proof'); } catch (error) { confirmationError = error.message; }
+      return {
+        notifications: getAlertsToNotify(getAlerts(), new Date()).map(alert => alert.docId),
+        confirmationError, documentPresent: getDocuments().some(document => document.id === 'missing-proof')
+      };
+    });
+    expect(eligibility.notifications).not.toContain('missing-proof');
+    expect(eligibility.confirmationError).toContain("n'est plus vérifiable");
+    expect(eligibility.documentPresent).toBe(true);
+    await page.evaluate(async () => (await import('/db.js')).remove('documents', 'missing-proof'));
+    await reloadReady(page);
+    await expect(card).toContainText('Copie source absente de Famili-IA');
+    await expect(card).toContainText('Échéance : 12/11/2026');
+    expect(await auditLayout(page.locator('#view-alertes'))).toEqual({ undersized: [], overflow: false });
+    const persisted = await page.evaluate(async () =>
+      (await (await import('/db.js')).getAll('alerts')).find(alert => alert.docId === 'missing-proof'));
+    expect(persisted).toMatchObject({ dueDate: '2026-11-12', sourceReview: 'source-missing', status: 'active' });
+    await page.evaluate(async () => (await import('/state.js')).deleteDocument('missing-proof'));
+    await reloadReady(page);
+    await expect(card).toHaveCount(0);
+  });
+}
+
 test('couleurs lisibles et mouvement réduit dans les cartes et leurs actions', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openAlerts(page);

@@ -142,6 +142,16 @@ test("ne partage ni preuve ni listes et ne modifie pas les entrées", () => {
   assert.deepEqual(options, { sourceId: "s" });
 });
 
+test("noms avec faute simple : correspondance expliquée, mots-outils seuls sans résultat", () => {
+  const record = make("local", "heating", { name: name("Contrat chaudière AB123456 2027.txt") });
+  const [match] = searchIndex([record], "contrat de la chaudierre");
+  assert.deepEqual(match.reasons[0].matchedWords, ["contrat", "chaudierre"]);
+  assert.deepEqual(match.reasons[0].approximateMatches, [{ queryTerm: "chaudierre", matchedTerm: "chaudiere" }]);
+  for (const query of ["AB123457", "2028", "choudierre", "de la"]) {
+    assert.deepEqual(searchIndex([record], query, { sourceId: "local" }), [], query);
+  }
+});
+
 test("fiches provenant de Drive simulé et de la fixture fictive", async () => {
   const drive = adaptDriveResults("drive", [{
     id: "drive-1", name: "Facture.pdf", type: "PDF", date: "Date inconnue",

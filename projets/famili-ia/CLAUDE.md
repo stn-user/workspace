@@ -79,8 +79,10 @@ Les surfaces utilisent des dégradés discrets de blanc vers gris clair ; réser
 - **Logique de recherche :**
     - Utilisez `search-utils.js` pour la normalisation du texte.
     - Recherche "No-AI" (extraction de mots-clés/faits) pour garantir la confidentialité.
+    - Pour l'index unifié, réutiliser `getIndexSearchTerms` et `matchIndexTerm` dans noms/champs et segments vérifiés. Les filtres restent exacts ; une raison approchée expose `approximateMatches` et conserve la preuve littérale, sans corriger la saisie ni le document. Ne pas appliquer ces règles aux identités ou permissions.
 - **Initialisation des vues :** Chaque vue doit avoir une fonction `init[ViewName]View()` appelée lors de `showView`.
 - **Flux de données :** `state.js` $\rightarrow$ `app.js` $\rightarrow$ DOM.
+- **Alertes documentaires :** la réconciliation locale ne remplace ni date ni choix utilisateur lorsque la copie change ou manque ; `sourceReview` expose la raison (`source-changed`, `source-missing`, `source-ambiguous`, `proof-unavailable`) et bloque les nouvelles notifications. Réutiliser la provenance et les empreintes existantes ; ne pas assimiler copie vérifiée et accès à l'original. Les parcours explicites de confirmation/correction appellent `confirmDocumentAlert` après l'enregistrement du document et préservent statut/report. Ne pas modifier les suppressions volontaires ou la purge dans une réévaluation automatique.
 
 ## ⚠️ Contraintes & Points de vigilance
 - **Capacitor Native :** Vérifiez toujours `Capacitor.isNativePlatform()` avant les appels aux APIs natives.

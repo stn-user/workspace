@@ -45,3 +45,31 @@ test("aucune mutation et absence de correspondance", () => {
   assert.deepEqual(input, before);
   assert.deepEqual(searchContent(input, "absent"), []);
 });
+
+test("mots-outils et élisions n'altèrent pas les preuves ni les négations", () => {
+  const input = doc(["Facture piscine. Entretien chaudière. Garantie avec preuve."]);
+  for (const query of ["facture de la piscine", "facture d'entretien", "l'entretien de la chaudière"]) {
+    const reasons = searchContent(input, query);
+    assert.equal(reasons.length, 2, query);
+    assert.ok(reasons.every(reason => input.segments[0].includes(reason.proof.excerpt)));
+  }
+  for (const query of ["de la", "garantie sans preuve", "garantie pas"]) {
+    assert.deepEqual(searchContent(input, query), [], query);
+  }
+});
+
+test("faute simple signalée avec extrait littéral, sans approximer chiffres ni mots courts", () => {
+  const text = "Entretien chaudière. Pompe AB123456 : 2027.";
+  const input = doc([text]);
+  const [reason] = searchContent(input, "chaudierre");
+  assert.deepEqual(reason.approximateMatches, [{ queryTerm: "chaudierre", matchedTerm: "chaudiere" }]);
+  assert.ok(text.includes(reason.proof.excerpt));
+  assert.ok(reason.proof.excerpt.includes("chaudière"));
+  assert.ok(!reason.proof.excerpt.includes("chaudierre"));
+  for (const query of ["choudierre", "AB123457", "2028", "pome"]) {
+    assert.deepEqual(searchContent(input, query), [], query);
+  }
+  const [exact] = searchContent(doc(["Chaudire : ancien libellé.", "Chaudière : libellé exact."]), "chaudiere");
+  assert.equal(exact.approximateMatches, undefined);
+  assert.equal(exact.proof.excerpt, "Chaudière : libellé exact.");
+});

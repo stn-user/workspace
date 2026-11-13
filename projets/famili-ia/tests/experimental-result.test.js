@@ -46,6 +46,16 @@ test("métadonnées absentes, copie manquante et identités distinctes", () => {
   assert.throws(() => describeExperimentalResult(localMatch, driveRecord, local), TypeError);
 });
 
+test("une faute tolérée est expliquée sans corriger le texte de la preuve", () => {
+  const document = { id: "typo", name: "notice.txt", isLocal: true, content: "Entretien chaudière" };
+  const session = new IndexSession();
+  session.trustExtractedContent(document, [document.content]);
+  session.syncDocuments([document]);
+  const result = describeExperimentalResult(session.search("chaudierre")[0], session.getAllRecords()[0], document);
+  assert.ok(result.reasons[0].includes("Entretien chaudière"));
+  assert.ok(result.reasons[0].includes("correspondance approchée : « chaudierre » → « chaudiere »"));
+});
+
 test("résultat OneDrive garde la copie attribuée à son compte même si l'accès est inconnu", () => {
   const document = {
     id: "onedrive-one", name: "Facture piscine.txt", type: "Texte", date: "Date inconnue",
