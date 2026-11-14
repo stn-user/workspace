@@ -1,6 +1,7 @@
 # Faisabilité préliminaire — connecteurs de stockage et de photos
 
 **Vérifiée le : 8 octobre 2026**  
+**Complément du 14 novembre 2026 :** première tranche Dropbox Web du lot F ; documentation OAuth/PKCE revérifiée, implémentation testée avec réponses fictives, aucun compte réel ni approbation de production validé.
 **Sources :** documentation officielle Google, Microsoft, Dropbox et Apple consultée à la date indiquée.  
 **But :** déterminer si Famili-IA peut tenir la promesse « poser une question et retrouver l’information » à travers Google Drive, Google Photos, OneDrive, Dropbox, iCloud Drive et Photos iCloud.
 
@@ -138,6 +139,39 @@ Ce test vérifie uniquement l’inscription développeur, le consentement OAuth,
 | Résultat attendu | Fiche de preuve : permission demandée/accordée, compte testé, avertissement ou blocage d’administrateur, date et capture du consentement sans information secrète. | Fiche de preuve : type d’accès, scopes demandés/accordés, éventuel avertissement, état du mode test et étapes d’approbation de production. |
 
 Ne pas partager avec Famili-IA ni inscrire dans le dépôt des mots de passe, jetons, secrets client ou fichiers personnels. La création des applications de test exige que le propriétaire du projet utilise ses propres consoles développeur. Quand les identifiants OAuth de test seront créés, ils devront rester dans un stockage local ignoré par Git ; ne pas les envoyer dans le chat.
+
+## Première tranche Dropbox Web — lot F
+
+### Configuration par le responsable du projet
+
+Le périmètre **Full Dropbox en lecture seule** a été explicitement retenu pour retrouver des fichiers préexistants, pas seulement ceux d'un dossier applicatif. Il peut autoriser la lecture de tous les fichiers accessibles du compte ; les deux scopes ne prouvent pas à eux seuls que l'application est configurée en Full Dropbox. Chaque utilisateur final autorise l'application Famili-IA : il n'a pas à créer sa propre application développeur.
+
+1. Dans la console Dropbox du projet, créer/configurer une application API à scopes, **Full Dropbox**, en mode développement avec un compte de test. N'activer que `files.metadata.read` et `files.content.read` ; aucun scope d'écriture, de suppression, d'équipe ou d'identité supplémentaire.
+2. Autoriser les clients publics et le flux code + **PKCE S256**, sans secret client. Enregistrer exactement l'URI de retour de l'instance, par exemple `http://127.0.0.1:5179/dropbox-redirect.html`. Le domaine, protocole, port et chemin doivent correspondre ; `localhost` et `127.0.0.1` ne sont pas interchangeables. En déploiement Web, utiliser HTTPS et servir réellement cette page, sans la remplacer par le shell de routage.
+3. Renseigner localement `VITE_DROPBOX_APP_KEY` puis redémarrer Vite. C'est une clé d'application publique intégrée au client, **jamais un secret** ; ne pas ajouter de secret client dans une variable `VITE_*`. La configuration locale reste ignorée par Git. Aucun identifiant réel n'a été ajouté lors de cette implémentation.
+4. Ouvrir **Importer → Options Dropbox → Connecter Dropbox**. Cette action effectue seulement le consentement et l'échange OAuth ; **Indexer Dropbox** déclenche séparément les lectures.
+
+Le retour vérifie origine, fenêtre et état aléatoire ; le code est échangé directement avec Dropbox et la query du callback est retirée. Le jeton court, sa date d'expiration et l'identifiant de compte restent en mémoire, sans refresh token ni reprise d'authentification après rechargement. Les portées retournées doivent correspondre aux deux lectures attendues, sans permission supplémentaire. La fermeture des options interrompt la connexion ou le parcours en cours. Aucun contenu n'est envoyé à un service d'analyse externe.
+
+### Capacités et limites livrées
+
+- Parcours récursif de `list_folder`, puis pagination par `list_folder/continue`, séquentiel et interruptible. Progression par nombre traité ; le total du compte n'est pas présumé connu.
+- TXT/Markdown jusqu'à 1 Mo, PDF à texte incorporé jusqu'à 10 Mo et 20 pages. Le téléchargement est borné en flux et son identité/nom/révision sont contrôlés avant conservation. Quota, accès refusé, expiration et erreurs interrompent explicitement le parcours ; aucune relance automatique.
+- Photos et formats non pris en charge : noms et métadonnées de fichier uniquement. Pas de pixels téléchargés, miniature, EXIF, GPS, album, nom de personne ou reconnaissance ; la modification du fichier n'est pas une date de prise de vue.
+- Copies et fiches conservées par les mécanismes existants ; identifiant dérivé du fournisseur/compte/élément et empreinte de compte pseudonymisée, pas anonyme. Pas d'identifiant de compte en clair, de jeton ou d'URL temporaire persisté. Les mêmes identifiants de fichier de comptes différents ne remplacent pas leurs copies.
+- Recherche et filtre Dropbox, inventaire et copie textuelle après rechargement. Une copie persistante ne prouve ni l'accès courant ni la fraîcheur de l'original ; l'ouverture directe de celui-ci n'est pas raccordée.
+- Les copies déjà présentes ne sont pas relues ou remplacées ; différences de nom/révision/chemin comptées seulement. Une absence n'est pas interprétée comme une suppression. Pas de curseur durable, reprise en arrière-plan, synchronisation ou OAuth natif Android/iOS.
+- **Déconnecter** efface seulement la session locale, pas les copies ni l'autorisation chez Dropbox. Retirer cette dernière dans les applications connectées Dropbox si souhaité. Supprimer les copies dans **Vos données**, ou purger les données applicatives, ne supprime jamais les originaux ; la purge globale coupe aussi la session locale et attend l'arrêt du parcours.
+
+### Validation et prochain contrôle réel
+
+43 tests Node ciblés et 54 scénarios navigateur liés passent, dont neuf Dropbox : parcours complet à 390/768/1280/1920 px, clavier, annulation, état OAuth incorrect, scopes excessifs, absence de configuration, comptes distincts, versions signalées, quota, arrêt, recherche après rechargement et purge. Les réponses API/OAuth sont simulées, les fichiers fictifs ; un PDF synthétique teste réellement l'extraction. Compilation réussie et captures à 390/1280 px inspectées. Cela ne valide pas les navigateurs mobiles physiques, l'accessibilité complète ou Dropbox en production.
+
+Les nouveaux tests navigateur utilisent deux serveurs Vite : `127.0.0.1:5192` avec `VITE_DROPBOX_APP_KEY='cle-publique-fictive'`, et `127.0.0.1:5179` avec cette variable vide ; Google et Microsoft sont désactivés dans leurs environnements. Lancer ensuite `npx playwright test dropbox.spec.js --workers=1` depuis le projet ; arrêter les seuls serveurs de test ensuite. Ne pas remplacer un serveur déjà utilisé. Tests Node : `node --test tests\dropbox.test.js`.
+
+Avant validation réelle, utiliser un compte autorisé ne contenant que des fichiers synthétiques, dont un fichier préexistant hors dossier d'application, un TXT, un PDF texte et une image. Contrôler consentement accepté/refusé, popup bloquée/fermée, expiration et révocation, coupure réseau, arrêt/fermeture, noms Unicode, contenu non téléchargeable, changement de version et de compte. Après rechargement puis déconnexion, vérifier les copies conservées et les limites affichées ; après suppression/purge, vérifier la disparition applicative et la présence intacte des originaux chez Dropbox. Vérifier séparément la révocation dans les paramètres Dropbox. Consigner date, navigateur, appareil et résultat sans jeton, code OAuth ou capture de données personnelles.
+
+**Lot F toujours ouvert :** tests réels et examen de confidentialité/sécurité adaptés avant des données personnelles, gestion contrôlée du remplacement, reprise durable, parcours natifs et approbation de production restent à traiter. Revérifier les conditions et seuils du programme développeur avant toute diffusion ; aucune approbation n'est acquise par ces tests.
 
 ## Signal de confiance et conditions de faisabilité
 

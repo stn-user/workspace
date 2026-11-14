@@ -6,7 +6,7 @@ import { matchesIndexFilters, searchIndex } from "./index-search.js";
 import { searchContentInDocuments } from "./content-search.js";
 import { restoreContentSegments } from "./content-index.js";
 
-export const INDEX_SOURCES = Object.freeze({ local: "local", drive: "drive", onedrive: "onedrive" });
+export const INDEX_SOURCES = Object.freeze({ local: "local", drive: "drive", onedrive: "onedrive", dropbox: "dropbox" });
 
 function copyIndexRecord(record, { coverage = record.coverage, fields = record.fields, dates = record.dates } = {}) {
   return createIndexRecord(record.sourceId, record.itemId, {

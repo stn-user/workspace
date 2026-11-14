@@ -1,9 +1,10 @@
 import { hashPhotoBytes } from "./photo-metadata.js";
 import { getInventorySource } from "./data-inventory.js";
 
-const methods = new Set(["local-text", "local-word", "local-pdf", "drive-text", "drive-pdf-text", "onedrive-text", "onedrive-pdf-text"]);
+const methods = new Set(["local-text", "local-word", "local-pdf", "drive-text", "drive-pdf-text", "onedrive-text", "onedrive-pdf-text", "dropbox-text", "dropbox-pdf-text"]);
 
 function methodMatchesSource(method, source) {
+  if (method.startsWith("dropbox-")) return source === "dropbox";
   if (method.startsWith("onedrive-")) return source === "onedrive";
   if (method.startsWith("drive-")) return source === "drive";
   return source === "local";

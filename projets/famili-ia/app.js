@@ -28,6 +28,7 @@ import {
   oneDriveDocumentId, readOneDriveDocument
 } from "./onedrive-document.js";
 import { formatOneDriveAccountFingerprint, getOneDriveAccountFingerprint } from "./onedrive-account.js";
+import { DropboxAuth, DropboxApiError, dropboxIdentity, readDropboxDocument, scanDropbox } from "./dropbox.js";
 
 const activeScanWorkers = new Map();
 let suspendPhotoThumbnailRendering = () => {};
@@ -649,6 +650,7 @@ let experimentalQuery = "";
 let driveObservation = "unknown";
 let localImportFailed = false;
 let oneDriveObservation = "unknown";
+let dropboxObservation = "unknown";
 let oneDriveAccountFingerprint = null;
 
 function updateExperimentalFacet(select, defaultLabel, entries) {
@@ -722,9 +724,11 @@ function getPhotoQueryClarification(reason) {
 
 let oneDriveScanController = null;
 let oneDriveScanSettled = null;
+let dropboxScanController = null;
+let dropboxScanSettled = null;
 
 function sourceName(sourceId) {
-  return sourceId === "drive" ? "Google Drive" : sourceId === "onedrive" ? "OneDrive" : "Local";
+  return sourceId === "drive" ? "Google Drive" : sourceId === "onedrive" ? "OneDrive" : sourceId === "dropbox" ? "Dropbox" : "Local";
 }
 
 function renderExperimentalSources() {
@@ -733,7 +737,8 @@ function renderExperimentalSources() {
     driveToken: Boolean(googleDriveClient?.hasAccessToken),
     driveState: driveObservation,
     localState: activeScanWorkers.size ? "working" : localImportFailed ? "error" : "unknown",
-    oneDriveState: oneDriveObservation
+    oneDriveState: oneDriveObservation,
+    dropboxState: dropboxObservation
   });
   experimentalSourceStatus.replaceChildren();
   for (const status of statuses) {
@@ -1136,9 +1141,13 @@ const sidebarModeCopy = document.querySelector("#sidebar-mode-copy");
 function updateModeBanner() {
   const hasDriveFiles = uploadedDocuments.some((file) => file.driveSource);
   const hasOneDriveFiles = uploadedDocuments.some((file) => file.oneDriveSource);
-  const hasLocalFiles = uploadedDocuments.some((file) => file.isLocal && !file.driveDemo && !file.driveSource && !file.oneDriveSource);
+  const hasDropboxFiles = uploadedDocuments.some(file => file.dropboxSource);
+  const hasLocalFiles = uploadedDocuments.some((file) => file.isLocal && !file.driveDemo && !file.driveSource && !file.oneDriveSource && !file.dropboxSource);
   if (demoStatusLabel && sidebarModeCopy) {
-    if (hasOneDriveFiles) {
+    if (hasDropboxFiles) {
+      demoStatusLabel.textContent = "Prototype — copies cloud locales";
+      sidebarModeCopy.textContent = "Copies enregistrées, dont Dropbox ; aucune synchronisation automatique.";
+    } else if (hasOneDriveFiles) {
       demoStatusLabel.textContent = "Prototype — copies OneDrive locales";
       sidebarModeCopy.textContent = "Les copies enregistrées ne sont pas synchronisées automatiquement.";
     } else if (hasDriveFiles) {
@@ -1185,7 +1194,9 @@ function renderDocuments(matches) {
     const info = document.createElement("div");
     info.className = "document-info";
     addTextElement(info, "p", "document-name", sourceDocument.name);
-    const origin = sourceDocument.oneDriveSource
+    const origin = sourceDocument.dropboxSource
+      ? "Dropbox · copie enregistrée localement"
+      : sourceDocument.oneDriveSource
       ? "OneDrive · copie enregistrée localement"
       : sourceDocument.driveSource
       ? "Google Drive · copie temporaire locale"
@@ -1213,7 +1224,9 @@ function renderDocuments(matches) {
 }
 
 function openSource(document) {
-  dialogEyebrow.textContent = document.oneDriveSource
+  dialogEyebrow.textContent = document.dropboxSource
+    ? "FICHIER DROPBOX"
+    : document.oneDriveSource
     ? "FICHIER ONEDRIVE"
     : document.driveSource
     ? "FICHIER CHOISI DANS GOOGLE DRIVE"
@@ -1224,7 +1237,9 @@ function openSource(document) {
       : "DOCUMENT DE DÉMONSTRATION";
   dialogTitle.textContent = document.name;
   dialogMeta.textContent = document.isLocal
-    ? document.oneDriveSource
+    ? document.dropboxSource
+      ? `${document.type} · copie locale issue de Dropbox · ${document.date}`
+      : document.oneDriveSource
       ? `${document.type} · copie locale issue de OneDrive${document.date && document.date !== "Date inconnue" ? ` · modifié le ${document.date}` : ""}`
       : document.driveSource
       ? `${document.type} · copie textuelle locale issue de Google Drive${document.date && document.date !== "Date inconnue" ? ` · modifié le ${document.date}` : ""}`
@@ -1235,7 +1250,9 @@ function openSource(document) {
           : `${document.type} · copie textuelle locale`
     : `${document.type} · ${document.date} · Source de démonstration`;
   if (dialogNoticeText) {
-    dialogNoticeText.textContent = document.oneDriveSource
+    dialogNoticeText.textContent = document.dropboxSource
+      ? `Copie Dropbox conservée dans Famili-IA, non synchronisée. Accès actuel à l'original non vérifié.${document.dropboxIndexIssue ? ` ${document.dropboxIndexIssue}` : ""}`
+      : document.oneDriveSource
       ? "Copie conservée dans Famili-IA, non synchronisée automatiquement. L'accès actuel à l'original n'est pas vérifié ; ce fichier peut être ancien ou ne contenir que ses métadonnées."
       : document.driveSource
       ? "Copie textuelle d'un fichier choisi dans Google Picker, conservée dans Famili-IA. Ce n'est pas l'original ; son accès actuel n'est pas vérifié et la copie peut être ancienne ou contenir du texte non vérifié."
@@ -1573,22 +1590,25 @@ function completeOnboarding() {
 }
 
 function openSourceChoices(source) {
-  const providerButton = source === "drive" ? "connect-google-drive" : source === "onedrive" ? "connect-onedrive" : null;
+  const providerButton = source === "drive" ? "connect-google-drive" : source === "onedrive" ? "connect-onedrive" : source === "dropbox" ? "connect-dropbox" : null;
   document.querySelector("#source-choice-title").textContent = source === "drive"
     ? "Google Drive — accès aux fichiers"
-    : source === "onedrive" ? "OneDrive — accès aux fichiers" : "Où se trouvent vos documents ?";
+    : source === "onedrive" ? "OneDrive — accès aux fichiers" : source === "dropbox" ? "Dropbox — accès aux fichiers" : "Où se trouvent vos documents ?";
   document.querySelector("#source-choice-intro").textContent = providerButton
     ? "Vérifiez les permissions avant de continuer. Ouvrir ces options ne connecte aucun compte."
     : "Choisissez uniquement les fichiers que vous souhaitez rechercher.";
   sourceChoiceDialog.querySelectorAll(".source-choice").forEach(button => {
     button.hidden = Boolean(providerButton) && button.id !== providerButton;
   });
-  document.querySelector("#onedrive-options").hidden = source === "drive";
+  document.querySelector("#onedrive-options").hidden = source === "drive" || source === "dropbox";
+  document.querySelector("#dropbox-options").hidden = source !== "dropbox" && Boolean(providerButton);
   document.querySelector("#source-choice-permissions").textContent = source === "drive"
     ? "Google Drive ne donne accès qu'aux fichiers sélectionnés."
-    : source === "onedrive"
+    : source === "dropbox"
+      ? "Full Dropbox peut autoriser la lecture de tous les fichiers existants du compte. Aucun droit d'écriture ou de suppression Dropbox n'est demandé. La connexion ne lance pas l'indexation."
+      : source === "onedrive"
       ? "OneDrive peut autoriser l'accès à tous les fichiers du compte personnel. La connexion ne lance pas l'indexation."
-      : "Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive peut autoriser l'accès à tous les fichiers du compte personnel.";
+      : "Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive et Dropbox peuvent autoriser la lecture de tous les fichiers du compte.";
   sourceChoiceDialog.showModal();
 }
 
@@ -1929,6 +1949,134 @@ document.querySelectorAll("[data-open-source-dialog]").forEach((button) => {
 document.querySelectorAll("[data-import-source]").forEach(button => {
   button.addEventListener("click", () => openSourceChoices(button.dataset.importSource));
 });
+
+const dropboxAppKey = import.meta.env.VITE_DROPBOX_APP_KEY?.trim();
+const dropboxAuth = dropboxAppKey && !isNativePlatform
+  ? new DropboxAuth(dropboxAppKey, new URL("dropbox-redirect.html", document.baseURI).href) : null;
+const dropboxConnectButton = document.querySelector("#connect-dropbox");
+const dropboxStartButton = document.querySelector("#start-dropbox");
+const dropboxStopButton = document.querySelector("#stop-dropbox");
+const dropboxDisconnectButton = document.querySelector("#disconnect-dropbox");
+const dropboxStatus = document.querySelector("#dropbox-status");
+let dropboxConnecting = false;
+
+function updateDropboxActions() {
+  const busy = dropboxConnecting || Boolean(dropboxScanSettled) || removingSessionFiles;
+  dropboxConnectButton.disabled = !dropboxAuth || busy;
+  dropboxStartButton.disabled = !dropboxAuth?.connected || busy;
+  dropboxStopButton.hidden = !dropboxScanSettled;
+  dropboxDisconnectButton.hidden = !dropboxAuth?.connected;
+  dropboxDisconnectButton.disabled = busy;
+  document.querySelector("#import-dropbox-availability").textContent = !dropboxAuth
+    ? "Non configuré ou indisponible sur cette plateforme."
+    : dropboxConnecting ? "Connexion en cours…"
+      : dropboxScanSettled ? "Indexation en cours, consultable dans les options."
+        : dropboxAuth.connected ? "Session connectée. Indexation sur demande." : "Connexion facultative, sans indexation automatique.";
+}
+
+dropboxStatus.textContent = dropboxAuth
+  ? "Dropbox prêt à être connecté. Aucune indexation n'a démarré."
+  : isNativePlatform ? "Dropbox est disponible uniquement dans le navigateur Web configuré."
+    : "Dropbox n'est pas configuré : ajoutez VITE_DROPBOX_APP_KEY à .env.local, puis redémarrez Vite. Aucun secret client.";
+updateDropboxActions();
+dropboxConnectButton.addEventListener("click", async () => {
+  if (!dropboxAuth || dropboxConnecting || dropboxScanSettled || removingSessionFiles) return;
+  dropboxConnecting = true;
+  updateDropboxActions();
+  try {
+    await dropboxAuth.connect();
+    const connectedAccount = dropboxAuth.accountId;
+    const identity = await dropboxIdentity(connectedAccount, "session");
+    if (!dropboxAuth.connected || dropboxAuth.accountId !== connectedAccount) throw new Error("Session Dropbox interrompue.");
+    dropboxObservation = "connected";
+    dropboxStatus.textContent = `Dropbox connecté (compte …${identity.accountFingerprint.slice(0, 16)}). Aucun fichier lu : lancez séparément l'indexation si vous le souhaitez.`;
+  } catch (error) {
+    dropboxObservation = "error";
+    dropboxStatus.textContent = `Connexion Dropbox non aboutie : ${error.message}`;
+  } finally {
+    dropboxConnecting = false;
+    updateDropboxActions();
+    renderExperimentalSources();
+  }
+});
+dropboxStartButton.addEventListener("click", () => {
+  if (dropboxConnecting || dropboxScanSettled || removingSessionFiles) return;
+  if (!dropboxAuth?.connected) {
+    dropboxStatus.textContent = "Session Dropbox absente ou expirée : reconnectez Dropbox avant d'indexer.";
+    updateDropboxActions();
+    return;
+  }
+  const controller = new AbortController();
+  dropboxScanController = controller;
+  const accountId = dropboxAuth.accountId;
+  const existing = new Map(uploadedDocuments.map(doc => [doc.id, doc]));
+  let added = 0;
+  let metadata = 0;
+  let changed = 0;
+  let unchanged = 0;
+  let unknown = 0;
+  let progress = { files: 0, pages: 0 };
+  const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${added} copie(s) ajoutée(s), dont ${metadata} en métadonnées seules ; ${changed} changement(s), ${unchanged} même(s) version(s), ${unknown} version(s) inconnue(s).`;
+  dropboxObservation = "working";
+  dropboxScanSettled = (async () => {
+    try {
+      await scanDropbox({
+        getToken: () => dropboxAuth.getToken(), signal: controller.signal,
+        onProgress: value => { progress = value; dropboxStatus.textContent = `Indexation Dropbox en cours : ${summary()}`; },
+        onItem: async item => {
+          const identity = await dropboxIdentity(accountId, item.id);
+          const previous = existing.get(identity.id);
+          if (previous) {
+            if (!previous.dropboxRev || !item.rev) unknown++;
+            else if (previous.dropboxRev === item.rev && previous.name === item.name && previous.sourceDir === item.path_display) unchanged++;
+            else changed++;
+            return;
+          }
+          const result = await readDropboxDocument({
+            item, accountId, getToken: () => dropboxAuth.getToken(), signal: controller.signal
+          });
+          if (controller.signal.aborted) throw new DOMException("Indexation Dropbox arrêtée.", "AbortError");
+          await addDocument(result.document);
+          uploadedDocuments.push(result.document);
+          existing.set(identity.id, result.document);
+          if (result.segments) experimentalIndex.trustExtractedContent(result.document, result.segments);
+          added++;
+          if (result.coverage === "metadata") metadata++;
+          if (added % 10 === 0) refreshExperimentalIndex();
+        }
+      });
+      dropboxObservation = "connected";
+      dropboxStatus.textContent = `Parcours Dropbox terminé. ${summary()} Copies existantes conservées sans remplacement ; actualisation non disponible. Les absences ne prouvent pas une suppression.`;
+    } catch (error) {
+      if (error instanceof DropboxApiError && error.status === 401) dropboxAuth.disconnect();
+      dropboxObservation = error.name === "AbortError" ? "connected" : "error";
+      dropboxStatus.textContent = `${error.name === "AbortError" ? "Indexation Dropbox arrêtée" : `Indexation Dropbox interrompue : ${error.message}`}. ${summary()} Les copies enregistrées sont conservées.`;
+    } finally {
+      dropboxScanController = null;
+      dropboxScanSettled = null;
+      refreshExperimentalIndex();
+      updateClearFilesButtonsVisibility();
+      updateModeBanner();
+      renderDataInventory(parseHash().params);
+      updateDropboxActions();
+    }
+  })();
+  updateDropboxActions();
+  renderExperimentalSources();
+});
+dropboxStopButton.addEventListener("click", () => dropboxScanController?.abort());
+sourceChoiceDialog.addEventListener("close", () => {
+  dropboxScanController?.abort();
+  dropboxAuth?.cancelConnection();
+});
+dropboxDisconnectButton.addEventListener("click", () => {
+  if (!dropboxAuth || dropboxConnecting || dropboxScanSettled || removingSessionFiles) return;
+  dropboxAuth.disconnect();
+  dropboxObservation = "disconnected";
+  dropboxStatus.textContent = "Session Dropbox locale déconnectée. Les copies restent conservées ; l'autorisation Dropbox n'est pas révoquée. Retirez-la dans les applications connectées Dropbox si souhaité.";
+  updateDropboxActions();
+  renderExperimentalSources();
+});
 document.querySelectorAll("[data-open-import]").forEach(button => {
   button.addEventListener("click", () => {
     importReturnContext = { ...parseHash(), trigger: button };
@@ -2061,6 +2209,8 @@ async function clearSessionFiles() {
     if (driveSelectionSettled) await driveSelectionSettled;
     oneDriveScanController?.abort();
     if (oneDriveScanSettled) await oneDriveScanSettled;
+    dropboxScanController?.abort();
+    if (dropboxScanSettled) await dropboxScanSettled;
     await stopBackgroundScans();
     const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
     for (const doc of [...uploadedDocuments]) {
@@ -2104,6 +2254,7 @@ async function clearSessionFiles() {
   } finally {
     removingSessionFiles = false;
     updateOneDriveActions();
+    updateDropboxActions();
   }
 }
 
@@ -2288,6 +2439,7 @@ function initializeViewWithParams(viewName, params) {
     case 'importer':
       updateGoogleDriveButton();
       updateOneDriveActions();
+      updateDropboxActions();
       break;
 
     case 'assistant':
@@ -3953,6 +4105,8 @@ function renderDataInventory(filters = {}) {
   document.querySelector('#summary-local').textContent = String(counts.local);
   document.querySelector('#summary-drive').textContent = String(counts.drive);
   document.querySelector('#summary-onedrive').textContent = String(counts.onedrive);
+  document.querySelector('#summary-dropbox').textContent = `Dropbox : ${counts.dropbox} copie(s) enregistrée(s).`;
+  document.querySelector('#summary-dropbox').hidden = counts.dropbox === 0;
   document.querySelector('#summary-demo').textContent = String(counts.demo);
 
   const docs = filterInventoryDocuments(allDocuments, filters);
@@ -3978,7 +4132,9 @@ function renderDataInventory(filters = {}) {
   dataList.replaceChildren();
   docs.forEach((doc) => {
     const source = getInventorySource(doc);
-    const sourceText = source === 'onedrive'
+    const sourceText = source === 'dropbox'
+      ? `Dropbox · compte …${doc.dropboxAccountFingerprint?.slice(0, 16) || "inconnu"}`
+      : source === 'onedrive'
       ? `OneDrive · ${formatOneDriveAccountFingerprint(doc.oneDriveAccountFingerprint)}`
       : source === 'drive'
       ? 'Google Drive'
@@ -4665,9 +4821,14 @@ function initDataView(filters = {}) {
       if (driveSelectionSettled) await driveSelectionSettled;
       oneDriveScanController?.abort();
       if (oneDriveScanSettled) await oneDriveScanSettled;
+      dropboxScanController?.abort();
+      if (dropboxScanSettled) await dropboxScanSettled;
       await stopBackgroundScans();
       const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
       await resetState();
+      dropboxAuth?.disconnect();
+      dropboxObservation = "disconnected";
+      dropboxStatus.textContent = "Données applicatives supprimées et session Dropbox locale déconnectée. Les originaux et l'autorisation chez Dropbox restent inchangés.";
       uploadedDocuments.length = 0;
       refreshExperimentalIndex();
       if (!clearFamilyState()) {
@@ -4722,6 +4883,7 @@ function initDataView(filters = {}) {
     } finally {
       removingSessionFiles = false;
       updateOneDriveActions();
+      updateDropboxActions();
     }
   });
 }

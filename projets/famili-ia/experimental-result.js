@@ -24,11 +24,15 @@ export function describeExperimentalResult(match, record, document, sourceAccess
   }
   const details = [];
   details.push(`Type : ${typeof document?.type === "string" && document.type.trim() ? document.type : "inconnu"}`);
-  const sourceName = match.sourceId === "drive" ? "Google Drive" : match.sourceId === "onedrive" ? "OneDrive" : "Local";
+  const sourceName = match.sourceId === "drive" ? "Google Drive" : match.sourceId === "onedrive" ? "OneDrive" : match.sourceId === "dropbox" ? "Dropbox" : "Local";
   details.push(`Source : ${sourceName}`);
   if (match.sourceId === "onedrive") {
     const fingerprint = formatOneDriveAccountFingerprint(document?.oneDriveAccountFingerprint);
     details.push(`Compte OneDrive d'origine (empreinte locale) : ${fingerprint}.`);
+  }
+  if (match.sourceId === "dropbox") {
+    details.push(`Compte Dropbox d'origine (empreinte locale) : ${typeof document?.dropboxAccountFingerprint === "string" ? `…${document.dropboxAccountFingerprint.slice(0, 16)}` : "inconnu"}.`);
+    if (document?.dropboxIndexIssue) details.push(`Limite d'indexation : ${document.dropboxIndexIssue}`);
   }
   details.push(`Emplacement enregistré : ${typeof document?.sourceDir === "string" && document.sourceDir.trim() ? document.sourceDir : "non disponible"}`);
 
@@ -41,7 +45,7 @@ export function describeExperimentalResult(match, record, document, sourceAccess
     }
   } else if (typeof document?.date === "string" && document.date.trim() &&
       !["Date inconnue", "Session locale", "Scan proactif"].includes(document.date)) {
-    details.push(`${match.sourceId === "drive" || match.sourceId === "onedrive" ? `Modification selon ${sourceName}` : "Date enregistrée (nature inconnue)"} : ${document.date}`);
+    details.push(`${["drive", "onedrive", "dropbox"].includes(match.sourceId) ? `Modification selon ${sourceName}` : "Date enregistrée (nature inconnue)"} : ${document.date}`);
   } else if (!photoDate) {
     details.push("Date : non disponible");
   }
@@ -52,7 +56,7 @@ export function describeExperimentalResult(match, record, document, sourceAccess
   details.push(`Couverture : ${match.coverage === "partial" ? "texte partiellement recherché" : "métadonnées uniquement"}`);
   details.push(`Dernière vérification de la source : ${record.lastCheck ?? "inconnue"}`);
   details.push(sourceAccess || "Accès actuel à l'original inconnu.");
-  details.push(match.sourceId === "drive" || match.sourceId === "onedrive"
+  details.push(["drive", "onedrive", "dropbox"].includes(match.sourceId)
     ? `Original : recherchez ce fichier par son nom dans ${sourceName} ; son accès n'a pas été vérifié.`
     : "Original : recherchez ce fichier sur l'appareil à l'emplacement indiqué s'il est disponible ; son accès n'a pas été vérifié.");
   const reasons = match.reasons.map(reason => {

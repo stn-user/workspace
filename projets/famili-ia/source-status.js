@@ -1,9 +1,10 @@
-export function describeSources(records, { driveConfigured, driveToken, driveState, localState, oneDriveState = "unknown" }) {
+export function describeSources(records, { driveConfigured, driveToken, driveState, localState, oneDriveState = "unknown", dropboxState }) {
   if (!Array.isArray(records) || typeof driveConfigured !== "boolean" ||
       typeof driveToken !== "boolean" ||
       !["unknown", "disconnected", "error"].includes(driveState) ||
       !["unknown", "working", "error"].includes(localState) ||
-      !["unknown", "connected", "working", "error", "disconnected"].includes(oneDriveState)) {
+      !["unknown", "connected", "working", "error", "disconnected"].includes(oneDriveState) ||
+      (dropboxState !== undefined && !["unknown", "connected", "working", "error", "disconnected"].includes(dropboxState))) {
     throw new TypeError("État des sources invalide");
   }
   const describeCoverage = source => {
@@ -26,7 +27,7 @@ export function describeSources(records, { driveConfigured, driveToken, driveSta
   else if (driveState === "disconnected") driveAccess = "Session Google Drive déconnectée ; révocation confirmée pour cette session.";
   else if (driveToken) driveAccess = "Jeton Google présent pour cette session ; accès actuel aux fichiers non vérifié.";
   else driveAccess = "Aucun jeton Google dans cette session ; accès actuel aux fichiers inconnu.";
-  return [
+  const statuses = [
     { sourceId: "local", ...local, access: localAccess,
       scope: "Fichiers importés explicitement ; une nouvelle sélection peut créer une nouvelle copie. Aucun suivi automatique des originaux." },
     { sourceId: "drive", ...drive, access: driveAccess,
@@ -39,4 +40,14 @@ export function describeSources(records, { driveConfigured, driveToken, driveSta
       : "Accès actuel à OneDrive inconnu.",
       scope: "OneDrive personnel : parcours déclenché séparément, permission de lecture large. Les copies existantes ne sont pas actualisées automatiquement." }
   ];
+  if (dropboxState !== undefined || records.some(record => record.sourceId === "dropbox")) statuses.push({
+    sourceId: "dropbox", ...describeCoverage("dropbox"),
+    access: dropboxState === "working" ? "Indexation Dropbox en cours ; résultats incomplets."
+      : dropboxState === "connected" ? "Session Dropbox active ; accès actuel aux originaux non vérifié."
+        : dropboxState === "error" ? "Une opération Dropbox a échoué ; accès actuel inconnu."
+          : dropboxState === "disconnected" ? "Session Dropbox locale déconnectée ; révocation fournisseur non vérifiée."
+            : "Accès actuel à Dropbox inconnu.",
+    scope: "Full Dropbox en lecture seule selon la configuration de l'application ; indexation déclenchée séparément. Les copies existantes ne sont pas remplacées ; aucun suivi des suppressions."
+  });
+  return statuses;
 }

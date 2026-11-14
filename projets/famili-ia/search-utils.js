@@ -241,6 +241,9 @@ function getEvidenceExcerpt(question, lines) {
 }
 
 function getProvenance(document) {
+  if (document.dropboxSource) {
+    return "Dropbox · copie enregistrée localement · accès actuel à l'original non vérifié";
+  }
   if (document.oneDriveSource) {
     return `OneDrive · copie enregistrée localement · compte d'origine ${formatOneDriveAccountFingerprint(document.oneDriveAccountFingerprint)}`;
   }

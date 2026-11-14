@@ -1,6 +1,7 @@
 import { createContentProvenance } from "./content-index.js";
 import { hashPhotoBytes } from "./photo-metadata.js";
 import { getOneDriveAccountFingerprint } from "./onedrive-account.js";
+import { readBoundedBytes } from "./read-bounded-bytes.js";
 
 const textLimit = 1024 * 1024;
 const pdfLimit = 10 * 1024 * 1024;
@@ -70,32 +71,7 @@ function downloadUrl(value) {
 }
 
 async function boundedBytes(response, limit) {
-  const length = Number(response.headers.get("content-length"));
-  if (length > limit) throw new Error("Fichier OneDrive au-delà de la limite de taille.");
-  if (!response.body) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.length > limit) throw new Error("Fichier OneDrive au-delà de la limite de taille.");
-    return bytes;
-  }
-  const reader = response.body.getReader();
-  const chunks = [];
-  let size = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.length;
-      if (size > limit) {
-        await reader.cancel();
-        throw new Error("Fichier OneDrive au-delà de la limite de taille.");
-      }
-      chunks.push(value);
-    }
-  } finally { reader.releaseLock(); }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-  return bytes;
+  return readBoundedBytes(response, limit, "Fichier OneDrive au-delà de la limite de taille.");
 }
 
 export async function readOneDriveDocument({ item, accountId, accountFingerprint, getToken, signal, fetchImpl = fetch }) {

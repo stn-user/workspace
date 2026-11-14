@@ -291,6 +291,7 @@
                 <option value="local">Fichiers locaux</option>
                 <option value="drive">Google Drive</option>
                 <option value="onedrive">OneDrive</option>
+                <option value="dropbox">Dropbox</option>
               </select>
               <label class="ui-label" for="experimental-index-type">Type</label>
               <select class="ui-input" id="experimental-index-type" form="experimental-index-form">
@@ -606,6 +607,13 @@
             <p class="import-intro">La permission Microsoft peut couvrir tous les fichiers du compte. L'indexation reste sur demande.</p>
             <button class="ui-button ui-button--secondary" type="button" data-import-source="onedrive">Options OneDrive</button>
           </article>
+          <article class="ui-card import-source-card">
+            <span class="ui-icon" aria-hidden="true"><img src="assets/icone/dropbox.svg" width="48" height="48" alt=""></span>
+            <h3>Dropbox</h3>
+            <p class="import-intro" id="import-dropbox-availability">Vérification de la disponibilité…</p>
+            <p class="import-intro">Full Dropbox en lecture seule : accès possible aux fichiers existants du compte. Indexation sur demande.</p>
+            <button class="ui-button ui-button--secondary" type="button" data-import-source="dropbox">Options Dropbox</button>
+          </article>
           </div>
           </section>
           <section aria-labelledby="import-options-title">
@@ -789,6 +797,7 @@
           </div>
         </div>
 
+        <p id="summary-dropbox" hidden></p>
         <div class="data-filters ui-card">
           <h2 class="data-filters-heading">Affiner l’inventaire</h2>
           <div class="filter-chips" role="group" aria-label="Filtrer les fichiers">
@@ -985,7 +994,11 @@
         <span class="source-choice-arrow" aria-hidden="true">›</span>
       </button>
     </div>
-    <p class="source-choice-footnote" id="source-choice-permissions">Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive peut autoriser l'accès à tous les fichiers du compte personnel.</p>
+    <button class="ui-card source-choice" id="connect-dropbox" type="button" aria-describedby="dropbox-status" disabled>
+      <span class="ui-icon source-choice-icon" aria-hidden="true"><img src="assets/icone/dropbox.svg" width="48" height="48" alt=""></span>
+      <span><strong>Connecter Dropbox</strong><small>Accès Full Dropbox en lecture seule selon la configuration de l'application. La connexion ne lance pas l'indexation.</small></span>
+    </button>
+    <p class="source-choice-footnote" id="source-choice-permissions">Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive et Dropbox peuvent autoriser la lecture de tous les fichiers du compte.</p>
     <div id="onedrive-options">
     <p>OneDrive : l'indexation complète est facultative et s'arrête à la fermeture de l'onglet. TXT/Markdown : 1 Mo maximum ; PDF texte : 10 Mo et 20 pages maximum, sans OCR web. Les autres fichiers ne fournissent que leurs métadonnées. Les changements détectés sont proposés ici avant remplacement. Les éléments absents du parcours ne sont pas déclarés supprimés.</p>
     <button class="ui-button ui-button--secondary" id="start-onedrive" type="button" disabled>Indexer ou vérifier les changements OneDrive</button>
@@ -1000,6 +1013,16 @@
       <button class="ui-button ui-button--secondary" id="keep-onedrive-copies" type="button">Conserver les copies actuelles</button>
     </section>
     </div>
+    <section id="dropbox-options" aria-label="Indexation Dropbox" hidden>
+      <p>Parcours Web expérimental du compte autorisé, sans écriture Dropbox. TXT/Markdown : 1 Mo maximum ; PDF texte : 10 Mo et 20 pages maximum, sans OCR Web. Les photos et autres formats restent en métadonnées seules, sans EXIF ni reconnaissance. Les copies existantes sont conservées sans remplacement ; changements de version signalés, sans déduire les suppressions. L'indexation s'arrête à la fermeture de ces options et ne reprend pas en arrière-plan.</p>
+      <div class="management-actions">
+        <button class="ui-button ui-button--primary" id="start-dropbox" type="button" disabled>Indexer Dropbox</button>
+        <button class="ui-button ui-button--secondary" id="stop-dropbox" type="button" hidden>Arrêter l'indexation Dropbox</button>
+        <button class="ui-button ui-button--secondary" id="disconnect-dropbox" type="button" hidden>Déconnecter la session Dropbox</button>
+      </div>
+      <p id="dropbox-status" role="status" aria-live="polite">Dropbox non configuré.</p>
+      <p>La déconnexion locale conserve les copies et ne révoque pas l'autorisation. Vous pouvez retirer l'accès dans <a href="https://www.dropbox.com/account/connected_apps" target="_blank" rel="noopener noreferrer">les applications connectées Dropbox</a>. Supprimer les copies dans Vos données ne supprime jamais les originaux.</p>
+    </section>
   </dialog>
   <input type="file" id="local-files-input" class="visually-hidden" aria-label="Choisir des fichiers locaux à indexer" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
 

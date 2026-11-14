@@ -1,5 +1,12 @@
 # [Non publié] - Recherche multi-sources : socle expérimental
 
+### Lot F — Première tranche Dropbox Web en lecture seule
+- Accès Full Dropbox explicitement choisi, avec seulement `files.metadata.read` et `files.content.read`. OAuth code + PKCE, retour contrôlé et clé d'application publique ; aucun secret client ni jeton durable, session courte en mémoire. Connexion distincte de l'indexation volontaire.
+- Importer et dialogue partagé raccordés, parcours récursif paginé et interruptible, erreurs/quota explicites. TXT/Markdown ≤ 1 Mo, PDF texte ≤ 10 Mo/20 pages avec lecture bornée et vérification de version ; autres formats et images en métadonnées seules, sans EXIF/GPS ni reconnaissance.
+- Copies séparées par compte, provenance de contenu vérifiée, recherche/filtre Dropbox, inventaire et rechargement raccordés à l'index existant. Versions différentes signalées sans remplacer les copies ou déduire une suppression. Déconnexion locale sans révocation chez Dropbox ; purge applicative sans toucher aux originaux.
+- Validation : 43 tests Node ciblés et 54 scénarios navigateur liés passent, dont neuf Dropbox ; compilation et contrôle du diff réussis. Parcours aux quatre largeurs, clavier/focus, annulation, état/scopes refusés, configuration absente, comptes distincts, versions, quota, arrêt, recherche persistante et purge couverts sur données fictives ; extraction d'un PDF synthétique vérifiée.
+- Plan, matrice des sources, modèle d'index et protocole de configuration/validation mis à jour. Aucun compte réel connecté : application Dropbox à configurer par le responsable du projet, consentement et cycle de vie à tester sur compte synthétique/appareils physiques, approbation de production non acquise. Remplacement contrôlé, reprise durable et OAuth natif non livrés ; lot F toujours ouvert. Le plan photo 15.5ter reste différé selon la priorité choisie, sans activation biométrique.
+
 ### Lot E — Démo scénarisée de l'onboarding
 - Le guide devient une découverte en six étapes avec cinq aperçus fictifs : Recherche, Alertes, Maison, Photos et Vos données. Un même foyer relie facture de piscine, garantie de pompe, assurance et souvenirs explicitement annotés.
 - Questions préremplies, lancement explicite, extraits surlignés, dates et provenances fictives ; explications centrées sur les bénéfices et confirmation d'un rappel uniquement simulée. Les illustrations locales sont distinguées des photos personnelles ; aucune reconnaissance faciale ni connexion aux sources n'est prétendue.

@@ -23,7 +23,7 @@ Pour maintenir la cohérence visuelle, suivez ces règles basées sur les maquet
 
 Tous les dialogues HTML déclarés et les dialogues dynamiques de gestion familiale/saisie manuelle utilisent `ui-dialog`. L'ancien dialogue de scan reste un aperçu sans point d'entrée, désactivé et non opérationnel. Ne pas le relier à une permission ou à un scan dans une simple tâche graphique. Les confirmations natives du navigateur restent natives. L'Assistant conserve son moteur documentaire local et ses exemples de repli, distincts de l'index unifié de Recherche ; une suggestion prépare la question sans l'envoyer.
 
-**Cohérence des parcours E5 :** Accueil est un tableau de bord avec raccourci Recherche, pas un deuxième formulaire. Les ajouts depuis Accueil, Recherche et Vos données utilisent `data-open-import` vers Importer ; pas de bouton flottant concurrent. Importer expose appareil/Google Drive/OneDrive et ouvre les options existantes du fournisseur sans connexion automatique. Réutiliser leurs états de disponibilité, ne pas annoncer un connecteur indisponible comme opérationnel. Les images de Maison sont des illustrations locales explicitement identifiées ; leur affichage ne constitue pas une personnalisation photo persistante.
+**Cohérence des parcours E5 :** Accueil est un tableau de bord avec raccourci Recherche, pas un deuxième formulaire. Les ajouts depuis Accueil, Recherche et Vos données utilisent `data-open-import` vers Importer ; pas de bouton flottant concurrent. Importer expose appareil/Google Drive/OneDrive/Dropbox et ouvre les options existantes du fournisseur sans connexion automatique. Réutiliser leurs états de disponibilité, ne pas annoncer un connecteur indisponible comme opérationnel. Les images de Maison sont des illustrations locales explicitement identifiées ; leur affichage ne constitue pas une personnalisation photo persistante.
 
 **Couleurs de marque principales (tokens CSS dans `styles.css`) :**
 - **Primaire (Noir) :** `#171717` - Logo, liens, éléments interactifs
@@ -87,6 +87,7 @@ Les surfaces utilisent des dégradés discrets de blanc vers gris clair ; réser
 ## ⚠️ Contraintes & Points de vigilance
 - **Capacitor Native :** Vérifiez toujours `Capacitor.isNativePlatform()` avant les appels aux APIs natives.
 - **Google Drive :** OAuth restreint à la version Web (prototype).
+- **Dropbox :** première tranche Web uniquement, Full Dropbox en lecture seule explicitement choisi ; `files.metadata.read` et `files.content.read`, OAuth PKCE sans secret, session courte en mémoire. La connexion n'indexe rien ; parcours volontaire interrompu à la fermeture des options. Copies séparées par compte, conservées sans remplacement ni suppression déduite ; photos en métadonnées seules, sans EXIF/GPS ou reconnaissance. Un test simulé ne valide pas un compte réel. Voir [configuration et limites](ETUDE_FAISABILITE_CLOUDS.md#première-tranche-dropbox-web--lot-f).
 - **Pas de serveur :** Prototype client-side uniquement.
 - **Hash de compatibilité :** Supportez `#/view` et `#view` dans `parseHash()`.
 - **Documentation :** Toute modification majeure de l'architecture, de l'interaction entre composants, ou de la charte de style (`styles.css`) **doit** impérativement s'accompagner d'une mise à jour de la documentation technique (schémas Mermaid, fichiers Markdown dans `/docs/`).

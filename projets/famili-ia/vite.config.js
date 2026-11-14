@@ -10,7 +10,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(projectRoot, "index.html"),
-        microsoftRedirect: resolve(projectRoot, "microsoft-redirect.html")
+        microsoftRedirect: resolve(projectRoot, "microsoft-redirect.html"),
+        dropboxRedirect: resolve(projectRoot, "dropbox-redirect.html")
       }
     }
   },
