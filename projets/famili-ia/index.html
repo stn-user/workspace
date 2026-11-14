@@ -121,20 +121,40 @@
               </button>
               <span class="onboarding-progress">Étape 3 sur 3 · Démo avec exemples fictifs</span>
             </div>
-            <h2 id="step-3-title" tabindex="-1">Découvrez une recherche</h2>
-            <p>Choisissez un exemple pour voir les résultats. Tout est fictif : aucun compte n'est connecté.</p>
+            <h2 id="step-3-title" tabindex="-1">Moins de recherches.<br>Plus de moments pour vous.</h2>
+            <p>Une facture retrouvée, une garantie vérifiée, un souvenir qui refait surface. Essayez avec un foyer entièrement fictif.</p>
+            <div class="demo-layout">
             <section class="ui-card demo-guide" id="demo-guide" aria-label="Guide de découverte">
               <div role="status" aria-live="polite" aria-atomic="true">
                 <p class="demo-guide-progress" id="demo-guide-progress"></p>
                 <p class="demo-guide-instruction" id="demo-guide-instruction"></p>
               </div>
               <div class="demo-guide-actions">
-                <button class="ui-button ui-button--secondary" type="button" id="demo-guide-prev" hidden>Étape précédente</button>
+                <button class="ui-button ui-button--secondary" type="button" id="demo-guide-prev" hidden>Précédent</button>
                 <button class="ui-button ui-button--primary" type="button" id="demo-guide-next">Voir le résultat</button>
                 <button class="ui-button ui-button--text" type="button" id="demo-guide-skip">Passer le guide</button>
               </div>
             </section>
-            <button class="ui-button ui-button--text" type="button" id="demo-guide-restart" hidden>Revoir le guide</button>
+            <section class="ui-card demo-workspace" aria-labelledby="demo-screen-title">
+              <span class="ui-badge">Aperçus fictifs · aucune connexion</span>
+              <h3 id="demo-screen-title" tabindex="-1">Recherche</h3>
+              <p id="demo-screen-benefit"></p>
+              <nav class="demo-screen-nav" aria-label="Vues de démonstration">
+                <button class="ui-button ui-button--secondary" type="button" data-demo-screen="recherche" aria-pressed="true">Recherche</button>
+                <button class="ui-button ui-button--secondary" type="button" data-demo-screen="alertes" aria-pressed="false">Alertes</button>
+                <button class="ui-button ui-button--secondary" type="button" data-demo-screen="maison" aria-pressed="false">Maison</button>
+                <button class="ui-button ui-button--secondary" type="button" data-demo-screen="photos" aria-pressed="false">Photos</button>
+                <button class="ui-button ui-button--secondary" type="button" data-demo-screen="donnees" aria-pressed="false">Vos données</button>
+              </nav>
+              <section id="demo-search-panel" data-demo-panel="recherche" aria-label="Recherche fictive">
+            <form class="demo-search-form" id="demo-search-form">
+              <label class="ui-label" for="demo-query">Question d'exemple préremplie</label>
+              <textarea class="ui-input" id="demo-query" rows="2" readonly aria-describedby="demo-query-note"></textarea>
+              <p id="demo-query-note">Réponse préparée et fictive, sans recherche dans vos fichiers.</p>
+              <button class="ui-button ui-button--primary" type="submit">Voir cet exemple</button>
+            </form>
+            <details class="demo-examples">
+              <summary>Changer d'exemple</summary>
             <div class="demo-questions" aria-label="Exemples de recherche">
               <button class="demo-question" type="button" data-demo-question="facture-piscine">
                 <span class="question-icon" aria-hidden="true">⌕</span>
@@ -153,12 +173,47 @@
                 <span class="question-text">Montre-moi les photos de Aaron</span>
               </button>
             </div>
-            
+            </details>
             <section class="onboarding-demo-results" id="demo-results" aria-live="polite" aria-atomic="true">
               <p id="demo-result-heading" tabindex="-1"></p>
               <div class="document-list" id="demo-document-list"></div>
             </section>
-            <p class="onboarding-demo-note">Exemples fictifs : les sources et les résultats illustrent le fonctionnement de Famili-IA.</p>
+              </section>
+              <section data-demo-panel="alertes" aria-labelledby="demo-alert-title" hidden>
+                <article class="ui-card demo-preview-card" id="demo-alert-preview">
+                  <span class="ui-badge">Rappel fictif</span>
+                  <h4 id="demo-alert-title" tabindex="-1">Garantie de la pompe</h4>
+                  <p>Échéance illustrée : <mark id="demo-alert-date"></mark></p>
+                  <blockquote class="demo-evidence"><small id="demo-alert-source"></small><mark id="demo-alert-evidence"></mark></blockquote>
+                  <p>Dans votre espace, une échéance trouvée ne devient une alerte qu'après votre confirmation.</p>
+                  <button class="ui-button ui-button--primary" type="button" id="demo-confirm-alert">Simuler la confirmation</button>
+                  <p id="demo-alert-status" role="status">Aucune alerte créée. Aucune notification envoyée.</p>
+                </article>
+              </section>
+              <section data-demo-panel="maison" aria-labelledby="demo-house-title" hidden>
+                <article class="ui-card demo-preview-card" id="demo-house-preview">
+                  <img class="demo-preview-image" src="assets/pompe/pompe-photo.jpg" alt="Illustration d'une pompe de piscine, pas un équipement personnel" loading="lazy">
+                  <h4 id="demo-house-title" tabindex="-1">La pompe du foyer fictif</h4>
+                  <p>Retrouvez un équipement et ses documents au même endroit.</p>
+                  <ul id="demo-house-documents"></ul>
+                  <button class="ui-button ui-button--secondary" type="button" id="demo-open-warranty">Voir la garantie fictive</button>
+                </article>
+              </section>
+              <section data-demo-panel="photos" aria-labelledby="demo-photos-title" hidden>
+                <h4 id="demo-photos-title" tabindex="-1">Des souvenirs, pas des dossiers à fouiller</h4>
+                <p>Exemple préparé à partir d'associations explicites. Aucune reconnaissance faciale ou visuelle.</p>
+                <img class="demo-preview-image" src="assets/piscine/piscine-photo.jpg" alt="Illustration d'une piscine, pas une photo personnelle" loading="lazy">
+                <div id="demo-photo-list" class="demo-preview-list"></div>
+              </section>
+              <section data-demo-panel="donnees" aria-labelledby="demo-data-title" hidden>
+                <h4 id="demo-data-title" tabindex="-1">Savoir d'où vient chaque résultat</h4>
+                <p>Dans Vos données, consultez vos copies et leurs sources. Une copie Famili-IA n'est pas l'original ; retirer cette copie ne supprime pas le fichier source.</p>
+                <div id="demo-data-list" class="demo-preview-list"></div>
+              </section>
+            </section>
+            </div>
+            <button class="ui-button ui-button--text" type="button" id="demo-guide-restart" hidden>Revoir le guide</button>
+            <p class="onboarding-demo-note">Tout reste dans cet aperçu : aucune donnée personnelle consultée, aucun exemple enregistré. Les sources affichées sont fictives, pas des comptes connectés.</p>
             <p class="view-tour-invitation">Vous pouvez aussi parcourir les autres vues. Certaines peuvent afficher les données déjà présentes sur cet appareil.</p>
             <button class="ui-button ui-button--secondary ui-button--full" type="button" id="start-view-tour-demo">Visiter les autres vues</button>
             <button class="ui-button ui-button--primary ui-button--full" type="button" id="finish-onboarding-demo">Terminer et accéder à mon espace</button>

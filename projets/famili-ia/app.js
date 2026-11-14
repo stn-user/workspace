@@ -34,6 +34,7 @@ let suspendPhotoThumbnailRendering = () => {};
 let resumePhotoThumbnailRendering = () => {};
 let renderUnifiedPhotoResults = () => {};
 let replayOnboarding = false;
+let demoReturnContext = null;
 
 /**
  * Vérifie si l'onboarding est complet et retourne l'état.
@@ -216,10 +217,19 @@ function initOnboardingWizard() {
 
   document.querySelector('#finish-onboarding-demo').addEventListener('click', () => {
     if (!isOnboardingComplete()) completeOnboarding();
+    const returnContext = demoReturnContext;
+    demoReturnContext = null;
     replayOnboarding = false;
     manageOnboardingWizardVisibility();
-    showView('accueil');
-    document.querySelector('#dashboard-title').focus();
+    showView(returnContext?.view || 'accueil', {
+      addHistory: !returnContext,
+      params: returnContext?.params || {}
+    });
+    if (returnContext?.focus?.isConnected && !returnContext.focus.closest('[hidden], dialog:not([open])')) {
+      returnContext.focus.focus();
+    } else {
+      document.querySelector(`[data-view="${activeView}"] h1`)?.focus();
+    }
   });
 
   // Écouteurs pour les questions de démo préremplies (Écran 4)
@@ -227,40 +237,55 @@ function initOnboardingWizard() {
   demoQuestions.forEach(button => {
     button.addEventListener('click', (e) => {
       const questionType = e.currentTarget.dataset.demoQuestion;
-      handleDemoQuestion(questionType);
-      if (demoGuideStep === 1) {
-        setDemoGuideStep(2);
-        document.querySelector('#demo-result-heading').focus();
-      }
+      handleDemoQuestion(questionType, { showResults: false });
+      if (demoGuideStep > 0) setDemoGuideStep(1);
+      document.querySelector('#demo-query').focus();
     });
   });
+  document.querySelector('#demo-search-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    handleDemoQuestion(document.querySelector('.demo-question[aria-pressed="true"]').dataset.demoQuestion);
+    if (demoGuideStep > 0) setDemoGuideStep(2);
+    document.querySelector('#demo-result-heading').focus();
+  });
+  document.querySelectorAll('[data-demo-screen]').forEach(button => {
+    button.addEventListener('click', () => {
+      setDemoGuideStep(0);
+      showDemoScreen(button.dataset.demoScreen);
+      document.querySelector('#demo-screen-title').focus();
+    });
+  });
+  document.querySelector('#demo-confirm-alert').addEventListener('click', () => {
+    document.querySelector('#demo-alert-status').textContent =
+      'Confirmation simulée uniquement dans cet aperçu. Aucune alerte créée, aucune notification envoyée.';
+  });
+  document.querySelector('#demo-open-warranty').addEventListener('click', () => {
+    setDemoGuideStep(0);
+    handleDemoQuestion('garantie-pompe');
+    showDemoScreen('recherche');
+    document.querySelector('#demo-result-heading').focus();
+  });
   document.querySelector('#demo-guide-next').addEventListener('click', () => {
-    if (demoGuideStep === 1) {
-      setDemoGuideStep(2);
-      document.querySelector('#demo-result-heading').focus();
-    } else if (demoGuideStep === 2) {
-      setDemoGuideStep(3);
-    } else {
+    if (demoGuideStep === DEMO_GUIDE_STEPS.length) {
       setDemoGuideStep(0);
       document.querySelector('#demo-guide-restart').focus();
+    } else {
+      setDemoGuideStep(demoGuideStep + 1);
+      focusDemoGuideStep();
     }
   });
   document.querySelector('#demo-guide-prev').addEventListener('click', () => {
-    if (demoGuideStep === 3) {
-      setDemoGuideStep(2);
-      document.querySelector('#demo-result-heading').focus();
-      return;
-    }
-    setDemoGuideStep(1);
-    document.querySelector('.demo-question[aria-pressed="true"]').focus();
+    setDemoGuideStep(demoGuideStep - 1);
+    focusDemoGuideStep();
   });
   document.querySelector('#demo-guide-skip').addEventListener('click', () => {
     setDemoGuideStep(0);
     document.querySelector('#demo-guide-restart').focus();
   });
   document.querySelector('#demo-guide-restart').addEventListener('click', () => {
+    document.querySelector('#demo-alert-status').textContent = 'Aucune alerte créée. Aucune notification envoyée.';
     setDemoGuideStep(1);
-    document.querySelector('#demo-guide-next').focus();
+    focusDemoGuideStep();
   });
 
   /**
@@ -4947,6 +4972,7 @@ async function checkAlertsForExpiry() {
  * Réinitialise l'onboarding avec confirmation
  */
 function startOnboardingReplay(stepIndex = 0) {
+  demoReturnContext = { view: activeView, params: parseHash().params, focus: document.activeElement };
   replayOnboarding = true;
   document.querySelector('#wizard-user-name').value = "";
   document.querySelector('#wizard-greeting').hidden = true;
@@ -4955,71 +4981,172 @@ function startOnboardingReplay(stepIndex = 0) {
     step.hidden = index !== stepIndex;
   });
   if (stepIndex === 3) startDemoGuide();
-  showView('accueil');
+  showView('accueil', { addHistory: false });
   manageOnboardingWizardVisibility();
   document.querySelector(`#step-${stepIndex}-title`).focus();
 }
 
-/**
- * Gère les questions de démo préremplies (Écran 4)
- * Affiche les résultats avec les badges de provenance appropriés
- * @param {string} questionType - Le type de question ('facture-piscine', 'garantie-pompe', 'photos-aaron')
- */
 let demoGuideStep = 0;
 
-const DEMO_GUIDE_STEPS = {
-  1: { instruction: 'Choisissez une question fictive ci-dessous, ou découvrez le résultat déjà affiché.', next: 'Voir le résultat' },
-  2: { instruction: 'Ce résultat fictif montre une source, une date et un extrait. Choisissez une autre question pour comparer.', next: 'Voir la suite' },
-  3: { instruction: 'Dans votre espace, une échéance trouvée ne devient une alerte qu’après votre confirmation. Ici, aucune alerte n’est créée. Terminez quand vous êtes prêt : rien n’est connecté ni enregistré.', next: 'Explorer librement' }
+const DEMO_EXAMPLES = {
+  'facture-piscine': {
+    question: 'Retrouve la facture de ma piscine',
+    heading: 'Facture de piscine',
+    results: [{
+      title: 'Facture - Installation piscine.pdf',
+      content: 'Installation de la piscine du foyer fictif, incluant la pompe. Montant réglé le 4 mars 2023.',
+      evidence: 'Montant total : 8 900 euros TTC.',
+      date: '4 mars 2023',
+      source: 'Google Drive',
+      location: 'Maison / Piscine'
+    }]
+  },
+  'contrat-habitation': {
+    question: 'Quand se termine mon contrat d’assurance habitation ?',
+    heading: 'Contrat d’assurance habitation',
+    results: [{
+      title: 'Contrat - Assurance habitation.pdf',
+      content: 'Assurance de la maison du même foyer fictif. Cette échéance est un exemple ; aucune alerte n’est créée.',
+      evidence: 'Échéance du contrat : 31 décembre 2027.',
+      date: '1 janvier 2027',
+      source: 'OneDrive',
+      location: 'Maison / Assurance'
+    }]
+  },
+  'garantie-pompe': {
+    question: 'Jusqu’à quand ma pompe de piscine est-elle garantie ?',
+    heading: 'Échéance garantie pompe',
+    results: [{
+      title: 'Garantie - Pompe piscine.pdf',
+      content: 'Garantie de la pompe de la piscine du foyer fictif.',
+      evidence: 'Garantie valide jusqu’au 4 mai 2028.',
+      deadline: '4 mai 2028',
+      date: '4 mars 2023',
+      source: 'Google Drive',
+      location: 'Maison / Piscine'
+    }]
+  },
+  'photos-aaron': {
+    question: 'Montre-moi les photos d’Aaron',
+    heading: 'Photos familiales',
+    results: [{
+      title: 'Aaron - Vacances à la piscine',
+      content: 'Souvenir fictif associé à la piscine de la maison.',
+      evidence: 'Annotations explicites : Aaron · Vacances · Piscine.',
+      date: '15 juillet 2023',
+      source: 'Local',
+      location: 'Photos / Vacances'
+    }, {
+      title: 'Aaron - À l’école',
+      content: 'Autre souvenir fictif associé au même membre du foyer.',
+      evidence: 'Annotations explicites : Aaron · École.',
+      date: '3 octobre 2023',
+      source: 'Local',
+      location: 'Photos / École'
+    }]
+  }
 };
 
+const DEMO_SCREENS = {
+  recherche: { title: 'Recherche', benefit: 'Retrouver une information et comprendre pourquoi elle est affichée.' },
+  alertes: { title: 'Alertes', benefit: 'Passer d’une date vérifiée à un rappel, uniquement après confirmation.' },
+  maison: { title: 'Maison', benefit: 'Rassembler équipements, factures et garanties dans leur contexte.' },
+  photos: { title: 'Photos', benefit: 'Retrouver un souvenir grâce aux informations et associations disponibles.' },
+  donnees: { title: 'Vos données', benefit: 'Garder la visibilité sur les copies disponibles et leur provenance.' }
+};
+
+const DEMO_GUIDE_STEPS = [
+  { screen: 'recherche', target: '#demo-search-form', focus: '#demo-query',
+    instruction: 'Une question prête à l’emploi. Changez d’exemple si vous le souhaitez, puis découvrez la réponse fictive préparée.', next: 'Voir le résultat' },
+  { screen: 'recherche', target: '#demo-results', focus: '#demo-result-heading',
+    instruction: 'La source, la date et l’extrait surligné permettent de vérifier une information avant de décider.', next: 'Découvrir les alertes' },
+  { screen: 'alertes', target: '#demo-alert-preview', focus: '#demo-alert-title',
+    instruction: 'Une échéance ne devient une alerte qu’après votre confirmation. Essayez avec cette garantie : ici, tout est simulé.', next: 'Explorer la maison' },
+  { screen: 'maison', target: '#demo-house-preview', focus: '#demo-house-title',
+    instruction: 'La pompe du même foyer, sa facture et sa garantie sont réunies : moins de dossiers à parcourir.', next: 'Retrouver un souvenir' },
+  { screen: 'photos', target: '#demo-photo-list', focus: '#demo-photos-title',
+    instruction: 'Ces souvenirs sont explicitement associés à Aaron. Les résultats utilisent les annotations disponibles, pas la reconnaissance des visages.', next: 'Voir les sources' },
+  { screen: 'donnees', target: '#demo-data-list', focus: '#demo-data-title',
+    instruction: 'Retrouvez les mêmes exemples avec leur provenance fictive. Dans votre espace, seules les copies sélectionnées et disponibles peuvent être recherchées.', next: 'Explorer librement' }
+];
+
+function showDemoScreen(screen) {
+  const definition = DEMO_SCREENS[screen];
+  if (!definition) throw new TypeError(`Vue de démo inconnue : ${screen}`);
+  document.querySelectorAll('[data-demo-panel]').forEach(panel => {
+    panel.hidden = panel.dataset.demoPanel !== screen;
+  });
+  document.querySelectorAll('[data-demo-screen]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.demoScreen === screen));
+  });
+  document.querySelector('#demo-screen-title').textContent = definition.title;
+  document.querySelector('#demo-screen-benefit').textContent = definition.benefit;
+}
+
 function setDemoGuideStep(step) {
+  if (!Number.isInteger(step) || step < 0 || step > DEMO_GUIDE_STEPS.length) {
+    throw new RangeError(`Étape de démo inconnue : ${step}`);
+  }
   demoGuideStep = step;
   const guide = document.querySelector('#demo-guide');
   guide.hidden = step === 0;
   document.querySelector('#demo-guide-restart').hidden = step !== 0;
-  document.querySelector('.demo-questions').classList.toggle('demo-guide-highlight', step === 1);
-  document.querySelector('#demo-results').classList.toggle('demo-guide-highlight', step === 2);
-  document.querySelector('#finish-onboarding-demo').classList.toggle('demo-guide-highlight', step === 3);
+  document.querySelectorAll('#step-3 .demo-guide-highlight').forEach(target => {
+    target.classList.remove('demo-guide-highlight');
+    target.removeAttribute('aria-describedby');
+  });
   if (step === 0) return;
-  document.querySelector('#demo-guide-progress').textContent = `Guide · étape ${step} sur 3`;
-  document.querySelector('#demo-guide-instruction').textContent = DEMO_GUIDE_STEPS[step].instruction;
+  const definition = DEMO_GUIDE_STEPS[step - 1];
+  if (step === 2) {
+    handleDemoQuestion(document.querySelector('.demo-question[aria-pressed="true"]').dataset.demoQuestion);
+  }
+  showDemoScreen(definition.screen);
+  const target = document.querySelector(definition.target);
+  target.classList.add('demo-guide-highlight');
+  target.setAttribute('aria-describedby', 'demo-guide-instruction');
+  document.querySelector('#demo-guide-progress').textContent = `Guide · étape ${step} sur ${DEMO_GUIDE_STEPS.length}`;
+  document.querySelector('#demo-guide-instruction').textContent = definition.instruction;
   document.querySelector('#demo-guide-prev').hidden = step === 1;
-  document.querySelector('#demo-guide-next').textContent = DEMO_GUIDE_STEPS[step].next;
+  document.querySelector('#demo-guide-next').textContent = definition.next;
+}
+
+function focusDemoGuideStep() {
+  document.querySelector(DEMO_GUIDE_STEPS[demoGuideStep - 1].focus).focus();
 }
 
 function startDemoGuide() {
-  handleDemoQuestion('facture-piscine');
+  document.querySelector('#demo-alert-status').textContent = 'Aucune alerte créée. Aucune notification envoyée.';
+  const warranty = DEMO_EXAMPLES['garantie-pompe'].results[0];
+  document.querySelector('#demo-alert-date').textContent = warranty.deadline;
+  document.querySelector('#demo-alert-source').textContent = `${warranty.title} · ${warranty.source} · extrait fictif`;
+  document.querySelector('#demo-alert-evidence').textContent = warranty.evidence;
+  document.querySelector('#demo-house-documents').replaceChildren(
+    ...['facture-piscine', 'garantie-pompe'].map(key => {
+      const item = document.createElement('li');
+      item.textContent = DEMO_EXAMPLES[key].results[0].title;
+      return item;
+    })
+  );
+  document.querySelector('#demo-photo-list').replaceChildren(
+    ...DEMO_EXAMPLES['photos-aaron'].results.map(createResultElement)
+  );
+  document.querySelector('#demo-data-list').replaceChildren(
+    ...Object.values(DEMO_EXAMPLES).flatMap(example => example.results).map(createResultElement)
+  );
+  document.querySelector('.demo-examples').open = false;
+  handleDemoQuestion('facture-piscine', { showResults: false });
   setDemoGuideStep(1);
 }
 
-function handleDemoQuestion(questionType) {
+function handleDemoQuestion(questionType, { showResults = true } = {}) {
   const documentList = document.querySelector('#demo-document-list');
-  let results;
-  let headingText;
-  
-  switch (questionType) {
-    case 'facture-piscine':
-      results = getDemoResultsFacturePiscine();
-      headingText = 'Facture de piscine';
-      break;
-    case 'contrat-habitation':
-      results = getDemoResultsContratHabitation();
-      headingText = 'Contrat d’assurance habitation';
-      break;
-    case 'garantie-pompe':
-      results = getDemoResultsGarantiePompe();
-      headingText = 'Échéance garantie pompe';
-      break;
-    case 'photos-aaron':
-      results = getDemoResultsPhotosAaron();
-      headingText = 'Photos familiales';
-      break;
-    default:
-      throw new TypeError(`Exemple de démo inconnu : ${questionType}`);
-  }
+  const example = DEMO_EXAMPLES[questionType];
+  if (!example) throw new TypeError(`Exemple de démo inconnu : ${questionType}`);
+  const { results, heading } = example;
+  document.querySelector('#demo-query').value = example.question;
+  document.querySelector('#demo-results').hidden = !showResults;
   document.querySelector('#demo-result-heading').textContent =
-    `${headingText} · ${results.length} ${results.length === 1 ? 'résultat fictif' : 'résultats fictifs'}`;
+    `${heading} · ${results.length} ${results.length === 1 ? 'résultat fictif' : 'résultats fictifs'}`;
   documentList.replaceChildren(...results.map(createResultElement));
   document.querySelectorAll('.demo-question').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.demoQuestion === questionType));
@@ -5037,11 +5164,11 @@ function createResultElement(result) {
   
   // Badge de provenance
   const badge = document.createElement('span');
-  badge.className = `provenance-badge ${result.source === 'Drive' ? 'drive' : 'local'}`;
-  badge.textContent = `${result.source === 'Drive' ? 'Google Drive' : 'Local'} · exemple fictif`;
+  badge.className = `provenance-badge ${result.source === 'Local' ? 'local' : 'drive'}`;
+  badge.textContent = `${result.source} · exemple fictif`;
   
   // Titre
-  const title = document.createElement('h3');
+  const title = document.createElement('h4');
   title.className = 'result-title';
   title.textContent = result.title;
   
@@ -5052,80 +5179,22 @@ function createResultElement(result) {
   
   // Footer avec date
   const dateEl = document.createElement('small');
-  dateEl.textContent = result.date;
+  dateEl.textContent = `${result.date} · ${result.location} · emplacement fictif`;
+  const evidence = document.createElement('blockquote');
+  evidence.className = 'demo-evidence';
+  const evidenceLabel = document.createElement('small');
+  evidenceLabel.textContent = 'Extrait fictif à vérifier';
+  const highlight = document.createElement('mark');
+  highlight.textContent = result.evidence;
+  evidence.append(evidenceLabel, highlight);
   
   div.appendChild(badge);
   div.appendChild(title);
   div.appendChild(content);
+  div.appendChild(evidence);
   div.appendChild(dateEl);
   
   return div;
-}
-
-/**
- * Résultats démo pour la question "Retrouve la facture de ma piscine"
- */
-function getDemoResultsFacturePiscine() {
-  return [{
-    id: 'facture-piscine',
-    title: 'Facture - Installation piscine.pdf',
-    content: 'Facture d\'installation d\'une piscine familiale. Le montant total indiqué est de 8 900 euros TTC, réglé le 4 mars 2023.',
-    date: '4 mars 2023',
-    source: 'Drive',
-    provenance: 'Démo'
-  }];
-}
-
-/**
- * Résultat fictif de démonstration d'un contrat, sans création d'alerte.
- */
-function getDemoResultsContratHabitation() {
-  return [{
-    id: 'contrat-habitation',
-    title: 'Contrat - Assurance habitation.pdf',
-    content: 'Le contrat prend effet le 1er janvier 2027 et arrive à échéance le 31 décembre 2027, sauf résiliation. Cette échéance est un exemple fictif ; aucune alerte n’est créée.',
-    date: '1 janvier 2027',
-    source: 'Drive',
-    provenance: 'Démo'
-  }];
-}
-
-/**
- * Résultats démo pour la question "Quand est-ce que je dois payer la garantie du pompe ?"
- */
-function getDemoResultsGarantiePompe() {
-  return [{
-    id: 'garantie-pompe',
-    title: 'Garantie - Pompe piscine.pdf',
-    content: 'La garantie de la pompe Hayward Modèle 2022 est valide jusqu\'au 4 mai 2028. Échéance : 4 mai 2028.',
-    date: '12 avril 2023',
-    source: 'Drive',
-    provenance: 'Démo'
-  }];
-}
-
-/**
- * Résultats démo pour la question "Montre-moi les photos de Aaron"
- */
-function getDemoResultsPhotosAaron() {
-  return [
-    {
-      id: 'photo-aaron-1',
-      title: 'Aaron - Vacances d\'été 2023',
-      content: 'Photo de famille prise pendant les vacances. Filtre appliqué : couleurs vives.',
-      date: '15 juillet 2023',
-      source: 'Local',
-      provenance: 'Démo'
-    },
-    {
-      id: 'photo-aaron-2',
-      title: 'Aaron - À l\'école',
-      content: 'Photo scolaire d\'Aaron avec son nouvel uniforme.',
-      date: '3 octobre 2023',
-      source: 'Local',
-      provenance: 'Démo'
-    }
-  ];
 }
 
 /**

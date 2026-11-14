@@ -5,6 +5,13 @@ const CAPTURE_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}
 
 function normalizeCaptureDateOverride(value) {
   if (value == null || value === "") return null;
+  if (typeof value === "object" && !Array.isArray(value)) {
+    if (Object.keys(value).some(key => !["localDateTime", "offsetMinutes", "source"].includes(key)) ||
+        value.source !== "user" || (value.offsetMinutes !== null && value.offsetMinutes !== undefined)) {
+      throw new TypeError("La date de prise de vue corrigée doit être une date locale.");
+    }
+    value = value.localDateTime;
+  }
   if (typeof value !== "string") {
     throw new TypeError("La date de prise de vue corrigée doit être une date locale.");
   }

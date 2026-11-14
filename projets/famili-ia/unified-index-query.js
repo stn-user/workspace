@@ -7,7 +7,7 @@ const QUERY_STOP_WORDS = new Set([
   "a", "au", "aux", "avec", "c", "d", "dans", "de", "des", "du", "elle", "en",
   "et", "il", "j", "je", "l", "la", "le", "les", "m", "ma", "mes", "moi",
   "mon", "n", "ne", "nous", "par", "pour", "qu", "quand", "que", "qui", "s",
-  "sa", "ses", "son", "sur", "t", "un",
+  "sa", "ses", "son", "sur", "t", "tout", "toute", "tous", "toutes", "un",
   "une", "vous", "vos", "veux", "voudrais", "montre", "montrez", "retrouve",
   "retrouver", "cherche", "chercher", "voir", "avait", "avaient", "ans", "an",
   "photos", "photo", "images", "image", "souvenirs", "souvenir", "prises",

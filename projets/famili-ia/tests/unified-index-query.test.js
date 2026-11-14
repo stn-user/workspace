@@ -63,6 +63,38 @@ test("keeps ordinary terms in the multi-source search and narrows generic photo 
   assert.deepEqual(createUnifiedIndexQuery("photos avec un chien").filters, { type: "photo" });
 });
 
+test("ignores photo quantifiers without dropping content terms or negations", () => {
+  const catalog = [{ ...photos[0], photoAnnotations: { eventTags: ["Mariage"] } }];
+  for (const query of [
+    "montre moi toutes les photos de mon mariage",
+    "retrouve tous les souvenirs de mon mariage",
+    "montre moi toute photo de mon mariage"
+  ]) {
+    const request = createUnifiedIndexQuery(query, { photos: catalog });
+    assert.equal(request.query, "");
+    assert.deepEqual(request.filters, { type: "photo", eventTag: "Mariage" });
+  }
+  assert.equal(createUnifiedIndexQuery("toutes les photos avec un chien").query, "chien");
+  assert.equal(createUnifiedIndexQuery("toutes les photos pas mariage", { photos: catalog }).query, "pas");
+});
+
+test("uses the complete numeric or written photo date instead of only its year", () => {
+  for (const date of ["17/09/2024", "17-09-2024", "17.09.2024", "2024-09-17", "17 septembre 2024"]) {
+    const request = createUnifiedIndexQuery(`montre moi toutes les photos du ${date}`);
+    assert.equal(request.query, "", date);
+    assert.deepEqual(request.filters, {
+      type: "photo", dateType: "priseDeVue", dateFrom: "2024-09-17", dateTo: "2024-09-17"
+    }, date);
+    assert.ok(request.explanations.some(explanation =>
+      explanation.reason === "explicit-capture-date" && explanation.phrase === date));
+  }
+  const imported = createUnifiedIndexQuery("toutes les photos importées le 17/09/2024");
+  assert.equal(imported.query, "");
+  assert.deepEqual(imported.filters, { type: "photo" });
+  assert.deepEqual(imported.importDateRange, { from: "2024-09-17", to: "2024-09-17" });
+  assert.equal(createUnifiedIndexQuery("photos du 31/02/2024").clarificationReason, "invalid-date");
+});
+
 test("asks for clarification on ambiguous photo intent and checks saved birth data", () => {
   const ambiguous = createUnifiedIndexQuery("Photos d'Alex", {
     members: [

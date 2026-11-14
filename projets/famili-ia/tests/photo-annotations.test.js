@@ -56,6 +56,7 @@ test("validates and normalizes user-corrected local capture dates", () => {
     offsetMinutes: null,
     source: "user"
   });
+  assert.deepEqual(normalizePhotoAnnotations(annotations).captureDateOverride, annotations.captureDateOverride);
   assert.equal(normalizePhotoAnnotations({ captureDateOverride: null }).captureDateOverride, null);
   assert.throws(() => normalizePhotoAnnotations({ captureDateOverride: "2023-02-29T18:05" }), /date de prise de vue valide/);
   assert.throws(() => normalizePhotoAnnotations({ captureDateOverride: "2024-02-29" }), /date de prise de vue valide/);

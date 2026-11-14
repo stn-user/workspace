@@ -150,8 +150,10 @@ test('la démo est rejouable sans modifier les données existantes', async ({ pa
   await page.locator('#step-1 [data-wizard-next="2"]').click();
   await page.locator('#step-2 [data-wizard-next="3"]').click();
   await expect(page.locator('#demo-result-heading')).toContainText('Facture de piscine');
+  await page.locator('.demo-examples summary').click();
   for (const [question, heading] of [['garantie-pompe', 'garantie'], ['photos-aaron', 'Photos'], ['facture-piscine', 'Facture']]) {
     await page.locator(`[data-demo-question="${question}"]`).click();
+    await page.locator('#demo-guide-next').click();
     await expect(page.locator('#demo-result-heading')).toContainText(heading);
   }
   await expect(page.locator('#demo-document-list')).toContainText('exemple fictif');

@@ -174,8 +174,16 @@ export function interpretMomentsLifeQuery(query, {
   }
 
   const dateBasis = getDateBasis(text);
+  const numericDateMatch = /\b(?:(\d{4})-(\d{2})-(\d{2})|(\d{1,2})([/.-])(\d{1,2})\5(\d{4}))\b/.exec(query);
   const fullDateMatch = birthDateMatch ? null
-    : /\b(\d{1,2}) (janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre) (\d{4})\b/.exec(text);
+    : numericDateMatch
+      ? [
+        numericDateMatch[0],
+        numericDateMatch[4] ?? numericDateMatch[3],
+        numericDateMatch[6] ?? numericDateMatch[2],
+        numericDateMatch[7] ?? numericDateMatch[1]
+      ]
+      : /\b(\d{1,2}) (janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre) (\d{4})\b/.exec(text);
   const partialDateMatch = fullDateMatch || birthDateMatch ? null
     : /\b(\d{1,2}) (janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)\b/.exec(text);
   const seasonEntries = [...SEASONS.entries()].filter(([season]) => containsPhrase(text, season));
@@ -187,7 +195,7 @@ export function interpretMomentsLifeQuery(query, {
   if (fullDateMatch) {
     const [, dayText, monthName, yearText] = fullDateMatch;
     const year = Number(yearText);
-    const month = MONTHS.get(monthName);
+    const month = numericDateMatch ? Number(monthName) : MONTHS.get(monthName);
     const day = Number(dayText);
     if (!isValidDate(year, month, day)) {
       clarificationReason = clarificationReason ?? "invalid-date";

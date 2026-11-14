@@ -1,5 +1,18 @@
 # [Non publié] - Recherche multi-sources : socle expérimental
 
+### Lot E — Démo scénarisée de l'onboarding
+- Le guide devient une découverte en six étapes avec cinq aperçus fictifs : Recherche, Alertes, Maison, Photos et Vos données. Un même foyer relie facture de piscine, garantie de pompe, assurance et souvenirs explicitement annotés.
+- Questions préremplies, lancement explicite, extraits surlignés, dates et provenances fictives ; explications centrées sur les bénéfices et confirmation d'un rappel uniquement simulée. Les illustrations locales sont distinguées des photos personnelles ; aucune reconnaissance faciale ni connexion aux sources n'est prétendue.
+- Scénarios alternatifs repliables, guide compact sur smartphone, une seule action de lancement pendant le guidage, exploration libre, précédent/suivant, ignorer/revoir et retour au point d'entrée avec focus, sans allonger l'historique du rejeu. La visite facultative des vues réelles reste séparée et annonce qu'elle peut afficher les données locales.
+- Aucun exemple injecté dans les données personnelles, aucune permission, notification ou connexion déclenchée par la démo ; seul l'indicateur habituel de complétion est conservé au premier onboarding.
+- Validation : 46 scénarios navigateur liés, compilation et contrôle du diff réussis ; quatre largeurs de 390 à 1920 px, écran court, clavier, focus, cibles de 48 px, images, mouvement réduit et isolation des données contrôlés. Documentation et plan actualisés. Cette nouvelle démo reste à revalider manuellement sur Web/Android et au lecteur d'écran ; contrastes complets et iOS non validés, lot E toujours ouvert.
+
+### Lot E — Recherche photo : formulations et dates complètes
+- Les quantificateurs « tout/toute/tous/toutes » ne bloquent plus une demande comme « montre moi toutes les photos de mon mariage » lorsque l'événement est explicitement annoté. Les autres termes de contenu restent recherchés.
+- Les demandes photo comprennent désormais les dates `JJ/MM/AAAA`, `JJ-MM-AAAA`, `JJ.MM.AAAA` et `AAAA-MM-JJ`, en complément des dates françaises écrites. Le jour exact est filtré, pas seulement l'année ; les dates calendaires invalides sont signalées.
+- Date de prise de vue et date d'import restent distinctes. Les critères affichent la date complète reconnue ; aucune annotation, permission ou donnée source n'est modifiée, aucun appel externe n'est ajouté.
+- Validation : 30 tests Node ciblés, 15 scénarios navigateur de recherche unifiée et compilation réussis. Les deux nouveaux parcours à 390 et 1280 px utilisent des photos fictives du même événement à des jours différents, un autre événement et une photo sans date ; ils contrôlent les formats, l'import distinct et une date invalide. Essais manuels E4 toujours ouverts.
+
 ### Lot D — Mesure étendue des requêtes fictives
 - Corpus d'évaluation enrichi de 20 à 35 requêtes/filtres annotés, en gardant les 18 mêmes copies fictives. Les nouveaux cas couvrent pluriels, formulations avec élisions, fautes simples, mots-outils seuls, termes courts/chiffres, transposition, combinaisons et filtres stricts.
 - Sur 31 occurrences positives attendues : 31 vrais positifs, aucun faux positif/faux négatif ; 10/10 cas annotés sans résultat attendu restent vides. 53 raisons extraites gardent une preuve littérale valide et les cinq propositions d'échéance restent exactes.

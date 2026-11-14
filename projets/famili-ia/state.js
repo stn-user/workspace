@@ -262,6 +262,7 @@ export async function updatePhotoAnnotations(documentId, annotations) {
     state.family.map(member => member.id)
   );
   const updatedDocument = { ...state.documents[index], photoAnnotations };
+  updatedDocument.indexRecord = await createDocumentIndexRecord(updatedDocument);
   await put('documents', updatedDocument);
   state.documents[index] = updatedDocument;
   return updatedDocument;

@@ -178,6 +178,16 @@ Les imports, suppressions et la purge actualisent les résultats. La recherche i
 
 ## Recherche expérimentale dans l'index commun 15.5bis.9
 
+### Interprétation locale des recherches photo
+
+`unified-index-query.js` reconnaît les demandes contenant « photo », « image » ou « souvenir » et utilise `moments-life-query.js` pour construire les filtres à partir des annotations disponibles. Les quantificateurs « tout », « toute », « tous », « toutes » ne deviennent pas des termes exigés dans les noms ou annotations : « montre moi toutes les photos de mon mariage » filtre ainsi sur l'événement explicite « Mariage » lorsqu'il existe. Le possessif « mon » n'identifie pas une personne ; aucun lien familial ou propriétaire d'événement n'est déduit.
+
+Les dates complètes acceptées dans ces demandes sont `JJ/MM/AAAA`, `JJ-MM-AAAA`, `JJ.MM.AAAA`, `AAAA-MM-JJ` et les dates françaises écrites comme « 6 septembre 2024 ». Jour et mois peuvent avoir un seul chiffre avec les séparateurs français. L'ordre est jour/mois/année pour ces trois formats, jamais mois/jour/année. Le calendrier est validé, y compris les années bissextiles ; une date reconnue mais invalide demande une correction au lieu de se rabattre sur l'année.
+
+Une date complète produit deux bornes identiques inclusives sur la **prise de vue**, sans conversion de fuseau ; une demande portant explicitement sur des photos « importées » utilise la **date d'import**. Une année seule reste une recherche sur l'année entière. La phrase complète reconnue figure dans les critères affichés. Les photos sans date connue ne satisfont pas un filtre de date précis.
+
+Cette interprétation ne transforme pas une date saisie seule sans intention photo en filtre de prise de vue ; les recherches documentaires ordinaires restent inchangées. Les termes de contenu restants et les négations restent littéraux, pas des exclusions sémantiques. Les résultats se limitent toujours aux copies présentes dans l'index, sans nouvel accès distant ni reconnaissance visuelle.
+
 `searchIndex(records, query, options)` effectue une recherche textuelle simple sur un tableau de fiches d'index valides. Chaque fiche est comparée mot par mot après normalisation, et les résultats sont retournés dans l'ordre d'entrée.
 
 ### Champs recherchés

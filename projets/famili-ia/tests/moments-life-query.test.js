@@ -102,3 +102,15 @@ test("does not interpret captured local dates by converting an unknown timezone"
   assert.equal(result.filters.captureLocalDate, "2024-06-14");
   assert.ok(result.explanations.some(item => item.reason === "explicit-capture-date"));
 });
+
+test("parses French numeric dates day-first and ISO dates with calendar validation", () => {
+  for (const date of ["5/8/2024", "05/08/2024", "05-08-2024", "05.08.2024", "2024-08-05"]) {
+    const result = interpret(`Photos prises le ${date}`);
+    assert.equal(result.status, "ready", date);
+    assert.deepEqual(result.filters, { captureLocalDate: "2024-08-05" }, date);
+  }
+  assert.deepEqual(interpret("Photos importées le 29/02/2024").filters, { importLocalDate: "2024-02-29" });
+  for (const date of ["29/02/2023", "31/04/2024", "2024-13-05", "05/13/2024", "00/08/2024"]) {
+    assert.equal(interpret(`Photos du ${date}`).clarificationReason, "invalid-date", date);
+  }
+});

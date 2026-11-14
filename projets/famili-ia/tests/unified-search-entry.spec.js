@@ -90,6 +90,142 @@ for (const viewport of [
 
 }
 
+for (const width of [390, 1280]) {
+  test(`photos annotées : phrase naturelle et date exacte à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openReady(page, 'recherche');
+    await page.evaluate(async () => {
+      const { put } = await import('/db.js');
+      const { createDocumentIndexRecord } = await import('/document-index.js');
+      const { normalizePhotoAnnotations } = await import('/photo-annotations.js');
+      for (const [id, eventTag, captureDate, importedAt] of [
+        ['jour-attendu', 'Mariage', '2024-09-06', '2025-01-02T10:00:00Z'],
+        ['autre-jour', 'Mariage', '2024-09-07', '2024-09-06T10:00:00Z'],
+        ['autre-evenement', 'Anniversaire', '2024-09-06', '2025-01-02T10:00:00Z'],
+        ['sans-date', 'Mariage', null, '2025-01-02T10:00:00Z']
+      ]) {
+        const photo = {
+          id, type: 'Image', name: `${id}-fictif.jpg`, isLocal: true, importedAt,
+          photoAnnotations: normalizePhotoAnnotations({
+            eventTags: [eventTag], placeLabel: 'Lieu fictif', placeSource: 'user',
+            captureDateOverride: captureDate ? `${captureDate}T14:00` : null
+          })
+        };
+        photo.indexRecord = await createDocumentIndexRecord(photo);
+        await put('documents', photo);
+      }
+    });
+    await openReady(page, 'recherche', true);
+    const query = page.locator('#experimental-index-query');
+    const results = page.locator('#moments-life-search-results .moments-life-result');
+    const status = page.locator('#experimental-index-status');
+    for (const text of ['mariage', 'montre moi toutes les photos de mon mariage']) {
+      await query.fill(text);
+      await query.press('Enter');
+      await expect(results).toHaveCount(3);
+      await expect(results.filter({ hasText: 'autre-evenement-fictif.jpg' })).toHaveCount(0);
+    }
+    for (const date of ['06/09/2024', '6/9/2024', '06-09-2024', '06.09.2024', '2024-09-06', '6 septembre 2024']) {
+      await query.fill(`montre moi toutes les photos de mon mariage du ${date} à Lieu fictif`);
+      await query.press('Enter');
+      await expect(results).toHaveCount(1);
+      await expect(results).toContainText('jour-attendu-fictif.jpg');
+      await expect(status).toContainText(date);
+    }
+    await query.fill('photos du 06/09/2024');
+    await query.press('Enter');
+    await expect(results).toHaveCount(2);
+    await expect(results.filter({ hasText: 'autre-jour-fictif.jpg' })).toHaveCount(0);
+    await expect(results.filter({ hasText: 'sans-date-fictif.jpg' })).toHaveCount(0);
+    await query.fill('photos importées le 06/09/2024');
+    await query.press('Enter');
+    await expect(results).toHaveCount(1);
+    await expect(results).toContainText('autre-jour-fictif.jpg');
+    await query.fill('photos du 31/02/2024');
+    await query.press('Enter');
+    await expect(results).toHaveCount(0);
+    await expect(status).toContainText("La date indiquée n'est pas valide.");
+  });
+}
+
+test('recherche unifiée : annotations photo corrigibles, détail conservé et suppression confirmée', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openReady(page, 'recherche');
+  await page.evaluate(async () => {
+    const { put } = await import('/db.js');
+    const { createDocumentIndexRecord } = await import('/document-index.js');
+    const photo = {
+      id: 'unified-photo-management',
+      type: 'Image',
+      name: 'Souvenir fictif.jpg',
+      isLocal: true,
+      importedAt: '2024-07-14T10:00:00.000Z',
+      photoAnnotations: {
+        schemaVersion: 1, personIds: [], eventTags: ['Vacances'],
+        captureDateOverride: {
+          localDateTime: '2024-07-14T10:00:00', offsetMinutes: null, source: 'user'
+        },
+        placeLabel: 'Québec', placeSource: 'user', source: 'user'
+      }
+    };
+    photo.indexRecord = await createDocumentIndexRecord(photo);
+    await put('documents', photo);
+  });
+  await openReady(page, 'recherche', true);
+
+  const query = page.locator('#experimental-index-query');
+  const submit = page.locator('#experimental-index-form .submit-button');
+  const results = page.locator('#moments-life-search-results .moments-life-result');
+  await query.fill('Photos des vacances à Québec en 2024');
+  await submit.click();
+  await expect(results).toHaveCount(1);
+  await expect(results).toContainText('Souvenir fictif.jpg');
+
+  await results.getByRole('button', { name: 'Corriger les annotations' }).click();
+  const annotations = page.locator('#photo-annotations-dialog');
+  await expect(annotations).toBeVisible();
+  await page.locator('#photo-event-tags-input').fill('Voyage fictif');
+  await page.locator('#photo-place-input').fill('Lyon');
+  await page.getByRole('button', { name: 'Enregistrer les associations' }).click();
+  await expect(annotations).toBeHidden();
+  await expect(results).toHaveCount(0);
+  expect(await page.evaluate(async () => {
+    const { getAll } = await import('/db.js');
+    const photo = (await getAll('documents')).find(document => document.id === 'unified-photo-management');
+    return photo.photoAnnotations;
+  })).toMatchObject({ eventTags: ['Voyage fictif'], placeLabel: 'Lyon', placeSource: 'user' });
+
+  await query.fill('Photos à Lyon en 2024');
+  await submit.click();
+  await expect(results).toHaveCount(1);
+  await expect(results).toContainText('Événements saisis : Voyage fictif');
+  await results.getByRole('button', { name: 'Voir le détail de Souvenir fictif.jpg' }).click();
+  const detail = page.locator('#photo-detail-dialog');
+  await expect(detail).toBeVisible();
+  await expect(detail).toContainText('Lyon (saisi manuellement)');
+  await expect(detail).toContainText('Voyage fictif');
+  await expect(detail).toContainText('ne conserve pas le fichier original');
+  await page.keyboard.press('Escape');
+  await expect(detail).toBeHidden();
+
+  await page.locator('#moments-life-search-results [data-photo-select]').check();
+  await page.locator('#moments-life-delete-selected').click();
+  const confirmation = page.locator('#photo-delete-confirmation');
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation).toContainText('Les fichiers originaux ne seront pas supprimés');
+  await page.locator('#cancel-photo-delete').click();
+  await expect(confirmation).toBeHidden();
+  await expect(results).toHaveCount(1);
+  await page.locator('#moments-life-search-results [data-photo-select]').check();
+  await page.locator('#moments-life-delete-selected').click();
+  await page.locator('#confirm-photo-delete').click();
+  await expect(confirmation).toBeHidden();
+  await expect(page.locator('#moments-life-search-status')).toContainText('Les fichiers originaux sont préservés');
+  await expect(results).toHaveCount(0);
+  expect(await page.evaluate(async () => (await import('/db.js')).getAll('documents')))
+    .not.toContainEqual(expect.objectContaining({ id: 'unified-photo-management' }));
+});
+
 for (const width of [390, 768, 1280, 1920]) {
     test(`accueil harmonisé et découverte sans écriture à ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: width < 600 ? 800 : 900 });
