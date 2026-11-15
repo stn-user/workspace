@@ -148,6 +148,55 @@ export async function dropboxIdentity(accountId, itemId) {
   return { id: `dropbox-${itemHash.slice(7)}`, accountFingerprint: accountHash.slice(7) };
 }
 
+export function canRefreshDropboxCopy(document, accountFingerprint) {
+  return Boolean(document?.dropboxSource
+    && /^[0-9a-f]{64}$/i.test(accountFingerprint ?? "")
+    && document.dropboxAccountFingerprint === accountFingerprint);
+}
+
+export function compareDropboxCopy(document, item) {
+  if (!document || !item || typeof document.name !== "string" || typeof item.name !== "string") {
+    throw new TypeError("Comparaison Dropbox invalide.");
+  }
+  if (!document.dropboxRev || typeof item.rev !== "string" || !item.rev) return "unknown";
+  return document.dropboxRev === item.rev
+    && document.name === item.name
+    && document.sourceDir === item.path_display
+    ? "unchanged" : "changed";
+}
+
+export function describeDropboxChanges(document, item) {
+  const changes = [];
+  if (document.name !== item.name) changes.push(`nom : ${document.name} → ${item.name}`);
+  if (document.sourceDir !== item.path_display) changes.push("emplacement Dropbox modifié");
+  if (document.dropboxRev && item.rev && document.dropboxRev !== item.rev) {
+    changes.push("version Dropbox différente");
+  }
+  return changes;
+}
+
+export function mergeDropboxDocumentUpdate(existing, refreshed) {
+  if (!existing || !refreshed || existing.id !== refreshed.id
+    || !existing.dropboxSource || !refreshed.dropboxSource
+    || !existing.dropboxAccountFingerprint
+    || existing.dropboxAccountFingerprint !== refreshed.dropboxAccountFingerprint
+    || !existing.dropboxRev || !refreshed.dropboxRev) {
+    throw new TypeError("Remplacement Dropbox invalide ou compte/version d'origine non vérifié.");
+  }
+  const merged = {
+    ...existing,
+    ...refreshed,
+    ...(existing.photoAnnotations ? { photoAnnotations: existing.photoAnnotations } : {})
+  };
+  for (const field of [
+    "contentProvenance", "dropboxRev", "dropboxIndexIssue", "photoMetadata",
+    "sourceDir", "modificationDate", "indexRecord"
+  ]) {
+    if (!Object.prototype.hasOwnProperty.call(refreshed, field)) delete merged[field];
+  }
+  return merged;
+}
+
 export class DropboxApiError extends Error {
   constructor(response) {
     const retry = response.headers.get("retry-after");
@@ -175,12 +224,19 @@ async function dropboxRequest(endpoint, options, { getToken, signal, fetchImpl }
   return response;
 }
 
-export async function scanDropbox({ getToken, onItem, onProgress, signal, fetchImpl = fetch }) {
+export async function scanDropbox({
+  getToken, onItem, onProgress, signal, fetchImpl = fetch,
+  cursor: initialCursor = null, onPageComplete = () => {}
+}) {
   if ([getToken, onItem, onProgress, fetchImpl].some(value => typeof value !== "function")) {
     throw new TypeError("Paramètres d'indexation Dropbox invalides.");
   }
-  let cursor = null;
-  const cursors = new Set();
+  if ((initialCursor !== null && (typeof initialCursor !== "string" || !initialCursor))
+    || typeof onPageComplete !== "function") {
+    throw new TypeError("Paramètres de reprise Dropbox invalides.");
+  }
+  let cursor = initialCursor;
+  const cursors = new Set(initialCursor === null ? [] : [initialCursor]);
   const items = new Set();
   let pages = 0;
   do {
@@ -208,8 +264,10 @@ export async function scanDropbox({ getToken, onItem, onProgress, signal, fetchI
       items.add(item.id);
       onProgress({ files: items.size, pages });
     }
+    if (signal?.aborted) throw new DOMException("Indexation Dropbox arrêtée.", "AbortError");
+    if (page.has_more && cursors.has(page.cursor)) throw new Error("Pagination Dropbox répétée : parcours interrompu.");
+    await onPageComplete({ cursor: page.cursor, hasMore: page.has_more, files: items.size, pages });
     if (!page.has_more) break;
-    if (cursors.has(page.cursor)) throw new Error("Pagination Dropbox répétée : parcours interrompu.");
     cursors.add(page.cursor);
     cursor = page.cursor;
   } while (true);

@@ -8,8 +8,11 @@ async function setup({ page, context }, { invalidState = false, writeScope = fal
   const calls = [];
   let account = "compte-fictif-a";
   let revision = "version-1";
+  let content = "Facture piscine fictive\nMontant : 120 euros\nÉchéance : 04/05/2028";
+  let downloadStatus = 200;
   let listStatus = 200;
-  let hold = null;
+  let continueStatus = 200;
+  let holdContinue = null;
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   await context.route("**/*", async route => {
@@ -34,19 +37,25 @@ async function setup({ page, context }, { invalidState = false, writeScope = fal
     }
     if (["https://api.dropboxapi.com", "https://content.dropboxapi.com"].includes(url.origin)) {
       calls.push(url.pathname);
-      if (hold) await hold;
+      if (url.pathname === "/2/files/list_folder/continue" && holdContinue) await holdContinue;
       if (url.pathname === "/2/files/list_folder") {
         if (listStatus !== 200) return route.fulfill({ status: listStatus, body: "", headers: { "Retry-After": "3" } });
         return route.fulfill({ json: { entries: [{ ...file, rev: revision }], cursor: "suite", has_more: true } });
       }
-      if (url.pathname === "/2/files/list_folder/continue") return route.fulfill({
-        json: { entries: [{ ".tag": "file", id: "id:photo-fictive", name: "souvenir-piscine.jpg",
-          path_display: "/Photos/souvenir-piscine.jpg", size: 500, rev: "photo-1" }], cursor: "fin", has_more: false }
-      });
-      if (url.pathname === "/2/files/download") return route.fulfill({
-        headers: { "Dropbox-API-Result": JSON.stringify({ ...file, rev: revision }), "Access-Control-Expose-Headers": "Dropbox-API-Result" },
-        body: "Facture piscine fictive\nMontant : 120 euros\nÉchéance : 04/05/2028"
-      });
+      if (url.pathname === "/2/files/list_folder/continue") {
+        if (continueStatus !== 200) return route.fulfill({ status: continueStatus, body: JSON.stringify({ error_summary: "reset" }) });
+        return route.fulfill({
+          json: { entries: [{ ".tag": "file", id: "id:photo-fictive", name: "souvenir-piscine.jpg",
+            path_display: "/Photos/souvenir-piscine.jpg", size: 500, rev: "photo-1" }], cursor: "fin", has_more: false }
+        });
+      }
+      if (url.pathname === "/2/files/download") {
+        if (downloadStatus !== 200) return route.fulfill({ status: downloadStatus, body: "" });
+        return route.fulfill({
+          headers: { "Dropbox-API-Result": JSON.stringify({ ...file, rev: revision }), "Access-Control-Expose-Headers": "Dropbox-API-Result" },
+          body: content
+        });
+      }
       throw new Error(`Appel Dropbox inattendu : ${url.pathname}`);
     }
     return route.abort();
@@ -59,12 +68,16 @@ async function setup({ page, context }, { invalidState = false, writeScope = fal
   return {
     calls, errors,
     account: value => { account = value; }, revision: value => { revision = value; },
+    content: value => { content = value; },
+    downloadStatus: value => { downloadStatus = value; },
     listStatus: value => { listStatus = value; },
-    hold: value => { hold = value; }
+    continueStatus: value => { continueStatus = value; },
+    holdContinue: value => { holdContinue = value; }
   };
 }
 
 const documents = page => page.evaluate(async () => (await import("/db.js")).getAll("documents"));
+const checkpoints = page => page.evaluate(async () => (await import("/db.js")).getAll("source_sync"));
 async function connect(page) {
   await page.locator("#connect-dropbox").click();
   await expect(page.locator("#dropbox-status")).toContainText("Dropbox connecté");
@@ -120,16 +133,151 @@ for (const width of [390, 768, 1280, 1920]) {
   });
 }
 
-test("Dropbox : changements signalés, comptes distincts, quotas, arrêt et purge sans original", async ({ page, context }) => {
+test("Dropbox : reprise locale explicite après rechargement, réservée au même compte", async ({ page, context }) => {
+  const mock = await setup({ page, context });
+  await connect(page);
+  let releaseContinue;
+  mock.holdContinue(new Promise(resolve => { releaseContinue = resolve; }));
+  await page.locator("#start-dropbox").click();
+  await expect(page.locator("#stop-dropbox")).toBeVisible();
+  await expect.poll(() => mock.calls.filter(path => path === "/2/files/list_folder/continue").length).toBe(1);
+  await expect.poll(async () => (await checkpoints(page)).map(checkpoint => checkpoint.cursor)).toEqual(["suite"]);
+  await page.locator("#stop-dropbox").click();
+  releaseContinue();
+  mock.holdContinue(null);
+  await expect(page.locator("#dropbox-status")).toContainText("Indexation Dropbox arrêtée");
+  await expect(page.locator("#resume-dropbox")).toBeVisible();
+  expect(await documents(page)).toHaveLength(1);
+
+  const initialized = page.waitForEvent("console", message => message.text().includes("Async init - COMPLETE"));
+  await page.reload();
+  await initialized;
+  await page.getByRole("button", { name: "Options Dropbox", exact: true }).click();
+  mock.account("compte-fictif-b");
+  await connect(page);
+  await expect(page.locator("#resume-dropbox")).toBeHidden();
+  expect(mock.calls.filter(path => path === "/2/files/list_folder")).toHaveLength(1);
+
+  await page.locator("#disconnect-dropbox").click();
+  mock.account("compte-fictif-a");
+  await connect(page);
+  await expect(page.locator("#resume-dropbox")).toBeVisible();
+  await page.locator("#resume-dropbox").click();
+  await expect(page.locator("#dropbox-status")).toContainText("Reprise Dropbox terminée");
+  expect(mock.calls.filter(path => path === "/2/files/list_folder")).toHaveLength(1);
+  expect(mock.calls.filter(path => path === "/2/files/list_folder/continue")).toHaveLength(2);
+  expect(await documents(page)).toHaveLength(2);
+  expect(await checkpoints(page)).toEqual([]);
+
+  const continuationCalls = mock.calls.filter(path => path === "/2/files/list_folder/continue").length;
+  let releaseAfterResume;
+  mock.holdContinue(new Promise(resolve => { releaseAfterResume = resolve; }));
+  await page.locator("#start-dropbox").click();
+  await expect.poll(() => mock.calls.filter(path => path === "/2/files/list_folder/continue").length)
+    .toBe(continuationCalls + 1);
+  await expect.poll(async () => (await checkpoints(page)).length).toBe(1);
+  await page.locator("#stop-dropbox").click();
+  releaseAfterResume();
+  mock.holdContinue(null);
+  await expect(page.locator("#dropbox-status")).toContainText("Indexation Dropbox arrêtée");
+  mock.continueStatus(409);
+  await page.locator("#resume-dropbox").click();
+  await expect(page.locator("#dropbox-status")).toContainText("HTTP 409");
+  await expect(page.locator("#resume-dropbox")).toBeHidden();
+  expect(await checkpoints(page)).toEqual([]);
+  mock.continueStatus(200);
+  await page.locator("#start-dropbox").click();
+  await expect(page.locator("#dropbox-status")).toContainText("Parcours Dropbox terminé");
+  expect(mock.calls.filter(path => path === "/2/files/list_folder")).toHaveLength(3);
+  expect(await documents(page)).toHaveLength(2);
+  expect(mock.errors).toEqual([]);
+});
+
+test("Dropbox : migration IndexedDB ajoute les points de reprise sans perdre les copies existantes", async ({ page }) => {
+  await page.goto(`${origin}/dropbox-redirect.html`);
+  await page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open("FamiliIADatabase", 3);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      for (const name of ["users", "family", "equipment", "documents", "alerts"]) {
+        if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("logs")) db.createObjectStore("logs", { keyPath: "id", autoIncrement: true });
+      if (!db.objectStoreNames.contains("access_logs")) {
+        db.createObjectStore("access_logs", { keyPath: "id", autoIncrement: true });
+      }
+    };
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction("documents", "readwrite");
+      transaction.objectStore("documents").put({
+        id: "document-v3", name: "document-v3.txt", type: "Texte",
+        isLocal: true, content: "Contenu antérieur", summary: "", keywords: "", date: "Date inconnue"
+      });
+      transaction.oncomplete = () => { db.close(); resolve(); };
+      transaction.onerror = () => { db.close(); reject(transaction.error); };
+    };
+  }));
+  const initialized = page.waitForEvent("console", message => message.text().includes("Async init - COMPLETE"));
+  await page.goto(`${origin}/#/importer`);
+  await initialized;
+  expect((await documents(page)).some(document => document.id === "document-v3")).toBe(true);
+  const database = await page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open("FamiliIADatabase");
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      resolve({ version: db.version, hasSourceSync: db.objectStoreNames.contains("source_sync") });
+      db.close();
+    };
+  }));
+  expect(database).toEqual({ version: 4, hasSourceSync: true });
+});
+
+test("Dropbox : changements soumis à confirmation, comptes distincts, quotas, arrêt et purge sans original", async ({ page, context }) => {
   const mock = await setup({ page, context });
   await connect(page);
   await page.locator("#start-dropbox").click();
   await expect(page.locator("#dropbox-status")).toContainText("Parcours Dropbox terminé");
   const initial = await documents(page);
   mock.revision("version-2");
+  mock.content("Version modifiée de la facture piscine fictive");
   await page.locator("#start-dropbox").click();
   await expect(page.locator("#dropbox-status")).toContainText("1 changement(s)");
+  await expect(page.locator("#dropbox-review-panel")).toBeVisible();
+  await expect(page.locator("#dropbox-review-list")).toContainText("version Dropbox différente");
+  await expect(page.locator("#dropbox-review-list input")).not.toBeChecked();
+  expect(mock.calls.filter(path => path === "/2/files/download")).toHaveLength(1);
   expect(await documents(page)).toEqual(initial);
+  await page.locator("#keep-dropbox-copies").click();
+  await expect(page.locator("#dropbox-review-panel")).toBeHidden();
+  await expect(page.locator("#dropbox-review-status")).toContainText("aucun contenu Dropbox n'a été relu");
+  expect(await documents(page)).toEqual(initial);
+  await page.locator("#start-dropbox").click();
+  await expect(page.locator("#dropbox-review-panel")).toBeVisible();
+  mock.downloadStatus(500);
+  await page.locator("#dropbox-review-list input").check();
+  await page.locator("#apply-dropbox-updates").click();
+  await expect(page.locator("#dropbox-status")).toContainText("1 échec(s)");
+  expect(mock.calls.filter(path => path === "/2/files/download")).toHaveLength(2);
+  expect(await documents(page)).toEqual(initial);
+  await expect(page.locator("#dropbox-review-panel")).toBeVisible();
+  mock.downloadStatus(200);
+  await page.locator("#dropbox-review-list input").check();
+  await page.locator("#apply-dropbox-updates").click();
+  await expect(page.locator("#dropbox-status")).toContainText("Actualisation Dropbox terminée : 1 copie(s) remplacée(s)");
+  expect(mock.calls.filter(path => path === "/2/files/download")).toHaveLength(3);
+  const updated = await documents(page);
+  expect(updated.find(doc => doc.name === file.name).dropboxRev).toBe("version-2");
+  expect(updated.find(doc => doc.name === file.name).content).toContain("Version modifiée");
+  expect(updated.find(doc => doc.type === "Image")).toEqual(initial.find(doc => doc.type === "Image"));
+  mock.revision(undefined);
+  await page.locator("#start-dropbox").click();
+  await expect(page.locator("#dropbox-status")).toContainText("1 version(s) inconnue(s)");
+  await expect(page.locator("#dropbox-review-panel")).toBeHidden();
+  expect(await documents(page)).toEqual(updated);
+  mock.revision("version-2");
   await page.locator("#disconnect-dropbox").click();
   mock.account("compte-fictif-b");
   await connect(page);
@@ -143,15 +291,20 @@ test("Dropbox : changements signalés, comptes distincts, quotas, arrêt et purg
   await expect(page.locator("#dropbox-status")).toContainText("Quota Dropbox");
   expect(await documents(page)).toEqual(bothAccounts);
   mock.listStatus(200);
+  const previousContinueCalls = mock.calls.filter(path => path === "/2/files/list_folder/continue").length;
   let release;
-  mock.hold(new Promise(resolve => { release = resolve; }));
+  mock.holdContinue(new Promise(resolve => { release = resolve; }));
   await page.locator("#start-dropbox").click();
   await expect(page.locator("#stop-dropbox")).toBeVisible();
+  await expect.poll(() => mock.calls.filter(path => path === "/2/files/list_folder/continue").length)
+    .toBe(previousContinueCalls + 1);
+  await expect.poll(async () => (await checkpoints(page)).length).toBe(1);
   await page.locator("#stop-dropbox").click();
   release();
-  mock.hold(null);
+  mock.holdContinue(null);
   await expect(page.locator("#dropbox-status")).toContainText("arrêtée");
   expect(await documents(page)).toEqual(bothAccounts);
+  expect(await checkpoints(page)).toHaveLength(1);
   await page.locator("#close-source-choice").click();
   await page.evaluate(() => { location.hash = "#/vos-donnees"; });
   await expect(page.locator("#summary-dropbox")).toContainText("4 copie(s)");
@@ -159,6 +312,7 @@ test("Dropbox : changements signalés, comptes distincts, quotas, arrêt et purg
   await page.locator("#confirm-purge").click();
   await expect(page.locator("#purge-status")).toContainText("supprimées");
   expect(await documents(page)).toEqual([]);
+  expect(await checkpoints(page)).toEqual([]);
   expect(mock.calls.some(path => /delete|upload|move/.test(path))).toBe(false);
   expect(mock.errors).toEqual([]);
 });

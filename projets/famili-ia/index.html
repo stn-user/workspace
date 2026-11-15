@@ -1014,13 +1014,22 @@
     </section>
     </div>
     <section id="dropbox-options" aria-label="Indexation Dropbox" hidden>
-      <p>Parcours Web expérimental du compte autorisé, sans écriture Dropbox. TXT/Markdown : 1 Mo maximum ; PDF texte : 10 Mo et 20 pages maximum, sans OCR Web. Les photos et autres formats restent en métadonnées seules, sans EXIF ni reconnaissance. Les copies existantes sont conservées sans remplacement ; changements de version signalés, sans déduire les suppressions. L'indexation s'arrête à la fermeture de ces options et ne reprend pas en arrière-plan.</p>
+      <p>Parcours Web expérimental du compte autorisé, sans écriture Dropbox. TXT/Markdown : 1 Mo maximum ; PDF texte : 10 Mo et 20 pages maximum, sans OCR Web. Les photos et autres formats restent en métadonnées seules, sans EXIF ni reconnaissance. Les changements de nom, d'emplacement ou de version vérifiable sont soumis à votre revue ; rien n'est remplacé sans sélection et confirmation. Les versions ou comptes non vérifiables ne sont pas actualisés. Les absences ne prouvent pas une suppression. Un point de reprise est conservé localement, par compte, après chaque page ; après fermeture, reconnectez-vous et choisissez Reprendre. Aucune reprise en arrière-plan.</p>
       <div class="management-actions">
+        <button class="ui-button ui-button--secondary" id="resume-dropbox" type="button" aria-describedby="dropbox-status" hidden>Reprendre l'indexation Dropbox</button>
         <button class="ui-button ui-button--primary" id="start-dropbox" type="button" disabled>Indexer Dropbox</button>
         <button class="ui-button ui-button--secondary" id="stop-dropbox" type="button" hidden>Arrêter l'indexation Dropbox</button>
         <button class="ui-button ui-button--secondary" id="disconnect-dropbox" type="button" hidden>Déconnecter la session Dropbox</button>
       </div>
       <p id="dropbox-status" role="status" aria-live="polite">Dropbox non configuré.</p>
+      <section id="dropbox-review-panel" aria-labelledby="dropbox-review-title" hidden>
+        <h3 id="dropbox-review-title">Modifications Dropbox à examiner</h3>
+        <p>Les copies actuelles restent intactes jusqu'à votre confirmation. Le contenu est relu seulement après confirmation ; si le nouveau fichier est illisible ou non pris en charge, le texte précédent sera remplacé par des métadonnées seules.</p>
+        <ul id="dropbox-review-list"></ul>
+        <p id="dropbox-review-status" role="status" aria-live="polite"></p>
+        <button class="ui-button ui-button--primary" id="apply-dropbox-updates" type="button">Actualiser les éléments sélectionnés</button>
+        <button class="ui-button ui-button--secondary" id="keep-dropbox-copies" type="button">Conserver les copies actuelles</button>
+      </section>
       <p>La déconnexion locale conserve les copies et ne révoque pas l'autorisation. Vous pouvez retirer l'accès dans <a href="https://www.dropbox.com/account/connected_apps" target="_blank" rel="noopener noreferrer">les applications connectées Dropbox</a>. Supprimer les copies dans Vos données ne supprime jamais les originaux.</p>
     </section>
   </dialog>

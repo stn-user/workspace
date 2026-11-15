@@ -5,7 +5,7 @@
 import { encryptData, decryptData } from './crypto.js';
 
 const DB_NAME = 'FamiliIADatabase';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export const initDB = () => {
   return new Promise((resolve, reject) => {
@@ -18,6 +18,7 @@ export const initDB = () => {
       if (!db.objectStoreNames.contains('equipment')) db.createObjectStore('equipment', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('documents')) db.createObjectStore('documents', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('alerts')) db.createObjectStore('alerts', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('source_sync')) db.createObjectStore('source_sync', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('logs')) db.createObjectStore('logs', { keyPath: 'id', autoIncrement: true });
       if (!db.objectStoreNames.contains('access_logs')) db.createObjectStore('access_logs', { keyPath: 'id', autoIncrement: true });
     };
@@ -32,9 +33,29 @@ export const getStore = async (storeName, mode = 'readonly') => {
   return db.transaction(storeName, mode).objectStore(storeName);
 };
 
+export const get = async (storeName, id) => {
+  const store = await getStore(storeName);
+  return new Promise((resolve, reject) => {
+    const request = store.get(id);
+    request.onsuccess = async () => {
+      const result = request.result;
+      if (result && result.iv && result.data) {
+        try {
+          resolve(await decryptData(result));
+        } catch (error) {
+          reject(error);
+        }
+      } else {
+        resolve(result);
+      }
+    };
+    request.onerror = () => reject(request.error);
+  });
+};
+
 export const getAll = async (storeName) => {
   const store = await getStore(storeName);
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const request = store.getAll();
     request.onsuccess = async () => {
       const results = request.result;
@@ -51,6 +72,7 @@ export const getAll = async (storeName) => {
         resolve(results);
       }
     };
+    request.onerror = () => reject(request.error);
   });
 };
 
@@ -82,7 +104,7 @@ export const remove = async (storeName, id) => {
 // Fonction de purge sécurisée unique et propre
 export const purgeDatabase = async () => {
   const db = await initDB();
-  const stores = ['users', 'family', 'equipment', 'documents', 'alerts', 'logs', 'access_logs'];
+  const stores = ['users', 'family', 'equipment', 'documents', 'alerts', 'source_sync', 'logs', 'access_logs'];
   return Promise.all(stores.map(storeName => {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(storeName, 'readwrite');

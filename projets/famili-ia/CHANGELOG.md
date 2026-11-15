@@ -1,11 +1,22 @@
 # [Non publié] - Recherche multi-sources : socle expérimental
 
+### Lot F — reprise explicite de l'indexation Dropbox
+- Le curseur Dropbox est conservé dans IndexedDB, associé à l'empreinte du compte, et sauvegardé après chaque page entièrement traitée. Le jeton OAuth reste en mémoire uniquement ; après rechargement, l'utilisateur doit se reconnecter au même compte et choisir explicitement de reprendre.
+- Une reprise refusée par HTTP 409 efface le curseur et propose de recommencer depuis la racine. Purge et suppression de copies Dropbox invalident les curseurs. La migration vers IndexedDB v4 préserve les données existantes ; aucune reprise en arrière-plan ni synchronisation automatique n'est ajoutée.
+- Validation sur données fictives : neuf tests unitaires Dropbox, 11 tests Playwright Dropbox, suite Node complète (315 tests) et build réussis. Aucun compte Dropbox réel utilisé ; validation fournisseur, appareils physiques et approbation de production restent ouverts.
+
+### Lot F — revue des changements Dropbox avant remplacement
+- Les différences de nom, d'emplacement ou de révision vérifiable sont proposées dans une revue dédiée. Rien n'est présélectionné ; l'utilisateur peut conserver les copies actuelles ou confirmer explicitement les éléments à actualiser.
+- Le contenu n'est relu qu'après confirmation. L'identité du compte et la révision du fichier sont contrôlées avant persistance ; les erreurs conservent l'ancienne copie. Les annotations utilisateur restent attachées à la copie, et un résultat limité aux métadonnées est annoncé avant remplacement.
+- Les versions absentes ou comptes non vérifiables ne sont pas actualisés. Aucune écriture ni suppression sur Dropbox, synchronisation en arrière-plan ou déduction de suppression n'est ajoutée.
+- Validation sur données fictives : 8 tests unitaires Dropbox, 9 scénarios Playwright Dropbox, suite Node complète (314 tests) et build réussis. Aucun compte Dropbox réel utilisé ; validation fournisseur et appareils physiques restent ouverts.
+
 ### Lot F — Première tranche Dropbox Web en lecture seule
 - Accès Full Dropbox explicitement choisi, avec seulement `files.metadata.read` et `files.content.read`. OAuth code + PKCE, retour contrôlé et clé d'application publique ; aucun secret client ni jeton durable, session courte en mémoire. Connexion distincte de l'indexation volontaire.
 - Importer et dialogue partagé raccordés, parcours récursif paginé et interruptible, erreurs/quota explicites. TXT/Markdown ≤ 1 Mo, PDF texte ≤ 10 Mo/20 pages avec lecture bornée et vérification de version ; autres formats et images en métadonnées seules, sans EXIF/GPS ni reconnaissance.
 - Copies séparées par compte, provenance de contenu vérifiée, recherche/filtre Dropbox, inventaire et rechargement raccordés à l'index existant. Versions différentes signalées sans remplacer les copies ou déduire une suppression. Déconnexion locale sans révocation chez Dropbox ; purge applicative sans toucher aux originaux.
 - Validation : 43 tests Node ciblés et 54 scénarios navigateur liés passent, dont neuf Dropbox ; compilation et contrôle du diff réussis. Parcours aux quatre largeurs, clavier/focus, annulation, état/scopes refusés, configuration absente, comptes distincts, versions, quota, arrêt, recherche persistante et purge couverts sur données fictives ; extraction d'un PDF synthétique vérifiée.
-- Plan, matrice des sources, modèle d'index et protocole de configuration/validation mis à jour. Aucun compte réel connecté : application Dropbox à configurer par le responsable du projet, consentement et cycle de vie à tester sur compte synthétique/appareils physiques, approbation de production non acquise. Remplacement contrôlé, reprise durable et OAuth natif non livrés ; lot F toujours ouvert. Le plan photo 15.5ter reste différé selon la priorité choisie, sans activation biométrique.
+- Plan, matrice des sources, modèle d'index et protocole de configuration/validation mis à jour. Aucun compte réel connecté : application Dropbox à configurer par le responsable du projet, consentement et cycle de vie à tester sur compte synthétique/appareils physiques, approbation de production non acquise. La validation réelle et OAuth natif restent ouverts ; lot F toujours ouvert. Le plan photo 15.5ter reste différé selon la priorité choisie, sans activation biométrique.
 
 ### Lot E — Démo scénarisée de l'onboarding
 - Le guide devient une découverte en six étapes avec cinq aperçus fictifs : Recherche, Alertes, Maison, Photos et Vos données. Un même foyer relie facture de piscine, garantie de pompe, assurance et souvenirs explicitement annotés.

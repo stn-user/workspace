@@ -2,7 +2,7 @@
  * state.js - Gestion de l'état global de l'application Famili-IA avec IndexedDB
  */
 
-import { getAll, put, initDB, remove, purgeDatabase } from './db.js';
+import { get, getAll, put, initDB, remove, purgeDatabase } from './db.js';
 import { generateAlertForDoc, getAlertLevelForDate, normalizeAlertNotificationPreferences, refreshAlerts } from './alert-engine.js';
 import { createPhotoMetadata, mergePhotoMetadata, normalizePhotoDocument } from './photo-metadata.js';
 import { normalizeOptionalBirthDate } from './family-members.js';
@@ -307,7 +307,50 @@ export async function addDocument(document) {
   return state.documents;
 }
 
-export async function deleteDocument(id) {
+function dropboxCheckpointId(accountFingerprint) {
+  if (typeof accountFingerprint !== "string" || !/^[0-9a-f]{64}$/i.test(accountFingerprint)) {
+    throw new TypeError("Empreinte de compte Dropbox invalide.");
+  }
+  return `dropbox-index-${accountFingerprint}`;
+}
+
+export async function getDropboxIndexCheckpoint(accountFingerprint) {
+  const id = dropboxCheckpointId(accountFingerprint);
+  const checkpoint = await get('source_sync', id);
+  if (!checkpoint) return null;
+  if (checkpoint.sourceId !== "dropbox" || checkpoint.accountFingerprint !== accountFingerprint
+    || typeof checkpoint.cursor !== "string" || !checkpoint.cursor
+    || typeof checkpoint.updatedAt !== "string") {
+    throw new Error("Point de reprise Dropbox local invalide.");
+  }
+  return checkpoint;
+}
+
+export async function saveDropboxIndexCheckpoint({ accountFingerprint, cursor }) {
+  const id = dropboxCheckpointId(accountFingerprint);
+  if (typeof cursor !== "string" || !cursor) throw new TypeError("Curseur de reprise Dropbox invalide.");
+  const checkpoint = {
+    id, sourceId: "dropbox", accountFingerprint, cursor, updatedAt: new Date().toISOString()
+  };
+  await put('source_sync', checkpoint);
+  return checkpoint;
+}
+
+export async function clearDropboxIndexCheckpoint(accountFingerprint) {
+  return remove('source_sync', dropboxCheckpointId(accountFingerprint));
+}
+
+export async function clearDropboxIndexCheckpoints() {
+  const checkpoints = (await getAll('source_sync')).filter(entry =>
+    typeof entry?.id === "string" && entry.id.startsWith("dropbox-index-"));
+  await Promise.all(checkpoints.map(checkpoint => remove('source_sync', checkpoint.id)));
+}
+
+export async function deleteDocument(id, { invalidateDropboxCheckpoint = true } = {}) {
+  const document = state.documents.find(existing => existing.id === id);
+  if (invalidateDropboxCheckpoint && document?.dropboxSource && document.dropboxAccountFingerprint) {
+    await clearDropboxIndexCheckpoint(document.dropboxAccountFingerprint);
+  }
   await remove('documents', id);
   state.documents = state.documents.filter(doc => doc.id !== id);
   const linkedAlert = state.alerts.find(alert => alert.docId === id && (

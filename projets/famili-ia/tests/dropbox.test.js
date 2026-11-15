@@ -1,7 +1,10 @@
 import { test } from "node:test";
 import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
-import { createDropboxAuthorization, DROPBOX_SCOPES, DropboxApiError, dropboxIdentity, readDropboxDocument, scanDropbox } from "../dropbox.js";
+import {
+  canRefreshDropboxCopy, compareDropboxCopy, createDropboxAuthorization, describeDropboxChanges,
+  DROPBOX_SCOPES, DropboxApiError, dropboxIdentity, mergeDropboxDocumentUpdate, readDropboxDocument, scanDropbox
+} from "../dropbox.js";
 import { createDocumentIndexRecord } from "../document-index.js";
 import { restoreContentSegments } from "../content-index.js";
 import { IndexSession } from "../index-session.js";
@@ -53,6 +56,75 @@ test("Dropbox : pagination récursive et déduplication des identifiants sans su
   assert.deepEqual(calls[1].body, { cursor: "suite" });
   assert.equal(calls[1].url, "https://api.dropboxapi.com/2/files/list_folder/continue");
   assert.equal(calls[0].headers.Authorization, "Bearer jeton-de-test");
+});
+
+test("Dropbox : reprise depuis le curseur et sauvegarde après chaque page traitée", async () => {
+  const calls = [];
+  const events = [];
+  const result = await scanDropbox({
+    getToken, cursor: "curseur-persisté",
+    onItem: item => { events.push(`item:${item.id}`); },
+    onProgress: () => {},
+    onPageComplete: page => { events.push(`page:${page.cursor}:${page.hasMore}`); },
+    fetchImpl: async (url, options) => {
+      calls.push({ url, body: JSON.parse(options.body) });
+      return calls.length === 1 ? page([file], "curseur-suivant", true) : page([], "terminé");
+    }
+  });
+  assert.deepEqual(calls, [
+    { url: "https://api.dropboxapi.com/2/files/list_folder/continue", body: { cursor: "curseur-persisté" } },
+    { url: "https://api.dropboxapi.com/2/files/list_folder/continue", body: { cursor: "curseur-suivant" } }
+  ]);
+  assert.deepEqual(events, [
+    "item:id:fictif", "page:curseur-suivant:true", "page:terminé:false"
+  ]);
+  assert.deepEqual(result, { files: 1, pages: 2 });
+  await assert.rejects(scanDropbox({
+    getToken, onItem: () => {}, onProgress: () => {}, cursor: "",
+    fetchImpl: () => { throw new Error("Aucun appel avec un curseur vide"); }
+  }), /reprise Dropbox invalide/);
+});
+
+test("Dropbox : revue exige une version et un compte vérifiables et conserve les annotations", () => {
+  const fingerprint = "a".repeat(64);
+  const existing = {
+    id: "dropbox-fictif", name: file.name, sourceDir: file.path_display, dropboxSource: true,
+    dropboxAccountFingerprint: fingerprint, dropboxRev: "version-1",
+    photoAnnotations: [{ id: "annotation-fictive", text: "Repère personnel" }],
+    contentProvenance: { method: "ancienne-preuve" }, indexRecord: { stale: true }
+  };
+  assert.equal(canRefreshDropboxCopy(existing, fingerprint), true);
+  assert.equal(canRefreshDropboxCopy(existing, "b".repeat(64)), false);
+  assert.equal(compareDropboxCopy(existing, file), "changed");
+  assert.deepEqual(describeDropboxChanges(existing, {
+    ...file, name: "facture-renommee.txt", path_display: "/Archives/facture-renommee.txt"
+  }), [
+    "nom : facture-piscine.txt → facture-renommee.txt",
+    "emplacement Dropbox modifié",
+    "version Dropbox différente"
+  ]);
+  assert.equal(compareDropboxCopy(existing, { ...file, rev: undefined }), "unknown");
+
+  const refreshed = {
+    ...existing, name: file.name, dropboxRev: "version-2", content: "Contenu actualisé"
+  };
+  delete refreshed.photoAnnotations;
+  delete refreshed.contentProvenance;
+  delete refreshed.indexRecord;
+  delete refreshed.sourceDir;
+  delete refreshed.modificationDate;
+  const merged = mergeDropboxDocumentUpdate(existing, refreshed);
+  assert.deepEqual(merged.photoAnnotations, existing.photoAnnotations);
+  assert.equal(merged.content, "Contenu actualisé");
+  assert.equal(merged.contentProvenance, undefined);
+  assert.equal(merged.sourceDir, undefined);
+  assert.equal(merged.modificationDate, undefined);
+  assert.equal(merged.indexRecord, undefined);
+  assert.throws(() => mergeDropboxDocumentUpdate(existing, {
+    ...refreshed, dropboxAccountFingerprint: "b".repeat(64)
+  }), /compte\/version d'origine non vérifié/);
+  assert.throws(() => mergeDropboxDocumentUpdate(existing, { ...refreshed, dropboxRev: undefined }),
+    /compte\/version d'origine non vérifié/);
 });
 
 test("Dropbox : pages invalides, curseur répété, arrêt et quotas sont signalés", async () => {

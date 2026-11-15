@@ -6,7 +6,14 @@ import { countInventorySources, filterInventoryDocuments, filterSearchResultsByC
 import { Capacitor } from "@capacitor/core";
 import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
-import { initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts, getDocuments, addDocument, confirmDocumentAlert, deleteDocument, calculateAlertType, updateAlert, updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState, addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember, updatePhotoAnnotations, resetState } from "./state.js";
+import {
+  initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts,
+  getDocuments, addDocument, confirmDocumentAlert, deleteDocument, calculateAlertType, updateAlert,
+  updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState,
+  addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember,
+  updatePhotoAnnotations, resetState, getDropboxIndexCheckpoint, saveDropboxIndexCheckpoint,
+  clearDropboxIndexCheckpoint, clearDropboxIndexCheckpoints
+} from "./state.js";
 import { redactPhotoLocationsForExport } from "./photo-metadata.js";
 import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
 import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
@@ -28,7 +35,10 @@ import {
   oneDriveDocumentId, readOneDriveDocument
 } from "./onedrive-document.js";
 import { formatOneDriveAccountFingerprint, getOneDriveAccountFingerprint } from "./onedrive-account.js";
-import { DropboxAuth, DropboxApiError, dropboxIdentity, readDropboxDocument, scanDropbox } from "./dropbox.js";
+import {
+  canRefreshDropboxCopy, compareDropboxCopy, describeDropboxChanges, DropboxAuth, DropboxApiError,
+  dropboxIdentity, mergeDropboxDocumentUpdate, readDropboxDocument, scanDropbox
+} from "./dropbox.js";
 
 const activeScanWorkers = new Map();
 let suspendPhotoThumbnailRendering = () => {};
@@ -1768,6 +1778,7 @@ async function applyOneDriveUpdates(candidates) {
         oneDriveReviewStatus.textContent = `Actualisation en cours : ${updated}/${candidates.length}.`;
       } catch (error) {
         if (controller.signal.aborted) break;
+        if (error instanceof DropboxApiError && error.status === 401) dropboxAuth.disconnect();
         failures.push(`${candidate.item.name} : ${error instanceof Error ? error.message : "erreur non détaillée"}`);
       }
     }
@@ -1955,23 +1966,140 @@ const dropboxAuth = dropboxAppKey && !isNativePlatform
   ? new DropboxAuth(dropboxAppKey, new URL("dropbox-redirect.html", document.baseURI).href) : null;
 const dropboxConnectButton = document.querySelector("#connect-dropbox");
 const dropboxStartButton = document.querySelector("#start-dropbox");
+const dropboxResumeButton = document.querySelector("#resume-dropbox");
 const dropboxStopButton = document.querySelector("#stop-dropbox");
 const dropboxDisconnectButton = document.querySelector("#disconnect-dropbox");
 const dropboxStatus = document.querySelector("#dropbox-status");
+const dropboxReviewPanel = document.querySelector("#dropbox-review-panel");
+const dropboxReviewList = document.querySelector("#dropbox-review-list");
+const dropboxReviewStatus = document.querySelector("#dropbox-review-status");
+const dropboxApplyUpdatesButton = document.querySelector("#apply-dropbox-updates");
+const dropboxKeepCopiesButton = document.querySelector("#keep-dropbox-copies");
+let pendingDropboxChanges = [];
+let dropboxResumeCheckpoint = null;
 let dropboxConnecting = false;
 
 function updateDropboxActions() {
   const busy = dropboxConnecting || Boolean(dropboxScanSettled) || removingSessionFiles;
   dropboxConnectButton.disabled = !dropboxAuth || busy;
   dropboxStartButton.disabled = !dropboxAuth?.connected || busy;
+  dropboxStartButton.textContent = dropboxResumeCheckpoint
+    ? "Recommencer l'indexation Dropbox" : "Indexer Dropbox";
+  dropboxResumeButton.hidden = !dropboxResumeCheckpoint;
+  dropboxResumeButton.disabled = !dropboxAuth?.connected || busy;
   dropboxStopButton.hidden = !dropboxScanSettled;
   dropboxDisconnectButton.hidden = !dropboxAuth?.connected;
   dropboxDisconnectButton.disabled = busy;
+  dropboxReviewList.querySelectorAll("input").forEach(input => { input.disabled = busy; });
+  dropboxApplyUpdatesButton.disabled = busy || !dropboxAuth?.connected || pendingDropboxChanges.length === 0;
+  dropboxKeepCopiesButton.disabled = busy || pendingDropboxChanges.length === 0;
   document.querySelector("#import-dropbox-availability").textContent = !dropboxAuth
     ? "Non configuré ou indisponible sur cette plateforme."
     : dropboxConnecting ? "Connexion en cours…"
       : dropboxScanSettled ? "Indexation en cours, consultable dans les options."
         : dropboxAuth.connected ? "Session connectée. Indexation sur demande." : "Connexion facultative, sans indexation automatique.";
+}
+
+function renderDropboxReview(candidates) {
+  pendingDropboxChanges = candidates;
+  dropboxReviewList.replaceChildren();
+  candidates.forEach((candidate, index) => {
+    const item = document.createElement("li");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = `dropbox-update-${index}`;
+    checkbox.value = String(index);
+    checkbox.disabled = Boolean(dropboxScanSettled) || !dropboxAuth?.connected || removingSessionFiles;
+    const label = document.createElement("label");
+    label.htmlFor = checkbox.id;
+    label.textContent = `${candidate.existing.name} → ${candidate.item.name} (${candidate.changes.join(" ; ") || "version Dropbox différente"})`;
+    item.append(checkbox, label);
+    dropboxReviewList.appendChild(item);
+  });
+  dropboxReviewPanel.hidden = candidates.length === 0;
+  dropboxApplyUpdatesButton.disabled = Boolean(dropboxScanSettled) || !dropboxAuth?.connected
+    || removingSessionFiles || candidates.length === 0;
+  dropboxKeepCopiesButton.disabled = Boolean(dropboxScanSettled) || removingSessionFiles || candidates.length === 0;
+}
+
+function clearDropboxReview() {
+  renderDropboxReview([]);
+  dropboxReviewStatus.textContent = "";
+}
+
+async function applyDropboxUpdates(candidates) {
+  if (!candidates.length || !dropboxAuth?.connected || dropboxScanSettled || removingSessionFiles) return;
+  const accountId = dropboxAuth.accountId;
+  const controller = new AbortController();
+  dropboxScanController = controller;
+  dropboxObservation = "working";
+  dropboxReviewStatus.textContent = `Actualisation en cours : 0/${candidates.length}. Les copies précédentes restent disponibles en cas d'erreur.`;
+
+  const remaining = new Set(pendingDropboxChanges);
+  dropboxScanSettled = (async () => {
+    let updated = 0;
+    const failures = [];
+    const metadataOnly = [];
+    for (const candidate of candidates) {
+      if (controller.signal.aborted) break;
+      try {
+        const identity = await dropboxIdentity(accountId, "session");
+        const existing = uploadedDocuments.find(document => document.id === candidate.existing.id);
+        if (!existing || !canRefreshDropboxCopy(existing, identity.accountFingerprint)
+          || existing.dropboxRev !== candidate.existing.dropboxRev
+          || compareDropboxCopy(existing, candidate.item) !== "changed") {
+          throw new Error("La copie ou sa version a changé depuis la revue ; relancez l'indexation.");
+        }
+        const result = await readDropboxDocument({
+          item: candidate.item, accountId, getToken: () => dropboxAuth.getToken(), signal: controller.signal
+        });
+        if (controller.signal.aborted) break;
+        if (!dropboxAuth.connected || dropboxAuth.accountId !== accountId) {
+          throw new Error("La session Dropbox a changé pendant l'actualisation.");
+        }
+        const replacement = mergeDropboxDocumentUpdate(existing, result.document);
+        const index = uploadedDocuments.findIndex(document => document.id === replacement.id);
+        if (index === -1) throw new Error("La copie Dropbox à actualiser n'est plus présente.");
+        await addDocument(replacement);
+        uploadedDocuments[index] = replacement;
+        remaining.delete(candidate);
+        updated += 1;
+        if (result.segments) experimentalIndex.trustExtractedContent(replacement, result.segments);
+        invalidContentProvenance.delete(existing);
+        if (result.coverage === "metadata") {
+          metadataOnly.push(`${candidate.item.name} (${result.reason || "contenu non disponible"})`);
+        }
+        dropboxReviewStatus.textContent = `Actualisation en cours : ${updated}/${candidates.length}.`;
+      } catch (error) {
+        if (controller.signal.aborted) break;
+        if (error instanceof DropboxApiError && error.status === 401) dropboxAuth.disconnect();
+        failures.push(`${candidate.item.name} : ${error instanceof Error ? error.message : "erreur non détaillée"}`);
+      }
+    }
+
+    pendingDropboxChanges = [...remaining];
+    const interrupted = controller.signal.aborted;
+    dropboxObservation = !dropboxAuth.connected ? "disconnected" : failures.length ? "error" : "connected";
+    dropboxStatus.textContent = interrupted
+      ? `Actualisation Dropbox arrêtée. ${updated} copie(s) remplacée(s) ; les autres restent à examiner.`
+      : `Actualisation Dropbox terminée : ${updated} copie(s) remplacée(s)${failures.length ? ` ; ${failures.length} échec(s)` : ""}${metadataOnly.length ? ` ; métadonnées seules : ${metadataOnly.join(", ")}` : ""}.`;
+    dropboxReviewStatus.textContent = [
+      interrupted ? "Action arrêtée ; les éléments non terminés restent à examiner." : "",
+      pendingDropboxChanges.length && !interrupted ? `${pendingDropboxChanges.length} élément(s) non actualisé(s) restent à examiner.` : "",
+      ...failures
+    ].filter(Boolean).join(" ");
+    renderDropboxReview(pendingDropboxChanges);
+    if (!pendingDropboxChanges.length && failures.length) dropboxReviewStatus.textContent = failures.join(" ");
+  })().finally(() => {
+    dropboxScanController = null;
+    dropboxScanSettled = null;
+    refreshExperimentalIndex();
+    renderDataInventory(parseHash().params);
+    updateDropboxActions();
+    renderExperimentalSources();
+  });
+  updateDropboxActions();
+  renderExperimentalSources();
 }
 
 dropboxStatus.textContent = dropboxAuth
@@ -1982,6 +2110,7 @@ updateDropboxActions();
 dropboxConnectButton.addEventListener("click", async () => {
   if (!dropboxAuth || dropboxConnecting || dropboxScanSettled || removingSessionFiles) return;
   dropboxConnecting = true;
+  dropboxResumeCheckpoint = null;
   updateDropboxActions();
   try {
     await dropboxAuth.connect();
@@ -1989,8 +2118,15 @@ dropboxConnectButton.addEventListener("click", async () => {
     const identity = await dropboxIdentity(connectedAccount, "session");
     if (!dropboxAuth.connected || dropboxAuth.accountId !== connectedAccount) throw new Error("Session Dropbox interrompue.");
     dropboxObservation = "connected";
-    dropboxStatus.textContent = `Dropbox connecté (compte …${identity.accountFingerprint.slice(0, 16)}). Aucun fichier lu : lancez séparément l'indexation si vous le souhaitez.`;
+    try {
+      dropboxResumeCheckpoint = await getDropboxIndexCheckpoint(identity.accountFingerprint);
+    } catch (error) {
+      dropboxStatus.textContent = `Dropbox connecté (compte …${identity.accountFingerprint.slice(0, 16)}), mais le point de reprise local n'a pas pu être lu : ${error.message}.`;
+      return;
+    }
+    dropboxStatus.textContent = `Dropbox connecté (compte …${identity.accountFingerprint.slice(0, 16)}). Aucun fichier lu : lancez séparément l'indexation si vous le souhaitez.${dropboxResumeCheckpoint ? " Un point de reprise local est disponible ; choisissez Reprendre ou Recommencer." : ""}`;
   } catch (error) {
+    dropboxResumeCheckpoint = null;
     dropboxObservation = "error";
     dropboxStatus.textContent = `Connexion Dropbox non aboutie : ${error.message}`;
   } finally {
@@ -1999,17 +2135,20 @@ dropboxConnectButton.addEventListener("click", async () => {
     renderExperimentalSources();
   }
 });
-dropboxStartButton.addEventListener("click", () => {
+function startDropboxIndex({ resume = false } = {}) {
   if (dropboxConnecting || dropboxScanSettled || removingSessionFiles) return;
   if (!dropboxAuth?.connected) {
     dropboxStatus.textContent = "Session Dropbox absente ou expirée : reconnectez Dropbox avant d'indexer.";
     updateDropboxActions();
     return;
   }
+  clearDropboxReview();
   const controller = new AbortController();
   dropboxScanController = controller;
   const accountId = dropboxAuth.accountId;
   const existing = new Map(uploadedDocuments.map(doc => [doc.id, doc]));
+  const candidates = [];
+  let accountFingerprint = null;
   let added = 0;
   let metadata = 0;
   let changed = 0;
@@ -2019,17 +2158,55 @@ dropboxStartButton.addEventListener("click", () => {
   const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${added} copie(s) ajoutée(s), dont ${metadata} en métadonnées seules ; ${changed} changement(s), ${unchanged} même(s) version(s), ${unknown} version(s) inconnue(s).`;
   dropboxObservation = "working";
   dropboxScanSettled = (async () => {
+    let resumeCursor = null;
+    let resumeExpired = false;
+    let checkpointCleanupError = null;
     try {
+      const identity = await dropboxIdentity(accountId, "session");
+      accountFingerprint = identity.accountFingerprint;
+      if (resume) {
+        dropboxResumeCheckpoint = await getDropboxIndexCheckpoint(accountFingerprint);
+        if (!dropboxResumeCheckpoint) throw new Error("Aucun point de reprise Dropbox n'est enregistré pour ce compte.");
+        resumeCursor = dropboxResumeCheckpoint.cursor;
+      } else {
+        await clearDropboxIndexCheckpoint(accountFingerprint);
+        dropboxResumeCheckpoint = null;
+      }
       await scanDropbox({
         getToken: () => dropboxAuth.getToken(), signal: controller.signal,
-        onProgress: value => { progress = value; dropboxStatus.textContent = `Indexation Dropbox en cours : ${summary()}`; },
+        cursor: resumeCursor,
+        onPageComplete: async page => {
+          if (page.hasMore) {
+            dropboxResumeCheckpoint = await saveDropboxIndexCheckpoint({
+              accountFingerprint, cursor: page.cursor
+            });
+          } else {
+            await clearDropboxIndexCheckpoint(accountFingerprint);
+            dropboxResumeCheckpoint = null;
+          }
+          updateDropboxActions();
+        },
+        onProgress: value => {
+          progress = value;
+          dropboxStatus.textContent = `${resume ? "Reprise" : "Indexation"} Dropbox en cours : ${summary()}`;
+        },
         onItem: async item => {
           const identity = await dropboxIdentity(accountId, item.id);
           const previous = existing.get(identity.id);
           if (previous) {
-            if (!previous.dropboxRev || !item.rev) unknown++;
-            else if (previous.dropboxRev === item.rev && previous.name === item.name && previous.sourceDir === item.path_display) unchanged++;
-            else changed++;
+            if (!canRefreshDropboxCopy(previous, identity.accountFingerprint)
+              || compareDropboxCopy(previous, item) === "unknown") {
+              unknown++;
+            } else if (compareDropboxCopy(previous, item) === "unchanged") {
+              unchanged++;
+            } else {
+              changed++;
+              candidates.push({
+                existing: { ...previous },
+                item,
+                changes: describeDropboxChanges(previous, item)
+              });
+            }
             return;
           }
           const result = await readDropboxDocument({
@@ -2046,11 +2223,27 @@ dropboxStartButton.addEventListener("click", () => {
         }
       });
       dropboxObservation = "connected";
-      dropboxStatus.textContent = `Parcours Dropbox terminé. ${summary()} Copies existantes conservées sans remplacement ; actualisation non disponible. Les absences ne prouvent pas une suppression.`;
+      renderDropboxReview(candidates);
+      dropboxReviewStatus.textContent = candidates.length
+        ? "Aucune copie n'a été remplacée. Cochez uniquement les éléments à actualiser, puis confirmez ; les autres copies resteront inchangées."
+        : "";
+      dropboxStatus.textContent = `${resume ? "Reprise" : "Parcours"} Dropbox terminée. ${summary()} Les absences ne prouvent pas une suppression.${candidates.length ? " Examinez et confirmez les changements ci-dessous." : ""}`;
     } catch (error) {
+      clearDropboxReview();
+      if (resume && error instanceof DropboxApiError && error.status === 409 && accountFingerprint) {
+        try {
+          await clearDropboxIndexCheckpoint(accountFingerprint);
+          dropboxResumeCheckpoint = null;
+          resumeExpired = true;
+        } catch (clearError) {
+          checkpointCleanupError = clearError;
+        }
+      }
       if (error instanceof DropboxApiError && error.status === 401) dropboxAuth.disconnect();
       dropboxObservation = error.name === "AbortError" ? "connected" : "error";
-      dropboxStatus.textContent = `${error.name === "AbortError" ? "Indexation Dropbox arrêtée" : `Indexation Dropbox interrompue : ${error.message}`}. ${summary()} Les copies enregistrées sont conservées.`;
+      dropboxStatus.textContent = resumeExpired
+        ? `Le point de reprise Dropbox n'est plus valide (HTTP 409) et a été effacé. Recommencez l'indexation depuis le début. ${summary()} Les copies enregistrées sont conservées.`
+        : `${error.name === "AbortError" ? "Indexation Dropbox arrêtée" : `${resume ? "Reprise" : "Indexation"} Dropbox interrompue : ${error.message}`}. ${summary()} Les copies enregistrées sont conservées.${checkpointCleanupError ? ` Le point de reprise n'a pas pu être effacé : ${checkpointCleanupError.message}` : ""}`;
     } finally {
       dropboxScanController = null;
       dropboxScanSettled = null;
@@ -2063,15 +2256,35 @@ dropboxStartButton.addEventListener("click", () => {
   })();
   updateDropboxActions();
   renderExperimentalSources();
-});
+}
+dropboxStartButton.addEventListener("click", () => startDropboxIndex());
+dropboxResumeButton.addEventListener("click", () => startDropboxIndex({ resume: true }));
 dropboxStopButton.addEventListener("click", () => dropboxScanController?.abort());
 sourceChoiceDialog.addEventListener("close", () => {
   dropboxScanController?.abort();
   dropboxAuth?.cancelConnection();
 });
+dropboxApplyUpdatesButton.addEventListener("click", () => {
+  const selected = [...dropboxReviewList.querySelectorAll("input:checked")]
+    .map(input => pendingDropboxChanges[Number(input.value)])
+    .filter(Boolean);
+  if (!selected.length) {
+    dropboxReviewStatus.textContent = "Sélectionnez au moins un élément à actualiser.";
+    return;
+  }
+  void applyDropboxUpdates(selected);
+});
+dropboxKeepCopiesButton.addEventListener("click", () => {
+  if (dropboxScanSettled || removingSessionFiles) return;
+  clearDropboxReview();
+  dropboxReviewStatus.textContent = "Les copies actuelles sont conservées ; aucun contenu Dropbox n'a été relu.";
+  dropboxStatus.textContent = "Les copies Dropbox actuelles sont conservées ; aucun contenu Dropbox n'a été relu.";
+});
 dropboxDisconnectButton.addEventListener("click", () => {
   if (!dropboxAuth || dropboxConnecting || dropboxScanSettled || removingSessionFiles) return;
   dropboxAuth.disconnect();
+  clearDropboxReview();
+  dropboxResumeCheckpoint = null;
   dropboxObservation = "disconnected";
   dropboxStatus.textContent = "Session Dropbox locale déconnectée. Les copies restent conservées ; l'autorisation Dropbox n'est pas révoquée. Retirez-la dans les applications connectées Dropbox si souhaité.";
   updateDropboxActions();
@@ -2212,9 +2425,11 @@ async function clearSessionFiles() {
     dropboxScanController?.abort();
     if (dropboxScanSettled) await dropboxScanSettled;
     await stopBackgroundScans();
+    await clearDropboxIndexCheckpoints();
+    dropboxResumeCheckpoint = null;
     const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
     for (const doc of [...uploadedDocuments]) {
-      await deleteDocument(doc.id);
+      await deleteDocument(doc.id, { invalidateDropboxCheckpoint: false });
       const index = uploadedDocuments.indexOf(doc);
       if (index !== -1) uploadedDocuments.splice(index, 1);
       refreshExperimentalIndex();
@@ -4512,6 +4727,11 @@ function initUnifiedPhotoResults() {
       }
       try {
         await deleteDocument(id);
+        if (photo.dropboxSource
+          && photo.dropboxAccountFingerprint === dropboxResumeCheckpoint?.accountFingerprint) {
+          dropboxResumeCheckpoint = null;
+          updateDropboxActions();
+        }
         for (let index = uploadedDocuments.length - 1; index >= 0; index -= 1) {
           if (uploadedDocuments[index].id === id) uploadedDocuments.splice(index, 1);
         }
@@ -4826,6 +5046,7 @@ function initDataView(filters = {}) {
       await stopBackgroundScans();
       const shouldRevokeGoogleAccess = Boolean(googleDriveClient?.hasAccessToken);
       await resetState();
+      dropboxResumeCheckpoint = null;
       dropboxAuth?.disconnect();
       dropboxObservation = "disconnected";
       dropboxStatus.textContent = "Données applicatives supprimées et session Dropbox locale déconnectée. Les originaux et l'autorisation chez Dropbox restent inchangés.";
