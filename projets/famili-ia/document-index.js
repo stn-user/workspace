@@ -2,17 +2,46 @@ import { getInventorySource } from "./data-inventory.js";
 import { restoreContentSegments } from "./content-index.js";
 import { createIndexRecord, isValidDate, isValidIndexRecord } from "./index-record.js";
 import { isPhotoDocument } from "./photo-annotations.js";
+import { formatPhotoCoordinatePair, resolvePhotoFact } from "./photo-facts.js";
 import { normalizeAlertDate } from "./alert-engine.js";
 import { parseDocument } from "./document-parser.js";
 
 const PHOTO_DATE_SOURCES = Object.freeze({
   exif: "provider",
+  provider: "provider",
   user: "user-input",
   filename: "auto-estimate",
-  legacy: "auto-estimate"
+  legacy: "auto-estimate",
+  derived: "auto-estimate",
+  model: "auto-estimate"
+});
+
+const PHOTO_FACT_SOURCES = Object.freeze({
+  exif: "extracted",
+  provider: "provider",
+  user: "user-input",
+  filename: "auto-estimate",
+  legacy: "auto-estimate",
+  derived: "auto-estimate",
+  model: "auto-estimate"
 });
 
 function photoCaptureDate(document) {
+  if (document.photoFacts != null) {
+    const { selected } = resolvePhotoFact(document.photoFacts, "captureDate");
+    if (!selected) return null;
+    const source = PHOTO_DATE_SOURCES[selected.provenance.kind];
+    if (!source) return null;
+    return {
+      value: selected.value.localDateTime.slice(0, 10),
+      source,
+      estimated: selected.status === "suggested" || source === "auto-estimate",
+      proof: selected.evidence?.kind === "metadata-field" && selected.evidence.excerpt
+        ? { excerpt: selected.evidence.excerpt, location: null }
+        : null
+    };
+  }
+
   const override = document.photoAnnotations?.captureDateOverride;
   if (override?.localDateTime) {
     return {
@@ -53,6 +82,20 @@ function photoAnnotationFields(document) {
     fields.push({ name: "place", value: annotations.placeLabel, source: "user-input" });
   }
   return fields;
+}
+
+function photoCoordinateFields(document) {
+  if (document.photoFacts == null) return [];
+  const { selected } = resolvePhotoFact(document.photoFacts, "location");
+  if (!selected) return [];
+  const source = PHOTO_FACT_SOURCES[selected.provenance.kind];
+  if (!source) return [];
+  return [{
+    name: "coordinates",
+    value: formatPhotoCoordinatePair(selected.value),
+    source,
+    estimated: selected.status === "suggested" || source === "auto-estimate"
+  }];
 }
 
 function extractedDocumentFields(context) {
@@ -115,7 +158,7 @@ export function preserveUserValues(record, previous) {
       dates[name] = value;
     }
   }
-  const managedAnnotationFields = new Set(["personIds", "eventTag", "place"]);
+  const managedAnnotationFields = new Set(["personIds", "eventTag", "place", "coordinates"]);
   const fields = record.fields.map(field => ({ ...field }));
   for (const field of previous.fields) {
     if (field.source !== "user-input" || managedAnnotationFields.has(field.name)) continue;
@@ -151,7 +194,9 @@ export async function createDocumentIndexRecord(document, { previous = document?
   if (providerModificationDate) {
     dates.modification = { value: providerModificationDate, source: "provider" };
   }
-  let fields = photo ? photoAnnotationFields(document) : [];
+  let fields = photo
+    ? [...photoAnnotationFields(document), ...photoCoordinateFields(document)]
+    : [];
   const capturedAt = photo ? photoCaptureDate(document) : null;
   if (capturedAt) dates.priseDeVue = capturedAt;
 

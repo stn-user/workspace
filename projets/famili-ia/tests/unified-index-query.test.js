@@ -57,6 +57,16 @@ test("maps event, place, capture year, and Famili-IA import-date queries", () =>
   assert.deepEqual(importedQuery.importDateRange, { from: "2024-01-01", to: "2024-12-31" });
 });
 
+test("recherche des coordonnées GPS par paire exacte et rejette les coordonnées invalides", () => {
+  const request = createUnifiedIndexQuery("Photos prises à 48.8566, 2.3522");
+  assert.equal(request.kind, "photo");
+  assert.equal(request.query, "");
+  assert.equal(request.filters.coordinates, "48.8566, 2.3522");
+  assert.ok(request.explanations.some(explanation =>
+    explanation.reason === "explicit-gps-coordinates"));
+  assert.equal(createUnifiedIndexQuery("Photos à 91, 2").clarificationReason, "invalid-coordinates");
+});
+
 test("keeps ordinary terms in the multi-source search and narrows generic photo terms", () => {
   assert.deepEqual(createUnifiedIndexQuery("facture pergola").kind, "keywords");
   assert.deepEqual(createUnifiedIndexQuery("photos avec un chien").query, "chien");

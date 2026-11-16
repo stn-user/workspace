@@ -14,22 +14,22 @@ Cette page distingue les capacités réellement présentes des choix à mettre e
 
 ### Android / Capacitor
 
-- Le projet comprend une cible Android et la dépendance `@capacitor/filesystem`, mais aucun plugin de sélection de photos ou de documents n'est installé ou raccordé.
+- Le projet comprend une cible Android et les plugins `@capacitor/filesystem` et `@capacitor/camera`. Le sélecteur photo système est raccordé au parcours d'import : jusqu'à cinq photos JPEG/PNG choisies explicitement sont lues localement puis soumises aux contrôles de taille et au traitement existants. Le bouton n'est visible que sur Android ; aucune permission générale de photothèque n'est demandée par ce parcours.
 - Le code utilise `Filesystem.Directory.Documents` pour explorer des chemins supposés publics. La documentation Capacitor précise que sur Android 11 et ultérieur, ce répertoire ne donne accès qu'aux fichiers créés par l'application. Le manifeste Android actuel ne déclare pas de permission de lecture des médias ou du stockage. Le parcours de scan actuel ne constitue donc pas un accès fiable aux photos de l'utilisateur.
 - Le lecteur importe les plugins Capacitor Filesystem et OCR natifs ; l'OCR de PDF scannés et d'images peut fournir des segments locaux indexables. Ce raccordement n'a pas encore été validé sur appareil et ne change ni les limites d'accès aux fichiers ni la sélection explicite.
-- Le sélecteur photo système Android est le choix recommandé pour obtenir un accès ponctuel aux seules images sélectionnées, sans permission générale de photothèque. Il n'est pas encore implémenté.
+- La sélection photo est couverte par des tests unitaires pour l'annulation, la limite, les formats et les erreurs de lecture. La synchronisation Capacitor réussit, mais aucune compilation Gradle ni validation sur appareil n'a été effectuée : Java, Android SDK et `adb` ne sont pas configurés dans l'environnement courant.
 - Les fichiers locaux de l'application peuvent être traités sans serveur, mais l'absence de test hors ligne sur appareil et le cas de fournisseurs médias cloud empêchent de promettre une disponibilité hors ligne universelle.
 
 ### iOS
 
-- Aucune cible iOS générée ou configurée n'est présente dans le dépôt. L'accès photo iOS, les permissions, les clés de confidentialité et le comportement hors ligne restent à valider sur une cible réelle.
+- Aucune cible iOS générée ou configurée n'est présente dans le dépôt. Le plugin Camera fournit un sélecteur utilisable côté iOS, mais l'action reste masquée tant que la cible, les descriptions d'usage requises dans `Info.plist` et la validation sur appareil ne sont pas en place.
 - Le plugin Filesystem seul ne constitue pas un sélecteur de photothèque ; ne pas présenter un scan de dossiers iOS comme une fonctionnalité existante.
 
 ## Décision de périmètre pour les photos
 
 1. **Web** : conserver la sélection manuelle explicite comme parcours de base, avec validation réelle du type et de la taille. Prévoir le choix de fichiers, pas l'accès permanent à la photothèque ni un scan automatique en arrière-plan.
-2. **Android** : implémenter ultérieurement un sélecteur système photo à accès limité aux éléments choisis. Ne pas demander de permission générale de lecture des médias pour ce parcours.
-3. **iOS** : ne pas annoncer de prise en charge native avant ajout d'une cible et validation de son sélecteur système et de ses exigences de confidentialité.
+2. **Android** : utiliser le sélecteur système photo raccordé, limité aux éléments choisis. Ne pas demander de permission générale de lecture des médias pour ce parcours ; valider sur appareils avant annonce de disponibilité.
+3. **iOS** : le sélecteur du plugin est disponible à intégrer, mais ne pas annoncer de prise en charge native avant ajout d'une cible, configuration d'`Info.plist` et validation sur appareil.
 4. **Formats initiaux retenus à l'évaluation 15.3.b** : JPEG et PNG, cohérents avec l'import manuel actuel et la couverture déclarée du parseur candidat. HEIC/HEIF et WebP restent hors engagement jusqu'à validation ultérieure sur les cibles visées.
 5. **Hors ligne** : viser un traitement local des images sélectionnées ; qualifier séparément l'ouverture hors ligne de l'application et l'accès aux médias fournis par des services distants.
 
@@ -42,6 +42,7 @@ L'étape 15.3.c a défini le sous-objet versionné `photoMetadata` et ses valida
 Capacités du dépôt vérifiées le 2 novembre 2026 (`index.html`, `app.js`, `local-files.js`, `capacitor.config.json`, `android/app/src/main/AndroidManifest.xml`, `package.json`) :
 
 - [Capacitor Filesystem](https://capacitorjs.com/docs/apis/filesystem) — limites de `Directory.Documents` sur Android 11+, accès `content://` et exigences de confidentialité iOS.
+- [Capacitor Camera](https://capacitorjs.com/docs/apis/camera) — `chooseFromGallery`, formats et sélection multiple ; intégration Android synchronisée, cible iOS absente.
 - [Android Photo Picker](https://developer.android.com/training/data-storage/shared/photopicker) — sélection d'images par l'utilisateur sans accès général à la photothèque ; le sélecteur peut utiliser un fournisseur cloud disponible.
 - [MDN : attribut `accept`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept) — filtre indicatif, ne remplaçant pas la validation.
 - [MDN : `showOpenFilePicker`](https://developer.mozilla.org/en-US/docs/Web/API/Window/showOpenFilePicker) — activation utilisateur requise et disponibilité à détecter ; API non retenue comme seule voie Web.

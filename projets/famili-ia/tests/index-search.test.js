@@ -102,6 +102,25 @@ test("filtres par date et nature, personne annotée et lieu connu", () => {
   ]) assert.throws(() => searchIndex(records, "vacances", options), TypeError);
 });
 
+test("filtre les coordonnées GPS par paire exacte, sans rayon ni approximation", () => {
+  const records = [
+    make("local", "match", {
+      type: "photo",
+      fields: [{ name: "coordinates", value: "48.8566, 2.3522", source: "extracted" }]
+    }),
+    make("local", "nearby", {
+      type: "photo",
+      fields: [{ name: "coordinates", value: "48.8566, 2.3523", source: "extracted" }]
+    })
+  ];
+
+  assert.deepEqual(searchIndex(records, "", {
+    type: "photo",
+    coordinates: "48.8566; 2.3522"
+  }).map(record => record.itemId), ["match"]);
+  assert.throws(() => searchIndex(records, "", { coordinates: "91, 2" }), /Location coordinates are invalid/);
+});
+
 test("rejette requêtes, options, fiches et identités invalides sans collisions de paires", () => {
   const record = make("a|b", "c", { name: name("test") });
   const other = make("a", "b|c", { name: name("test") });

@@ -1,8 +1,10 @@
 import { interpretMomentsLifeQuery } from "./moments-life-query.js";
 import { isPhotoDocument } from "./photo-annotations.js";
+import { normalizePhotoCoordinatePair } from "./photo-facts.js";
 import { normalizeText } from "./search-utils.js";
 
 const PHOTO_INTENT = /\b(?:photo|photos|image|images|souvenir|souvenirs)\b/;
+const COORDINATE_PAIR = /(^|\s)([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*[,;]\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))(?=$|[\s.!?])/u;
 const QUERY_STOP_WORDS = new Set([
   "a", "au", "aux", "avec", "c", "d", "dans", "de", "des", "du", "elle", "en",
   "et", "il", "j", "je", "l", "la", "le", "les", "m", "ma", "mes", "moi",
@@ -93,11 +95,33 @@ export function createUnifiedIndexQuery(query, { members = [], photos = [] } = {
     return { kind: "keywords", query: trimmedQuery, filters: {} };
   }
 
+  const coordinateMatch = COORDINATE_PAIR.exec(trimmedQuery);
+  let coordinates = null;
+  let interpretationQuery = trimmedQuery;
+  let coordinatePhrase = null;
+  if (coordinateMatch) {
+    coordinatePhrase = `${coordinateMatch[2]}, ${coordinateMatch[3]}`;
+    try {
+      coordinates = normalizePhotoCoordinatePair(coordinatePhrase);
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      return {
+        kind: "clarification",
+        query: trimmedQuery,
+        filters: {},
+        clarificationReason: "invalid-coordinates"
+      };
+    }
+    interpretationQuery = trimmedQuery.slice(0, coordinateMatch.index)
+      + coordinateMatch[1]
+      + trimmedQuery.slice(coordinateMatch.index + coordinateMatch[0].length);
+  }
+
   const photoMembers = members
     .filter(member => member && typeof member.id === "string")
     .map(member => ({ ...member, displayName: member.displayName ?? member.name ?? "" }));
   const catalog = getPhotoCatalog(photos);
-  const interpretation = interpretMomentsLifeQuery(trimmedQuery, {
+  const interpretation = interpretMomentsLifeQuery(interpretationQuery, {
     members: photoMembers,
     places: catalog.places,
     events: catalog.events
@@ -114,6 +138,15 @@ export function createUnifiedIndexQuery(query, { members = [], photos = [] } = {
 
   const filters = { type: "photo" };
   const interpreted = interpretation.status === "ready" ? interpretation.filters : {};
+  const explanations = [...interpretation.explanations];
+  if (coordinates) {
+    filters.coordinates = coordinates;
+    explanations.push({
+      filter: "coordinates",
+      phrase: coordinatePhrase,
+      reason: "explicit-gps-coordinates"
+    });
+  }
   if (interpreted.personId) filters.personId = interpreted.personId;
   if (interpreted.placeLabel) filters.place = interpreted.placeLabel;
   if (interpreted.eventTag) filters.eventTag = interpreted.eventTag;
@@ -128,10 +161,10 @@ export function createUnifiedIndexQuery(query, { members = [], photos = [] } = {
 
   return {
     kind: "photo",
-    query: remainingQueryTerms(trimmedQuery, interpretation.explanations),
+    query: remainingQueryTerms(trimmedQuery, explanations),
     filters,
     importDateRange: importedDateRange(interpreted),
-    explanations: interpretation.explanations,
+    explanations,
     profileMismatch
   };
 }
@@ -139,7 +172,7 @@ export function createUnifiedIndexQuery(query, { members = [], photos = [] } = {
 export function mergeUnifiedIndexFilters(parsedFilters, selectedFilters) {
   const merged = { ...selectedFilters };
   for (const [key, value] of Object.entries(parsedFilters)) {
-    if (["sourceId", "type", "coverage", "personId", "place", "eventTag"].includes(key) &&
+    if (["sourceId", "type", "coverage", "personId", "place", "eventTag", "coordinates"].includes(key) &&
         merged[key] !== undefined && normalizeText(merged[key]) !== normalizeText(value)) {
       return null;
     }

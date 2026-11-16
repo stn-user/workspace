@@ -4,6 +4,7 @@ import { GoogleDriveClient, prepareDriveDocumentForIndex } from "./google-drive.
 import { GoogleDriveSource } from "./google-drive-source.js";
 import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
 import { Capacitor } from "@capacitor/core";
+import { selectNativePhotoFiles } from "./native-photo-picker.js";
 import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
 import {
@@ -15,6 +16,7 @@ import {
   clearDropboxIndexCheckpoint, clearDropboxIndexCheckpoints
 } from "./state.js";
 import { redactPhotoLocationsForExport } from "./photo-metadata.js";
+import { redactPhotoFactLocationsForExport } from "./photo-facts.js";
 import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
 import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
 import { getPhotoThumbnailDataUrl } from "./photo-thumbnails.js";
@@ -726,6 +728,7 @@ function getPhotoQueryClarification(reason) {
     "invalid-birth-date": "La date de naissance indiquée n'est pas valide.",
     "age-out-of-range": "L'âge demandé dépasse la plage de dates prise en charge.",
     "place-ambiguous": "Plusieurs lieux correspondent. Précisez le lieu ou vérifiez les annotations.",
+    "invalid-coordinates": "Les coordonnées doivent former une paire latitude/longitude valide.",
     "event-ambiguous": "Plusieurs événements correspondent. Précisez l'événement ou vérifiez les annotations.",
     "season-ambiguous": "Précisez une seule saison."
   };
@@ -2320,6 +2323,32 @@ document.querySelector("#choose-local-files-native").addEventListener("click", (
   sourceChoiceDialog.close();
   localFilesInput.click();
 });
+
+const chooseNativePhotosButton = document.querySelector("#choose-native-photos");
+if (chooseNativePhotosButton) {
+  chooseNativePhotosButton.hidden = Capacitor.getPlatform() !== "android";
+  chooseNativePhotosButton.addEventListener("click", async () => {
+    sourceChoiceDialog.close();
+    if (removingSessionFiles) {
+      setFileStatus("La suppression est en cours ; réessayez ensuite.", "error");
+      return;
+    }
+    chooseNativePhotosButton.disabled = true;
+    try {
+      const files = await selectNativePhotoFiles();
+      if (files.length === 0) {
+        setFileStatus("Aucune photo sélectionnée.", "success");
+        return;
+      }
+      await loadLocalFiles(files, null);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Erreur non détaillée.";
+      setFileStatus(`La sélection de photos a échoué : ${reason}`, "error");
+    } finally {
+      chooseNativePhotosButton.disabled = false;
+    }
+  });
+}
 
 connectGoogleDriveButton.addEventListener("click", async () => {
   sourceChoiceDialog.close();
@@ -4790,7 +4819,9 @@ function initUnifiedPhotoResults() {
     document.querySelector('#moments-life-search').hidden = !photos.length && request.kind !== 'photo';
     if (!photos.length) {
       status.textContent = request.kind === 'photo'
-        ? "Aucune photo ne correspond à ces critères parmi les photos indexées dans Famili-IA."
+        ? request.filters?.coordinates
+          ? "Aucune photo ne correspond à ces coordonnées. La recherche GPS ne couvre que les coordonnées présentes dans les métadonnées des photos indexées avec le consentement actif."
+          : "Aucune photo ne correspond à ces critères parmi les photos indexées dans Famili-IA."
         : "";
       return;
     }
@@ -4959,7 +4990,7 @@ function initDataView(filters = {}) {
   const exportBtn = document.querySelector('#export-all-data');
   if (exportBtn) {
     exportBtn.addEventListener('click', () => {
-      const dataToExport = redactPhotoLocationsForExport(getFullState());
+      const dataToExport = redactPhotoFactLocationsForExport(redactPhotoLocationsForExport(getFullState()));
       const dataStr = JSON.stringify(dataToExport, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -4976,7 +5007,7 @@ function initDataView(filters = {}) {
   const pdfExportBtn = document.querySelector('#export-pdf-data');
   if (pdfExportBtn) {
     pdfExportBtn.addEventListener('click', () => {
-      const dataToExport = redactPhotoLocationsForExport(getFullState());
+      const dataToExport = redactPhotoFactLocationsForExport(redactPhotoLocationsForExport(getFullState()));
       dataToExport.documents = dataToExport.documents.map(document => {
         const exportedDocument = { ...document };
         delete exportedDocument.photoThumbnail;

@@ -1,4 +1,5 @@
 import { interpretMomentsLifeQuery } from "./moments-life-query.js";
+import { resolvePhotoFact } from "./photo-facts.js";
 
 function normalizeText(value) {
   return String(value ?? "")
@@ -22,11 +23,26 @@ function isValidDate(value) {
   return day >= 1 && day <= daysInMonth[month - 1];
 }
 
+function getCaptureDateEvidence(photo) {
+  if (photo.photoFacts != null) {
+    const resolution = resolvePhotoFact(photo.photoFacts, "captureDate");
+    return {
+      value: resolution.selected?.value ?? null,
+      source: resolution.selected?.provenance.kind ?? null,
+      conflictingFactIds: resolution.conflictingFactIds
+    };
+  }
+  const override = photo.photoAnnotations?.captureDateOverride;
+  const captureDate = override ?? photo.photoMetadata?.captureDate ?? photo.capturedAt ?? null;
+  return {
+    value: captureDate,
+    source: override?.source ?? captureDate?.source?.kind ?? (photo.capturedAt ? "legacy" : null),
+    conflictingFactIds: []
+  };
+}
+
 function getCaptureDate(photo) {
-  const value = photo.photoAnnotations?.captureDateOverride?.localDateTime
-    ?? photo.photoMetadata?.captureDate?.localDateTime
-    ?? photo.capturedAt?.localDateTime
-    ?? null;
+  const value = getCaptureDateEvidence(photo).value?.localDateTime ?? null;
   const date = typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value) ? value.slice(0, 10) : null;
   return isValidDate(date) ? date : null;
 }
@@ -128,19 +144,23 @@ function getConfidence(photo, filters) {
 
   const captureFilters = ["captureYear", "captureLocalDate", "captureDateStart", "captureDateEndExclusive"];
   if (captureFilters.some(filter => filters[filter] !== undefined)) {
-    const userOverride = photo.photoAnnotations?.captureDateOverride;
-    const captureDate = userOverride ?? photo.photoMetadata?.captureDate ?? null;
-    const source = userOverride?.source ?? captureDate?.source?.kind;
-    if (source === "exif" && Number.isInteger(captureDate.offsetMinutes)) {
-      reasons.push("La date de prise de vue vient des métadonnées EXIF avec un fuseau connu.");
-    } else if (source === "exif") {
+    const captureEvidence = getCaptureDateEvidence(photo);
+    const { source } = captureEvidence;
+    const captureDate = captureEvidence.value;
+    if (captureEvidence.conflictingFactIds.length) {
       lowerConfidence("medium");
-      reasons.push("La date de prise de vue vient des métadonnées EXIF, mais son fuseau est inconnu.");
+      reasons.push("Des dates de prise de vue contradictoires restent à vérifier.");
+    }
+    if (["exif", "provider"].includes(source) && Number.isInteger(captureDate?.offsetMinutes)) {
+      reasons.push("La date de prise de vue vient des métadonnées avec un fuseau connu.");
+    } else if (["exif", "provider"].includes(source)) {
+      lowerConfidence("medium");
+      reasons.push("La date de prise de vue vient des métadonnées, mais son fuseau est inconnu.");
     } else if (source === "user") {
       reasons.push("La date de prise de vue a été corrigée manuellement.");
-    } else if (source === "legacy" || photo.capturedAt?.localDateTime) {
+    } else if (["legacy", "filename", "derived", "model"].includes(source) || photo.capturedAt?.localDateTime) {
       lowerConfidence("medium");
-      reasons.push("La date de prise de vue provient de données anciennes ou sans provenance détaillée.");
+      reasons.push("La date de prise de vue provient de données anciennes, estimées ou en attente de vérification.");
     } else {
       lowerConfidence("low");
       reasons.push("La provenance de la date de prise de vue est inconnue.");

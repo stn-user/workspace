@@ -40,3 +40,163 @@ test("DOCX local : le lecteur navigateur extrait un fait sourcé", async ({ page
   expect(result.amount).toBe("61.00 EUR");
   expect(result.dueDate).toBe("2027-01-01");
 });
+
+test("photo locale : les faits EXIF persistent et restent recherchables après rechargement", async ({ page }) => {
+  const ready = page.waitForEvent("console", message => message.text().includes("Async init - COMPLETE"));
+  await page.goto("http://127.0.0.1:5179/#/recherche");
+  await ready;
+  await page.evaluate(async () => {
+    const { addDocument, updatePhotoLocationConsent } = await import("/state.js");
+    const { createPhotoMetadata } = await import("/photo-metadata.js");
+    const { createPhotoFactSet, photoFactSetFromDocument } = await import("/photo-facts.js");
+    const id = "browser-photo-facts";
+    await updatePhotoLocationConsent(false);
+    await addDocument({
+      id: "browser-photo-no-consent",
+      type: "Image",
+      name: "photo-sans-consentement.jpg",
+      isLocal: true,
+      photoMetadata: createPhotoMetadata("browser-photo-no-consent", {
+        location: {
+          status: "available",
+          latitude: 48.8566,
+          longitude: 2.3522,
+          source: { kind: "exif", field: "GPS" }
+        }
+      })
+    });
+    await updatePhotoLocationConsent(true);
+    const document = {
+      id,
+      type: "Image",
+      name: "photo-fictive.jpg",
+      isLocal: true,
+      importedAt: "2026-11-15T10:00:00.000Z",
+      photoMetadata: createPhotoMetadata(id, {
+        location: {
+          status: "available",
+          latitude: 48.8566,
+          longitude: 2.3522,
+          source: { kind: "exif", field: "GPS" }
+        },
+        captureDate: {
+          raw: "2023:06:15 12:00:00+02:00",
+          localDateTime: "2023-06-15T12:00:00",
+          offsetMinutes: 120,
+          source: { kind: "exif", field: "DateTimeOriginal" }
+        }
+      }),
+      photoAnnotations: {
+        schemaVersion: 1,
+        personIds: ["member-alex"],
+        eventTags: [],
+        captureDateOverride: null,
+        placeLabel: null,
+        placeSource: null,
+        source: "user"
+      }
+    };
+    const initialFacts = photoFactSetFromDocument(document, { includeLocation: true });
+    const gps = initialFacts.facts.find(fact => fact.kind === "location");
+    document.photoFacts = createPhotoFactSet(id, {
+      contentHash: initialFacts.contentHash,
+      sourceCopies: initialFacts.sourceCopies,
+      dates: initialFacts.dates,
+      facts: [...initialFacts.facts, {
+        id: "browser-derived-place",
+        kind: "place",
+        value: { label: "Lieu dérivé fictif" },
+        status: "suggested",
+        provenance: { kind: "derived", field: "testReverseGeocode" },
+        evidence: null,
+        analyzedAt: null,
+        review: null,
+        dependsOnFactIds: [gps.id]
+      }]
+    });
+    await addDocument(document);
+  });
+
+  const reloaded = page.waitForEvent("console", message => message.text().includes("Async init - COMPLETE"));
+  await page.reload();
+  await reloaded;
+  await page.locator("#experimental-index-query").fill("Photos prises à 48.8566, 2.3522");
+  await page.locator("#experimental-index-form .submit-button").click();
+  await expect(page.locator("#moments-life-search-status")).toContainText("1 photo trouvée");
+  await expect(page.locator("#moments-life-search-results")).toContainText("photo-fictive.jpg");
+  const result = await page.evaluate(async () => {
+    const { getAll } = await import("/db.js");
+    const { searchMomentsLife } = await import("/moments-life-search.js");
+    const { createUnifiedIndexQuery } = await import("/unified-index-query.js");
+    const { searchIndex } = await import("/index-search.js");
+    const { redactPhotoLocationsForExport } = await import("/photo-metadata.js");
+    const { redactPhotoFactLocationsForExport } = await import("/photo-facts.js");
+    const documents = await getAll("documents");
+    const photo = documents.find(document => document.id === "browser-photo-facts");
+    const photoWithoutConsent = documents.find(document => document.id === "browser-photo-no-consent");
+    const search = searchMomentsLife("Les photos d'Alex du 15 juin 2023", {
+      photos: [photo],
+      members: [{ id: "member-alex", name: "Alex" }]
+    });
+    const coordinateRequest = createUnifiedIndexQuery("Photos prises à 48.8566, 2.3522");
+    const coordinateMatches = searchIndex([photo.indexRecord], coordinateRequest.query, coordinateRequest.filters);
+    const exported = redactPhotoFactLocationsForExport(redactPhotoLocationsForExport({
+      documents: [photo]
+    })).documents[0];
+    return {
+      factDate: photo.photoFacts.facts.find(fact => fact.kind === "captureDate")?.value.localDateTime,
+      indexDate: photo.indexRecord.dates.priseDeVue?.value,
+      indexedCoordinates: photo.indexRecord.fields.find(field => field.name === "coordinates")?.value,
+      locationStoredWithConsent: photo.photoFacts.facts.some(fact => fact.kind === "location"),
+      derivedLocationStored: photo.photoFacts.facts.some(fact => fact.id === "browser-derived-place"),
+      locationNotStoredWithoutConsent: photoWithoutConsent.photoMetadata.location.status === "cleared"
+        && !photoWithoutConsent.photoFacts.facts.some(fact => fact.kind === "location")
+        && !photoWithoutConsent.indexRecord.fields.some(field => field.name === "coordinates"),
+      coordinateSearchMatches: coordinateMatches.map(match => match.itemId),
+      exportRedactsCoordinates: !exported.photoFacts.facts.some(fact => fact.kind === "location")
+        && !exported.indexRecord.fields.some(field => field.name === "coordinates"),
+      searchStatus: search.status,
+      matchedIds: search.results.map(result => result.photo.id)
+    };
+  });
+
+  expect(result).toEqual({
+    factDate: "2023-06-15T12:00:00",
+    indexDate: "2023-06-15",
+    indexedCoordinates: "48.8566, 2.3522",
+    locationStoredWithConsent: true,
+    derivedLocationStored: true,
+    locationNotStoredWithoutConsent: true,
+    coordinateSearchMatches: ["browser-photo-facts"],
+    exportRedactsCoordinates: true,
+    searchStatus: "results",
+    matchedIds: ["browser-photo-facts"]
+  });
+  const revoked = await page.evaluate(async () => {
+    const { updatePhotoLocationConsent } = await import("/state.js");
+    const { getAll } = await import("/db.js");
+    await updatePhotoLocationConsent(false);
+    const photo = (await getAll("documents")).find(document => document.id === "browser-photo-facts");
+    return {
+      locationStatus: photo.photoMetadata.location.status,
+      locationFactCount: photo.photoFacts.facts.filter(fact => fact.kind === "location").length,
+      indexedCoordinateCount: photo.indexRecord.fields.filter(field => field.name === "coordinates").length,
+      derivedPlacePresent: photo.photoFacts.facts.some(fact => fact.id === "browser-derived-place"),
+      captureDatePresent: photo.photoFacts.facts.some(fact => fact.kind === "captureDate")
+    };
+  });
+  expect(revoked).toEqual({
+    locationStatus: "cleared",
+    locationFactCount: 0,
+    indexedCoordinateCount: 0,
+    derivedPlacePresent: false,
+    captureDatePresent: true
+  });
+  const afterRevocation = page.waitForEvent("console", message => message.text().includes("Async init - COMPLETE"));
+  await page.reload();
+  await afterRevocation;
+  await page.locator("#experimental-index-query").fill("Photos prises à 48.8566, 2.3522");
+  await page.locator("#experimental-index-form .submit-button").click();
+  await expect(page.locator("#moments-life-search-status"))
+    .toContainText("avec le consentement actif");
+});

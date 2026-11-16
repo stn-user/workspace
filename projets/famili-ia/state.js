@@ -5,6 +5,7 @@
 import { get, getAll, put, initDB, remove, purgeDatabase } from './db.js';
 import { generateAlertForDoc, getAlertLevelForDate, normalizeAlertNotificationPreferences, refreshAlerts } from './alert-engine.js';
 import { createPhotoMetadata, mergePhotoMetadata, normalizePhotoDocument } from './photo-metadata.js';
+import { reconcilePhotoFactSet, removePhotoFactsAndDependents } from './photo-facts.js';
 import { normalizeOptionalBirthDate } from './family-members.js';
 import { isPhotoDocument, normalizePhotoAnnotations, removePhotoMemberAssociation } from './photo-annotations.js';
 import { createDocumentIndexRecord } from './document-index.js';
@@ -121,6 +122,20 @@ const defaultState = {
 
 let state = { ...defaultState };
 
+function clearPhotoLocation(document, field) {
+  if (document.photoMetadata?.location?.status !== "available") return document;
+  const clearedMetadata = createPhotoMetadata(document.id, {
+    location: {
+      status: "cleared",
+      source: { kind: "user", field }
+    }
+  });
+  return {
+    ...document,
+    photoMetadata: mergePhotoMetadata(document.photoMetadata, clearedMetadata)
+  };
+}
+
 /**
  * Initialise l'état depuis IndexedDB ou peuple avec les défauts
  */
@@ -149,6 +164,44 @@ export async function initState() {
     }
     documentIndexMigrationInProgress = true;
     const indexedDocuments = await migrateDocumentIndexes(documents, document => put('documents', document));
+    const includePhotoLocation = users[0]?.privacy?.photoLocationConsent === true;
+    const photoFactDocuments = [];
+    for (const document of indexedDocuments) {
+      if (!isPhotoDocument(document)) {
+        photoFactDocuments.push(document);
+        continue;
+      }
+      try {
+        const photoFacts = reconcilePhotoFactSet(document.photoFacts, document, {
+          includeLocation: includePhotoLocation
+        });
+        const updatedDocument = { ...document, photoFacts };
+        updatedDocument.indexRecord = await createDocumentIndexRecord(updatedDocument);
+        if (JSON.stringify(document.photoFacts ?? null) !== JSON.stringify(photoFacts)) {
+          await put('documents', updatedDocument);
+        } else if (JSON.stringify(document.indexRecord ?? null) !== JSON.stringify(updatedDocument.indexRecord)) {
+          await put('documents', updatedDocument);
+        }
+        photoFactDocuments.push(updatedDocument);
+      } catch (error) {
+        console.error(`Faits photo invalides pour le document ${document.id}:`, error);
+        const recoverableDocument = { ...document };
+        delete recoverableDocument.photoFacts;
+        try {
+          const photoFacts = reconcilePhotoFactSet(null, recoverableDocument, {
+            includeLocation: includePhotoLocation
+          });
+          const recoveredDocument = { ...recoverableDocument, photoFacts };
+          recoveredDocument.indexRecord = await createDocumentIndexRecord(recoveredDocument);
+          await put('documents', recoveredDocument);
+          photoFactDocuments.push(recoveredDocument);
+        } catch (recoveryError) {
+          console.error(`Impossible de reconstruire les faits photo du document ${document.id}:`, recoveryError);
+          await put('documents', recoverableDocument);
+          photoFactDocuments.push(recoverableDocument);
+        }
+      }
+    }
     documentIndexMigrationInProgress = false;
 
     if (family.length > 0) state.family = family;
@@ -166,12 +219,12 @@ export async function initState() {
     if (users.length > 0) state.currentUser = users[0];
     else await put('users', defaultState.currentUser);
 
-    state.documents = indexedDocuments;
+    state.documents = photoFactDocuments;
     if (state.currentUser.privacy?.photoLocationConsent !== true
-      && indexedDocuments.some(document => document.photoMetadata?.location?.status === "available")) {
+      && photoFactDocuments.some(document => document.photoMetadata?.location?.status === "available")) {
       await updatePhotoLocationConsent(false);
     }
-    await synchronizeDocumentAlerts(indexedDocuments);
+    await synchronizeDocumentAlerts(photoFactDocuments);
 
   } catch (e) {
     console.error('Erreur lors de l\'initialisation IndexedDB:', e);
@@ -239,6 +292,10 @@ export async function deleteFamilyMember(id) {
     if (!isPhotoDocument(document) || !document.photoAnnotations?.personIds?.includes(id)) continue;
     const photoAnnotations = removePhotoMemberAssociation(document.photoAnnotations, id, validMemberIds);
     const updatedDocument = { ...document, photoAnnotations };
+    updatedDocument.photoFacts = reconcilePhotoFactSet(document.photoFacts, updatedDocument, {
+      includeLocation: state.currentUser.privacy?.photoLocationConsent === true
+    });
+    updatedDocument.indexRecord = await createDocumentIndexRecord(updatedDocument);
     await put('documents', updatedDocument);
     updatedDocuments.push(updatedDocument);
   }
@@ -262,6 +319,9 @@ export async function updatePhotoAnnotations(documentId, annotations) {
     state.family.map(member => member.id)
   );
   const updatedDocument = { ...state.documents[index], photoAnnotations };
+  updatedDocument.photoFacts = reconcilePhotoFactSet(updatedDocument.photoFacts, updatedDocument, {
+    includeLocation: state.currentUser.privacy?.photoLocationConsent === true
+  });
   updatedDocument.indexRecord = await createDocumentIndexRecord(updatedDocument);
   await put('documents', updatedDocument);
   state.documents[index] = updatedDocument;
@@ -291,7 +351,20 @@ export async function deleteEquipment(id) {
 
 export async function addDocument(document) {
   document = normalizePhotoDocument(document);
+  if (isPhotoDocument(document)) {
+    if (state.currentUser.privacy?.photoLocationConsent !== true) {
+      document = clearPhotoLocation(document, "photoLocationConsentNotGranted");
+    }
+    document.photoFacts = reconcilePhotoFactSet(document.photoFacts, document, {
+      includeLocation: state.currentUser.privacy?.photoLocationConsent === true
+    });
+  }
   document.indexRecord = await createDocumentIndexRecord(document);
+  if (isPhotoDocument(document)) {
+    document.photoFacts = reconcilePhotoFactSet(document.photoFacts, document, {
+      includeLocation: state.currentUser.privacy?.photoLocationConsent === true
+    });
+  }
   const existingIndex = state.documents.findIndex(existing => existing.id === document.id);
   await put('documents', document);
   if (existingIndex === -1) state.documents.push(document);
@@ -435,20 +508,24 @@ export async function updatePhotoLocationConsent(enabled) {
 
   const documentsWithLocation = state.documents.filter(
     document => document.photoMetadata?.location?.status === "available"
+      || document.photoFacts?.facts?.some(fact => fact.kind === "location")
   );
   if (!state.currentUser.privacy?.photoLocationConsent && documentsWithLocation.length === 0) return false;
 
   for (const document of documentsWithLocation) {
-    const clearedMetadata = createPhotoMetadata(document.id, {
-      location: {
-        status: "cleared",
-        source: { kind: "user", field: "photoLocationConsentRevoked" }
+    let updatedDocument = clearPhotoLocation(document, "photoLocationConsentRevoked");
+    if (Array.isArray(document.photoFacts?.facts)) {
+      const locationIds = document.photoFacts.facts
+        .filter(fact => fact.kind === "location")
+        .map(fact => fact.id);
+      if (locationIds.length) {
+        updatedDocument = {
+          ...updatedDocument,
+          photoFacts: removePhotoFactsAndDependents(document.photoFacts, locationIds)
+        };
       }
-    });
-    const updatedDocument = {
-      ...document,
-      photoMetadata: mergePhotoMetadata(document.photoMetadata, clearedMetadata)
-    };
+    }
+    updatedDocument.indexRecord = await createDocumentIndexRecord(updatedDocument);
     await put('documents', updatedDocument);
     state.documents[state.documents.indexOf(document)] = updatedDocument;
   }

@@ -193,6 +193,39 @@ test("Dropbox : reprise locale explicite après rechargement, réservée au mêm
   expect(mock.errors).toEqual([]);
 });
 
+test("Dropbox : supprimer une copie invalide le point de reprise du compte", async ({ page, context }) => {
+  const mock = await setup({ page, context });
+  await connect(page);
+  let releaseContinue;
+  mock.holdContinue(new Promise(resolve => { releaseContinue = resolve; }));
+  await page.locator("#start-dropbox").click();
+  await expect.poll(() => mock.calls.filter(path => path === "/2/files/list_folder/continue").length).toBe(1);
+  await expect.poll(async () => (await checkpoints(page)).length).toBe(1);
+  const [document] = await documents(page);
+  expect(document.dropboxSource).toBe(true);
+
+  await page.locator("#stop-dropbox").click();
+  releaseContinue();
+  mock.holdContinue(null);
+  await expect(page.locator("#dropbox-status")).toContainText("Indexation Dropbox arrêtée");
+  await page.evaluate(async id => (await import("/state.js")).deleteDocument(id), document.id);
+  expect(await documents(page)).toEqual([]);
+  expect(await checkpoints(page)).toEqual([]);
+
+  const initialized = page.waitForEvent("console", message => message.text().includes("Async init - COMPLETE"));
+  await page.reload();
+  await initialized;
+  await page.getByRole("button", { name: "Options Dropbox", exact: true }).click();
+  await connect(page);
+  await expect(page.locator("#resume-dropbox")).toBeHidden();
+  expect(mock.calls.filter(path => path === "/2/files/list_folder")).toHaveLength(1);
+  await page.locator("#start-dropbox").click();
+  await expect(page.locator("#dropbox-status")).toContainText("Parcours Dropbox terminé");
+  expect(mock.calls.filter(path => path === "/2/files/list_folder")).toHaveLength(2);
+  expect(await documents(page)).toHaveLength(2);
+  expect(mock.errors).toEqual([]);
+});
+
 test("Dropbox : migration IndexedDB ajoute les points de reprise sans perdre les copies existantes", async ({ page }) => {
   await page.goto(`${origin}/dropbox-redirect.html`);
   await page.evaluate(() => new Promise((resolve, reject) => {

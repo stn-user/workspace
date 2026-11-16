@@ -5,6 +5,7 @@ import {
   getTimelineDateLabel,
   groupPhotosForTimeline
 } from "../photo-timeline.js";
+import { createPhotoFactSet } from "../photo-facts.js";
 
 function result(id, photo = {}) {
   return { rank: 1, photo: { id, ...photo } };
@@ -98,6 +99,54 @@ test("labels legacy dates as estimated and EXIF dates with unknown timezone expl
   assert.equal(manual.timezoneUnknown, false);
   assert.equal(manual.estimated, false);
   assert.match(getTimelineDateLabel(manual), /saisie manuellement/);
+});
+
+test("timeline respects persisted fact conflicts and uses an explicit correction", () => {
+  const dateFact = (id, localDateTime, status, provenance, review = null) => ({
+    id,
+    kind: "captureDate",
+    value: { raw: null, localDateTime, offsetMinutes: null },
+    status,
+    provenance,
+    evidence: provenance.kind === "user" ? null : {
+      kind: "metadata-field", field: provenance.field, excerpt: null
+    },
+    analyzedAt: null,
+    review,
+    dependsOnFactIds: []
+  });
+  const corrected = getPhotoTimelineDateInfo({
+    id: "timeline-corrected",
+    photoFacts: createPhotoFactSet("timeline-corrected", {
+      facts: [
+        dateFact("exif-date", "2024-06-01T10:00:00", "extracted", {
+          kind: "exif", field: "DateTimeOriginal"
+        }),
+        dateFact("user-date", "2024-06-02T10:00:00", "confirmed", {
+          kind: "user", field: "manualCorrection"
+        }, { by: "user", at: null })
+      ]
+    })
+  });
+  const unresolved = getPhotoTimelineDateInfo({
+    id: "timeline-unresolved",
+    photoFacts: createPhotoFactSet("timeline-unresolved", {
+      facts: [
+        dateFact("exif-date", "2024-06-01T10:00:00", "extracted", {
+          kind: "exif", field: "DateTimeOriginal"
+        }),
+        dateFact("provider-date", "2024-06-02T10:00:00", "extracted", {
+          kind: "provider", field: "takenDateTime", providerId: "onedrive", itemId: "stable-photo"
+        })
+      ]
+    })
+  });
+
+  assert.equal(corrected.localDate, "2024-06-02");
+  assert.equal(corrected.conflict, true);
+  assert.match(getTimelineDateLabel(corrected), /Dates contradictoires/);
+  assert.equal(unresolved.localDate, null);
+  assert.match(getTimelineDateLabel(unresolved), /à vérifier/);
 });
 
 test("groups each photo under one explicit event and keeps other event labels on its result", () => {

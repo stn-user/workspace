@@ -9,6 +9,8 @@ import {
   momentsLifeMembers,
   momentsLifePhotos
 } from "./moments-life-corpus.js";
+import { createPhotoFactSet, photoFactSetFromDocument } from "../photo-facts.js";
+import { createPhotoMetadata } from "../photo-metadata.js";
 
 const photos = momentsLifePhotos.map(photo => ({
   ...photo,
@@ -162,6 +164,66 @@ test("re-runs locally against user-corrected annotations and capture date withou
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("recherche la date persistée, privilégie la correction et signale les contradictions", () => {
+  const document = {
+    id: "photo-facts-search",
+    type: "Image",
+    photoAnnotations: {
+      source: "user",
+      personIds: ["member-alex"],
+      eventTags: [],
+      captureDateOverride: {
+        localDateTime: "2023-06-15T10:00:00",
+        offsetMinutes: null,
+        source: "user"
+      }
+    },
+    photoMetadata: createPhotoMetadata("photo-facts-search", {
+      captureDate: {
+        raw: "2022:01:01 10:00:00",
+        localDateTime: "2022-01-01T10:00:00",
+        offsetMinutes: null,
+        source: { kind: "exif", field: "DateTimeOriginal" }
+      }
+    })
+  };
+  const photo = { ...document, photoFacts: photoFactSetFromDocument(document) };
+  const corrected = searchMomentsLife("Les photos d'Alex du 15 juin 2023", {
+    photos: [photo],
+    members: [{ id: "member-alex", name: "Alex" }]
+  });
+  assert.equal(corrected.status, "results");
+  assert.equal(corrected.results[0].confidence.level, "medium");
+  assert.ok(corrected.results[0].confidence.reasons.some(reason => reason.includes("contradictoires")));
+
+  const dateFact = (id, localDateTime, provenance) => ({
+    id,
+    kind: "captureDate",
+    value: { raw: null, localDateTime, offsetMinutes: null },
+    status: "extracted",
+    provenance,
+    evidence: { kind: "metadata-field", field: provenance.field, excerpt: null },
+    analyzedAt: null,
+    review: null,
+    dependsOnFactIds: []
+  });
+  const unresolved = {
+    id: "photo-unresolved-facts",
+    photoFacts: createPhotoFactSet("photo-unresolved-facts", {
+      facts: [
+        dateFact("exif-date", "2023-06-15T10:00:00", { kind: "exif", field: "DateTimeOriginal" }),
+        dateFact("provider-date", "2023-06-15T11:00:00", {
+          kind: "provider", field: "takenDateTime", providerId: "onedrive", itemId: "photo-item"
+        })
+      ]
+    })
+  };
+  assert.equal(searchMomentsLife("Les photos d'Alex du 15 juin 2023", {
+    photos: [{ ...unresolved, photoAnnotations: { source: "user", personIds: ["member-alex"] } }],
+    members: [{ id: "member-alex", name: "Alex" }]
+  }).status, "not-found");
 });
 
 test("meets the 15.4.a deterministic search thresholds on the synthetic corpus", () => {

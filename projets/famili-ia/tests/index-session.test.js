@@ -208,3 +208,26 @@ test("les filtres avancés s'appliquent aux résultats de texte comme aux fiches
   assert.equal(session.search("souvenir", { dateType: "priseDeVue", dateFrom: "2024-01-01" }).length, 1);
   assert.deepEqual(session.search("souvenir", { dateType: "echeance" }), []);
 });
+
+test("recherche GPS : les coordonnées EXIF restent indexées sans copie textuelle vérifiée", () => {
+  const photo = {
+    id: "photo-gps-metadata",
+    name: "photo.jpg",
+    type: "Image",
+    isLocal: true,
+    indexRecord: createIndexRecord("local", "photo-gps-metadata", {
+      type: "photo",
+      name: { value: "photo.jpg", source: "provider" },
+      coverage: "metadata",
+      fields: [{ name: "coordinates", value: "48.8566, 2.3522", source: "extracted" }]
+    })
+  };
+  const session = new IndexSession();
+
+  session.syncDocuments([photo]);
+
+  assert.equal(session.search("", {
+    type: "photo",
+    coordinates: "48.8566, 2.3522"
+  }).length, 1);
+});

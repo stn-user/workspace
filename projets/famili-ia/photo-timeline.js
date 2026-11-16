@@ -1,3 +1,5 @@
+import { resolvePhotoFact } from "./photo-facts.js";
+
 function parseLocalDateTime(value) {
   if (typeof value !== "string") return null;
   const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?$/.exec(value);
@@ -20,30 +22,57 @@ function parseLocalDateTime(value) {
 
 export function getPhotoTimelineDateInfo(photo) {
   const annotations = photo?.photoAnnotations;
-  const override = annotations?.captureDateOverride;
-  const metadataDate = photo?.photoMetadata?.captureDate;
-  const legacyDate = photo?.capturedAt;
-  const candidate = override?.localDateTime
-    ? { value: override.localDateTime, source: override.source || "user", offsetMinutes: override.offsetMinutes ?? null }
-    : metadataDate?.localDateTime
-      ? { value: metadataDate.localDateTime, source: metadataDate.source?.kind || null, offsetMinutes: metadataDate.offsetMinutes ?? null }
-      : legacyDate?.localDateTime
-        ? { value: legacyDate.localDateTime, source: "legacy", offsetMinutes: null }
-        : null;
+  let conflict = false;
+  let candidate;
+  if (photo?.photoFacts != null) {
+    const resolution = resolvePhotoFact(photo.photoFacts, "captureDate");
+    conflict = resolution.conflictingFactIds.length > 0;
+    candidate = resolution.selected
+      ? {
+        value: resolution.selected.value.localDateTime,
+        source: resolution.selected.provenance.kind,
+        offsetMinutes: resolution.selected.value.offsetMinutes,
+        status: resolution.selected.status
+      }
+      : null;
+    if (!candidate && conflict) {
+      return {
+        localDate: null,
+        source: null,
+        offsetMinutes: null,
+        estimated: false,
+        timezoneUnknown: false,
+        conflict: true
+      };
+    }
+  } else {
+    const override = annotations?.captureDateOverride;
+    const metadataDate = photo?.photoMetadata?.captureDate;
+    const legacyDate = photo?.capturedAt;
+    candidate = override?.localDateTime
+      ? { value: override.localDateTime, source: override.source || "user", offsetMinutes: override.offsetMinutes ?? null }
+      : metadataDate?.localDateTime
+        ? { value: metadataDate.localDateTime, source: metadataDate.source?.kind || null, offsetMinutes: metadataDate.offsetMinutes ?? null }
+        : legacyDate?.localDateTime
+          ? { value: legacyDate.localDateTime, source: "legacy", offsetMinutes: null }
+          : null;
+  }
 
   if (!candidate) return null;
   const localDate = parseLocalDateTime(candidate.value);
   if (!localDate) return null;
-  const estimated = !["exif", "user"].includes(candidate.source);
-  const validExifOffset = Number.isInteger(candidate.offsetMinutes)
+  const estimated = candidate.status === "suggested" || !["exif", "provider", "user"].includes(candidate.source);
+  const validTimezoneOffset = Number.isInteger(candidate.offsetMinutes)
     && Math.abs(candidate.offsetMinutes) <= 14 * 60;
-  const timezoneUnknown = candidate.source === "exif" && !validExifOffset;
+  const timezoneUnknown = ["exif", "provider"].includes(candidate.source) && !validTimezoneOffset;
   return {
     localDate,
     source: candidate.source,
-    offsetMinutes: candidate.source === "exif" && validExifOffset ? candidate.offsetMinutes : null,
+    offsetMinutes: ["exif", "provider"].includes(candidate.source) && validTimezoneOffset
+      ? candidate.offsetMinutes : null,
     estimated,
-    timezoneUnknown
+    timezoneUnknown,
+    conflict
   };
 }
 
@@ -145,9 +174,15 @@ export function groupPhotosForTimeline(results, grouping = "day") {
 
 export function getTimelineDateLabel(dateInfo) {
   if (!dateInfo) return "Date de prise de vue indisponible";
+  if (!dateInfo.localDate && dateInfo.conflict) return "Dates contradictoires · prise de vue à vérifier";
+  if (dateInfo.conflict) return `Dates contradictoires · ${dateInfo.localDate}`;
   if (dateInfo.estimated) return `Date estimée · ${dateInfo.localDate}`;
-  if (dateInfo.timezoneUnknown) return `Date EXIF · fuseau inconnu · ${dateInfo.localDate}`;
+  if (dateInfo.timezoneUnknown) {
+    const source = dateInfo.source === "provider" ? "fournisseur" : "EXIF";
+    return `Date ${source} · fuseau inconnu · ${dateInfo.localDate}`;
+  }
   if (dateInfo.source === "user") return `Date locale saisie manuellement · ${dateInfo.localDate}`;
   if (dateInfo.source === "exif") return `Date EXIF · ${dateInfo.localDate}`;
+  if (dateInfo.source === "provider") return `Date fournisseur · ${dateInfo.localDate}`;
   return `Date de prise de vue · ${dateInfo.localDate}`;
 }

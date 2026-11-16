@@ -28,6 +28,8 @@ Cette note est un cadrage technique fondé sur la documentation Google, pas un a
 
 **Orientation retenue pour le MVP (8 octobre 2026) :** commencer avec Google Picker et l’accès limité aux fichiers choisis (`drive.file`), sans recherche automatique dans tout le Drive. Les méthodes API, formats et exigences OAuth doivent être validés avant tout pilote ou traitement de données personnelles ; une preuve de développement peut uniquement tester le flux web avec des fichiers synthétiques explicitement sélectionnés et le scope minimal.
 
+**État d’implémentation :** le code continue de demander uniquement `drive.file` ; aucune portée restreinte n’est ajoutée. L’éligibilité du projet OAuth Famili-IA et l’approbation Google ne sont pas établies dans le dépôt. L’accès étendu reste donc bloqué : ne pas demander `drive.readonly` ni connecter un compte réel avant confirmation formelle de l’éligibilité, de la vérification applicable et des exigences de sécurité pour l’architecture retenue.
+
 La comparaison avec Google Photos, OneDrive, Dropbox et iCloud est documentée dans [ETUDE_FAISABILITE_CLOUDS.md](./ETUDE_FAISABILITE_CLOUDS.md).
 
 ## Vérification de l’accès étendu — prochaine étape, sans contenu réel

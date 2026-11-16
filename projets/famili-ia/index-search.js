@@ -1,6 +1,7 @@
 import { isValidDate, isValidIndexRecord } from "./index-record.js";
 import { isValidCoverageLevel } from "./index-coverage.js";
 import { getIndexSearchTerms, matchIndexTerm, normalizeText } from "./search-utils.js";
+import { normalizePhotoCoordinatePair } from "./photo-facts.js";
 
 const VALID_TYPES = Object.freeze(["document", "photo"]);
 const VALID_DATE_TYPES = Object.freeze(["creation", "modification", "priseDeVue", "achat", "echeance"]);
@@ -26,7 +27,7 @@ function validateOptions(options) {
     throw new TypeError("Options invalides");
   }
   for (const key of Reflect.ownKeys(options)) {
-    if (!["sourceId", "type", "coverage", "dateType", "dateFrom", "dateTo", "personId", "place", "eventTag"].includes(key)) {
+    if (!["sourceId", "type", "coverage", "dateType", "dateFrom", "dateTo", "personId", "place", "eventTag", "coordinates"].includes(key)) {
       throw new TypeError("Option inconnue");
     }
     const value = options[key];
@@ -39,6 +40,9 @@ function validateOptions(options) {
     if (["dateFrom", "dateTo"].includes(key) && !isValidDate(value)) throw new TypeError("Filtre de date invalide");
     if (["personId", "place", "eventTag"].includes(key) && (typeof value !== "string" || !value.trim())) {
       throw new TypeError(`Filtre ${key} invalide`);
+    }
+    if (key === "coordinates") {
+      normalizePhotoCoordinatePair(value);
     }
   }
   if (options.dateFrom && options.dateTo && options.dateFrom > options.dateTo) {
@@ -78,6 +82,10 @@ export function matchesIndexFilters(record, options = {}) {
     const normalizedTag = normalizeText(options.eventTag);
     if (!record.fields.some(field => field.name === "eventTag" &&
         normalizeText(field.value) === normalizedTag)) return false;
+  }
+  if (options.coordinates !== undefined) {
+    const coordinates = normalizePhotoCoordinatePair(options.coordinates);
+    if (!record.fields.some(field => field.name === "coordinates" && field.value === coordinates)) return false;
   }
   return true;
 }

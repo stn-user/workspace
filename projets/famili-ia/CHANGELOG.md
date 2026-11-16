@@ -3,7 +3,7 @@
 ### Lot F — reprise explicite de l'indexation Dropbox
 - Le curseur Dropbox est conservé dans IndexedDB, associé à l'empreinte du compte, et sauvegardé après chaque page entièrement traitée. Le jeton OAuth reste en mémoire uniquement ; après rechargement, l'utilisateur doit se reconnecter au même compte et choisir explicitement de reprendre.
 - Une reprise refusée par HTTP 409 efface le curseur et propose de recommencer depuis la racine. Purge et suppression de copies Dropbox invalident les curseurs. La migration vers IndexedDB v4 préserve les données existantes ; aucune reprise en arrière-plan ni synchronisation automatique n'est ajoutée.
-- Validation sur données fictives : neuf tests unitaires Dropbox, 11 tests Playwright Dropbox, suite Node complète (315 tests) et build réussis. Aucun compte Dropbox réel utilisé ; validation fournisseur, appareils physiques et approbation de production restent ouverts.
+- Validation sur données fictives : neuf tests unitaires Dropbox, 12 tests Playwright Dropbox, suite Node complète (319 tests) et build réussis. Un scénario vérifie la suppression individuelle d'une copie et l'invalidation du curseur. Aucun compte Dropbox réel utilisé ; validation fournisseur, appareils physiques et approbation de production restent ouverts.
 
 ### Lot F — revue des changements Dropbox avant remplacement
 - Les différences de nom, d'emplacement ou de révision vérifiable sont proposées dans une revue dédiée. Rien n'est présélectionné ; l'utilisateur peut conserver les copies actuelles ou confirmer explicitement les éléments à actualiser.

@@ -4,6 +4,7 @@ import { createContentProvenance } from "../content-index.js";
 import { createDocumentIndexRecord } from "../document-index.js";
 import { migrateDocumentIndexes, rollbackDocumentIndexes } from "../document-index-migration.js";
 import { findDocumentDuplicateCandidates } from "../document-deduplication.js";
+import { createPhotoFactSet } from "../photo-facts.js";
 
 test("fiche locale durable : identité, couverture vérifiée et échéance sourcée", async () => {
   const document = {
@@ -159,6 +160,100 @@ test("fiche photo : conserve les annotations volontaires et la date locale", asy
     { name: "eventTag", value: "Vacances", source: "user-input" },
     { name: "place", value: "Paris", source: "user-input" }
   ]);
+});
+
+test("fiche photo : utilise les faits persistés et s'abstient sur une date contradictoire", async () => {
+  const exifFact = {
+    id: "capture-exif",
+    kind: "captureDate",
+    value: { raw: "2024:07:14 10:30:00", localDateTime: "2024-07-14T10:30:00", offsetMinutes: null },
+    status: "extracted",
+    provenance: { kind: "exif", field: "DateTimeOriginal" },
+    evidence: { kind: "metadata-field", field: "DateTimeOriginal", excerpt: "2024:07:14 10:30:00" },
+    analyzedAt: null,
+    review: null,
+    dependsOnFactIds: []
+  };
+  const providerFact = {
+    ...exifFact,
+    id: "capture-provider",
+    value: { raw: null, localDateTime: "2024-07-15T11:00:00", offsetMinutes: null },
+    provenance: {
+      kind: "provider", field: "takenDateTime", providerId: "onedrive", itemId: "stable-photo-id"
+    },
+    evidence: { kind: "metadata-field", field: "takenDateTime", excerpt: null }
+  };
+  const conflictedPhoto = {
+    id: "photo-facts-conflict",
+    name: "photo.jpg",
+    type: "Image",
+    isLocal: true,
+    photoMetadata: {
+      captureDate: {
+        localDateTime: "2024-07-14T10:30:00",
+        source: { kind: "exif", field: "DateTimeOriginal" }
+      }
+    },
+    photoFacts: createPhotoFactSet("photo-facts-conflict", { facts: [exifFact, providerFact] })
+  };
+
+  const record = await createDocumentIndexRecord(conflictedPhoto);
+
+  assert.equal(record.dates.priseDeVue, undefined);
+});
+
+test("fiche photo : indexe une paire GPS unique et s'abstient sur des coordonnées contradictoires", async () => {
+  const coordinateFact = (id, latitude, longitude, provenance) => ({
+    id,
+    kind: "location",
+    value: { latitude, longitude, altitudeMeters: null, accuracyMeters: null },
+    status: "extracted",
+    provenance,
+    evidence: { kind: "metadata-field", field: provenance.field, excerpt: null },
+    analyzedAt: null,
+    review: null,
+    dependsOnFactIds: []
+  });
+  const document = {
+    id: "photo-gps-index",
+    name: "photo.jpg",
+    type: "Image",
+    isLocal: true,
+    photoFacts: createPhotoFactSet("photo-gps-index", {
+      facts: [coordinateFact("gps-exif", 48.8566, 2.3522, { kind: "exif", field: "GPS" })]
+    })
+  };
+  const record = await createDocumentIndexRecord(document);
+  assert.deepEqual(record.fields.find(field => field.name === "coordinates"), {
+    name: "coordinates",
+    value: "48.8566, 2.3522",
+    source: "extracted",
+    estimated: false,
+    proof: null
+  });
+  const previous = structuredClone(record);
+  previous.fields[0].source = "user-input";
+  const withoutLocation = {
+    ...document,
+    photoFacts: createPhotoFactSet(document.id),
+    indexRecord: previous
+  };
+  const clearedRecord = await createDocumentIndexRecord(withoutLocation);
+  assert.equal(clearedRecord.fields.some(field => field.name === "coordinates"), false);
+
+  const conflicting = {
+    ...document,
+    photoFacts: createPhotoFactSet(document.id, {
+      facts: [
+        coordinateFact("gps-exif", 48.8566, 2.3522, { kind: "exif", field: "GPS" }),
+        coordinateFact("gps-provider", 48.86, 2.35, {
+          kind: "provider", field: "location", providerId: "onedrive", itemId: "photo-copy"
+        })
+      ]
+    })
+  };
+  const conflictedRecord = await createDocumentIndexRecord(conflicting);
+  assert.equal(conflictedRecord.fields.some(field => field.name === "coordinates"), false);
 });
 
 test("migration idempotente et reprenable après échec sans remplacer le contenu", async () => {
