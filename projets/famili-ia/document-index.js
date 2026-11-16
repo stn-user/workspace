@@ -98,6 +98,20 @@ function photoCoordinateFields(document) {
   }];
 }
 
+function photoDescriptionFields(document) {
+  return (document.photoFacts?.facts ?? [])
+    .filter(fact =>
+      ["caption", "keyword"].includes(fact.kind) &&
+      fact.status !== "rejected" &&
+      ["xmp", "iptc"].includes(fact.provenance?.kind))
+    .map(fact => ({
+      name: fact.kind,
+      value: fact.value.text,
+      source: "extracted",
+      proof: { excerpt: fact.value.text, location: null }
+    }));
+}
+
 function extractedDocumentFields(context) {
   const fields = [];
   if (context.type && context.type !== "autre" && context.typeEvidence) {
@@ -195,7 +209,7 @@ export async function createDocumentIndexRecord(document, { previous = document?
     dates.modification = { value: providerModificationDate, source: "provider" };
   }
   let fields = photo
-    ? [...photoAnnotationFields(document), ...photoCoordinateFields(document)]
+    ? [...photoAnnotationFields(document), ...photoCoordinateFields(document), ...photoDescriptionFields(document)]
     : [];
   const capturedAt = photo ? photoCaptureDate(document) : null;
   if (capturedAt) dates.priseDeVue = capturedAt;

@@ -100,7 +100,8 @@ export class IndexSession {
           persisted = copyIndexRecord(persisted, {
             coverage: "metadata",
             fields: persisted.fields.filter(field =>
-              field.name === "coordinates" || !["extracted", "auto-estimate"].includes(field.source)),
+              ["coordinates", "caption", "keyword"].includes(field.name) ||
+              !["extracted", "auto-estimate"].includes(field.source)),
             dates: Object.fromEntries(Object.entries(persisted.dates)
               .filter(([, value]) => !["extracted", "auto-estimate"].includes(value.source)))
           });

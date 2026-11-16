@@ -107,11 +107,41 @@ test("migrates the documented legacy shape without inventing a timezone", () => 
     longitude: -73.6
   }, "photo-6");
 
-  assert.equal(migrated.metadata.schemaVersion, 1);
+  assert.equal(migrated.metadata.schemaVersion, PHOTO_METADATA_SCHEMA_VERSION);
   assert.equal(migrated.metadata.captureDate.offsetMinutes, null);
   assert.equal(migrated.metadata.orientation.value, 6);
   assert.equal(migrated.metadata.location.status, "available");
   assert.deepEqual(migrated.issues, []);
+});
+
+test("migrates v1 photo metadata and validates bounded XMP/IPTC descriptions", () => {
+  const migrated = migratePhotoMetadata({
+    schemaVersion: 1,
+    documentId: "photo-v1",
+    location: { status: "not_requested" }
+  });
+  assert.equal(migrated.metadata.schemaVersion, PHOTO_METADATA_SCHEMA_VERSION);
+  assert.deepEqual(migrated.metadata.captions, []);
+  assert.deepEqual(migrated.metadata.keywords, []);
+
+  const metadata = createPhotoMetadata("photo-descriptions", {
+    captions: [{
+      text: "Fête familiale",
+      source: { kind: "xmp", field: "dc:description[x-default]" }
+    }],
+    keywords: [{
+      text: "anniversaire",
+      source: { kind: "iptc", field: "Keywords" }
+    }]
+  });
+  assert.equal(metadata.captions[0].text, "Fête familiale");
+  assert.equal(metadata.keywords[0].source.kind, "iptc");
+  assert.throws(() => createPhotoMetadata("photo-invalid-description", {
+    captions: [{
+      text: "x".repeat(2001),
+      source: { kind: "iptc", field: "Caption" }
+    }]
+  }), /Invalid photo metadata/);
 });
 
 test("rejects unknown schema versions and malformed legacy dates explicitly", () => {
@@ -167,7 +197,7 @@ test("hashes exact photo bytes and detects only byte-identical duplicate files",
 
 test("requires document identity and rejects unsupported schema versions", () => {
   assert.throws(() => createPhotoMetadata(""), /document ID/);
-  assert.throws(() => normalizePhotoMetadata({ schemaVersion: 2, documentId: "photo-13" }), /Unsupported/);
+  assert.throws(() => normalizePhotoMetadata({ schemaVersion: 3, documentId: "photo-13" }), /Unsupported/);
 });
 
 test("normalizes photo metadata on its parent document and rejects mismatched links", () => {

@@ -51,6 +51,46 @@ function entry(tag, type, count, value) {
   return { tag, type, count, value };
 }
 
+function jpegSegment(marker, payload) {
+  const segment = Buffer.alloc(payload.length + 4);
+  segment[0] = 0xff;
+  segment[1] = marker;
+  segment.writeUInt16BE(payload.length + 2, 2);
+  payload.copy(segment, 4);
+  return segment;
+}
+
+function iptcDataset(dataset, value) {
+  const bytes = Buffer.from(value, "utf8");
+  const header = Buffer.alloc(5);
+  header[0] = 0x1c;
+  header[1] = 2;
+  header[2] = dataset;
+  header.writeUInt16BE(bytes.length, 3);
+  return Buffer.concat([header, bytes]);
+}
+
+export function createJpegIptcFixture(baseJpeg, { caption, keywords = [] } = {}) {
+  const datasets = [];
+  if (caption !== undefined) datasets.push(iptcDataset(120, caption));
+  for (const keyword of keywords) datasets.push(iptcDataset(25, keyword));
+  const iim = Buffer.concat(datasets);
+  const size = Buffer.alloc(4);
+  size.writeUInt32BE(iim.length);
+  const payload = Buffer.concat([
+    Buffer.from("Photoshop 3.0\0", "ascii"),
+    Buffer.from("8BIM", "ascii"),
+    Buffer.from([0x04, 0x04, 0, 0]),
+    size,
+    iim
+  ]);
+  return Buffer.concat([
+    baseJpeg.subarray(0, 2),
+    jpegSegment(0xed, payload),
+    baseJpeg.subarray(2)
+  ]);
+}
+
 export function createJpegExifFixture(baseJpeg, {
   dateTimeOriginal,
   offsetTimeOriginal,

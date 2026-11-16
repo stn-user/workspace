@@ -73,6 +73,36 @@ test("converts existing photo metadata without changing it or inventing a timezo
   assert.deepEqual(document, original);
 });
 
+test("converts XMP/IPTC captions and keywords into sourced descriptive facts", () => {
+  const document = {
+    id: "photo-description-facts",
+    type: "Image",
+    name: "photo.jpg",
+    photoMetadata: createPhotoMetadata("photo-description-facts", {
+      captions: [{
+        text: "Fête familiale",
+        source: { kind: "xmp", field: "dc:description[x-default]" }
+      }],
+      keywords: [{
+        text: "anniversaire",
+        source: { kind: "iptc", field: "Keywords" }
+      }]
+    })
+  };
+  const factSet = photoFactSetFromDocument(document);
+
+  assert.deepEqual(factSet.facts.map(item => ({
+    kind: item.kind,
+    text: item.value.text,
+    source: item.provenance.kind
+  })), [
+    { kind: "caption", text: "Fête familiale", source: "xmp" },
+    { kind: "keyword", text: "anniversaire", source: "iptc" }
+  ]);
+  const legacyFacts = createPhotoFactSet("photo-old-facts");
+  assert.equal(normalizePhotoFactSet({ ...legacyFacts, schemaVersion: 1 }).schemaVersion, PHOTO_FACTS_SCHEMA_VERSION);
+});
+
 test("GPS conversion is opt-in and retains precision when explicitly supplied", () => {
   const document = {
     id: "photo-gps",
@@ -276,7 +306,7 @@ test("validates source identities, dates, and non-destructive derived-fact depen
       path: null, lastCheckedAt: null
     }]
   }), /opaque SHA-256 fingerprint/);
-  assert.throws(() => normalizePhotoFactSet({ schemaVersion: 2, documentId: "photo-derived" }), /Unsupported/);
+  assert.throws(() => normalizePhotoFactSet({ schemaVersion: 3, documentId: "photo-derived" }), /Unsupported/);
   assert.throws(() => createPhotoFactSet("photo-derived", {
     facts: [fact("missing-child", "place", { label: "Lieu" }, { kind: "derived", field: "reverseGeocode" },
       "suggested", { dependsOnFactIds: ["missing"] })]

@@ -4,6 +4,7 @@ import { IndexSession } from "../index-session.js";
 import { createIndexRecord } from "../index-record.js";
 import { createContentProvenance } from "../content-index.js";
 import { createDocumentIndexRecord } from "../document-index.js";
+import { createPhotoFactSet } from "../photo-facts.js";
 import { GoogleDriveClient, googleDriveScope, prepareDriveDocumentForIndex } from "../google-drive.js";
 import { GoogleDriveSource } from "../google-drive-source.js";
 
@@ -230,4 +231,46 @@ test("recherche GPS : les coordonnées EXIF restent indexées sans copie textuel
     type: "photo",
     coordinates: "48.8566, 2.3522"
   }).length, 1);
+});
+
+test("recherche photo : les légendes et mots-clés XMP/IPTC sont recherchables sans copie textuelle", async () => {
+  const photo = {
+    id: "photo-description-index",
+    name: "photo.jpg",
+    type: "Image",
+    isLocal: true,
+    photoFacts: createPhotoFactSet("photo-description-index", {
+      facts: [
+        {
+          id: "caption-xmp",
+          kind: "caption",
+          value: { text: "Fête familiale" },
+          status: "extracted",
+          provenance: { kind: "xmp", field: "dc:description" },
+          evidence: { kind: "metadata-field", field: "dc:description", excerpt: null },
+          analyzedAt: null,
+          review: null,
+          dependsOnFactIds: []
+        },
+        {
+          id: "keyword-iptc",
+          kind: "keyword",
+          value: { text: "anniversaire" },
+          status: "extracted",
+          provenance: { kind: "iptc", field: "Keywords" },
+          evidence: { kind: "metadata-field", field: "Keywords", excerpt: null },
+          analyzedAt: null,
+          review: null,
+          dependsOnFactIds: []
+        }
+      ]
+    })
+  };
+  photo.indexRecord = await createDocumentIndexRecord(photo);
+  const session = new IndexSession();
+
+  session.syncDocuments([photo]);
+
+  assert.equal(session.search("anniversaire", { type: "photo" }).length, 1);
+  assert.equal(session.search("familiale", { type: "photo" }).length, 1);
 });

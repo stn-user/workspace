@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { extractPhotoMetadata, mapExifToPhotoMetadata, MAX_PHOTO_FILE_SIZE } from "../photo-exif.js";
-import { redactPhotoLocationsForExport } from "../photo-metadata.js";
-import { createJpegExifFixture } from "./photo-exif-fixtures.js";
+import { PHOTO_METADATA_SCHEMA_VERSION, redactPhotoLocationsForExport } from "../photo-metadata.js";
+import { createJpegExifFixture, createJpegIptcFixture } from "./photo-exif-fixtures.js";
 
 const demoJpeg = fs.readFileSync(path.resolve("assets/piscine/piscine-photo.jpg"));
 
@@ -67,7 +67,7 @@ test("extracts an EXIF capture date without inventing a timezone", async () => {
   });
   const { metadata, issues } = await extractPhotoMetadata(new Blob([image], { type: "image/jpeg" }), "fixture-photo");
 
-  assert.equal(metadata.schemaVersion, 1);
+  assert.equal(metadata.schemaVersion, PHOTO_METADATA_SCHEMA_VERSION);
   assert.equal(metadata.documentId, "fixture-photo");
   assert.equal(metadata.captureDate.localDateTime, "2024-05-06T12:30:45");
   assert.equal(metadata.captureDate.offsetMinutes, null);
@@ -111,6 +111,25 @@ test("extracts GPS only after consent using real EXIF GPS tags", async () => {
   assert.ok(Math.abs(allowed.metadata.location.latitude - 48.8566) < 0.00001);
   assert.ok(Math.abs(allowed.metadata.location.longitude - 2.3522) < 0.00001);
   assert.equal(allowed.metadata.location.altitudeMeters, 35);
+});
+
+test("extracts only selected IPTC captions and keywords with provenance", async () => {
+  const image = createJpegIptcFixture(demoJpeg, {
+    caption: " Souvenir   familial ",
+    keywords: ["anniversaire", "vacances"]
+  });
+  const { metadata, issues } = await extractPhotoMetadata(new Blob([image]), "fixture-iptc");
+
+  assert.deepEqual(metadata.captions, [{
+    text: "Souvenir familial",
+    source: { kind: "iptc", field: "Caption" }
+  }]);
+  assert.deepEqual(metadata.keywords, [
+    { text: "anniversaire", source: { kind: "iptc", field: "Keywords" } },
+    { text: "vacances", source: { kind: "iptc", field: "Keywords" } }
+  ]);
+  assert.equal(metadata.location.status, "not_requested");
+  assert.deepEqual(issues, []);
 });
 
 test("handles a valid PNG and an image with no EXIF metadata", async () => {

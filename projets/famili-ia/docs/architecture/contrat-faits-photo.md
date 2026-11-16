@@ -35,7 +35,9 @@ Chaque fiche porte une version, un document parent, une empreinte exacte faculta
 
 Les dates de fichier, de prise de vue, d'import, d'analyse et de dernier contrôle restent distinctes. Une date seule reste une date seule ; une date EXIF sans fuseau conserve `offsetMinutes: null`. Aucune date d'import ou de modification n'est substituée à une date de prise de vue.
 
-Chaque fait contient son type, sa valeur typée, sa provenance, son statut, son indice justificatif, sa date d'analyse éventuelle et ses dépendances. Les faits pris en charge sont `captureDate`, `location`, `place`, `person` et `event`. Les coordonnées peuvent inclure altitude et précision si la source les fournit.
+Chaque fait contient son type, sa valeur typée, sa provenance, son statut, son indice justificatif, sa date d'analyse éventuelle et ses dépendances. Les faits pris en charge sont `captureDate`, `location`, `place`, `person`, `event`, `caption` et `keyword`. Une légende et un mot-clé sont conservés comme texte borné avec leur source XMP/IPTC ; ils ne sont pas convertis en événement, lieu ou identité.
+
+Pour les fichiers locaux JPEG/PNG, l'extraction retient uniquement XMP `dc:description`/`dc:subject` et IPTC `Caption`/`Keywords`. XMP est lu en mode XML brut puis ces seuls champs DC sont sélectionnés ; tous les autres champs XMP, notamment les coordonnées, sont ignorés. IPTC est limité par la sélection de tags du parseur. Les albums fournisseur, sidecars et adaptateurs cloud restent hors de cette tranche.
 
 ```js
 {
@@ -80,10 +82,10 @@ La règle de consentement et l'export sont raccordés aux données photo locales
 
 ## Compatibilité et stratégie de migration
 
-`photoFactSetFromDocument` est une conversion pure et rejouable des formes `photoMetadata`/`photoAnnotations` existantes. Des identifiants locaux déterministes rendent la conversion répétable ; ils ne sont pas des empreintes de contenu. Les faits existants sont fusionnés sans écrasement ; les faits d'annotations historiques sont remplacés à partir de leur source de vérité lors d'une modification. Les métadonnées GPS sont exclues par défaut.
+`photoFactSetFromDocument` est une conversion pure et rejouable des formes `photoMetadata`/`photoAnnotations` existantes. Les schémas `photoMetadata` et `photoFacts` sont actuellement en version 2 ; leurs formes v1 sont acceptées et normalisées sans modification IndexedDB. Des identifiants locaux déterministes rendent la conversion répétable ; ils ne sont pas des empreintes de contenu. Les faits existants sont fusionnés sans écrasement ; les faits d'annotations historiques sont remplacés à partir de leur source de vérité lors d'une modification. Les métadonnées GPS sont exclues par défaut.
 
-La migration actuelle est additive et rejouable : au chargement, les fiches photo sans faits sont reconstruites depuis les champs historiques ; les faits incohérents sont journalisés et reconstruits lorsque les sources le permettent. L'index est recalculé après réconciliation. Aucun magasin ni version IndexedDB supplémentaire n'est requis. Les anciens champs sont conservés pour retour arrière ; aucun changement au chiffrement n'est apporté.
+La migration actuelle est additive et rejouable : au chargement, les fiches photo sans faits sont reconstruites depuis les champs historiques ; les faits incohérents sont journalisés et reconstruits lorsque les sources le permettent. Les anciennes fiches v1 de métadonnées et de faits sont normalisées vers v2 ; l'index est recalculé après réconciliation. Aucun magasin ni version IndexedDB supplémentaire n'est requis. Les anciens champs sont conservés pour retour arrière ; aucun changement au chiffrement n'est apporté.
 
 ## Vérification
 
-Les tests utilisent uniquement des identifiants, dates et coordonnées synthétiques. Ils couvrent la conversion, la migration additive, la recherche date après rechargement, les conflits, la révocation GPS et ses dépendances, ainsi que l'export expurgé. Aucun compte réel, photo personnelle, service de géocodage ou modèle de vision n'est utilisé. XMP/IPTC, les adaptateurs cloud et la géolocalisation inverse ne sont pas couverts par cette tranche.
+Les tests utilisent uniquement des identifiants, dates, coordonnées et fichiers synthétiques. Ils couvrent la conversion, la migration additive, l'extraction locale de légendes/mots-clés XMP/IPTC, leur recherche après rechargement, les conflits, la révocation GPS et ses dépendances, ainsi que l'export expurgé. Aucun compte réel, photo personnelle, service de géocodage ou modèle de vision n'est utilisé. Les albums fournisseur, sidecars, adaptateurs cloud et géolocalisation inverse ne sont pas couverts par cette tranche.

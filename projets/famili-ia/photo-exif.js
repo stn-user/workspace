@@ -18,6 +18,10 @@ const EXIF_TAGS = [
   "Model"
 ];
 
+const DC_NAMESPACE = "http://purl.org/dc/elements/1.1/";
+const RDF_NAMESPACE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+const XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
+
 function parseOffsetMinutes(value) {
   if (typeof value !== "string") return null;
   const match = /^([+-])(\d{2}):?(\d{2})$/.exec(value.trim());
@@ -68,9 +72,70 @@ function positiveDimension(...values) {
   return values.find((value) => Number.isSafeInteger(value) && value > 0) ?? null;
 }
 
+function readXmpTextFields(xml, issues) {
+  const result = { captions: [], keywords: [] };
+  if (typeof xml !== "string" || !xml.trim()) return result;
+  if (typeof DOMParser === "undefined") {
+    issues.push("XMP: XML parser unavailable; descriptive metadata ignored");
+    return result;
+  }
+
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  if (document.getElementsByTagName("parsererror").length) {
+    issues.push("XMP: malformed XML; descriptive metadata ignored");
+    return result;
+  }
+
+  const descriptions = Array.from(document.getElementsByTagNameNS(RDF_NAMESPACE, "Description"));
+  for (const [localName, kind, field] of [
+    ["description", "caption", "dc:description"],
+    ["subject", "keyword", "dc:subject"]
+  ]) {
+    const values = result[kind === "caption" ? "captions" : "keywords"];
+    const properties = Array.from(document.getElementsByTagNameNS(DC_NAMESPACE, localName));
+    for (const property of properties) {
+      const items = Array.from(property.getElementsByTagNameNS(RDF_NAMESPACE, "li"));
+      for (const item of items.length ? items : [property]) {
+        const language = item.getAttributeNS(XML_NAMESPACE, "lang");
+        values.push({
+          text: item.textContent ?? "",
+          source: { kind: "xmp", field: language ? `${field}[${language}]` : field }
+        });
+      }
+    }
+    for (const description of descriptions) {
+      const attribute = description.getAttributeNS(DC_NAMESPACE, localName);
+      if (attribute) values.push({ text: attribute, source: { kind: "xmp", field } });
+    }
+  }
+  return result;
+}
+
+function collectMetadataText(values, kind, field, maxLength, issues) {
+  const result = [];
+  const visit = value => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (typeof value !== "string") return;
+    const text = value.replace(/\s+/gu, " ").trim();
+    if (!text) return;
+    if (text.length > maxLength) {
+      issues.push(`${field}: descriptive metadata exceeds ${maxLength} characters and was ignored`);
+      return;
+    }
+    result.push({ text, source: { kind, field } });
+  };
+  visit(values);
+  return result;
+}
+
 export function mapExifToPhotoMetadata(documentId, tags = {}, {
   includeLocation = false,
   gps = null,
+  xmp = { captions: [], keywords: [] },
+  iptc = {},
   contentHash = null
 } = {}) {
   const issues = [];
@@ -94,6 +159,14 @@ export function mapExifToPhotoMetadata(documentId, tags = {}, {
   const device = make || model
     ? { make: make || null, model: model || null, source: { kind: "exif", field: "Make/Model" } }
     : null;
+  const captions = [
+    ...xmp.captions,
+    ...collectMetadataText(iptc.Caption, "iptc", "Caption", 2000, issues)
+  ];
+  const keywords = [
+    ...xmp.keywords,
+    ...collectMetadataText(iptc.Keywords, "iptc", "Keywords", 160, issues)
+  ];
 
   let location = { status: "not_requested" };
   if (includeLocation) {
@@ -114,7 +187,9 @@ export function mapExifToPhotoMetadata(documentId, tags = {}, {
   }
 
   return {
-    metadata: createPhotoMetadata(documentId, { captureDate, orientation, dimensions, device, location, contentHash }),
+    metadata: createPhotoMetadata(documentId, {
+      captureDate, orientation, dimensions, device, captions, keywords, location, contentHash
+    }),
     issues
   };
 }
@@ -132,6 +207,7 @@ export async function extractPhotoMetadata(file, documentId, { includeLocation =
   const issues = [];
   let tags = {};
   let gps = null;
+  let xmp = { captions: [], keywords: [] };
   let contentHash = null;
   const imageBytes = new Uint8Array(await file.arrayBuffer());
   const header = imageBytes.subarray(0, 8);
@@ -148,14 +224,15 @@ export async function extractPhotoMetadata(file, documentId, { includeLocation =
         tiff: { pick: EXIF_TAGS, translateValues: false, reviveValues: false },
         exif: { pick: EXIF_TAGS, translateValues: false, reviveValues: false },
         gps: false,
-        xmp: false,
-        iptc: false,
+        xmp: { parse: false, multiSegment: true },
+        iptc: { pick: ["Caption", "Keywords"] },
         icc: false,
         jfif: false,
         ihdr: true
       }) || {};
+      xmp = readXmpTextFields(tags.xmp, issues);
     } catch (error) {
-      issues.push(`EXIF: ${error instanceof Error ? error.message : "lecture impossible"}`);
+      issues.push(`Métadonnées photo: ${error instanceof Error ? error.message : "lecture impossible"}`);
     }
     if (includeLocation) {
       try {
@@ -194,6 +271,6 @@ export async function extractPhotoMetadata(file, documentId, { includeLocation =
     issues.push(`Empreinte photo: ${error instanceof Error ? error.message : "calcul impossible"}`);
   }
 
-  const mapped = mapExifToPhotoMetadata(documentId, tags, { includeLocation, gps, contentHash });
+  const mapped = mapExifToPhotoMetadata(documentId, tags, { includeLocation, gps, xmp, iptc: tags, contentHash });
   return { ...mapped, issues: [...mapped.issues, ...issues] };
 }

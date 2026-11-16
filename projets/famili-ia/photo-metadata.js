@@ -1,7 +1,8 @@
-export const PHOTO_METADATA_SCHEMA_VERSION = 1;
+export const PHOTO_METADATA_SCHEMA_VERSION = 2;
 
+const PREVIOUS_PHOTO_METADATA_SCHEMA_VERSION = 1;
 const DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/;
-const SOURCES = new Set(["exif", "user", "filename", "legacy"]);
+const SOURCES = new Set(["exif", "xmp", "iptc", "user", "filename", "legacy"]);
 const LOCATION_STATUSES = new Set(["not_requested", "not_found", "omitted", "available", "cleared"]);
 
 function isValidDateTime(value) {
@@ -96,6 +97,39 @@ function normalizeDevice(value, issues) {
   return source ? { make: make || null, model: model || null, source } : null;
 }
 
+function normalizeTextMetadata(values, field, maxLength, issues) {
+  if (values == null) return [];
+  if (!Array.isArray(values)) {
+    issues.push(`${field}: expected a list`);
+    return [];
+  }
+  if (values.length > 32) issues.push(`${field}: too many metadata values`);
+
+  const normalized = [];
+  const seen = new Set();
+  for (const value of values.slice(0, 32)) {
+    if (!value || typeof value !== "object" || typeof value.text !== "string") {
+      issues.push(`${field}: invalid metadata value discarded`);
+      continue;
+    }
+    const text = value.text.replace(/\s+/gu, " ").trim();
+    const source = normalizeProvenance(value.source, field, issues);
+    if (!text || text.length > maxLength || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text)) {
+      issues.push(`${field}: empty, oversized, or invalid text discarded`);
+      continue;
+    }
+    if (!source || !["xmp", "iptc"].includes(source.kind)) {
+      if (source) issues.push(`${field}: only XMP and IPTC provenance is supported`);
+      continue;
+    }
+    const key = JSON.stringify([source, text.toLocaleLowerCase("fr")]);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalized.push({ text, source });
+  }
+  return normalized;
+}
+
 function normalizeLocation(value, issues) {
   if (value == null) return { status: "not_requested", latitude: null, longitude: null, altitudeMeters: null, source: null };
   if (!value || typeof value !== "object" || !LOCATION_STATUSES.has(value.status)) {
@@ -156,6 +190,8 @@ export function createPhotoMetadata(documentId, values = {}) {
     orientation: values.orientation ?? null,
     dimensions: values.dimensions ?? null,
     device: values.device ?? null,
+    captions: values.captions ?? [],
+    keywords: values.keywords ?? [],
     location: values.location ?? null,
     contentHash: values.contentHash ?? null
   };
@@ -171,7 +207,7 @@ export function normalizePhotoMetadata(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError("Photo metadata must be an object.");
   }
-  if (value.schemaVersion !== PHOTO_METADATA_SCHEMA_VERSION) {
+  if (![PREVIOUS_PHOTO_METADATA_SCHEMA_VERSION, PHOTO_METADATA_SCHEMA_VERSION].includes(value.schemaVersion)) {
     throw new TypeError(`Unsupported photo metadata schema version: ${value.schemaVersion ?? "missing"}.`);
   }
   if (typeof value.documentId !== "string" || value.documentId.trim() === "") {
@@ -185,6 +221,8 @@ export function normalizePhotoMetadata(value) {
     orientation: normalizeOrientation(value.orientation, issues),
     dimensions: normalizeDimensions(value.dimensions, issues),
     device: normalizeDevice(value.device, issues),
+    captions: normalizeTextMetadata(value.captions, "captions", 2000, issues),
+    keywords: normalizeTextMetadata(value.keywords, "keywords", 160, issues),
     location: normalizeLocation(value.location, issues),
     contentHash: normalizeContentHash(value.contentHash, issues)
   };
@@ -195,7 +233,7 @@ export function migratePhotoMetadata(value, documentId = value?.documentId) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError("Legacy photo metadata must be an object.");
   }
-  if (value.schemaVersion === PHOTO_METADATA_SCHEMA_VERSION) {
+  if ([PREVIOUS_PHOTO_METADATA_SCHEMA_VERSION, PHOTO_METADATA_SCHEMA_VERSION].includes(value.schemaVersion)) {
     if (documentId && documentId !== value.documentId) {
       throw new TypeError("Photo metadata documentId does not match its parent document.");
     }
@@ -247,6 +285,8 @@ export function migratePhotoMetadata(value, documentId = value?.documentId) {
     device: value.make || value.model
       ? { make: value.make ?? null, model: value.model ?? null, source: source("device") }
       : null,
+    captions: [],
+    keywords: [],
     location,
     contentHash: value.contentHash ?? null
   };
@@ -272,6 +312,8 @@ export function mergePhotoMetadata(existingValue, incomingValue) {
     orientation: incoming.orientation ?? existing.orientation,
     dimensions: incoming.dimensions ?? existing.dimensions,
     device: incoming.device ?? existing.device,
+    captions: [...existing.captions, ...incoming.captions],
+    keywords: [...existing.keywords, ...incoming.keywords],
     location: incoming.location.status === "not_requested" ? existing.location : incoming.location,
     contentHash: incoming.contentHash ?? existing.contentHash
   };

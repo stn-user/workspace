@@ -41,6 +41,52 @@ test("DOCX local : le lecteur navigateur extrait un fait sourcé", async ({ page
   expect(result.dueDate).toBe("2027-01-01");
 });
 
+test("photo locale : XMP est limité aux descriptions et sujets sans extraire les coordonnées", async ({ page }) => {
+  await page.goto("http://127.0.0.1:5179/styles.css");
+  const result = await page.evaluate(async () => {
+    const base = new Uint8Array(await (await fetch("/assets/piscine/piscine-photo.jpg")).arrayBuffer());
+    const xml = '<x:xmpmeta xmlns:x="adobe:ns:meta/">' +
+      '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +
+      '<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" ' +
+      'xmlns:exif="http://ns.adobe.com/exif/1.0/">' +
+      '<dc:description><rdf:Alt><rdf:li xml:lang="x-default">Fête &amp; amis</rdf:li></rdf:Alt></dc:description>' +
+      '<dc:subject><rdf:Bag><rdf:li>anniversaire</rdf:li></rdf:Bag></dc:subject>' +
+      '<exif:GPSLatitude>48, 51.396</exif:GPSLatitude>' +
+      '<exif:GPSLongitude>2, 21.132</exif:GPSLongitude>' +
+      '</rdf:Description></rdf:RDF></x:xmpmeta>';
+    const xmpHeader = new TextEncoder().encode("http://ns.adobe.com/xap/1.0/\0");
+    const xmlBytes = new TextEncoder().encode(xml);
+    const payload = new Uint8Array(xmpHeader.length + xmlBytes.length);
+    payload.set(xmpHeader);
+    payload.set(xmlBytes, xmpHeader.length);
+    const segment = new Uint8Array(payload.length + 4);
+    segment[0] = 0xff;
+    segment[1] = 0xe1;
+    segment[2] = (payload.length + 2) >> 8;
+    segment[3] = (payload.length + 2) & 0xff;
+    segment.set(payload, 4);
+    const bytes = new Uint8Array(base.length + segment.length);
+    bytes.set(base.subarray(0, 2));
+    bytes.set(segment, 2);
+    bytes.set(base.subarray(2), segment.length + 2);
+
+    const { extractPhotoMetadata } = await import("/photo-exif.js");
+    const { metadata, issues } = await extractPhotoMetadata(new Blob([bytes]), "browser-xmp");
+    return { captions: metadata.captions, keywords: metadata.keywords, location: metadata.location, issues };
+  });
+
+  expect(result.captions).toEqual([{
+    text: "Fête & amis",
+    source: { kind: "xmp", field: "dc:description[x-default]" }
+  }]);
+  expect(result.keywords).toEqual([{
+    text: "anniversaire",
+    source: { kind: "xmp", field: "dc:subject" }
+  }]);
+  expect(result.location.status).toBe("not_requested");
+  expect(result.issues).toEqual([]);
+});
+
 test("photo locale : les faits EXIF persistent et restent recherchables après rechargement", async ({ page }) => {
   const ready = page.waitForEvent("console", message => message.text().includes("Async init - COMPLETE"));
   await page.goto("http://127.0.0.1:5179/#/recherche");
@@ -73,6 +119,14 @@ test("photo locale : les faits EXIF persistent et restent recherchables après r
       isLocal: true,
       importedAt: "2026-11-15T10:00:00.000Z",
       photoMetadata: createPhotoMetadata(id, {
+        captions: [{
+          text: "Fête familiale",
+          source: { kind: "xmp", field: "dc:description[x-default]" }
+        }],
+        keywords: [{
+          text: "anniversaire",
+          source: { kind: "iptc", field: "Keywords" }
+        }],
         location: {
           status: "available",
           latitude: 48.8566,
@@ -124,6 +178,9 @@ test("photo locale : les faits EXIF persistent et restent recherchables après r
   await page.locator("#experimental-index-form .submit-button").click();
   await expect(page.locator("#moments-life-search-status")).toContainText("1 photo trouvée");
   await expect(page.locator("#moments-life-search-results")).toContainText("photo-fictive.jpg");
+  await page.locator("#experimental-index-query").fill("Photos anniversaire");
+  await page.locator("#experimental-index-form .submit-button").click();
+  await expect(page.locator("#moments-life-search-status")).toContainText("1 photo trouvée");
   const result = await page.evaluate(async () => {
     const { getAll } = await import("/db.js");
     const { searchMomentsLife } = await import("/moments-life-search.js");
@@ -148,6 +205,10 @@ test("photo locale : les faits EXIF persistent et restent recherchables après r
       indexDate: photo.indexRecord.dates.priseDeVue?.value,
       indexedCoordinates: photo.indexRecord.fields.find(field => field.name === "coordinates")?.value,
       locationStoredWithConsent: photo.photoFacts.facts.some(fact => fact.kind === "location"),
+      captionFactStored: photo.photoFacts.facts.some(fact =>
+        fact.kind === "caption" && fact.value.text === "Fête familiale"),
+      keywordIndexed: photo.indexRecord.fields.some(field =>
+        field.name === "keyword" && field.value === "anniversaire"),
       derivedLocationStored: photo.photoFacts.facts.some(fact => fact.id === "browser-derived-place"),
       locationNotStoredWithoutConsent: photoWithoutConsent.photoMetadata.location.status === "cleared"
         && !photoWithoutConsent.photoFacts.facts.some(fact => fact.kind === "location")
@@ -165,6 +226,8 @@ test("photo locale : les faits EXIF persistent et restent recherchables après r
     indexDate: "2023-06-15",
     indexedCoordinates: "48.8566, 2.3522",
     locationStoredWithConsent: true,
+    captionFactStored: true,
+    keywordIndexed: true,
     derivedLocationStored: true,
     locationNotStoredWithoutConsent: true,
     coordinateSearchMatches: ["browser-photo-facts"],

@@ -11,4 +11,5 @@ Thumbs.db
 *.tmp
 *.bak
 .claude/
+.env
 .env.local

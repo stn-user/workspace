@@ -2,9 +2,10 @@ import { getInventorySource } from "./data-inventory.js";
 import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
 import { migratePhotoMetadata } from "./photo-metadata.js";
 
-export const PHOTO_FACTS_SCHEMA_VERSION = 1;
+export const PHOTO_FACTS_SCHEMA_VERSION = 2;
 
-const FACT_KINDS = new Set(["captureDate", "location", "place", "person", "event"]);
+const PREVIOUS_PHOTO_FACTS_SCHEMA_VERSION = 1;
+const FACT_KINDS = new Set(["captureDate", "location", "place", "person", "event", "caption", "keyword"]);
 const FACT_STATUSES = new Set(["extracted", "suggested", "confirmed", "rejected"]);
 const PROVENANCE_KINDS = new Set([
   "exif", "xmp", "iptc", "provider", "user", "filename", "model", "derived", "legacy"
@@ -180,6 +181,16 @@ function normalizeFactValue(kind, value) {
     assertKeys(value, ["label"], "Place");
     return { label: assertString(value.label, "Place label", 120) };
   }
+  if (kind === "caption" || kind === "keyword") {
+    assertKeys(value, ["text"], kind === "caption" ? "Caption" : "Keyword");
+    const text = value.text;
+    const maxLength = kind === "caption" ? 2000 : 160;
+    if (typeof text !== "string" || !text.trim() || text.trim().length > maxLength ||
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(text)) {
+      throw new TypeError(`${kind} text must be non-empty, bounded, and contain no control characters.`);
+    }
+    return { text: text.replace(/\s+/gu, " ").trim() };
+  }
   if (kind === "person") {
     assertKeys(value, ["memberId", "label"], "Person");
     const memberId = value.memberId == null ? null : assertString(value.memberId, "Person member ID", 160);
@@ -303,7 +314,7 @@ export function createPhotoFactSet(documentId, values = {}) {
 
 export function normalizePhotoFactSet(value) {
   assertKeys(value, ["schemaVersion", "documentId", "contentHash", "sourceCopies", "dates", "facts"], "Photo fact set");
-  if (value.schemaVersion !== PHOTO_FACTS_SCHEMA_VERSION) {
+  if (![PREVIOUS_PHOTO_FACTS_SCHEMA_VERSION, PHOTO_FACTS_SCHEMA_VERSION].includes(value.schemaVersion)) {
     throw new TypeError(`Unsupported photo fact schema version: ${value.schemaVersion ?? "missing"}.`);
   }
   const documentId = assertString(value.documentId, "Document ID", 200);
@@ -360,6 +371,21 @@ function dateFact(id, value, source, status = "extracted") {
   };
 }
 
+function descriptiveMetadataFact(kind, value) {
+  const { text, source } = value;
+  return {
+    id: stableFactId(`metadata:${kind}`, [source, text]),
+    kind,
+    value: { text },
+    status: "extracted",
+    provenance: source,
+    evidence: { kind: "metadata-field", field: source.field, excerpt: null },
+    analyzedAt: null,
+    review: null,
+    dependsOnFactIds: []
+  };
+}
+
 export function photoFactSetFromDocument(document, { includeLocation = false } = {}) {
   if (!isObject(document) || !isNonEmptyString(document.id) || !isPhotoDocument(document)) {
     throw new TypeError("A photo document requires a persistent ID and a supported photo type.");
@@ -383,6 +409,12 @@ export function photoFactSetFromDocument(document, { includeLocation = false } =
         source,
         status
       ));
+    }
+    for (const caption of metadata.captions) {
+      facts.push(descriptiveMetadataFact("caption", caption));
+    }
+    for (const keyword of metadata.keywords) {
+      facts.push(descriptiveMetadataFact("keyword", keyword));
     }
     if (includeLocation && metadata.location.status === "available") {
       facts.push({
@@ -614,7 +646,8 @@ export function reconcilePhotoFactSet(existingValue, document, { includeLocation
     sourceCopies: existing.sourceCopies,
     dates: existing.dates,
     facts: existing.facts.filter(fact =>
-      !(fact.provenance.kind === "user" && annotationFields.has(fact.provenance.field)))
+      !(fact.provenance.kind === "user" && annotationFields.has(fact.provenance.field)) &&
+      !(["xmp", "iptc"].includes(fact.provenance.kind) && ["caption", "keyword"].includes(fact.kind)))
   });
   if (!includeLocation) {
     const locationIds = base.facts.filter(fact => fact.kind === "location").map(fact => fact.id);
