@@ -349,7 +349,20 @@ export function normalizePhotoFactSet(value) {
   return { schemaVersion: PHOTO_FACTS_SCHEMA_VERSION, documentId, contentHash, sourceCopies, dates, facts };
 }
 
-function dateFact(id, value, source, status = "extracted") {
+function photoMetadataProvenance(source, document) {
+  return source.kind === "provider" && document
+    ? {
+      kind: source.kind,
+      field: source.field,
+      providerId: getInventorySource(document),
+      accountRef: document.dropboxAccountFingerprint ?? document.oneDriveAccountFingerprint ?? null,
+      itemId: document.indexRecord?.itemId ?? document.id
+    }
+    : { kind: source.kind, field: source.field };
+}
+
+function dateFact(id, value, source, status = "extracted", document = null) {
+  const provenance = photoMetadataProvenance(source, document);
   return {
     id,
     kind: "captureDate",
@@ -359,7 +372,7 @@ function dateFact(id, value, source, status = "extracted") {
       offsetMinutes: value.offsetMinutes ?? null
     },
     status,
-    provenance: { kind: source.kind, field: source.field },
+    provenance,
     evidence: source.kind === "user" ? null : {
       kind: "metadata-field",
       field: source.field,
@@ -407,7 +420,8 @@ export function photoFactSetFromDocument(document, { includeLocation = false } =
         stableFactId("legacy:captureDate", [source, metadata.captureDate]),
         metadata.captureDate,
         source,
-        status
+        status,
+        document
       ));
     }
     for (const caption of metadata.captions) {
@@ -427,7 +441,7 @@ export function photoFactSetFromDocument(document, { includeLocation = false } =
           accuracyMeters: null
         },
         status: metadata.location.source.kind === "user" ? "confirmed" : "extracted",
-        provenance: { kind: metadata.location.source.kind, field: metadata.location.source.field },
+        provenance: photoMetadataProvenance(metadata.location.source, document),
         evidence: { kind: "metadata-field", field: metadata.location.source.field, excerpt: null },
         analyzedAt: null,
         review: metadata.location.source.kind === "user" ? { by: "user", at: null } : null,

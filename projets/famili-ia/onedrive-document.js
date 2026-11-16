@@ -1,10 +1,37 @@
 import { createContentProvenance } from "./content-index.js";
-import { hashPhotoBytes } from "./photo-metadata.js";
+import { createPhotoMetadata, hashPhotoBytes, parseProviderCaptureDate } from "./photo-metadata.js";
 import { getOneDriveAccountFingerprint } from "./onedrive-account.js";
 import { readBoundedBytes } from "./read-bounded-bytes.js";
 
 const textLimit = 1024 * 1024;
 const pdfLimit = 10 * 1024 * 1024;
+const PHOTO_FILE_PATTERN = /\.(?:jpe?g|png)$/i;
+
+function isOneDrivePhoto(item, extension) {
+  return Boolean(item.photo || item.image)
+    || (typeof item.file?.mimeType === "string" && item.file.mimeType.toLowerCase().startsWith("image/"))
+    || PHOTO_FILE_PATTERN.test(`.${extension}`);
+}
+
+function readProviderPhotoMetadata(documentId, photo) {
+  if (!photo || typeof photo !== "object" || Array.isArray(photo)) return null;
+  const values = {};
+  const captureDate = parseProviderCaptureDate(photo.takenDateTime, "photo.takenDateTime");
+  if (captureDate) values.captureDate = captureDate;
+
+  const make = typeof photo.cameraMake === "string" && photo.cameraMake.trim().length <= 120
+    ? photo.cameraMake.trim() : "";
+  const model = typeof photo.cameraModel === "string" && photo.cameraModel.trim().length <= 120
+    ? photo.cameraModel.trim() : "";
+  if (make || model) {
+    values.device = {
+      make: make || null,
+      model: model || null,
+      source: { kind: "provider", field: "photo.cameraMake/photo.cameraModel" }
+    };
+  }
+  return captureDate || make || model ? createPhotoMetadata(documentId, values) : null;
+}
 
 export async function oneDriveDocumentId(accountId, itemId) {
   if (typeof accountId !== "string" || !accountId || typeof itemId !== "string" || !itemId) {
@@ -81,7 +108,8 @@ export async function readOneDriveDocument({ item, accountId, accountFingerprint
     throw new TypeError("Empreinte de compte OneDrive invalide.");
   }
   const extension = item.name.toLowerCase().split(".").pop();
-  const type = extension === "pdf" ? "PDF" : extension === "txt" ? "Texte"
+  const type = isOneDrivePhoto(item, extension) ? "Image"
+    : extension === "pdf" ? "PDF" : extension === "txt" ? "Texte"
     : extension === "md" ? "Markdown" : "Document";
   const modified = typeof item.lastModifiedDateTime === "string" ? new Date(item.lastModifiedDateTime) : null;
   const document = {
@@ -92,6 +120,11 @@ export async function readOneDriveDocument({ item, accountId, accountFingerprint
     content: "", summary: "", keywords: ""
   };
   if (typeof item.eTag === "string" && item.eTag) document.oneDriveETag = item.eTag;
+  if (type === "Image") {
+    const photoMetadata = readProviderPhotoMetadata(id, item.photo);
+    if (photoMetadata) document.photoMetadata = photoMetadata;
+    return { document, coverage: "metadata", reason: "photo : métadonnées fournisseur uniquement, sans lecture des pixels" };
+  }
   if (type === "Document") return { document, coverage: "metadata", reason: "format non pris en charge" };
   const limit = type === "PDF" ? pdfLimit : textLimit;
   if (typeof item.size === "number" && item.size > limit) {

@@ -2,8 +2,36 @@ export const PHOTO_METADATA_SCHEMA_VERSION = 2;
 
 const PREVIOUS_PHOTO_METADATA_SCHEMA_VERSION = 1;
 const DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/;
-const SOURCES = new Set(["exif", "xmp", "iptc", "user", "filename", "legacy"]);
+const PROVIDER_DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/;
+const SOURCES = new Set(["exif", "xmp", "iptc", "provider", "user", "filename", "legacy"]);
 const LOCATION_STATUSES = new Set(["not_requested", "not_found", "omitted", "available", "cleared"]);
+
+export function parseProviderCaptureDate(value, field) {
+  if (typeof value !== "string" || typeof field !== "string" || !field.trim()) return null;
+  const match = PROVIDER_DATE_TIME_PATTERN.exec(value);
+  if (!match || !Number.isFinite(Date.parse(value))) return null;
+  const [, localDateTime, fraction = "", zone] = match;
+  const [year, month, day, hour, minute, second] = localDateTime.match(/\d+/g).map(Number);
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+  if (year < 1 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1
+      || date.getUTCDate() !== day || hour > 23 || minute > 59 || second > 59) return null;
+
+  let offsetMinutes = 0;
+  if (zone !== "Z") {
+    const sign = zone[0] === "+" ? 1 : -1;
+    const [offsetHours, offsetRemainder] = zone.slice(1).split(":").map(Number);
+    if (offsetHours > 14 || offsetRemainder > 59 || (offsetHours === 14 && offsetRemainder !== 0)) return null;
+    offsetMinutes = sign * (offsetHours * 60 + offsetRemainder);
+  }
+  return {
+    raw: value,
+    localDateTime: `${localDateTime}${fraction.slice(0, 4)}`,
+    offsetMinutes,
+    source: { kind: "provider", field: field.trim() }
+  };
+}
 
 function isValidDateTime(value) {
   if (typeof value !== "string") return false;

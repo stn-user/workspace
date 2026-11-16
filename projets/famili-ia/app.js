@@ -24,7 +24,8 @@ import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline 
 import { getAlertsToNotify, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
 import { IndexSession, INDEX_SOURCES } from "./index-session.js";
-import { describeSources } from "./source-status.js";
+import { createSourceRunStatus, describeSources, sourceRunStatusId } from "./source-status.js";
+import { loadSourceRunStatuses, saveSourceRunStatus } from "./source-status-storage.js";
 import { describeExperimentalResult } from "./experimental-result.js";
 import { findDocumentDuplicateCandidates } from "./document-deduplication.js";
 import { findIndexDeadlines } from "./index-deadline-search.js";
@@ -402,6 +403,7 @@ function initOnboardingWizard() {
       console.warn(`Recherche : provenance du contenu invalide pour ${invalidCount} document(s) ; noms uniquement.`);
     }
     refreshExperimentalIndex();
+    await restoreSourceRunStatuses();
     console.log('[DEBUG] Async init - documents loaded, count:', uploadedDocuments.length);
     if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
     startAlertScheduler();
@@ -664,6 +666,9 @@ let localImportFailed = false;
 let oneDriveObservation = "unknown";
 let dropboxObservation = "unknown";
 let oneDriveAccountFingerprint = null;
+let dropboxAccountFingerprint = null;
+const sourceRunStatuses = new Map();
+const sourceRunStorageErrors = new Map();
 
 function updateExperimentalFacet(select, defaultLabel, entries) {
   const selected = select.value;
@@ -751,16 +756,29 @@ function renderExperimentalSources() {
     driveState: driveObservation,
     localState: activeScanWorkers.size ? "working" : localImportFailed ? "error" : "unknown",
     oneDriveState: oneDriveObservation,
-    dropboxState: dropboxObservation
+    dropboxState: dropboxObservation,
+    sourceRuns: [...sourceRunStatuses.values()],
+    accountRefs: {
+      ...(oneDriveAccountFingerprint ? { onedrive: oneDriveAccountFingerprint } : {}),
+      ...(dropboxAccountFingerprint ? { dropbox: dropboxAccountFingerprint } : {})
+    }
   });
   experimentalSourceStatus.replaceChildren();
+  if (sourceRunStorageErrors.size) {
+    const warning = document.createElement("li");
+    warning.textContent = "Les états de couverture et de fraîcheur n'ont pas pu être lus ou enregistrés sur cet appareil.";
+    experimentalSourceStatus.appendChild(warning);
+  }
   for (const status of statuses) {
     const item = document.createElement("li");
     const name = sourceName(status.sourceId);
     const accountContext = status.sourceId === "onedrive" && oneDriveAccountFingerprint
       ? ` Compte actuellement connecté (empreinte locale) : ${formatOneDriveAccountFingerprint(oneDriveAccountFingerprint)}.`
       : "";
-    item.textContent = `${name} : ${status.message} ${status.access} ${status.scope}${accountContext} Le périmètre total et la fraîcheur sont inconnus.`;
+    const indexedAccount = status.run?.accountRef
+      ? ` Le dernier parcours concerne l'empreinte de compte …${status.run.accountRef.slice(0, 16)}.`
+      : "";
+    item.textContent = `${name} : ${status.message} ${status.access} ${status.scope}${accountContext}${indexedAccount} ${status.freshness}`;
     experimentalSourceStatus.appendChild(item);
   }
   deadlineResults.querySelectorAll("[data-deadline-source]").forEach(element => {
@@ -768,6 +786,63 @@ function renderExperimentalSources() {
     element.textContent = source?.access || "Accès actuel à l'original inconnu.";
   });
   return statuses;
+}
+
+async function persistSourceRun({
+  sourceId,
+  accountRef = null,
+  scopeKind,
+  state,
+  startedAt,
+  finishedAt = null,
+  discoveredCount = null,
+  processedCount = 0,
+  failedCount = 0
+}) {
+  const id = sourceRunStatusId(sourceId, accountRef);
+  const previous = sourceRunStatuses.get(id);
+  const record = createSourceRunStatus({
+    sourceId,
+    accountRef,
+    scopeKind,
+    state,
+    startedAt,
+    finishedAt,
+    lastSuccessfulAt: state === "complete" ? finishedAt : previous?.lastSuccessfulAt || null,
+    discoveredCount,
+    processedCount,
+    failedCount
+  });
+  sourceRunStatuses.set(record.id, record);
+  renderExperimentalSources();
+  try {
+    const persisted = await saveSourceRunStatus(record);
+    sourceRunStatuses.set(persisted.id, persisted);
+    sourceRunStorageErrors.delete(record.id);
+  } catch (error) {
+    sourceRunStorageErrors.set(record.id, error instanceof Error ? error.message : "Erreur de stockage non détaillée.");
+    console.error("Impossible de persister l'état de parcours d'une source :", error);
+  }
+  renderExperimentalSources();
+}
+
+async function restoreSourceRunStatuses() {
+  try {
+    const statuses = await loadSourceRunStatuses();
+    sourceRunStorageErrors.clear();
+    statuses.forEach(status => sourceRunStatuses.set(status.id, status));
+    for (const status of statuses.filter(item => item.state === "running")) {
+      await persistSourceRun({
+        ...status,
+        state: "interrupted",
+        finishedAt: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    sourceRunStorageErrors.set("load", error instanceof Error ? error.message : "Erreur de stockage non détaillée.");
+    console.error("Impossible de restaurer les états de parcours des sources :", error);
+  }
+  renderExperimentalSources();
 }
 
 function findExperimentalDocument(sourceId, itemId) {
@@ -1486,19 +1561,55 @@ function updateScanProgressUI(progressInfo) {
 
 let scanProgressTimeout;
 
-function trackBackgroundWorker(worker) {
+function trackBackgroundWorker(worker, scopeKind) {
   localImportFailed = false;
-  const scan = worker.start();
+  const startedAt = new Date().toISOString();
+  const scan = (async () => {
+    await persistSourceRun({
+      sourceId: "local",
+      scopeKind,
+      state: "running",
+      startedAt
+    });
+    return worker.start();
+  })();
   activeScanWorkers.set(worker, scan);
   renderExperimentalSources();
   scan.then(
-    (result) => {
+    async (result) => {
       if (result?.failed > 0 || result?.status === "error") localImportFailed = true;
+      const discoveredCount = Number.isInteger(result?.total) && result.total >= 0 ? result.total : null;
+      const failedCount = Number.isInteger(result?.failed) && result.failed >= 0 ? result.failed : 0;
+      const processedCount = Number.isInteger(result?.processed) && result.processed >= 0
+        ? Math.max(0, result.processed - failedCount)
+        : Number.isInteger(result?.imported) && result.imported >= 0 ? result.imported : 0;
+      const state = result?.status === "stopped" ? "interrupted"
+        : result?.status === "error" ? "error"
+          : failedCount ? "partial"
+            : result?.status === "completed" && discoveredCount !== null && processedCount === discoveredCount
+              ? "complete" : "partial";
+      await persistSourceRun({
+        sourceId: "local",
+        scopeKind,
+        state,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        discoveredCount,
+        processedCount,
+        failedCount
+      });
       activeScanWorkers.delete(worker);
       renderExperimentalSources();
     },
-    (error) => {
+    async (error) => {
       localImportFailed = true;
+      await persistSourceRun({
+        sourceId: "local",
+        scopeKind,
+        state: "error",
+        startedAt,
+        finishedAt: new Date().toISOString()
+      });
       activeScanWorkers.delete(worker);
       renderExperimentalSources();
       console.error("Le traitement local s’est terminé avec une erreur :", error);
@@ -1519,7 +1630,7 @@ function startBackgroundScan(directories) {
       refreshExperimentalIndex();
     }
   });
-  trackBackgroundWorker(worker);
+  trackBackgroundWorker(worker, "selected-directories");
   return worker;
 }
 
@@ -1532,7 +1643,7 @@ function startBackgroundImport(files) {
       refreshExperimentalIndex();
     }
   });
-  const task = trackBackgroundWorker(worker);
+  const task = trackBackgroundWorker(worker, "selected-files");
 
   completeOnboarding();
   manageOnboardingWizardVisibility();
@@ -1861,9 +1972,21 @@ oneDriveStartButton.addEventListener("click", () => {
   const candidates = [];
   let scanComplete = false;
   let progress = { files: 0, pages: 0, foldersRead: 0 };
+  const runStartedAt = new Date().toISOString();
+  const runAccountRef = oneDriveAccountFingerprint;
+  let runState = "error";
+  let discoveredCount = null;
+  let processedCount = 0;
   const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${progress.foldersRead} dossier(s) ; ${added} copie(s) ajoutée(s), dont ${metadataOnly} en métadonnées seules ; copies existantes : ${compared.unchanged} même version observée, ${compared.changed} changement détecté, ${compared.unknown} version inconnue.`;
   oneDriveObservation = "working";
   oneDriveScanSettled = (async () => {
+    await persistSourceRun({
+      sourceId: "onedrive",
+      accountRef: runAccountRef,
+      scopeKind: "account",
+      state: "running",
+      startedAt: runStartedAt
+    });
     try {
       await scanOneDrive({
         signal: controller.signal,
@@ -1897,12 +2020,28 @@ oneDriveStartButton.addEventListener("click", () => {
         }
       });
       scanComplete = true;
+      runState = "complete";
+      discoveredCount = progress.files;
+      processedCount = progress.files;
       oneDriveObservation = "connected";
       oneDriveStatus.textContent = `Parcours terminé. ${summary()} Les éléments absents ne sont pas déclarés supprimés.`;
     } catch (error) {
+      runState = error.name === "AbortError" ? "interrupted" : "error";
+      discoveredCount = progress.files;
+      processedCount = progress.files;
       oneDriveObservation = error.name === "AbortError" ? "connected" : "error";
       oneDriveStatus.textContent = `${error.name === "AbortError" ? "Indexation arrêtée" : `Indexation interrompue : ${error.message}`}. ${summary()} Les copies déjà enregistrées sont conservées.`;
     } finally {
+      await persistSourceRun({
+        sourceId: "onedrive",
+        accountRef: runAccountRef,
+        scopeKind: "account",
+        state: runState,
+        startedAt: runStartedAt,
+        finishedAt: new Date().toISOString(),
+        discoveredCount,
+        processedCount
+      });
       oneDriveScanController = null;
       oneDriveScanSettled = null;
       if (scanComplete && candidates.length) {
@@ -2054,7 +2193,8 @@ async function applyDropboxUpdates(candidates) {
           throw new Error("La copie ou sa version a changé depuis la revue ; relancez l'indexation.");
         }
         const result = await readDropboxDocument({
-          item: candidate.item, accountId, getToken: () => dropboxAuth.getToken(), signal: controller.signal
+          item: candidate.item, accountId, getToken: () => dropboxAuth.getToken(), signal: controller.signal,
+          includeLocation: getCurrentUser().privacy?.photoLocationConsent === true
         });
         if (controller.signal.aborted) break;
         if (!dropboxAuth.connected || dropboxAuth.accountId !== accountId) {
@@ -2120,6 +2260,7 @@ dropboxConnectButton.addEventListener("click", async () => {
     const connectedAccount = dropboxAuth.accountId;
     const identity = await dropboxIdentity(connectedAccount, "session");
     if (!dropboxAuth.connected || dropboxAuth.accountId !== connectedAccount) throw new Error("Session Dropbox interrompue.");
+    dropboxAccountFingerprint = identity.accountFingerprint;
     dropboxObservation = "connected";
     try {
       dropboxResumeCheckpoint = await getDropboxIndexCheckpoint(identity.accountFingerprint);
@@ -2158,6 +2299,10 @@ function startDropboxIndex({ resume = false } = {}) {
   let unchanged = 0;
   let unknown = 0;
   let progress = { files: 0, pages: 0 };
+  const runStartedAt = new Date().toISOString();
+  let runState = "error";
+  let discoveredCount = null;
+  let processedCount = 0;
   const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${added} copie(s) ajoutée(s), dont ${metadata} en métadonnées seules ; ${changed} changement(s), ${unchanged} même(s) version(s), ${unknown} version(s) inconnue(s).`;
   dropboxObservation = "working";
   dropboxScanSettled = (async () => {
@@ -2167,6 +2312,14 @@ function startDropboxIndex({ resume = false } = {}) {
     try {
       const identity = await dropboxIdentity(accountId, "session");
       accountFingerprint = identity.accountFingerprint;
+      dropboxAccountFingerprint = accountFingerprint;
+      await persistSourceRun({
+        sourceId: "dropbox",
+        accountRef: accountFingerprint,
+        scopeKind: "account",
+        state: "running",
+        startedAt: runStartedAt
+      });
       if (resume) {
         dropboxResumeCheckpoint = await getDropboxIndexCheckpoint(accountFingerprint);
         if (!dropboxResumeCheckpoint) throw new Error("Aucun point de reprise Dropbox n'est enregistré pour ce compte.");
@@ -2213,7 +2366,8 @@ function startDropboxIndex({ resume = false } = {}) {
             return;
           }
           const result = await readDropboxDocument({
-            item, accountId, getToken: () => dropboxAuth.getToken(), signal: controller.signal
+            item, accountId, getToken: () => dropboxAuth.getToken(), signal: controller.signal,
+            includeLocation: getCurrentUser().privacy?.photoLocationConsent === true
           });
           if (controller.signal.aborted) throw new DOMException("Indexation Dropbox arrêtée.", "AbortError");
           await addDocument(result.document);
@@ -2225,6 +2379,9 @@ function startDropboxIndex({ resume = false } = {}) {
           if (added % 10 === 0) refreshExperimentalIndex();
         }
       });
+      runState = "complete";
+      discoveredCount = progress.files;
+      processedCount = progress.files;
       dropboxObservation = "connected";
       renderDropboxReview(candidates);
       dropboxReviewStatus.textContent = candidates.length
@@ -2232,6 +2389,9 @@ function startDropboxIndex({ resume = false } = {}) {
         : "";
       dropboxStatus.textContent = `${resume ? "Reprise" : "Parcours"} Dropbox terminée. ${summary()} Les absences ne prouvent pas une suppression.${candidates.length ? " Examinez et confirmez les changements ci-dessous." : ""}`;
     } catch (error) {
+      runState = error.name === "AbortError" ? "interrupted" : "error";
+      discoveredCount = progress.files;
+      processedCount = progress.files;
       clearDropboxReview();
       if (resume && error instanceof DropboxApiError && error.status === 409 && accountFingerprint) {
         try {
@@ -2248,6 +2408,16 @@ function startDropboxIndex({ resume = false } = {}) {
         ? `Le point de reprise Dropbox n'est plus valide (HTTP 409) et a été effacé. Recommencez l'indexation depuis le début. ${summary()} Les copies enregistrées sont conservées.`
         : `${error.name === "AbortError" ? "Indexation Dropbox arrêtée" : `${resume ? "Reprise" : "Indexation"} Dropbox interrompue : ${error.message}`}. ${summary()} Les copies enregistrées sont conservées.${checkpointCleanupError ? ` Le point de reprise n'a pas pu être effacé : ${checkpointCleanupError.message}` : ""}`;
     } finally {
+      await persistSourceRun({
+        sourceId: "dropbox",
+        accountRef: accountFingerprint,
+        scopeKind: "account",
+        state: runState,
+        startedAt: runStartedAt,
+        finishedAt: new Date().toISOString(),
+        discoveredCount,
+        processedCount
+      });
       dropboxScanController = null;
       dropboxScanSettled = null;
       refreshExperimentalIndex();
@@ -2288,6 +2458,7 @@ dropboxDisconnectButton.addEventListener("click", () => {
   dropboxAuth.disconnect();
   clearDropboxReview();
   dropboxResumeCheckpoint = null;
+  dropboxAccountFingerprint = null;
   dropboxObservation = "disconnected";
   dropboxStatus.textContent = "Session Dropbox locale déconnectée. Les copies restent conservées ; l'autorisation Dropbox n'est pas révoquée. Retirez-la dans les applications connectées Dropbox si souhaité.";
   updateDropboxActions();
@@ -2371,21 +2542,38 @@ connectGoogleDriveButton.addEventListener("click", async () => {
   const selectionGeneration = driveSelectionGeneration;
   let finishSelection;
   driveSelectionSettled = new Promise((resolve) => { finishSelection = resolve; });
+  const runStartedAt = new Date().toISOString();
+  let runState = "error";
+  let discoveredCount = null;
+  let processedCount = 0;
+  let failedCount = 0;
   setDriveConnectionStatus("Ouverture de l'autorisation Google. Vous pouvez annuler avant de choisir des fichiers.", "success");
   try {
+    await persistSourceRun({
+      sourceId: "drive",
+      scopeKind: "selected-files",
+      state: "running",
+      startedAt: runStartedAt
+    });
     const selection = await googleDriveSource.selectFiles(remainingCount);
     const loadedFiles = selection.documents;
     driveObservation = "unknown";
     if (selectionGeneration !== driveSelectionGeneration) {
+      runState = "interrupted";
       setDriveConnectionStatus("La sélection a été ignorée car les fichiers ont été retirés pendant son exécution.", "error");
       return;
     }
     if (loadedFiles.length === 0) {
+      runState = "interrupted";
+      discoveredCount = 0;
       setDriveConnectionStatus(selection.status === "cancelled"
         ? "Sélection Google Drive annulée. Aucun fichier n'a été lu."
         : "Aucun fichier Google Drive sélectionné.", "success");
       return;
     }
+    discoveredCount = loadedFiles.length;
+    processedCount = loadedFiles.length;
+    runState = "complete";
 
     const existingDriveIds = new Set(uploadedDocuments.filter((document) => document.driveSource).map((document) => document.id));
     const newFiles = loadedFiles.filter((file) => {
@@ -2416,11 +2604,25 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     );
     setDriveConnectionStatus("Fichiers choisis enregistrés localement. La révocation et la suppression des copies sont disponibles dans Vos données.", "success");
   } catch (error) {
+    runState = "error";
+    discoveredCount = null;
+    processedCount = 0;
+    failedCount = 0;
     driveObservation = "error";
     refreshExperimentalIndex();
     const reason = error instanceof Error ? error.message : "Erreur Google non détaillée.";
     setDriveConnectionStatus(`La sélection Drive a échoué : ${reason}`, "error");
   } finally {
+    await persistSourceRun({
+      sourceId: "drive",
+      scopeKind: "selected-files",
+      state: runState,
+      startedAt: runStartedAt,
+      finishedAt: new Date().toISOString(),
+      discoveredCount,
+      processedCount,
+      failedCount
+    });
     driveSelectionSettled = null;
     finishSelection();
     renderExperimentalSources();

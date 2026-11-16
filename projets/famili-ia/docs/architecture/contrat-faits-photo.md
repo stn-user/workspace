@@ -33,11 +33,53 @@ Chaque fiche porte une version, un document parent, une empreinte exacte faculta
 }
 ```
 
-Les dates de fichier, de prise de vue, d'import, d'analyse et de dernier contrôle restent distinctes. Une date seule reste une date seule ; une date EXIF sans fuseau conserve `offsetMinutes: null`. Aucune date d'import ou de modification n'est substituée à une date de prise de vue.
+Les dates de fichier, de prise de vue, d'import, d'analyse et de dernier contrôle restent distinctes. Une date seule reste une date seule ; une date EXIF sans fuseau conserve `offsetMinutes: null`. La date Graph OneDrive `photo.takenDateTime` conserve son heure locale et son décalage explicite, avec provenance `provider`. Aucune date d'import ou de modification n'est substituée à une date de prise de vue.
 
 Chaque fait contient son type, sa valeur typée, sa provenance, son statut, son indice justificatif, sa date d'analyse éventuelle et ses dépendances. Les faits pris en charge sont `captureDate`, `location`, `place`, `person`, `event`, `caption` et `keyword`. Une légende et un mot-clé sont conservés comme texte borné avec leur source XMP/IPTC ; ils ne sont pas convertis en événement, lieu ou identité.
 
-Pour les fichiers locaux JPEG/PNG, l'extraction retient uniquement XMP `dc:description`/`dc:subject` et IPTC `Caption`/`Keywords`. XMP est lu en mode XML brut puis ces seuls champs DC sont sélectionnés ; tous les autres champs XMP, notamment les coordonnées, sont ignorés. IPTC est limité par la sélection de tags du parseur. Les albums fournisseur, sidecars et adaptateurs cloud restent hors de cette tranche.
+Pour les fichiers locaux JPEG/PNG, l'extraction retient uniquement XMP `dc:description`/`dc:subject` et IPTC `Caption`/`Keywords`. XMP est lu en mode XML brut puis ces seuls champs DC sont sélectionnés ; tous les autres champs XMP, notamment les coordonnées, sont ignorés. IPTC est limité par la sélection de tags du parseur. OneDrive demande le facet Graph `photo` et retient, s'ils sont présents, `takenDateTime`, `cameraMake` et `cameraModel` avec provenance fournisseur. Dropbox retient `media_info.metadata.time_taken` et n'accède à `media_info.metadata.location` qu'avec le consentement GPS actif. Les images cloud restent en métadonnées seules : aucun octet image n'est téléchargé. Ces parcours sont validés par réponses synthétiques ; leur disponibilité réelle reste à vérifier. Les albums, sidecars et adaptateurs des autres fournisseurs restent hors de cette tranche.
+
+## Comparaison P2 des jeux de géolocalisation inverse
+
+**Évaluation documentaire : 16 novembre 2026. Décision : ne pas ajouter de conversion automatique pour l'instant.** La recherche GPS par coordonnées exactes reste disponible sous consentement ; aucune donnée de localisation n'est envoyée à un service distant. Un nom de localité présenté comme réponse certaine serait trompeur sans géométrie adaptée ou règle explicite de proximité.
+
+| Option | Licence, taille et couverture observées | Limite pour Famili-IA | Conclusion |
+|---|---|---|---|
+| Coordonnées seules | Aucun paquet ni licence de tiers à intégrer ; recherche exacte déjà raccordée. | Peu lisible pour une personne qui ne reconnaît pas elle-même les coordonnées ; ne fournit ni pays ni lieu. | Référence actuelle : aucune nouvelle approximation ni collecte. |
+| [GeoNames](https://www.geonames.org/export/) | Les extraits sont gratuits, autorisent l'usage commercial et sont sous CC BY 4.0 avec attribution. L'export est mis à jour quotidiennement ; `cities500.zip` contient environ 185 000 lieux. L'extrait pays `FR.zip` faisait 7,0 Mo dans l'index officiel du 16 novembre 2026. | Les lieux sont des points nommés, pas des adresses ni des polygones de ville. Trouver le point le plus proche ne prouve pas qu'une photo a été prise dans cette ville ; il faudrait une distance maximale explicitement choisie, un résultat présenté comme « près de », une attribution et une politique de mise à jour du paquet. | Candidat le plus pertinent pour un futur libellé de localité approximatif, mais non retenu ni intégré. |
+| [Natural Earth — lieux habités](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-populated-places/) | Données public domain. Le paquet 10m complet annoncé est de 2,68 Mo (version 5.1.2) ; la version simple est de 636,84 Ko. | Points pour les capitales, villes importantes et une sélection de petites villes ; couverture trop clairsemée pour attribuer un nom fiable à toute coordonnée. | Adapté à des libellés de carte à petite échelle, pas à une recherche inverse générale de photos. |
+| [Natural Earth — divisions administratives de niveau 1](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-1-states-provinces/) | Données public domain ; le paquet annoncé couvre plus de 4 500 divisions et fait 14,22 Mo (version 5.1.1). | Couverture inégale, données signalées comme difficiles à maintenir à jour ; les unités ne correspondent pas partout à la même granularité. Cela n'assigne pas une localité ni une adresse. | Pourrait aider à afficher une région large, après contrôle de la géométrie et du périmètre ; pas retenu pour cette tranche. |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) | Données détaillées sous ODbL 1.0 ; l'attribution est requise et une base adaptée/dérivée distribuée est soumise aux conditions share-alike de l'ODbL. | Extraction, réduction, indexation hors ligne, volume, attribution dans l'application et obligations de redistribution demandent une évaluation dédiée. | Non retenu sans analyse juridique et mesure du paquet, de l'index et du coût de mise à jour. |
+
+Cette comparaison n'est pas une validation des données sur un corpus réel. Avant tout raccordement, décider explicitement du périmètre géographique téléchargeable, de la taille compressée et décompressée, de la fraîcheur, des langues et attributions, de la distance maximale et de la formulation incertaine (« près de »). Tout résultat local devra rester une suggestion dérivée du fait GPS, être supprimé si le consentement est retiré et ne jamais remplacer les coordonnées ou une valeur saisie par la personne.
+
+## Première baseline P3 : indices textuels de mariage
+
+`findMetadataEventCandidates` dans [`photo-event-metadata.js`](../../photo-event-metadata.js) est une première baseline déterministe, limitée à l'événement « mariage ». Elle examine uniquement les faits photo `caption`/`keyword` déjà présents, le nom de fichier, les noms de dossiers disponibles dans `sourceDir` et les chemins des copies fournisseur. Elle ne lit aucun octet d'image et ne consulte pas de GPS.
+
+Un mot-clé entier correspondant à `mariage`, `mariages`, `noces`, `wedding` ou `weddings` est rendu comme `explicit-label`; une occurrence dans une légende, un nom ou un chemin est un `lexical-match`. Dans les deux cas, le résultat reste un **candidat**, conserve la source, le champ, la provenance fournisseur éventuelle et le fait texte d'origine ; il ne signifie pas « mon mariage » et n'identifie aucune personne. Les faits textuels rejetés sont ignorés.
+
+Cette fonction ne modifie ni ne persiste les faits, n'alimente pas encore la recherche de suggestions et ne les affiche pas dans l'interface : ces raccordements relèvent de 15.5ter.3.c. Les connecteurs présents n'exposent pas de titres d'albums. Les tests sont synthétiques ; aucune baseline de précision sur un corpus réel n'est disponible. Le test doit rester local sur les photos de l'utilisateur si ce corpus est évalué.
+
+## Faisabilité initiale P3.b : classification visuelle locale
+
+**Revue documentaire : 16 novembre 2026. Décision : aucun poids ni moteur ajouté.** La baseline de 15.5ter.3.a est une correspondance déterministe sur texte, alors qu'un modèle image-texte compare une image à des descriptions candidates. Ses scores sont des similarités, pas des probabilités calibrées ni une preuve qu'il s'agit d'un événement personnel.
+
+| Candidat | Licence du code, des poids et des données | Taille observée | Compatibilité et pertinence |
+|---|---|---|---|
+| [Apple MobileCLIP2-S0](https://github.com/apple-aiml-research/ml-mobileclip) | Code sous MIT, mais poids sous la licence Apple ML Research Model, réservée à la recherche scientifique non commerciale et excluant explicitement le développement ou l'usage dans un produit/service commercial. Les données d'accompagnement sont sous CC BY-NC-ND 4.0. La licence des poids, distincte de celle du code, est bloquante pour Famili-IA. | Le checkpoint officiel `mobileclip2_s0.pt` fait 300 Mo ; MobileCLIP2-S0 annonce 11,4 M paramètres image et 63,4 M texte. | L'architecture est conçue pour appareils mobiles, mais les mesures officielles de latence citées portent sur iPhone 12 Pro, pas sur WebView/Android ni la Galaxy Tab A8. Malgré la taille/rapidité attractive, le modèle n'est pas utilisable dans le produit sous cette licence. |
+| [OpenAI CLIP ViT-B/32](https://huggingface.co/openai/clip-vit-base-patch32) | Le dépôt du code est sous MIT ; la fiche du modèle avertit que tout usage déployé est hors périmètre et recommande de limiter les usages de recherche à l'anglais et à une taxonomie testée en domaine. Ce n'est pas un feu vert de déploiement pour l'application. | Le fichier de poids indiqué fait 605 Mo (plus les fichiers de tokenizer/processeur). | Trop lourd pour une activation mobile discrète ; la restriction linguistique est en outre inadaptée à l'interface française. Rejeté pour cette tranche. |
+| [Google SigLIP 2 Base](https://huggingface.co/google/siglip2-base-patch16-224) | La fiche Hub indique Apache 2.0 pour le modèle ; vérifier séparément les droits et notices des fichiers transformés avant redistribution. | 0,4 milliard de paramètres ; `model.safetensors` fait 1,5 Go sur le dépôt consulté. | Prend en charge la classification zéro-shot et la recherche image-texte, mais cette taille ne convient pas à l'installation ni à l'inférence sur notre cible mobile. |
+
+### Exécution locale et distribution
+
+ONNX Runtime Web indique le backend WASM CPU pour les navigateurs de sa matrice et WebGPU pour Chrome/Edge Android ; WebGPU n'y est pas listé sur iOS. Transformers.js documente aussi WebGPU comme option dont la disponibilité varie selon navigateur et appareil. Le mode « sans réseau après installation » est techniquement possible si le modèle, le tokenizer et les fichiers WASM sont hébergés dans l'application ou son stockage local, et si les modèles distants/CDN sont désactivés ; le chargement depuis un dépôt en ligne ne serait pas une exécution hors ligne au premier lancement.
+
+Ces documents établissent une faisabilité générale, pas un fonctionnement validé dans Famili-IA. Aucun convertisseur ONNX tiers, binaire de poids, coût mémoire, temps par photo, chauffe ou autonomie n'a été testé dans le navigateur ou sur Android. Le navigateur doit également disposer d'un fallback CPU si WebGPU est absent.
+
+### Décision et critères restant ouverts
+
+La revue écarte les trois candidats ci-dessus pour cette version, mais **ne clôt pas 15.5ter.3.b** : aucune comparaison de précision sur des photos n'a été faite. Avant toute intégration, il faut identifier un modèle dont la licence des poids autorise le produit, vérifier redistribution et licence des données, puis comparer sur un petit corpus contrôlé par l'utilisateur les propositions de l'analyse textuelle et celles du modèle, avec rappel/précision et abstention. L'évaluation doit rester locale, sans visage ni identité, et mesurer taille téléchargée, mémoire, durée par photo, fonctionnement après redémarrage/hors ligne et repli CPU sur les appareils cibles. En l'absence de candidat conforme et assez léger, le bon choix demeure la baseline textuelle seule.
 
 ```js
 {
@@ -71,7 +113,7 @@ Un résultat de modèle n'accepte aucun extrait textuel : seule la méthode, la 
 
 `dependsOnFactIds` référence les faits sources et le validateur rejette les références manquantes ainsi que les cycles. `getDependentPhotoFactIds` identifie les dépendances transitives (par exemple GPS → lieu dérivé → regroupement) lors d'un retrait de source.
 
-Règles de cycle de vie appliquées pour les photos locales :
+Règles de cycle de vie appliquées aux photos locales et aux métadonnées GPS Dropbox :
 
 1. N'enregistrer une localisation qu'après vérification du consentement dédié. Son retrait efface le GPS historique et les faits qui en dépendent ; un lieu saisi directement par la personne reste distinct.
 2. À l'export, masquer les coordonnées et les valeurs dérivées uniquement du GPS. Les autres annotations restent distinctes.
@@ -88,4 +130,4 @@ La migration actuelle est additive et rejouable : au chargement, les fiches phot
 
 ## Vérification
 
-Les tests utilisent uniquement des identifiants, dates, coordonnées et fichiers synthétiques. Ils couvrent la conversion, la migration additive, l'extraction locale de légendes/mots-clés XMP/IPTC, leur recherche après rechargement, les conflits, la révocation GPS et ses dépendances, ainsi que l'export expurgé. Aucun compte réel, photo personnelle, service de géocodage ou modèle de vision n'est utilisé. Les albums fournisseur, sidecars, adaptateurs cloud et géolocalisation inverse ne sont pas couverts par cette tranche.
+Les tests utilisent uniquement des identifiants, dates, coordonnées et fichiers synthétiques. Ils couvrent la conversion, la migration additive, l'extraction locale de légendes/mots-clés XMP/IPTC, leur recherche après rechargement, les dates OneDrive, la date Dropbox sans GPS, l'accès GPS Dropbox conditionné au consentement et sa révocation dans le navigateur, les conflits, les dépendances GPS et l'export expurgé. Aucun compte réel, photo personnelle, service de géocodage ou modèle de vision n'est utilisé. Les albums fournisseur, sidecars, autres adaptateurs cloud et géolocalisation inverse ne sont pas couverts par cette tranche.

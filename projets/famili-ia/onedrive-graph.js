@@ -1,5 +1,6 @@
 const graphOrigin = "https://graph.microsoft.com";
 const rootChildren = `${graphOrigin}/v1.0/me/drive/root/children`;
+const itemFields = "id,name,file,folder,parentReference,size,lastModifiedDateTime,eTag,photo";
 
 function graphUrl(value) {
   let url;
@@ -12,6 +13,14 @@ function graphUrl(value) {
     throw new TypeError("Adresse de pagination OneDrive non autorisée.");
   }
   return url;
+}
+
+function childrenUrl(folderId) {
+  const url = new URL(folderId === null
+    ? rootChildren
+    : `${graphOrigin}/v1.0/me/drive/items/${encodeURIComponent(folderId)}/children`);
+  url.searchParams.set("$select", itemFields);
+  return url.href;
 }
 
 export async function scanOneDrive({ getToken, onItem, onProgress, signal, fetchImpl = fetch }) {
@@ -33,9 +42,7 @@ export async function scanOneDrive({ getToken, onItem, onProgress, signal, fetch
   while (folders.length) {
     checkCancelled();
     const folderId = folders.shift();
-    let next = folderId === null
-      ? rootChildren
-      : `${graphOrigin}/v1.0/me/drive/items/${encodeURIComponent(folderId)}/children`;
+    let next = childrenUrl(folderId);
     while (next !== null) {
       checkCancelled();
       const url = graphUrl(next);

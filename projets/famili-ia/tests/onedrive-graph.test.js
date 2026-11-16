@@ -24,6 +24,8 @@ test("parcourt dossiers et pages sans envoyer le jeton à une autre origine", as
   assert.deepEqual(result, { files: 3, pages: 3, foldersRead: 2 });
   assert.equal(calls.length, 3);
   assert.ok(calls.every(call => new URL(call.url).origin === "https://graph.microsoft.com"));
+  assert.equal(new URL(calls[0].url).searchParams.get("$select"), "id,name,file,folder,parentReference,size,lastModifiedDateTime,eTag,photo");
+  assert.equal(new URL(calls[2].url).searchParams.get("$select"), "id,name,file,folder,parentReference,size,lastModifiedDateTime,eTag,photo");
   assert.ok(progress.some(state => state.files === 3));
 });
 

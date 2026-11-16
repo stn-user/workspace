@@ -1,4 +1,4 @@
-import { hashPhotoBytes } from "./photo-metadata.js";
+import { createPhotoMetadata, hashPhotoBytes, parseProviderCaptureDate } from "./photo-metadata.js";
 import { createContentProvenance } from "./content-index.js";
 import { readBoundedBytes } from "./read-bounded-bytes.js";
 
@@ -274,7 +274,39 @@ export async function scanDropbox({
   return { files: items.size, pages };
 }
 
-export async function readDropboxDocument({ item, accountId, getToken, signal, fetchImpl = fetch }) {
+function readDropboxPhotoMetadata(documentId, mediaInfo, includeLocation) {
+  if (!mediaInfo || mediaInfo[".tag"] !== "metadata"
+    || !mediaInfo.metadata || typeof mediaInfo.metadata !== "object"
+    || Array.isArray(mediaInfo.metadata)) return null;
+  const values = {};
+  const captureDate = parseProviderCaptureDate(
+    mediaInfo.metadata.time_taken, "media_info.metadata.time_taken"
+  );
+  if (captureDate) values.captureDate = captureDate;
+
+  if (includeLocation) {
+    const location = mediaInfo.metadata.location;
+    if (location && typeof location === "object"
+      && Number.isFinite(location.latitude) && location.latitude >= -90 && location.latitude <= 90
+      && Number.isFinite(location.longitude) && location.longitude >= -180 && location.longitude <= 180) {
+      values.location = {
+        status: "available",
+        latitude: location.latitude,
+        longitude: location.longitude,
+        altitudeMeters: null,
+        source: { kind: "provider", field: "media_info.metadata.location" }
+      };
+    }
+  }
+  return captureDate || values.location ? createPhotoMetadata(documentId, values) : null;
+}
+
+export async function readDropboxDocument({
+  item, accountId, getToken, signal, fetchImpl = fetch, includeLocation = false
+}) {
+  if (typeof includeLocation !== "boolean") {
+    throw new TypeError("Le consentement de localisation Dropbox doit être booléen.");
+  }
   const identity = await dropboxIdentity(accountId, item.id);
   const extension = item.name.toLowerCase().split(".").pop();
   const type = extension === "pdf" ? "PDF" : extension === "txt" ? "Texte"
@@ -295,6 +327,11 @@ export async function readDropboxDocument({ item, accountId, getToken, signal, f
     document.dropboxIndexIssue = reason;
     return { document, coverage: "metadata", reason };
   };
+  if (type === "Image") {
+    const photoMetadata = readDropboxPhotoMetadata(identity.id, item.media_info, includeLocation);
+    if (photoMetadata) document.photoMetadata = photoMetadata;
+    return metadataOnly("Photo en métadonnées fournisseur seules ; aucun pixel téléchargé.");
+  }
   if (!["PDF", "Texte", "Markdown"].includes(type)) return metadataOnly("Format en métadonnées seules ; aucune analyse de photo.");
   const limit = type === "PDF" ? 10 * 1024 * 1024 : 1024 * 1024;
   if (typeof item.size !== "number" || !Number.isFinite(item.size) || item.size < 0 ||

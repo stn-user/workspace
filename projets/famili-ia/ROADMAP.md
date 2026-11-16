@@ -1,5 +1,7 @@
 # Famili-IA — feuille de route produit
 
+> Cette page conserve la vision, les principes et l'historique produit. Pour les priorités et le plan de livraison actifs jusqu'à la bêta et au lancement, consulter [DEVELOPPEMENT_PLAN.md](./DEVELOPPEMENT_PLAN.md).
+
 ## Vision
 
 Aider une personne ou une famille à retrouver, comprendre et organiser ses informations numériques, même lorsqu’elles sont dispersées entre plusieurs services.

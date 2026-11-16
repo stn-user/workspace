@@ -9,6 +9,7 @@ async function setup({ page, context }, { invalidState = false, writeScope = fal
   let account = "compte-fictif-a";
   let revision = "version-1";
   let content = "Facture piscine fictive\nMontant : 120 euros\nÉchéance : 04/05/2028";
+  let photoMediaInfo = null;
   let downloadStatus = 200;
   let listStatus = 200;
   let continueStatus = 200;
@@ -46,7 +47,8 @@ async function setup({ page, context }, { invalidState = false, writeScope = fal
         if (continueStatus !== 200) return route.fulfill({ status: continueStatus, body: JSON.stringify({ error_summary: "reset" }) });
         return route.fulfill({
           json: { entries: [{ ".tag": "file", id: "id:photo-fictive", name: "souvenir-piscine.jpg",
-            path_display: "/Photos/souvenir-piscine.jpg", size: 500, rev: "photo-1" }], cursor: "fin", has_more: false }
+            path_display: "/Photos/souvenir-piscine.jpg", size: 500, rev: "photo-1",
+            ...(photoMediaInfo ? { media_info: photoMediaInfo } : {}) }], cursor: "fin", has_more: false }
         });
       }
       if (url.pathname === "/2/files/download") {
@@ -69,6 +71,7 @@ async function setup({ page, context }, { invalidState = false, writeScope = fal
     calls, errors,
     account: value => { account = value; }, revision: value => { revision = value; },
     content: value => { content = value; },
+    photoMediaInfo: value => { photoMediaInfo = value; },
     downloadStatus: value => { downloadStatus = value; },
     listStatus: value => { listStatus = value; },
     continueStatus: value => { continueStatus = value; },
@@ -76,8 +79,47 @@ async function setup({ page, context }, { invalidState = false, writeScope = fal
   };
 }
 
+test("Dropbox : date photo indexée et GPS uniquement avec consentement, puis purgé au retrait", async ({ page, context }) => {
+  const mock = await setup({ page, context });
+  mock.photoMediaInfo({
+    ".tag": "metadata",
+    metadata: {
+      time_taken: "2024-06-07T08:09:10Z",
+      location: { latitude: 48.8566, longitude: 2.3522 }
+    }
+  });
+  await page.evaluate(async () => (await import("/state.js")).updatePhotoLocationConsent(true));
+  await connect(page);
+  await page.locator("#start-dropbox").click();
+  await expect(page.locator("#dropbox-status")).toContainText("Parcours Dropbox terminé");
+  let photo = (await documents(page)).find(document => document.type === "Image");
+  expect(photo.photoMetadata.captureDate.localDateTime).toBe("2024-06-07T08:09:10");
+  expect(photo.photoMetadata.location.latitude).toBe(48.8566);
+  expect(photo.photoFacts.facts.some(fact => fact.kind === "location"
+    && fact.provenance.providerId === "dropbox")).toBe(true);
+  expect(mock.calls.filter(path => path === "/2/files/download")).toHaveLength(1);
+
+  const initialized = page.waitForEvent("console", message => message.text().includes("Async init - COMPLETE"));
+  await page.reload();
+  await initialized;
+  await page.evaluate(() => { location.hash = "#/recherche"; });
+  await page.locator("#experimental-index-query").fill("Photos prises à 48.8566, 2.3522");
+  await page.locator("#experimental-index-form .submit-button").click();
+  await expect(page.locator("#moments-life-search-status")).toContainText("1 photo trouvée");
+  await expect(page.locator("#moments-life-search-results")).toContainText("souvenir-piscine.jpg");
+
+  await page.evaluate(async () => (await import("/state.js")).updatePhotoLocationConsent(false));
+  photo = (await documents(page)).find(document => document.type === "Image");
+  expect(photo.photoMetadata.location.status).toBe("cleared");
+  expect(photo.photoMetadata.location.latitude).toBeNull();
+  expect(photo.photoFacts.facts.some(fact => fact.kind === "location")).toBe(false);
+  expect(JSON.stringify(photo)).not.toContain("48.8566");
+  expect(mock.errors).toEqual([]);
+});
+
 const documents = page => page.evaluate(async () => (await import("/db.js")).getAll("documents"));
-const checkpoints = page => page.evaluate(async () => (await import("/db.js")).getAll("source_sync"));
+const checkpoints = page => page.evaluate(async () => (await import("/db.js")).getAll("source_sync")
+  .then(records => records.filter(record => record.id.startsWith("dropbox-index-"))));
 async function connect(page) {
   await page.locator("#connect-dropbox").click();
   await expect(page.locator("#dropbox-status")).toContainText("Dropbox connecté");

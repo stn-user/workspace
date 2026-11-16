@@ -7,6 +7,7 @@ import {
 import { formatOneDriveAccountFingerprint, getOneDriveAccountFingerprint } from "../onedrive-account.js";
 import { IndexSession } from "../index-session.js";
 import { getInventorySource, filterSearchResultsByChips } from "../data-inventory.js";
+import { photoFactSetFromDocument } from "../photo-facts.js";
 
 const item = { id: "file!1", name: "test.txt", size: 12, lastModifiedDateTime: "2025-01-02T00:00:00Z" };
 const options = { item, accountId: "account-a", getToken: async () => "synthetic-token" };
@@ -54,6 +55,61 @@ test("métadonnées seules pour format non pris en charge, taille et PDF non lis
   } });
   assert.equal(invalidPdf.coverage, "metadata");
   assert.match(invalidPdf.reason, /PDF/);
+});
+
+test("photo OneDrive : date et appareil du facet Graph, sans téléchargement ni GPS", async () => {
+  const photoItem = {
+    ...item,
+    name: "photo.jpg",
+    file: { mimeType: "image/jpeg" },
+    photo: {
+      takenDateTime: "2024-05-06T12:30:45.123-05:00",
+      cameraMake: "Fictif",
+      cameraModel: "Appareil de test",
+      location: { latitude: 48.8566, longitude: 2.3522 }
+    }
+  };
+  const never = async () => { throw new Error("aucun octet photo ne doit être lu"); };
+  const result = await readOneDriveDocument({
+    ...options, item: photoItem, fetchImpl: never,
+    getToken: async () => { throw new Error("aucun jeton ne doit être demandé"); }
+  });
+
+  assert.equal(result.coverage, "metadata");
+  assert.equal(result.document.type, "Image");
+  assert.match(result.reason, /sans lecture des pixels/);
+  assert.deepEqual(result.document.photoMetadata.captureDate, {
+    raw: "2024-05-06T12:30:45.123-05:00",
+    localDateTime: "2024-05-06T12:30:45.123",
+    offsetMinutes: -300,
+    source: { kind: "provider", field: "photo.takenDateTime" }
+  });
+  assert.deepEqual(result.document.photoMetadata.device, {
+    make: "Fictif",
+    model: "Appareil de test",
+    source: { kind: "provider", field: "photo.cameraMake/photo.cameraModel" }
+  });
+  assert.deepEqual(result.document.photoMetadata.location, {
+    status: "not_requested", latitude: null, longitude: null, altitudeMeters: null, source: null
+  });
+
+  const factSet = photoFactSetFromDocument(result.document);
+  assert.equal(factSet.facts[0].provenance.kind, "provider");
+  assert.equal(factSet.facts[0].provenance.providerId, "onedrive");
+  assert.equal(factSet.facts[0].provenance.itemId, result.document.id);
+  assert.equal(factSet.facts[0].provenance.accountRef, result.document.oneDriveAccountFingerprint);
+  assert.equal(JSON.stringify(result.document).includes("48.8566"), false);
+});
+
+test("date de prise de vue fournisseur invalide ignorée sans empêcher l'indexation de l'image", async () => {
+  const result = await readOneDriveDocument({
+    ...options,
+    item: { ...item, name: "photo.jpg", photo: { takenDateTime: "2025-02-30T12:00:00Z" } },
+    fetchImpl: async () => { throw new Error("aucun téléchargement attendu"); }
+  });
+  assert.equal(result.document.type, "Image");
+  assert.equal(result.document.photoMetadata, undefined);
+  assert.equal(result.coverage, "metadata");
 });
 
 test("refuse lien malveillant et erreur Graph sans divulguer l'URL de téléchargement", async () => {

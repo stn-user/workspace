@@ -1,10 +1,131 @@
-# Famili-IA – Plan de Développement
+# Famili-IA — plan de réalisation jusqu'à la bêta et au lancement
 
-## 📊 Vue d'ensemble
-- **Phase terminée** : Phase 14 – Refonte de la Vue "Vos Données" & Polish
-- **Phase en cours** : Phase 15 – Assistant Vie Numérique, recherche multi-sources & préparation du modèle économique
+**Plan actif, mis à jour le 16 novembre 2026.** Cette feuille de route est la source de vérité pour les prochaines priorités. Les exigences détaillées et leur historique sont repliés à la fin ; une ancienne case non cochée ne devient pas automatiquement une tâche active. `ROADMAP.md` conserve la vision et les principes produit, pas le calendrier de livraison.
 
-## 📋 Liste des étapes
+## Objectif et promesse produit
+
+Famili-IA est un catalogue de recherche local-first reliant les copies indexées de plusieurs sources. La promesse retenue est : **retrouver les éléments effectivement indexés dans les sources connectées, en affichant la couverture et la fraîcheur connues, puis tenter d'ouvrir l'original si la source l'autorise encore.** Une absence de résultat ne prouve jamais l'absence du document dans le compte ; Famili-IA ne promet ni une couverture universelle ni un accès permanent à l'original.
+
+La source fournisseur reste l'autorité sur l'original ; l'index Famili-IA est un catalogue/copie de travail. Une recherche peut porter sur le nom, les métadonnées et le texte réellement accessible. Les enrichissements photo doivent rester sourcés et incertains lorsqu'ils sont déduits. La recherche essentielle, la provenance, l'état de couverture, l'export et la suppression ne seront pas rendus artificiellement payants.
+
+## État constaté
+
+- **Socle présent :** application Web/Capacitor, données locales persistées, recherche textuelle et index commun avec provenance ; dates et faits photo, GPS soumis à consentement, légendes/mots-clés locaux, filtres et résultats expérimentaux sur les copies présentes.
+- **Recherche multi-sources non garantie :** Drive est limité aux fichiers explicitement sélectionnés ; OneDrive personnel est expérimental ; Dropbox et ses essais restent à valider sur un compte réel ; Google Photos n'est pas raccordé. L'accès direct à l'original et la fraîcheur en temps réel ne sont pas prouvés pour tous les connecteurs. Les résultats actuels ne signifient donc pas « tout le compte a été recherché ».
+- **Photos :** métadonnées disponibles seulement selon chaque source ; pas de reconnaissance de personnes. La baseline textuelle « mariage » n'est pas encore intégrée à l'interface ni mesurée sur un corpus réel. La pré-étude P3.b n'a retenu aucun modèle ; cette analyse n'est pas un préalable à la bêta.
+- **Démo :** visite guidée isolée et étiquetée fictive existante, plus des exemples statiques et actions simulées. Il reste à auditer les autres parcours et les anciennes voies de démo avant de conclure que toute donnée fictive est isolée.
+- **Bêta :** la cible retenue est une bêta Android et iOS, avec les sources compatibles et validées séparément sur chaque plateforme. La génération, l'installation et les validations sur appareil restent à faire ; une APK Android ne validera pas les parcours natifs Apple. La cible actuelle accepte 10 Mio/photo alors que la limite P0 proposée est de 20 Mio.
+- **Monétisation, documentation finale et communication publique :** décisions et livrables encore ouverts. La bêta fermée peut rester gratuite et ne doit pas attendre l'intégration des paiements.
+
+## Plan actif de réalisation
+
+### Lot A — Transformer la promesse en critères vérifiables
+
+- [✓] Fixer une promesse bornée : recherche dans l'index réellement constitué, couverture/fraîcheur visibles, original vérifié à l'ouverture si possible ; aucune garantie universelle.
+- [✓] Fixer le périmètre cible de bêta : Android **et** iOS ; chaque version n'annonce que les sources et parcours validés sur sa plateforme. Les connecteurs Web actuels ne sont pas réputés natifs, Google Photos n'est pas raccordé et les sources Apple ne sont testables que sur iOS.
+- [✓] Décider que la synchronisation chiffrée entre appareils est requise. Elle n'est pas implémentée : la clé actuelle est locale à l'appareil et le stockage peut retomber en clair si le chiffrement échoue. Le modèle de clé/récupération/révocation et la synchronisation des conflits/suppressions restent des prérequis bêta ; ne pas présenter l'index local comme partagé.
+- [✓] Compléter la matrice cible par source et plateforme dans `docs/architecture/etat-et-capacites-sources.md` : disponibilité réelle, périmètre, données lues, identité, actualisation et blocages.
+- [✓] Raccorder et persister localement les états de parcours dans l'interface. La couverture des copies est distinguée de l'état de connexion ; un parcours terminé est limité à son périmètre et ne prouve pas la relecture du contenu des copies existantes. La fraîcheur conservée sur l'appareil n'est pas synchronisée entre appareils.
+- [✓] Définir les critères de réussite du parcours « chercher → identifier copie, fournisseur et périmètre → tenter d'ouvrir l'original → afficher le résultat ou l'échec ». Les essais doivent porter sur chaque système cible et chaque source effectivement annoncée ; une absence dans les résultats ne prouve pas l'absence chez le fournisseur.
+
+**Sortie :** cadrage et états locaux de couverture/fraîcheur disponibles. La garantie multi-appareils et l'ouverture des originaux restent explicitement bloquées par les lots suivants ; aucun fournisseur ni plateforme n'est réputé validé par le seul fait d'être dans la matrice.
+
+### Lot B — Fiabiliser la découverte et le retour aux originaux
+
+- [ ] Par source bêta, valider l'inventaire dans le périmètre autorisé : pagination, reprise, erreurs/quota, identités stables fournisseur/compte/élément et actualisation des changements.
+- [ ] Faire évoluer le contrat/migration des fiches vers l'identité `(sourceId, accountRef, itemId)` ; conserver les historiques sans compte comme « non attribués » plutôt que de deviner, puis vérifier l'isolation de plusieurs comptes et appareils.
+- [ ] Ne déclarer un parcours complet qu'après traitement de toutes les pages du périmètre annoncé ; conserver les résultats partiels et leurs motifs d'échec.
+- [ ] Ajouter ou valider l'ouverture de l'original à partir de son identifiant fournisseur, avec vérification au moment de la demande. Ne pas persister de lien de téléchargement temporaire ni prétendre que l'accès est encore valide.
+- [ ] Valider chaque connecteur sur un compte et des fichiers de test : Google Drive reste à portée de sélection ; OneDrive personnel est expérimental ; Dropbox est à valider en réel et en production ; aucun accès élargi n'est présumé.
+- [ ] Garder l'import local explicite. Pour Android/iOS, ne pas annoncer un parcours natif tant que sélecteur, permissions, persistance et réouverture ne sont pas testés sur appareil.
+
+**Sortie :** au moins un parcours source réel et délimité est couvert de bout en bout ; les autres restent clairement marqués expérimentaux ou indisponibles.
+
+### Lot C — Compléter la recherche photo sans la rendre dépendante d'un modèle
+
+- [✓] Cadrer les faits, la provenance, le consentement GPS et la distinction entre faits et suggestions ; documenter les limites des sources.
+- [ ] Terminer les raccordements de métadonnées utiles par source et vérifier leur disponibilité réelle. Une métadonnée absente reste inconnue ; ne pas substituer date de fichier à date de prise de vue ni déduire une identité.
+- [ ] Mesurer localement la baseline metadata-only « mariage » sur des annotations consenties et contrôlées par l'utilisateur ; ne transmettre aucune photo. Raccorder ensuite les suggestions à la recherche seulement si leur utilité et leur taux d'erreur sont acceptables.
+- [ ] Réexaminer P3.b uniquement si un modèle a des poids admissibles, une taille compatible et un intérêt mesuré sur appareils cibles. En l'absence de candidat convenable, garder la baseline sans vision.
+- [ ] Limiter les personnes aux annotations explicites pour la bêta. Détection/regroupement de visages reste hors périmètre sans décision biométrique dédiée.
+
+**Sortie :** date, lieu et événement sont cherchables quand des indices autorisés existent ; une proposition n'est jamais présentée comme une identité ou un fait confirmé.
+
+### Lot D — Assainir et finaliser la démonstration
+
+- [ ] Inventorier tous les parcours de démo, jeux de données, images, noms, chemins, fournisseurs affichés et actions simulées. Les exemples connus comprennent cinq documents statiques (factures, garantie, contrat et notice), des résultats étiquetés comme copies locales/Drive/OneDrive fictives, des photos illustratives et une confirmation d'alerte simulée.
+- [ ] Neutraliser les noms propres, marques, numéros, dates et illustrations pouvant être confondus avec des données ou documents réels ; vérifier droits d'utilisation et métadonnées/EXIF des médias de démonstration. Ne conserver ni personne identifiable ni coordonnée réelle dans les fixtures.
+- [ ] Distinguer visiblement la visite guidée isolée des autres exemples et de toute connexion réelle. Toute source non connectée et toute action non fonctionnelle doit porter une mention « exemple fictif » ou « simulation » au point d'interaction.
+- [ ] Auditer l'ancien helper `initializeDemoState` : il réinitialise et persiste des membres, équipements et alertes fictifs dans IndexedDB lorsqu'il est appelé. Vérifier ses appels et le supprimer, le neutraliser ou l'isoler avant bêta ; ne pas laisser la démo écraser ni polluer les données réelles.
+- [ ] Vérifier installation neuve, sortie/rejeu de démo, stockage après fermeture, absence d'appels réseau, de permission, d'alerte réelle et d'écriture dans l'espace personnel ; tester aussi la séparation après import réel.
+- [ ] Produire une fiche des capacités réelles illustrées par la démo et une liste des éléments encore simulés ; ne pas faire passer un résultat de démonstration pour une intégration fournisseur.
+
+**Sortie :** démo partageable, identifiable comme fictive, sans données personnelles ni effet sur l'espace réel ; les fonctions simulées sont répertoriées.
+
+### Lot E — Livrer des bêtas mobiles Android et iOS
+
+- [ ] Vérifier l'environnement Java/Android SDK/Gradle et générer un APK Android de débogage reproductible ; documenter la commande et l'emplacement de l'artefact. Cette APK ne valide pas les sources ou permissions natives iOS.
+- [ ] Créer la cible iOS sur macOS/Xcode, générer un build bêta distribuable (par exemple TestFlight) et documenter sa configuration, sa signature et ses prérequis.
+- [ ] Définir séparément le contenu des builds Android et iOS : sources validées sur chaque cible, données de démonstration assainies, configuration OAuth autorisée, permissions minimales et aucune clé secrète embarquée.
+- [ ] Décider explicitement de la limite photo bêta (10 Mio actuelle ou cible 20 Mio) ; si elle change, mettre à jour l'import, les budgets mémoire/temps et les tests avant distribution.
+- [ ] Installer et mettre à jour sur Galaxy Tab A8 et téléphone Android, puis valider sur iPhone et iPad ; tester sur chaque cible accueil, sélecteurs, recherche, synchronisation chiffrée multi-appareils, hors ligne, permissions refusées/révoquées, limites, erreurs, accessibilité et conservation des données.
+- [ ] Après validation, produire les builds bêta signés Android et iOS, garder les clés hors dépôt et documenter distribution, mise à jour et retour arrière. Ne pas confondre APK Debug et version publiable.
+
+**Sortie :** des builds Android et iOS identifiés, installables et testés sur les appareils annoncés, accompagnés de limites, instructions et canal de retour bêta.
+
+### Lot F — Décider et implémenter la monétisation
+
+- [ ] Lancer d'abord la bêta fermée sans paiement. Recueillir des retours sur les usages utiles avant de figer les offres ou les prix.
+- [ ] Construire la matrice fonctionnalités gratuites/payantes. Hypothèse à tester : garder gratuitement la recherche locale de base, ses preuves, états de couverture, export et suppression ; étudier pour le payant les coûts récurrents réels (synchronisation/sauvegarde, partage familial, quotas ou services continus).
+- [ ] Chiffrer coût par utilisateur et tester disposition à payer. Remplacer l'ancien prix indicatif de 4,99 €/mois par une décision argumentée : prix, période, essai éventuel, mensuel/annuel et règles de résiliation.
+- [ ] Comparer les solutions par canal de vente : facturation Google Play pour la distribution Play, paiement Web (par exemple Stripe) et gestion multi-boutiques (par exemple RevenueCat). Réévaluer les règles des boutiques au moment du choix ; comparer frais, exigences de compte/serveur, validation et restauration d'achat, données transmises, taxes, remboursements et dépendance fournisseur.
+- [ ] Définir avant tout code le modèle d'identité/droits (entitlement), l'accès hors ligne, le partage du foyer et la perte d'abonnement. Aucun secret de facturation dans le client ; ne pas bloquer l'accès aux données, à l'export ou à leur suppression après expiration.
+- [ ] Implémenter seulement après décision documentée, avec vérification des transactions, achat/restauration, annulation, erreur, remboursement, expiration, changement d'offre et tests de non-perte de données.
+
+**Sortie :** offre et prix validés par les retours et les coûts ; paiement fonctionnel sur les canaux effectivement distribués.
+
+### Lot G — Finaliser la documentation produit et technique
+
+- [ ] Désigner les documents de référence uniques et résoudre les doublons : garder `DEVELOPPEMENT_PLAN.md` comme plan actif et clarifier que `ROADMAP.md` décrit vision/principes, pas un ancien calendrier.
+- [ ] Publier les capacités réelles par source et plateforme : périmètre, données lues, couverture, fraîcheur, ouverture de l'original, limites et refus/erreurs.
+- [ ] Écrire un guide utilisateur (connexion/sélection, recherche, couverture et index périmé, hors ligne, révocation, export/suppression, données fictives et aide).
+- [ ] Compléter la documentation développeur (installation, tests/build, configuration locale/OAuth sans secrets, Capacitor/Android, signature, publication et dépannage) et fournir un point d'entrée de type README si nécessaire.
+- [ ] Finaliser notices vie privée, flux/rétention, conditions d'utilisation et conditions d'abonnement après choix de monétisation ; faire valider les obligations applicables avant une bêta externe ou vente.
+- [ ] Aligner `CHANGELOG.md`, captures, textes de l'application et documentation sur le même état de livraison ; distinguer systématiquement « disponible », « expérimental », « simulé » et « prévu ».
+
+**Sortie :** une personne peut installer, comprendre les limites, utiliser, supprimer ses données et demander de l'aide sans promesse trompeuse.
+
+### Lot H — Faire connaître l'application sans surpromesse
+
+- [ ] Définir public cible, proposition de valeur et messages conformes aux capacités réellement validées ; bannir « retrouve tout » ou « toutes les sources » sans périmètre démontré.
+- [ ] Préparer un site de présentation avec liste d'attente bêta, appareils/sources supportés, politique de confidentialité, conditions, aide/contact et limites visibles.
+- [ ] Produire une vidéo YouTube de démonstration et des extraits courts, sous-titrés et accessibles, uniquement à partir de données fictives assainies ; montrer les preuves, la couverture et les états d'échec autant que les réussites.
+- [ ] Organiser un recrutement pilote, un canal de retours/support et une routine de tri des problèmes. Ne recueillir aucune photo, requête ou document personnel par défaut dans les métriques.
+- [ ] Mesurer intérêt et compréhension avec des indicateurs minimaux, transparents et sans contenu personnel ; corriger le message si les testeurs pensent que Famili-IA garantit l'accès à l'ensemble de leurs comptes.
+
+**Sortie :** un dispositif de communication et d'inscription prêt, fidèle à la version et à la politique de confidentialité publiées.
+
+### Lot I — Décision de lancement
+
+- [ ] Réaliser les revues sécurité/dépendances, confidentialité, conformité, accessibilité et performances sur le périmètre retenu ; traiter ou accepter explicitement chaque risque important.
+- [ ] Exécuter la bêta fermée et analyser retours, incidents, couverture, erreurs de recherche, performances, coûts et facilité de révocation/suppression.
+- [ ] Publier le guide de mise à jour, assistance, signalement d'incident et retour arrière ; préparer les informations de boutique/fiche produit si une distribution publique est décidée.
+- [ ] Tenir une revue Go/No-Go : valeur validée, fonctions supportées vérifiées, démonstration propre, données protégées, coûts soutenables et monétisation/documentation conformes. Sinon, corriger ou prolonger la bêta.
+
+**Dépendances :** A et D fixent la promesse et la démonstration ; B fournit la recherche effectivement vérifiée ; la synchronisation chiffrée requise doit être conçue et validée avant la bêta multi-appareils ; E dépend aussi de cibles Android/iOS et d'un périmètre propre à chaque plateforme. La bêta fermée peut précéder F. Le lancement public dépend de F, G, H et I. Le modèle visuel P3.b et la reconnaissance de personnes P4 ne bloquent pas une bêta à fonctionnalités explicitement limitées.
+
+## Nettoyage des anciens backlogs
+
+Les phases 0–14 ci-dessous sont conservées comme archive, pas comme tâches actives. Les listes 15.0–15.8 et 15.5ter conservent leurs exigences, preuves et détails techniques ; l'ordre de réalisation est celui des lots A–I ci-dessus. Lorsqu'un lot A–I est clos, mettre à jour les critères détaillés correspondants et le changelog, puis replier/archiver les cases réalisées plutôt que de laisser plusieurs backlogs concurrents.
+
+<details>
+<summary>Historique des phases 0–14 (archive, non prioritaire)</summary>
+
+## 📊 Vue d'ensemble historique
+- **Phases 0–14 :** jalons et tâches des prototypes/itérations précédentes ; leurs cases ne sont pas le statut actif du projet.
+- **Travail restant réintégré :** index multi-sources, photos, synchronisation, bêta et monétisation sont repris dans les lots A–I ci-dessus.
+
+## 📋 Liste historique des étapes
 
 ### Phase 0 – Cadrer le problème
 - [✓] ✅ 0.1 : Vision & principe de design réd. (roadmap) 
@@ -179,7 +300,12 @@ L'objectif est d'améliorer la visibilité, la gestion et la compréhension des 
     - [✓] ✅ 14.3.a (14.6) : Suppression confirmée des données applicatives en IndexedDB et du foyer personnalisé en localStorage ; les scans actifs sont arrêtés et les fichiers sources restent intacts.
     - [✓] ✅ 14.3.b (14.7) : Filtres de type/provenance partagés avec la recherche unifiée et compatibilité des filtres d'inventaire/anciens liens vérifiée.
 
-### Phase 15 – Assistant Vie Numérique & Préparation du modèle économique
+    </details>
+
+    <details>
+    <summary>Référentiel détaillé phase 15 (critères, décisions et preuves — ordre actif : lots A–I)</summary>
+
+    ### Phase 15 – Assistant Vie Numérique & Préparation du modèle économique
 Cette phase reprend les travaux encore ouverts de l'ancienne 12.2 et améliore les fonctions qui donnent une valeur régulière à Famili-IA, en commençant par un audit des capacités réelles. Le traitement des documents et photos reste local par défaut. Les offres Essentiel et Sérénité sont retenues comme hypothèses de travail fournies par l'utilisateur, à réexaminer plus tard ; le prix de 4,99 €/mois est un prix de test, pas un tarif définitif. La qualité de recherche utile ne sera pas artificiellement réservée à l'offre payante. Tout composant serveur, fournisseur de paiement ou accès natif spécifique est conditionné à une étude de faisabilité, de confidentialité et de conformité.
 
 #### 15.0 – Audit initial de l'intelligence produit
@@ -542,14 +668,14 @@ La progression et les dépendances figurent dans le [plan d'action opérationnel
 
 #### 15.5ter – Enrichissement automatique des photos et recherche de leur source
 
-**Statut au 14 novembre 2026 : plan dédié proposé, non implémenté.** Objectif demandé par l'utilisateur : indexer automatiquement les informations disponibles sur les photos des sources autorisées, puis répondre à des questions comme « Sur quelle source se trouvent mes photos de mariage ? », sans annotation systématique de chaque photo ou groupe. Ce plan ne vaut ni autorisation d'élargir les accès, ni activation de la biométrie ou d'un service externe.
+**Statut : P2 partiellement implémenté, P3–P7 non livrés.** Objectif demandé par l'utilisateur : indexer automatiquement les informations disponibles sur les photos des sources autorisées, puis répondre à des questions comme « Sur quelle source se trouvent mes photos de mariage ? », sans annotation systématique de chaque photo ou groupe. Ce plan ne vaut ni autorisation d'élargir les accès, ni activation de la biométrie ou d'un service externe.
 
 **Résultat produit visé :** exploiter d'abord dates, coordonnées et descriptions déjà présentes ; compléter, lorsque cela est possible et autorisé, par des propositions locales d'événements et de personnes. Répondre avec les sources, les éléments justificatifs, la couverture et l'incertitude. Une donnée absente n'est pas inventée ; l'automatisation ne garantit pas de retrouver une information jamais accessible.
 
 **Socle vérifié dans le dépôt :**
-- `photo-exif.js` extrait déjà localement les dates EXIF et, seulement sur consentement distinct, les coordonnées GPS des JPEG/PNG pris en charge ; l'import local appelle ce traitement. Il ne lit actuellement ni XMP ni IPTC.
-- `document-index.js` reprend la date de prise de vue et les associations explicites personne/événement/lieu. Les coordonnées conservées dans `photoMetadata` ne deviennent pas encore des champs géographiques de la fiche commune ; il n'existe pas de géocodage inverse ou de reconnaissance visuelle/faciale.
-- Le parcours Google Drive sélectionné traite PDF/TXT/Markdown/Google Docs, pas les photos. OneDrive personnel et la première tranche Dropbox Web du lot F conservent les images en métadonnées de fichier, sans pipeline d'enrichissement EXIF/visuel raccordé. Dropbox reste expérimental, testé seulement par simulation ; Google Photos n'est pas raccordé et iOS n'a pas de cible native.
+- `photo-exif.js` extrait localement les dates EXIF, les champs XMP `dc:description`/`dc:subject` et IPTC `Caption`/`Keywords`, ainsi que les coordonnées GPS des JPEG/PNG pris en charge uniquement avec consentement distinct ; les autres champs XMP sont ignorés.
+- `document-index.js` reprend les dates et les faits descriptifs photo ; la recherche GPS locale est exacte et exige le consentement actif. Il n'existe pas de géocodage inverse ou de reconnaissance visuelle/faciale.
+- Le parcours Google Drive sélectionné traite PDF/TXT/Markdown/Google Docs, pas les photos. OneDrive personnel demande maintenant le facet Graph `photo` et conserve date de prise de vue et appareil lorsqu'ils sont fournis, sans télécharger les pixels ni lire de GPS. Dropbox conserve la date `media_info.metadata.time_taken` et n'accède à la localisation de cette facette qu'avec le consentement GPS actif ; aucune image n'est téléchargée. Dropbox reste expérimental, testé seulement avec réponses API simulées ; Google Photos n'est pas raccordé et iOS n'a pas de cible native.
 - Réutiliser [le modèle d'index](docs/architecture/modele-index.md), [la matrice des sources](docs/architecture/etat-et-capacites-sources.md), [l'intégration photo](docs/architecture/integration.md) et les acquis 15.3–15.5. Les dépendances de connecteurs restent au lot F de 15.5bis, la synchronisation au lot G et les contrôles de pilote au lot H ; ne pas créer un second index ou un second moteur concurrent.
 
 **Principes non négociables :**
@@ -589,20 +715,25 @@ La progression et les dépendances figurent dans le [plan d'action opérationnel
 ##### P2 — Automatiser les métadonnées disponibles, avant la reconnaissance visuelle
 **Prérequis :** P1 ; capacité et accès autorisé prouvés pour chaque adaptateur raccordé.
 - [ ] **15.5ter.2.a** : Réutiliser l'extraction EXIF existante et raccorder ses champs à l'index commun, y compris les coordonnées si le consentement GPS est actif. Étudier XMP/IPTC, légendes, mots-clés et albums accessibles ; ne lire et conserver que les champs retenus, pas l'intégralité des métadonnées.
-  - [✓] **Tranche locale** : extraire avec provenance les champs XMP `dc:description`/`dc:subject` et IPTC `Caption`/`Keywords`, les persister dans les faits et les indexer pour la recherche. Les autres champs XMP, dont GPS, sont ignorés ; les albums et métadonnées fournisseur restent à étudier.
+  - [✓] **Tranche locale** : extraire avec provenance les champs XMP `dc:description`/`dc:subject` et IPTC `Caption`/`Keywords`, les persister dans les faits et les indexer pour la recherche. Les autres champs XMP, dont GPS, sont ignorés ; les albums et champs des autres fournisseurs restent à étudier.
 - [ ] **15.5ter.2.b** : Appliquer la même règle de consentement GPS aux métadonnées fournisseur, EXIF, fichiers annexes et données dérivées. Un refus ne doit pas être contourné par une autre source ; le retrait invalide/retire aussi les dérivés concernés selon la politique approuvée, sans toucher aux originaux.
+  - [✓] **Tranche Dropbox** : le champ `media_info.metadata.location` n'est consulté et conservé qu'avec le consentement GPS actif ; sans consentement, le GPS et les faits correspondants sont absents. Le retrait efface localisation et faits dérivés selon le cycle commun. Vérifié avec réponses API synthétiques, sans accès à un compte réel.
 - [✓] **15.5ter.2.c** : Les dates EXIF invalides sont écartées avec diagnostic ; un fuseau absent ou invalide reste inconnu, sans conversion silencieuse. Les dates contradictoires font échouer la résolution et ne sont pas indexées ; une provenance `filename` est marquée comme estimation. Aucun repli sur la date d'import/modification n'est utilisé. Vérifié par les tests EXIF, faits photo, index et timeline.
 - [ ] **15.5ter.2.d** : Raccorder progressivement local, puis un parcours cloud déjà disponible selon P0. Pour les sources n'exposant que des métadonnées, conserver ce résultat partiel ; lire les octets seulement si autorisé et nécessaire, avec limites de taille/formats, progression et erreurs explicites. HEIC/HEIF et autres nouveaux formats restent conditionnés à une validation dédiée.
-- [ ] **15.5ter.2.e** : Comparer coordonnées seules et conversion locale en nom de lieu avec jeu géographique licencié/borné. L'accès GPS n'autorise pas l'envoi à un géocodeur distant ; sans solution retenue, conserver les coordonnées autorisées sans inventer d'adresse.
+  - [✓] **Tranche OneDrive Graph — métadonnées fournisseur** : sélectionner le facet `photo` dans le parcours Graph et conserver `takenDateTime`, `cameraMake` et `cameraModel` lorsqu'ils sont présents, avec provenance fournisseur. Les images restent en métadonnées seules ; aucun pixel ni champ GPS n'est lu. Vérifié par réponses Graph synthétiques ; disponibilité réelle du facet à confirmer sur compte de test.
+  - [✓] **Tranche Dropbox — métadonnées fournisseur** : conserver `media_info.metadata.time_taken` et, uniquement avec consentement GPS, consulter puis conserver `media_info.metadata.location`. Les images restent en métadonnées seules ; aucune donnée de pixel n'est téléchargée. Testé en unitaire et dans le navigateur avec réponses synthétiques ; disponibilité réelle à vérifier sur compte de test.
+- [✓] **15.5ter.2.e** : Comparaison documentaire terminée, sans jeu retenu ni géocodeur raccordé. Les coordonnées seules restent la référence exacte. Natural Earth est public domain et léger pour les lieux habités, mais sa couverture est cartographique et incomplète ; GeoNames est plus riche et téléchargeable par pays, mais ses lieux sont des points, pas des adresses ou des limites de ville, et requièrent attribution CC BY 4.0 ; OpenStreetMap est plus détaillé mais impose attribution et obligations ODbL/share-alike. Aucun seuil de proximité, paquet géographique ni politique de mise à jour n'est décidé. Aucun GPS ne sera envoyé à un géocodeur distant ; conserver les coordonnées consenties sans inventer d'adresse. Détails et sources : [comparaison de géolocalisation inverse](docs/architecture/contrat-faits-photo.md#comparaison-p2-des-jeux-de-géolocalisation-inverse).
 
 **Sortie P2 :** import autorisé → extraction → fiche persistée → recherche après rechargement, sans annotation par photo pour les champs présents ; métadonnées absentes/ignorées signalées et corrections préservées. Aucun modèle visuel requis pour livrer ce premier bénéfice.
 
-- [✓] **15.5ter.2.f — tranche locale** : persister de façon additive les faits issus des métadonnées et annotations locales, les réconcilier avec les corrections, indexer/rechercher la date EXIF après rechargement, et appliquer le consentement GPS à l'enregistrement, à sa révocation (faits dérivés inclus) et à l'export. Avec le consentement actif, la paire latitude/longitude peut être recherchée par correspondance exacte, sans rayon ni géocodage ; si aucune photo ne correspond, l'interface précise que la couverture GPS dépend des coordonnées présentes dans les métadonnées et du consentement actif. La tranche descriptive locale XMP/IPTC est couverte en 15.5ter.2.a. Vérification navigateur sur données synthétiques, y compris après révocation du consentement. Cette tranche ne clôt pas P2 : albums/sidecars et métadonnées cloud, adaptateurs cloud et géolocalisation inverse restent à traiter.
+- [✓] **15.5ter.2.f — tranche locale** : persister de façon additive les faits issus des métadonnées et annotations locales, les réconcilier avec les corrections, indexer/rechercher dates EXIF après rechargement, et appliquer le consentement GPS à l'enregistrement, à sa révocation (faits dérivés inclus) et à l'export. Avec le consentement actif, la paire latitude/longitude peut être recherchée par correspondance exacte, sans rayon ni géocodage ; si aucune photo ne correspond, l'interface précise que la couverture GPS dépend des coordonnées présentes dans les métadonnées et du consentement actif. La tranche descriptive locale XMP/IPTC est couverte en 15.5ter.2.a. Vérification navigateur sur données synthétiques, y compris après révocation du consentement. Cette tranche ne clôt pas P2 : albums/sidecars, champs de métadonnées d'autres sources, validation réelle des connecteurs et géolocalisation inverse restent à traiter.
 
 ##### P3 — Proposer automatiquement événements et regroupements
 **Prérequis :** P1–P2 sur le périmètre pilote ; validation des modèles et ressources avant ajout de dépendances.
 - [ ] **15.5ter.3.a** : Exploiter d'abord les informations autorisées déjà présentes : titres d'albums, légendes, mots-clés, noms de dossiers/fichiers. Conserver leur origine et distinguer étiquette explicite et déduction lexicale ; mesurer la baseline avant analyse des pixels.
+  - [✓] **Première baseline metadata-only — mariage** : un détecteur déterministe produit des candidats à partir des faits XMP/IPTC déjà persistés, du nom de fichier et des chemins de dossier/source disponibles. Un mot-clé exactement égal à un alias est distingué d'une simple correspondance lexicale ; chaque candidat garde sa source et sa provenance. Aucun pixel n'est lu, aucun événement confirmé n'est modifié et les candidats ne sont pas encore persistés, affichés ni recherchables. Les titres d'albums ne sont exposés par aucun adaptateur actuel ; la mesure sur corpus réel reste à faire localement et sans transmission des photos.
 - [ ] **15.5ter.3.b** : Comparer cette baseline à une classification visuelle ou recherche sémantique **locale** sur des événements/scènes ciblés, dont mariage. Vérifier licence du code **et des poids**, redistribution, taille, compatibilité Web/Android, téléchargement initial du modèle et fonctionnement local après installation. Aucun service d'analyse distant implicite.
+  - [✓] **Pré-étude licences/portabilité** : MobileCLIP2-S0 (poids 300 Mo) est régi par une licence Apple limitée à la recherche scientifique non commerciale, qui exclut le développement/usage dans un produit ; OpenAI CLIP ViT-B/32 (poids 605 Mo) a une fiche modèle qui exclut les usages déployés et limite l'usage recommandé à l'anglais ; SigLIP 2 Base (poids 1,5 Go) est sous Apache 2.0 mais trop volumineux pour la cible mobile envisagée. ONNX Runtime Web offre WASM CPU sur les navigateurs listés et WebGPU sur Chromium Android, mais pas iOS dans sa matrice actuelle ; Transformers.js permet les fichiers locaux sans chargement distant, à condition d'héberger aussi le runtime localement. Aucun modèle n'est retenu ni installé. La comparaison de précision contre la baseline et les mesures sur appareils restent à faire ; le point 3.b reste ouvert. Sources et limites : [évaluation initiale P3.b](docs/architecture/contrat-faits-photo.md#faisabilite-initiale-p3b).
 - [ ] **15.5ter.3.c** : Indexer les propositions utiles dans une couche de suggestions recherchables, pas dans les annotations confirmées. Rendre visible « mariage possible » avec ses indices ; permettre une recherche incluant les suggestions et une recherche limitée aux faits/associations confirmés. Ne pas déduire identité des mariés, relation familiale, religion, santé ou autres attributs sensibles d'une scène.
 - [ ] **15.5ter.3.d** : Regrouper, lorsque les indices le permettent, par proximité temporelle, lieu autorisé et similarité ; expliquer le regroupement, éviter la propagation d'une erreur à tout un lot et conserver les cas ambigus séparés. Une correction globale facultative ne doit pas devenir un passage obligatoire à l'indexation.
 
@@ -687,3 +818,5 @@ La progression et les dépendances figurent dans le [plan d'action opérationnel
 
 ## 🛠 Framework des Skills - Implémentation Structurée
 ...
+
+</details>

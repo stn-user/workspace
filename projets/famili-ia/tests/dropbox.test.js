@@ -11,6 +11,7 @@ import { IndexSession } from "../index-session.js";
 import { getInventorySource, countInventorySources } from "../data-inventory.js";
 import { describeSources } from "../source-status.js";
 import { readBoundedBytes } from "../read-bounded-bytes.js";
+import { photoFactSetFromDocument } from "../photo-facts.js";
 
 const file = { ".tag": "file", id: "id:fictif", name: "facture-piscine.txt", rev: "revision-fictive", size: 40,
   path_display: "/Maison/facture-piscine.txt", server_modified: "2026-01-03T10:00:00Z" };
@@ -190,6 +191,66 @@ test("Dropbox : photos, formats non lus, versions absentes et tailles dépassée
     item: file, accountId: "compte", getToken,
     fetchImpl: async () => download("texte", { ...file, rev: "autre-version" })
   }), /modifié pendant/);
+});
+
+test("Dropbox : date photo sans GPS sans consentement, GPS sourcé seulement avec consentement", async () => {
+  const mediaInfo = {
+    ".tag": "metadata",
+    metadata: {
+      time_taken: "2024-06-07T08:09:10Z",
+      location: { latitude: 48.8566, longitude: 2.3522 }
+    }
+  };
+  const never = () => { throw new Error("une photo ne doit pas être téléchargée"); };
+  const withoutConsent = await readDropboxDocument({
+    item: { ...file, name: "souvenir.jpg", media_info: mediaInfo },
+    accountId: "compte-fictif", getToken, fetchImpl: never
+  });
+  assert.equal(withoutConsent.document.type, "Image");
+  assert.deepEqual(withoutConsent.document.photoMetadata.captureDate, {
+    raw: "2024-06-07T08:09:10Z",
+    localDateTime: "2024-06-07T08:09:10",
+    offsetMinutes: 0,
+    source: { kind: "provider", field: "media_info.metadata.time_taken" }
+  });
+  assert.deepEqual(withoutConsent.document.photoMetadata.location, {
+    status: "not_requested", latitude: null, longitude: null, altitudeMeters: null, source: null
+  });
+  assert.equal(JSON.stringify(withoutConsent.document).includes("48.8566"), false);
+  assert.equal(photoFactSetFromDocument(withoutConsent.document).facts.some(fact => fact.kind === "location"), false);
+  assert.equal(withoutConsent.coverage, "metadata");
+  assert.equal(withoutConsent.document.dropboxIndexIssue.includes("pixel"), true);
+
+  const withConsent = await readDropboxDocument({
+    item: { ...file, name: "souvenir.jpg", media_info: mediaInfo },
+    accountId: "compte-fictif", getToken, fetchImpl: never, includeLocation: true
+  });
+  assert.deepEqual(withConsent.document.photoMetadata.location, {
+    status: "available",
+    latitude: 48.8566,
+    longitude: 2.3522,
+    altitudeMeters: null,
+    source: { kind: "provider", field: "media_info.metadata.location" }
+  });
+  const factSet = photoFactSetFromDocument(withConsent.document, { includeLocation: true });
+  assert.equal(factSet.facts.some(fact => fact.kind === "location"
+    && fact.provenance.kind === "provider" && fact.provenance.providerId === "dropbox"), true);
+});
+
+test("Dropbox : le champ GPS du fournisseur n'est pas lu lorsque le consentement est absent", async () => {
+  const metadata = { time_taken: "2024-06-07T08:09:10Z" };
+  Object.defineProperty(metadata, "location", {
+    get() { throw new Error("le champ GPS ne doit pas être consulté"); }
+  });
+  const result = await readDropboxDocument({
+    item: {
+      ...file, name: "souvenir.jpg",
+      media_info: { ".tag": "metadata", metadata }
+    },
+    accountId: "compte-fictif", getToken,
+    fetchImpl: () => { throw new Error("une photo ne doit pas être téléchargée"); }
+  });
+  assert.equal(result.document.photoMetadata.captureDate.localDateTime, "2024-06-07T08:09:10");
 });
 
 test("lecture bornée partagée : dépassement en flux ou en en-tête arrête la lecture", async () => {

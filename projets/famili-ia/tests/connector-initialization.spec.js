@@ -35,6 +35,82 @@ test('explique pourquoi OneDrive reste indisponible sans identifiant configuré'
   await expect(page.locator('#onedrive-status')).toContainText('.env.local');
 });
 
+test('persiste localement le résultat du parcours et le restaure après rechargement', async ({ page }) => {
+  await page.route('**/onedrive-auth.js*', route => route.fulfill({
+    contentType: 'application/javascript',
+    body: `export class OneDriveAuth {
+      connected = false;
+      accountId = "compte-fictif";
+      async initialize() {}
+      async connect() { this.connected = true; }
+      async getToken() { return "jeton-fictif"; }
+      async disconnect() { this.connected = false; }
+    }`
+  }));
+  await page.route('https://graph.microsoft.com/**', route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/v1.0/me/drive/root/children') {
+      return route.fulfill({ json: {
+        value: [{ id: 'element-fictif', name: 'document.txt', size: 20, file: {}, eTag: '"v1"' }]
+      } });
+    }
+    return route.fulfill({
+      json: { id: 'element-fictif', '@microsoft.graph.downloadUrl': 'https://files.1drv.com/synthetic' }
+    });
+  });
+  await page.route('https://files.1drv.com/**', route => route.fulfill({ body: 'contenu fictif' }));
+  const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.goto('http://127.0.0.1:5188/#/recherche');
+  await initialized;
+  await page.getByRole('button', { name: 'Ajouter des fichiers', exact: true }).click();
+  await page.getByRole('button', { name: 'Options OneDrive', exact: true }).click();
+  await page.locator('#connect-onedrive').click();
+  await expect(page.locator('#start-onedrive')).toBeEnabled();
+  await page.locator('#start-onedrive').click();
+  await expect(page.locator('#onedrive-status')).toContainText('Parcours terminé.');
+
+  const savedRun = await page.evaluate(async () => {
+    const { getAll } = await import('/db.js');
+    return (await getAll('source_sync')).find(record => record.kind === 'source-run-status');
+  });
+  expect(savedRun.state).toBe('complete');
+  expect(savedRun.discoveredCount).toBe(1);
+  expect(savedRun.accountRef).toMatch(/^[a-f0-9]{64}$/);
+
+  const reinitialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.reload();
+  await reinitialized;
+  await expect(page.locator('#experimental-source-status')).toContainText('Parcours terminé pour le périmètre choisi');
+  await expect(page.locator('#experimental-source-status')).toContainText('ne confirme pas la relecture du contenu');
+  await expect(page.locator('#experimental-source-status')).not.toContainText("n'ont pas pu être lus ou enregistrés");
+
+  await page.evaluate(async ({ accountRef, lastSuccessfulAt }) => {
+    const { createSourceRunStatus } = await import('/source-status.js');
+    const { saveSourceRunStatus } = await import('/source-status-storage.js');
+    await saveSourceRunStatus(createSourceRunStatus({
+      sourceId: 'onedrive',
+      accountRef,
+      scopeKind: 'account',
+      state: 'running',
+      startedAt: new Date().toISOString(),
+      lastSuccessfulAt,
+      discoveredCount: null,
+      processedCount: 0,
+      failedCount: 0
+    }));
+  }, { accountRef: savedRun.accountRef, lastSuccessfulAt: savedRun.lastSuccessfulAt });
+  const recovered = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.reload();
+  await recovered;
+  const recoveredRun = await page.evaluate(async () => {
+    const { getAll } = await import('/db.js');
+    return (await getAll('source_sync')).find(record => record.kind === 'source-run-status');
+  });
+  expect(recoveredRun.state).toBe('interrupted');
+  await expect(page.locator('#experimental-source-status')).toContainText('Dernier parcours interrompu');
+  await expect(page.locator('#experimental-source-status')).toContainText('Dernier parcours complet');
+});
+
 test('fait examiner et confirmer les changements OneDrive avant de remplacer une copie', async ({ page }) => {
   await page.route('**/onedrive-auth.js*', route => route.fulfill({
     contentType: 'application/javascript',

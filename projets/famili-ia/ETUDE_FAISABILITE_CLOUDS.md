@@ -2,6 +2,7 @@
 
 **Vérifiée le : 8 octobre 2026**  
 **Complément du 14 novembre 2026 :** reprise durable locale de l'indexation Dropbox ajoutée au lot F ; les tests restent simulés, aucun compte réel ni approbation de production n'est validé.
+**Complément du 16 novembre 2026 :** les photos Dropbox peuvent fournir une date `media_info.metadata.time_taken` ; leur localisation n'est lue que si le consentement GPS dédié est actif. Les pixels ne sont pas téléchargés ; les réponses restent synthétiques et aucun compte réel n'est validé.
 **Sources :** documentation officielle Google, Microsoft, Dropbox et Apple consultée à la date indiquée.  
 **But :** déterminer si Famili-IA peut tenir la promesse « poser une question et retrouver l’information » à travers Google Drive, Google Photos, OneDrive, Dropbox, iCloud Drive et Photos iCloud.
 
@@ -157,7 +158,7 @@ Le retour vérifie origine, fenêtre et état aléatoire ; le code est échangé
 
 - Parcours récursif de `list_folder`, puis pagination par `list_folder/continue`, séquentiel et interruptible. Progression par nombre traité ; le total du compte n'est pas présumé connu.
 - TXT/Markdown jusqu'à 1 Mo, PDF à texte incorporé jusqu'à 10 Mo et 20 pages. Le téléchargement est borné en flux et son identité/nom/révision sont contrôlés avant conservation. Quota, accès refusé, expiration et erreurs interrompent explicitement le parcours ; aucune relance automatique.
-- Photos et formats non pris en charge : noms et métadonnées de fichier uniquement. Pas de pixels téléchargés, miniature, EXIF, GPS, album, nom de personne ou reconnaissance ; la modification du fichier n'est pas une date de prise de vue.
+- Photos et formats non pris en charge : noms et métadonnées de fichier uniquement. Pour une photo avec `media_info` retourné, Famili-IA conserve le champ `time_taken` et ne consulte `location` qu'avec le consentement GPS dédié ; sans consentement, le champ GPS n'est ni lu ni persisté. Aucun pixel, EXIF, miniature, album, nom de personne ou reconnaissance n'est utilisé ; la modification du fichier n'est pas une date de prise de vue. Le paramètre `include_media_info` de Dropbox n'est pas activé par le code ; la documentation indique qu'il n'a plus d'effet depuis 2019.
 - Copies et fiches conservées par les mécanismes existants ; identifiant dérivé du fournisseur/compte/élément et empreinte de compte pseudonymisée, pas anonyme. Pas d'identifiant de compte en clair, de jeton ou d'URL temporaire persisté. Les mêmes identifiants de fichier de comptes différents ne remplacent pas leurs copies.
 - Recherche et filtre Dropbox, inventaire et copie textuelle après rechargement. Une copie persistante ne prouve ni l'accès courant ni la fraîcheur de l'original ; l'ouverture directe de celui-ci n'est pas raccordée.
 - Les différences de nom/emplacement/version sont présentées dans une revue explicite, sans présélection. Les copies actuelles ne sont remplacées qu'après confirmation ; avant persistance, la relecture vérifie l'identité, le nom et la révision retournés par Dropbox. Une erreur conserve l'ancienne copie, les annotations utilisateur sont préservées et un résultat en métadonnées seules est annoncé avant remplacement. Les comptes ou versions non vérifiables ne sont pas actualisés. Une absence n'est pas interprétée comme une suppression.
@@ -166,7 +167,7 @@ Le retour vérifie origine, fenêtre et état aléatoire ; le code est échangé
 
 ### Validation et prochain contrôle réel
 
-Neuf tests unitaires Dropbox et 12 tests Playwright Dropbox réussis : parcours complet à 390/768/1280/1920 px, clavier, annulation, état OAuth incorrect, scopes excessifs, absence de configuration, comptes distincts, revue et confirmation des changements, version inconnue, quota, arrêt, recherche après rechargement, reprise explicite, suppression individuelle d'une copie et invalidation du curseur, migration IndexedDB, HTTP 409 et purge. Les réponses API/OAuth sont simulées, les fichiers fictifs ; un PDF synthétique teste réellement l'extraction. Suite Node complète (319 tests) et compilation réussies. Quatre tests unitaires supplémentaires simulent le sélecteur photo natif (options limitées, annulation, dépassement de limite et lecture/format). Cela ne valide ni les navigateurs mobiles physiques, ni l'accessibilité complète, ni Dropbox en production, ni le sélecteur Android sur appareil.
+Onze tests unitaires Dropbox et 13 tests Playwright Dropbox réussis : parcours complet à 390/768/1280/1920 px, clavier, annulation, état OAuth incorrect, scopes excessifs, absence de configuration, comptes distincts, revue et confirmation des changements, version inconnue, quota, arrêt, recherche après rechargement, reprise explicite, suppression individuelle d'une copie et invalidation du curseur, migration IndexedDB, HTTP 409, purge et consentement GPS. Les réponses API/OAuth sont simulées, les fichiers fictifs ; un PDF synthétique teste réellement l'extraction. Suite Node complète (344 tests) et compilation réussies. Quatre tests unitaires supplémentaires simulent le sélecteur photo natif (options limitées, annulation, dépassement de limite et lecture/format). Cela ne valide ni les navigateurs mobiles physiques, ni l'accessibilité complète, ni Dropbox en production, ni le sélecteur Android sur appareil.
 
 Les nouveaux tests navigateur utilisent deux serveurs Vite : `127.0.0.1:5192` avec `VITE_DROPBOX_APP_KEY='cle-publique-fictive'`, et `127.0.0.1:5179` avec cette variable vide ; Google et Microsoft sont désactivés dans leurs environnements. Lancer ensuite `npx playwright test dropbox.spec.js --workers=1` depuis le projet ; arrêter les seuls serveurs de test ensuite. Ne pas remplacer un serveur déjà utilisé. Tests Node : `node --test tests\dropbox.test.js`.
 
@@ -234,6 +235,8 @@ Avant un MVP réellement multi-cloud, la faisabilité est donc conditionnée à 
 
 - [OAuth, scopes et niveaux App Folder / Full Dropbox](https://docs.dropboxapi.com/dropbox-api/docs/oauth.md)
 - [Parcourir les fichiers et dossiers](https://docs.dropboxapi.com/dropbox-api/docs/file-access.md)
+- [Endpoint List Folder et métadonnées média](https://docs.dropboxapi.com/dropbox-api/api-reference/user-endpoints/files/list-folder)
+- [Types de métadonnées photo/vidéo du SDK Dropbox](https://dropbox.github.io/dropbox-sdk-js/global.html)
 - [Guide développeur et approbation de production](https://docs.dropboxapi.com/dropbox-api/docs/developer-resources/developer-guide.md)
 - [Autorisation OAuth et PKCE](https://docs.dropboxapi.com/dropbox-api/docs/get-started/authorization.md)
 
