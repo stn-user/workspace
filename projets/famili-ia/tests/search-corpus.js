@@ -14,7 +14,7 @@ export async function loadSearchCorpus() {
       id: "pool-installation-invoice",
       name: "Facture installation piscine.txt",
       type: "Facture",
-      date: "4 mars 2023",
+      date: "Date fictive : 1 janvier 2099",
       keywords: "piscine installation achat",
       content: poolInvoice,
       isLocal: true
@@ -23,7 +23,7 @@ export async function loadSearchCorpus() {
       id: "pump-warranty",
       name: "Garantie pompe piscine.txt",
       type: "Garantie",
-      date: "4 mai 2023",
+      date: "Date fictive : 1 janvier 2099",
       keywords: "garantie pompe couverture",
       content: pumpWarranty,
       isLocal: true
@@ -32,7 +32,7 @@ export async function loadSearchCorpus() {
       id: "filter-maintenance",
       name: "Notice entretien filtre.txt",
       type: "Notice",
-      date: "7 mars 2023",
+      date: "Date fictive : 1 janvier 2099",
       keywords: "filtre piscine entretien maintenance rincage",
       content: filterNotice,
       isLocal: true
@@ -41,18 +41,18 @@ export async function loadSearchCorpus() {
       id: "home-insurance",
       name: "Contrat assurance habitation.txt",
       type: "Contrat",
-      date: "1 janvier 2025",
+      date: "Date fictive : 1 janvier 2099",
       keywords: "assurance habitation renouvellement reconduction",
-      content: "ASSURANCE HABITATION FICTIVE\nÉchéance annuelle : 31 décembre 2027\nReconduction : tacite sauf résiliation.",
+      content: "EXEMPLE FICTIF — CONTRAT HABITATION\nÉchéance annuelle : 31 décembre 2099\nReconduction : donnée fictive.",
       isLocal: true
     },
     {
       id: "pool-terrace-invoice",
       name: "Facture terrasse piscine.txt",
       type: "Facture",
-      date: "2 juin 2024",
+      date: "Date fictive : 1 janvier 2099",
       keywords: "piscine terrasse achat",
-      content: "FACTURE FICTIVE — TERRASSE DE PISCINE\nMontant total : 1 200 euros TTC\nDocument inventé pour le test.",
+      content: "EXEMPLE FICTIF — AMÉNAGEMENT DE BASSIN\nMontant total : 1 200 euros TTC\nToutes les données de ce scénario sont inventées.",
       isLocal: true
     },
     {
@@ -83,7 +83,7 @@ export const searchEvaluationCases = [
   {
     query: "Jusqu'à quand la pompe piscine est-elle garantie ?",
     expectedIds: ["pump-warranty"],
-    expectedFact: "Fin de garantie : 4 mai 2028"
+    expectedFact: "Fin de garantie : 1 janvier 2104"
   },
   {
     query: "garentie de la pompe du bassin",
@@ -92,7 +92,7 @@ export const searchEvaluationCases = [
   {
     query: "Quand renouvelle mon assurance habitation ?",
     expectedIds: ["home-insurance"],
-    expectedFact: "Échéance annuelle : 31 décembre 2027"
+    expectedFact: "Échéance annuelle : 31 décembre 2099"
   },
   {
     query: "À quelle fréquence rincer le filtre de la piscine ?",

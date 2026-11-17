@@ -26,7 +26,7 @@ import { BackgroundSyncWorker } from "./background-sync.js";
 import { IndexSession, INDEX_SOURCES } from "./index-session.js";
 import { createSourceRunStatus, describeSources, sourceRunStatusId } from "./source-status.js";
 import { loadSourceRunStatuses, saveSourceRunStatus } from "./source-status-storage.js";
-import { describeExperimentalResult } from "./experimental-result.js";
+import { describeExperimentalResult, summarizePhotoSources } from "./experimental-result.js";
 import { findDocumentDuplicateCandidates } from "./document-deduplication.js";
 import { findIndexDeadlines } from "./index-deadline-search.js";
 import { createUnifiedIndexQuery, isWithinDateRange, mergeUnifiedIndexFilters } from "./unified-index-query.js";
@@ -262,6 +262,8 @@ function initOnboardingWizard() {
     if (demoGuideStep > 0) setDemoGuideStep(2);
     document.querySelector('#demo-result-heading').focus();
   });
+  document.querySelector('#demo-start-guided').addEventListener('click', startGuidedDemo);
+  document.querySelector('#demo-start-free').addEventListener('click', startDemoExploration);
   document.querySelectorAll('[data-demo-screen]').forEach(button => {
     button.addEventListener('click', () => {
       setDemoGuideStep(0);
@@ -271,7 +273,7 @@ function initOnboardingWizard() {
   });
   document.querySelector('#demo-confirm-alert').addEventListener('click', () => {
     document.querySelector('#demo-alert-status').textContent =
-      'Confirmation simulée uniquement dans cet aperçu. Aucune alerte créée, aucune notification envoyée.';
+      'Le rappel est prêt à être créé. Rien n’a été ajouté à votre espace.';
   });
   document.querySelector('#demo-open-warranty').addEventListener('click', () => {
     setDemoGuideStep(0);
@@ -297,9 +299,7 @@ function initOnboardingWizard() {
     document.querySelector('#demo-guide-restart').focus();
   });
   document.querySelector('#demo-guide-restart').addEventListener('click', () => {
-    document.querySelector('#demo-alert-status').textContent = 'Aucune alerte créée. Aucune notification envoyée.';
-    setDemoGuideStep(1);
-    focusDemoGuideStep();
+    startGuidedDemo();
   });
 
   /**
@@ -590,48 +590,48 @@ const isNativePlatform = Capacitor.isNativePlatform();
 const documents = [
   {
     id: "piscine-facture",
-    name: "Facture - Installation piscine.pdf",
+    name: "Fictif - facture piscine.pdf",
     type: "Facture",
-    date: "4 mars 2023",
+    date: "Date fictive : 1 janvier 2099",
     keywords: "piscine facture paiement prix payé cout installation montant",
-    summary: "La facture d'installation de la piscine indique un montant total de 8 900 euros TTC, réglé le 4 mars 2023.",
-    content: "AQUA JARDIN — FACTURE\nNuméro de facture : AJ-2023-0318\nDate : 4 mars 2023\nObjet : Installation d'une piscine familiale\nMontant total : 8 900 euros TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
+    summary: "Exemple fictif : le montant total de l'installation du bassin est de 8 900 euros TTC.",
+    content: "EXEMPLE FICTIF — FACTURE\nRéférence fictive : EXEMPLE-FACTURE-001\nDate fictive : 1 janvier 2099\nObjet : Installation d'un bassin (scénario fictif)\nMontant total : 8 900 euros TTC\nStatut fictif : réglée\n\nToutes les données de ce document sont inventées."
   },
   {
     id: "piscine-garantie",
-    name: "Garantie - Pompe piscine.pdf",
+    name: "Fictif - garantie pompe piscine.pdf",
     type: "Garantie",
-    date: "12 avril 2023",
-    keywords: "garantie pompe piscine duree échéance fin expire expiration hayward modèle 2022",
-    summary: "La garantie de la pompe Hayward Modèle 2022 est valable jusqu'au 4 mai 2028.",
-    content: "CERTIFICAT DE GARANTIE — ÉQUIPEMENT PISCINE\nÉquipement : Pompe Hayward Modèle 2022\nDate de début : 4 mai 2023\nDurée : 5 ans\nFin de garantie : 4 mai 2028\n\nExemple fictif créé pour le prototype Famili-IA."
+    date: "Date fictive : 1 janvier 2099",
+    keywords: "garantie pompe piscine durée échéance fin expire expiration modèle fictif",
+    summary: "Exemple fictif : la garantie de l'équipement de piscine expire le 1 janvier 2104.",
+    content: "EXEMPLE FICTIF — GARANTIE D'ÉQUIPEMENT\nÉquipement : pompe de piscine, modèle fictif\nDate de début fictive : 1 janvier 2099\nDurée fictive : 5 ans\nFin de garantie fictive : 1 janvier 2104\n\nToutes les données de ce document sont inventées."
   },
   {
-    id: "bambu-facture",
-    name: "Facture - Imprimante Bambu Lab A1.pdf",
+    id: "imprimante-facture",
+    name: "Fictif - facture imprimante.pdf",
     type: "Facture",
-    date: "10 février 2025",
-    keywords: "bambu lab a1 imprimante facture numéro référence achat prix coût montant",
-    summary: "La facture de la Bambu Lab A1 porte le numéro BL-2025-10482. Le montant indiqué est de 449 euros TTC.",
-    content: "BAMBU STORE — FACTURE\nNuméro de facture : BL-2025-10482\nDate : 10 février 2025\nArticle : Imprimante Bambu Lab A1\nMontant : 449 euros TTC\nStatut : Réglée\n\nExemple fictif créé pour le prototype Famili-IA."
+    date: "Date fictive : 1 janvier 2099",
+    keywords: "imprimante facture numéro référence achat prix coût montant",
+    summary: "Exemple fictif : le montant de l'imprimante est de 449 euros TTC.",
+    content: "EXEMPLE FICTIF — FACTURE\nRéférence fictive : EXEMPLE-FACTURE-002\nDate fictive : 1 janvier 2099\nArticle : imprimante, modèle fictif\nMontant fictif : 449 euros TTC\nStatut fictif : réglée\n\nToutes les données de ce document sont inventées."
   },
   {
     id: "habitation-contrat",
-    name: "Contrat - Assurance habitation.pdf",
+    name: "Fictif - contrat habitation.pdf",
     type: "Contrat",
-    date: "1 janvier 2025",
+    date: "Date fictive : 1 janvier 2099",
     keywords: "contrat assurance habitation échéance termine fin renouvellement date",
-    summary: "Le contrat d'assurance habitation arrive à échéance le 31 décembre 2025. La reconduction est prévue à cette date, sauf résiliation.",
-    content: "ASSURANCE DEMO — CONTRAT HABITATION\nNuméro de contrat : HAB-2025-7204\nDate d'effet : 1er janvier 2025\nÉchéance annuelle : 31 décembre 2025\nReconduction : tacite, sauf résiliation\n\nExemple fictif créé pour le prototype Famili-IA."
+    summary: "Exemple fictif : le contrat habitation arrive à échéance le 31 décembre 2099.",
+    content: "EXEMPLE FICTIF — CONTRAT HABITATION\nRéférence fictive : EXEMPLE-CONTRAT-001\nDate d'effet fictive : 1 janvier 2099\nÉchéance fictive : 31 décembre 2099\nReconduction : donnée fictive\n\nToutes les données de ce document sont inventées."
   },
   {
     id: "maison-notice",
-    name: "Notice - Filtre de piscine.pdf",
+    name: "Fictif - notice filtre piscine.pdf",
     type: "Notice",
-    date: "7 mars 2023",
+    date: "Date fictive",
     keywords: "notice filtre piscine entretien nettoyage cartouche",
-    summary: "La notice recommande de rincer la cartouche du filtre toutes les deux semaines en période d'utilisation.",
-    content: "NOTICE D'ENTRETIEN — FILTRE DE PISCINE\nFréquence de rinçage recommandée : toutes les deux semaines en période d'utilisation.\nRemplacement de la cartouche : selon l'usure et au minimum une fois par saison.\n\nExemple fictif créé pour le prototype Famili-IA."
+    summary: "Exemple fictif : le filtre doit être rincé toutes les deux semaines en période d'utilisation.",
+    content: "EXEMPLE FICTIF — NOTICE D'ENTRETIEN\nÉquipement : filtre de piscine, modèle fictif\nFréquence fictive de rinçage : toutes les deux semaines en période d'utilisation.\nRemplacement fictif : selon l'usure et au minimum une fois par saison.\n\nToutes les données de ce document sont inventées."
   }
 ];
 
@@ -3342,7 +3342,7 @@ document.querySelectorAll("[data-nav~='profil']").forEach((button) => {
     const roleEl = document.querySelector("#profile-role");
     if (avatar && nameInput) {
       avatar.textContent = user.avatar || 'S';
-      nameInput.value = user.name || 'Steve';
+      nameInput.value = user.name || 'Mon espace';
     }
     if (addressInput && user.address) {
       addressInput.value = user.address;
@@ -4792,6 +4792,8 @@ function renderDataInventory(filters = {}) {
 function initUnifiedPhotoResults() {
   const status = document.querySelector('#moments-life-search-status');
   const results = document.querySelector('#moments-life-search-results');
+  const sourceSummary = document.querySelector('#moments-life-source-summary');
+  const sourceList = document.querySelector('#moments-life-source-list');
   const pagination = document.querySelector('#moments-life-pagination');
   const groupingControls = document.querySelector('#moments-life-grouping-controls');
   const groupingSelect = document.querySelector('#moments-life-grouping');
@@ -4873,6 +4875,8 @@ function initUnifiedPhotoResults() {
     suspendThumbnails();
     results.replaceChildren();
     results.hidden = true;
+    sourceSummary.hidden = true;
+    sourceList.replaceChildren();
     photoResults = [];
     currentPage = 0;
     if (previousPageButton) previousPageButton.hidden = true;
@@ -4932,6 +4936,9 @@ function initUnifiedPhotoResults() {
 
     const dateInfo = getPhotoTimelineDateInfo(item.photo);
     const details = [getTimelineDateLabel(dateInfo)];
+    details.push(`Source de la copie : ${item.sourceLabel}`);
+    details.push(`Emplacement enregistré : ${typeof item.photo.sourceDir === 'string' && item.photo.sourceDir.trim() ? item.photo.sourceDir : 'non disponible'}`);
+    details.push(`Dernière vérification de la copie : ${item.lastCheck || 'inconnue'}. Accès actuel à l'original non vérifié.`);
     const importedAt = item.photo.importedAt;
     details.push(importedAt ? `Importée dans Famili-IA : ${importedAt.slice(0, 10)}` : "Date d'import : indisponible");
     const annotation = item.photo.photoAnnotations;
@@ -5119,13 +5126,20 @@ function initUnifiedPhotoResults() {
 
   return (matches, request = {}, documentsByMatch = new Map()) => {
     clearResults();
+    const sourceGroups = summarizePhotoSources(matches);
+    const groupByIdentity = new Map(sourceGroups.map(group =>
+      [JSON.stringify([group.sourceId, group.accountRef]), group]));
+    const recordsByIdentity = new Map(experimentalIndex.getAllRecords().map(record =>
+      [JSON.stringify([record.sourceId, record.accountRef, record.itemId]), record]));
     const photos = matches
-      .map(match => documentsByMatch.get(JSON.stringify([match.sourceId, match.accountRef ?? null, match.itemId])))
-      .filter(isPhotoDocument)
-      .map((photo, index) => ({
+      .map(match => ({ match, photo: documentsByMatch.get(JSON.stringify([match.sourceId, match.accountRef ?? null, match.itemId])) }))
+      .filter(({ photo }) => isPhotoDocument(photo))
+      .map(({ match, photo }, index) => ({
         photo,
         rank: index + 1,
         reasons: request.explanations ?? [],
+        sourceLabel: groupByIdentity.get(JSON.stringify([match.sourceId, match.accountRef ?? null])).label,
+        lastCheck: recordsByIdentity.get(JSON.stringify([match.sourceId, match.accountRef ?? null, match.itemId]))?.lastCheck,
         confidence: { level: 'high', label: 'index local', reasons: [] }
       }));
     document.querySelector('#moments-life-search').hidden = !photos.length && request.kind !== 'photo';
@@ -5133,9 +5147,17 @@ function initUnifiedPhotoResults() {
       status.textContent = request.kind === 'photo'
         ? request.filters?.coordinates
           ? "Aucune photo ne correspond à ces coordonnées. La recherche GPS ne couvre que les coordonnées présentes dans les métadonnées des photos indexées avec le consentement actif."
-          : "Aucune photo ne correspond à ces critères parmi les photos indexées dans Famili-IA."
+          : "Aucune photo ne correspond à ces critères parmi les photos indexées dans Famili-IA. Les sources non indexées ne sont pas couvertes."
         : "";
       return;
+    }
+    if (request.sourceIntent) {
+      for (const group of sourceGroups) {
+        const item = document.createElement('li');
+        item.textContent = `${group.label} : ${group.count} copie${group.count === 1 ? '' : 's'} indexée${group.count === 1 ? '' : 's'}`;
+        sourceList.append(item);
+      }
+      sourceSummary.hidden = false;
     }
     photoResults = photos;
     const criteria = request.explanations?.map(item => item.phrase).filter(Boolean).join(', ');
@@ -5713,87 +5735,106 @@ function startOnboardingReplay(stepIndex = 0) {
 }
 
 let demoGuideStep = 0;
+let demoTypingTimer = 0;
+let demoSpotlightFrame = 0;
+
+const DEMO_IMAGES = {
+  home: new URL('./assets/maison/maison-photo.jpg', import.meta.url).href,
+  pool: new URL('./assets/piscine/piscine-photo.jpg', import.meta.url).href,
+  pergola: new URL('./assets/pergola/pergola-photo.jpg', import.meta.url).href
+};
 
 const DEMO_EXAMPLES = {
   'facture-piscine': {
-    question: 'Retrouve la facture de ma piscine',
-    heading: 'Facture de piscine',
+    question: 'Tu me retrouves la facture de la piscine ?',
+    heading: 'Facture de la piscine',
     results: [{
-      title: 'Facture - Installation piscine.pdf',
-      content: 'Installation de la piscine du foyer fictif, incluant la pompe. Montant réglé le 4 mars 2023.',
-      evidence: 'Montant total : 8 900 euros TTC.',
-      date: '4 mars 2023',
-      source: 'Google Drive',
-      location: 'Maison / Piscine'
+      title: 'Facture piscine.pdf',
+      content: 'Réfection du bassin et mise en service.',
+      evidence: 'Total TTC : 8 900 €',
+      date: '12 juin 2024',
+      source: 'OneDrive · Maison',
+      sourceKind: 'drive',
+      location: 'Dossier Maison'
     }]
   },
   'contrat-habitation': {
-    question: 'Quand se termine mon contrat d’assurance habitation ?',
-    heading: 'Contrat d’assurance habitation',
+    question: 'Quand faut-il renouveler l’assurance de la maison ?',
+    heading: 'Contrat habitation',
     results: [{
-      title: 'Contrat - Assurance habitation.pdf',
-      content: 'Assurance de la maison du même foyer fictif. Cette échéance est un exemple ; aucune alerte n’est créée.',
-      evidence: 'Échéance du contrat : 31 décembre 2027.',
-      date: '1 janvier 2027',
-      source: 'OneDrive',
-      location: 'Maison / Assurance'
+      title: 'Contrat habitation.pdf',
+      content: 'Contrat multirisque de la maison.',
+      evidence: 'Échéance annuelle : 31 décembre 2026',
+      date: '30 novembre 2025',
+      source: 'Google Drive · Documents maison',
+      sourceKind: 'drive',
+      location: 'Dossier Assurances'
     }]
   },
   'garantie-pompe': {
-    question: 'Jusqu’à quand ma pompe de piscine est-elle garantie ?',
-    heading: 'Échéance garantie pompe',
+    question: 'Jusqu’à quand la pompe est-elle garantie ?',
+    heading: 'Garantie de la pompe',
     results: [{
-      title: 'Garantie - Pompe piscine.pdf',
-      content: 'Garantie de la pompe de la piscine du foyer fictif.',
-      evidence: 'Garantie valide jusqu’au 4 mai 2028.',
-      deadline: '4 mai 2028',
-      date: '4 mars 2023',
-      source: 'Google Drive',
-      location: 'Maison / Piscine'
+      title: 'Garantie pompe piscine.pdf',
+      content: 'Garantie de l’équipement installé à la maison.',
+      evidence: 'Valable jusqu’au 12 juin 2027',
+      deadline: '12 juin 2027',
+      date: '12 juin 2024',
+      source: 'OneDrive · Maison',
+      sourceKind: 'drive',
+      location: 'Dossier Maison'
     }]
   },
-  'photos-aaron': {
-    question: 'Montre-moi les photos d’Aaron',
-    heading: 'Photos familiales',
+  'photos-ete': {
+    question: 'Montre-moi nos souvenirs de l’été',
+    heading: 'Un été à la maison',
     results: [{
-      title: 'Aaron - Vacances à la piscine',
-      content: 'Souvenir fictif associé à la piscine de la maison.',
-      evidence: 'Annotations explicites : Aaron · Vacances · Piscine.',
-      date: '15 juillet 2023',
-      source: 'Local',
-      location: 'Photos / Vacances'
+      title: 'Après-midi à la piscine',
+      content: 'Camille, Alex et Léa · été 2025',
+      evidence: 'Repères ajoutés : vacances · piscine · famille',
+      evidenceLabel: 'Annotations',
+      date: '10 août 2025',
+      source: 'Photos locales',
+      sourceKind: 'local',
+      location: 'Album Été 2025',
+      image: DEMO_IMAGES.pool,
+      imageAlt: 'Piscine de la maison au soleil'
     }, {
-      title: 'Aaron - À l’école',
-      content: 'Autre souvenir fictif associé au même membre du foyer.',
-      evidence: 'Annotations explicites : Aaron · École.',
-      date: '3 octobre 2023',
-      source: 'Local',
-      location: 'Photos / École'
+      title: 'Le goûter sous la pergola',
+      content: 'Une pause au jardin avec toute la famille.',
+      evidence: 'Repères ajoutés : jardin · après-midi · famille',
+      evidenceLabel: 'Annotations',
+      date: '23 août 2025',
+      source: 'Photos locales',
+      sourceKind: 'local',
+      location: 'Album Été 2025',
+      image: DEMO_IMAGES.pergola,
+      imageAlt: 'Pergola dans le jardin de la maison'
     }]
   }
 };
 
 const DEMO_SCREENS = {
-  recherche: { title: 'Recherche', benefit: 'Retrouver une information et comprendre pourquoi elle est affichée.' },
-  alertes: { title: 'Alertes', benefit: 'Passer d’une date vérifiée à un rappel, uniquement après confirmation.' },
-  maison: { title: 'Maison', benefit: 'Rassembler équipements, factures et garanties dans leur contexte.' },
-  photos: { title: 'Photos', benefit: 'Retrouver un souvenir grâce aux informations et associations disponibles.' },
-  donnees: { title: 'Vos données', benefit: 'Garder la visibilité sur les copies disponibles et leur provenance.' }
+  recherche: { title: 'Recherche', benefit: 'Une question du quotidien devient une recherche ciblée.' },
+  alertes: { title: 'Échéance', benefit: 'Vérifier la preuve avant de préparer un rappel.' },
+  maison: { title: 'Maison', benefit: 'Relier un équipement aux documents qui le concernent.' },
+  photos: { title: 'Souvenirs', benefit: 'Retrouver des moments grâce aux annotations choisies.' },
+  donnees: { title: 'Provenance', benefit: 'Voir quelle copie et quelle source sont utilisées.' }
 };
 
 const DEMO_GUIDE_STEPS = [
-  { screen: 'recherche', target: '#demo-search-form', focus: '#demo-query',
-    instruction: 'Une question prête à l’emploi. Changez d’exemple si vous le souhaitez, puis découvrez la réponse fictive préparée.', next: 'Voir le résultat' },
-  { screen: 'recherche', target: '#demo-results', focus: '#demo-result-heading',
-    instruction: 'La source, la date et l’extrait surligné permettent de vérifier une information avant de décider.', next: 'Découvrir les alertes' },
-  { screen: 'alertes', target: '#demo-alert-preview', focus: '#demo-alert-title',
-    instruction: 'Une échéance ne devient une alerte qu’après votre confirmation. Essayez avec cette garantie : ici, tout est simulé.', next: 'Explorer la maison' },
-  { screen: 'maison', target: '#demo-house-preview', focus: '#demo-house-title',
-    instruction: 'La pompe du même foyer, sa facture et sa garantie sont réunies : moins de dossiers à parcourir.', next: 'Retrouver un souvenir' },
-  { screen: 'photos', target: '#demo-photo-list', focus: '#demo-photos-title',
-    instruction: 'Ces souvenirs sont explicitement associés à Aaron. Les résultats utilisent les annotations disponibles, pas la reconnaissance des visages.', next: 'Voir les sources' },
-  { screen: 'donnees', target: '#demo-data-list', focus: '#demo-data-title',
-    instruction: 'Retrouvez les mêmes exemples avec leur provenance fictive. Dans votre espace, seules les copies sélectionnées et disponibles peuvent être recherchées.', next: 'Explorer librement' }
+  { title: 'La question', screen: 'recherche', target: '#demo-search-form', focus: '#demo-query',
+    instruction: 'Camille cherche la facture de la piscine. Regardez sa question se composer, puis ouvrez la réponse.', next: 'Voir la réponse' },
+  { title: 'La preuve', screen: 'recherche', target: '#demo-results', focus: '#demo-result-heading',
+    instruction: 'Le montant est surligné dans l’extrait. La date et la source aident à vérifier le résultat.', next: 'Vérifier une échéance' },
+  { title: 'Le rappel', screen: 'alertes', target: '#demo-alert-preview', focus: '#demo-alert-title',
+    instruction: 'La garantie approche. Un rappel n’est créé qu’après confirmation ; ici, vous pouvez en voir l’aperçu.', next: 'Voir la maison' },
+  { title: 'La maison', screen: 'maison', target: '#demo-house-preview', focus: '#demo-house-title',
+    instruction: 'La pompe et ses documents restent liés à la maison. Plus besoin de se souvenir dans quel dossier chercher.', next: 'Retrouver un souvenir' },
+  { title: 'Les souvenirs', screen: 'photos', target: '#demo-photo-list', focus: '#demo-photos-title',
+    instruction: 'Les mots-clés ajoutés par la famille font remonter ces moments. Aucun visage n’est reconnu.', next: 'Voir les sources' },
+  { title: 'La provenance', screen: 'donnees', target: '#demo-data-list', focus: '#demo-data-title',
+    instruction: 'Chaque résultat indique sa copie et son origine. Vos originaux restent chez leur fournisseur.', next: 'Explorer librement' }
 ];
 
 function showDemoScreen(screen) {
@@ -5807,44 +5848,151 @@ function showDemoScreen(screen) {
   });
   document.querySelector('#demo-screen-title').textContent = definition.title;
   document.querySelector('#demo-screen-benefit').textContent = definition.benefit;
+  document.querySelector('#demo-screen-kicker').textContent = screen === 'photos'
+    ? 'Camille, Alex & Léa · été 2025'
+    : 'Chez Camille & Alex';
 }
+
+function clearDemoQueryAnimation() {
+  window.clearTimeout(demoTypingTimer);
+  demoTypingTimer = 0;
+}
+
+function animateDemoQuery(question) {
+  clearDemoQueryAnimation();
+  const query = document.querySelector('#demo-query');
+  const next = document.querySelector('#demo-guide-next');
+  const status = document.querySelector('#demo-typing-status');
+  query.value = '';
+  next.disabled = true;
+  next.textContent = 'La question s’écrit…';
+  status.textContent = 'La question se compose à l’écran.';
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    query.value = question;
+    next.disabled = false;
+    next.textContent = 'Voir la réponse';
+    status.textContent = 'La question est prête.';
+    return;
+  }
+
+  let character = 0;
+  const typeNextCharacter = () => {
+    character += 1;
+    query.value = question.slice(0, character);
+    if (character >= question.length) {
+      demoTypingTimer = 0;
+      next.disabled = false;
+      next.textContent = 'Voir la réponse';
+      status.textContent = 'La question est prête.';
+      return;
+    }
+    demoTypingTimer = window.setTimeout(typeNextCharacter, 32);
+  };
+  demoTypingTimer = window.setTimeout(typeNextCharacter, 360);
+}
+
+function updateDemoGuideSpotlight() {
+  const spotlight = document.querySelector('#demo-guide-spotlight');
+  const target = document.querySelector('#step-3 .demo-guide-highlight');
+  if (!spotlight || spotlight.hidden || !target) return;
+
+  const rect = target.getBoundingClientRect();
+  const width = document.documentElement.clientWidth;
+  const height = window.innerHeight;
+  const inset = 10;
+  const left = Math.max(0, rect.left - inset);
+  const top = Math.max(0, rect.top - inset);
+  const right = Math.min(width, rect.right + inset);
+  const bottom = Math.min(height, rect.bottom + inset);
+  const regions = {
+    top: { left: 0, top: 0, width, height: top },
+    left: { left: 0, top, width: left, height: bottom - top },
+    right: { left: right, top, width: width - right, height: bottom - top },
+    bottom: { left: 0, top: bottom, width, height: height - bottom }
+  };
+
+  spotlight.querySelectorAll('[data-spotlight-region]').forEach(region => {
+    const bounds = regions[region.dataset.spotlightRegion];
+    region.style.left = `${bounds.left}px`;
+    region.style.top = `${bounds.top}px`;
+    region.style.width = `${Math.max(0, bounds.width)}px`;
+    region.style.height = `${Math.max(0, bounds.height)}px`;
+  });
+  const frame = spotlight.querySelector('[data-spotlight-frame]');
+  frame.style.left = `${left}px`;
+  frame.style.top = `${top}px`;
+  frame.style.width = `${Math.max(0, right - left)}px`;
+  frame.style.height = `${Math.max(0, bottom - top)}px`;
+}
+
+function scheduleDemoSpotlightUpdate() {
+  window.cancelAnimationFrame(demoSpotlightFrame);
+  demoSpotlightFrame = window.requestAnimationFrame(updateDemoGuideSpotlight);
+}
+
+window.addEventListener('resize', scheduleDemoSpotlightUpdate, { passive: true });
+window.addEventListener('scroll', scheduleDemoSpotlightUpdate, { capture: true, passive: true });
 
 function setDemoGuideStep(step) {
   if (!Number.isInteger(step) || step < 0 || step > DEMO_GUIDE_STEPS.length) {
     throw new RangeError(`Étape de démo inconnue : ${step}`);
   }
+  clearDemoQueryAnimation();
   demoGuideStep = step;
   const guide = document.querySelector('#demo-guide');
   guide.hidden = step === 0;
   document.querySelector('#demo-guide-restart').hidden = step !== 0;
+  if (step > 0) document.querySelector('#demo-intro').hidden = true;
+  document.querySelector('#demo-workspace').hidden = false;
+  document.querySelector('#demo-screen-nav').hidden = step !== 0;
+  document.querySelector('.demo-examples').hidden = step !== 0;
+  document.querySelector('#demo-guide-spotlight').hidden = step === 0;
   document.querySelectorAll('#step-3 .demo-guide-highlight').forEach(target => {
     target.classList.remove('demo-guide-highlight');
     target.removeAttribute('aria-describedby');
   });
   if (step === 0) return;
   const definition = DEMO_GUIDE_STEPS[step - 1];
-  if (step === 2) {
-    handleDemoQuestion(document.querySelector('.demo-question[aria-pressed="true"]').dataset.demoQuestion);
-  }
   showDemoScreen(definition.screen);
+  document.querySelectorAll('[data-demo-panel]').forEach(panel => {
+    if (!panel.hidden) {
+      panel.classList.remove('demo-panel-enter');
+      void panel.offsetWidth;
+      panel.classList.add('demo-panel-enter');
+    }
+  });
+  document.querySelector('#demo-guide-counter').textContent = `${String(step).padStart(2, '0')} / 06`;
   const target = document.querySelector(definition.target);
   target.classList.add('demo-guide-highlight');
   target.setAttribute('aria-describedby', 'demo-guide-instruction');
-  document.querySelector('#demo-guide-progress').textContent = `Guide · étape ${step} sur ${DEMO_GUIDE_STEPS.length}`;
+  document.querySelector('#demo-guide-progress').textContent = `Étape ${step} sur ${DEMO_GUIDE_STEPS.length} · ${definition.title}`;
   document.querySelector('#demo-guide-instruction').textContent = definition.instruction;
   document.querySelector('#demo-guide-prev').hidden = step === 1;
   document.querySelector('#demo-guide-next').textContent = definition.next;
+  document.querySelector('#demo-guide-next').disabled = false;
+  if (step === 1) {
+    const questionType = document.querySelector('.demo-question[aria-pressed="true"]').dataset.demoQuestion;
+    handleDemoQuestion(questionType, { showResults: false });
+    animateDemoQuery(DEMO_EXAMPLES[questionType].question);
+  } else {
+    handleDemoQuestion(document.querySelector('.demo-question[aria-pressed="true"]').dataset.demoQuestion);
+  }
+  scheduleDemoSpotlightUpdate();
 }
 
 function focusDemoGuideStep() {
   document.querySelector(DEMO_GUIDE_STEPS[demoGuideStep - 1].focus).focus();
+  scheduleDemoSpotlightUpdate();
 }
 
 function startDemoGuide() {
-  document.querySelector('#demo-alert-status').textContent = 'Aucune alerte créée. Aucune notification envoyée.';
+  clearDemoQueryAnimation();
+  demoGuideStep = 0;
+  document.querySelector('#demo-alert-status').textContent = 'Aucun rappel n’a été ajouté.';
   const warranty = DEMO_EXAMPLES['garantie-pompe'].results[0];
   document.querySelector('#demo-alert-date').textContent = warranty.deadline;
-  document.querySelector('#demo-alert-source').textContent = `${warranty.title} · ${warranty.source} · extrait fictif`;
+  document.querySelector('#demo-alert-source').textContent = `${warranty.title} · ${warranty.source}`;
   document.querySelector('#demo-alert-evidence').textContent = warranty.evidence;
   document.querySelector('#demo-house-documents').replaceChildren(
     ...['facture-piscine', 'garantie-pompe'].map(key => {
@@ -5854,25 +6002,48 @@ function startDemoGuide() {
     })
   );
   document.querySelector('#demo-photo-list').replaceChildren(
-    ...DEMO_EXAMPLES['photos-aaron'].results.map(createResultElement)
+    ...DEMO_EXAMPLES['photos-ete'].results.map(createResultElement)
   );
   document.querySelector('#demo-data-list').replaceChildren(
     ...Object.values(DEMO_EXAMPLES).flatMap(example => example.results).map(createResultElement)
   );
   document.querySelector('.demo-examples').open = false;
+  document.querySelector('#demo-intro').hidden = false;
+  document.querySelector('#demo-guide').hidden = true;
+  document.querySelector('#demo-workspace').hidden = true;
+  document.querySelector('#demo-guide-restart').hidden = true;
+  document.querySelector('#demo-guide-spotlight').hidden = true;
+  showDemoScreen('recherche');
   handleDemoQuestion('facture-piscine', { showResults: false });
+}
+
+function startGuidedDemo() {
+  document.querySelector('#demo-intro').hidden = true;
+  document.querySelector('#demo-workspace').hidden = false;
   setDemoGuideStep(1);
+  focusDemoGuideStep();
+}
+
+function startDemoExploration() {
+  document.querySelector('#demo-intro').hidden = true;
+  document.querySelector('#demo-workspace').hidden = false;
+  setDemoGuideStep(0);
+  showDemoScreen('recherche');
+  handleDemoQuestion('facture-piscine', { showResults: false });
+  document.querySelector('#demo-query').focus();
 }
 
 function handleDemoQuestion(questionType, { showResults = true } = {}) {
+  clearDemoQueryAnimation();
   const documentList = document.querySelector('#demo-document-list');
   const example = DEMO_EXAMPLES[questionType];
   if (!example) throw new TypeError(`Exemple de démo inconnu : ${questionType}`);
   const { results, heading } = example;
   document.querySelector('#demo-query').value = example.question;
+  document.querySelector('#demo-typing-status').textContent = '';
   document.querySelector('#demo-results').hidden = !showResults;
   document.querySelector('#demo-result-heading').textContent =
-    `${heading} · ${results.length} ${results.length === 1 ? 'résultat fictif' : 'résultats fictifs'}`;
+    `${heading} · ${results.length} ${results.length === 1 ? 'résultat' : 'résultats'}`;
   documentList.replaceChildren(...results.map(createResultElement));
   document.querySelectorAll('.demo-question').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.demoQuestion === questionType));
@@ -5886,40 +6057,43 @@ function handleDemoQuestion(questionType, { showResults = true } = {}) {
  */
 function createResultElement(result) {
   const div = document.createElement('div');
-  div.className = 'ui-card onboarding-demo-result';
-  
-  // Badge de provenance
+  div.className = `ui-card onboarding-demo-result${result.image ? ' has-image' : ''}`;
   const badge = document.createElement('span');
-  badge.className = `provenance-badge ${result.source === 'Local' ? 'local' : 'drive'}`;
-  badge.textContent = `${result.source} · exemple fictif`;
-  
-  // Titre
+  badge.className = `provenance-badge ${result.sourceKind === 'local' ? 'local' : 'drive'}`;
+  badge.textContent = result.source;
+
+  if (result.image) {
+    const image = document.createElement('img');
+    image.className = 'demo-result-photo';
+    image.src = result.image;
+    image.alt = result.imageAlt;
+    image.loading = 'lazy';
+    div.appendChild(image);
+  }
+
   const title = document.createElement('h4');
   title.className = 'result-title';
   title.textContent = result.title;
-  
-  // Contenu
+
   const content = document.createElement('p');
   content.className = 'result-content';
   content.textContent = result.content;
-  
-  // Footer avec date
+
   const dateEl = document.createElement('small');
-  dateEl.textContent = `${result.date} · ${result.location} · emplacement fictif`;
+  dateEl.textContent = `${result.date} · ${result.location}`;
   const evidence = document.createElement('blockquote');
   evidence.className = 'demo-evidence';
   const evidenceLabel = document.createElement('small');
-  evidenceLabel.textContent = 'Extrait fictif à vérifier';
+  evidenceLabel.textContent = result.evidenceLabel || 'Extrait du document';
   const highlight = document.createElement('mark');
   highlight.textContent = result.evidence;
   evidence.append(evidenceLabel, highlight);
-  
-  div.appendChild(badge);
-  div.appendChild(title);
-  div.appendChild(content);
+
+  div.insertBefore(badge, div.firstChild);
+  div.append(title, content);
   div.appendChild(evidence);
   div.appendChild(dateEl);
-  
+
   return div;
 }
 

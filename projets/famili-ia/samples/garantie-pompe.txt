@@ -1,8 +1,8 @@
 CERTIFICAT DE GARANTIE FICTIF
-Equipement : Pompe Hayward Modele 2022
-Date de debut : 4 mai 2023
+Equipement : Pompe de piscine, modele fictif
+Date de debut fictive : 1 janvier 2099
 Duree de garantie : 5 ans
-Fin de garantie : 4 mai 2028
+Fin de garantie : 1 janvier 2104
 
-Document invente pour tester la recherche locale de Famili-IA.
+Toutes les donnees de ce document sont inventees.
 Ne correspond a aucun client ni equipement reel.

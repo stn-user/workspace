@@ -1,9 +1,26 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createIndexRecord } from "../index-record.js";
-import { describeExperimentalResult } from "../experimental-result.js";
+import { describeExperimentalResult, summarizePhotoSources } from "../experimental-result.js";
 import { IndexSession } from "../index-session.js";
 import { rankDocuments } from "../search-utils.js";
+
+test("synthèse photo distingue les comptes et compte des copies sans exposer leurs empreintes", () => {
+  const a = "a".repeat(64), b = "b".repeat(64);
+  const groups = summarizePhotoSources([
+    { sourceId: "onedrive", accountRef: a },
+    { sourceId: "onedrive", accountRef: b },
+    { sourceId: "onedrive", accountRef: a },
+    { sourceId: "drive", accountRef: null },
+    { sourceId: "local", accountRef: null }
+  ]);
+  assert.deepEqual(groups.map(({ label, count }) => [label, count]), [
+    ["OneDrive — compte 1", 2], ["OneDrive — compte 2", 1],
+    ["Google Drive — compte non attribué", 1], ["Fichiers locaux", 1]
+  ]);
+  assert.equal(groups.some(group => group.label.includes(a) || group.label.includes(b)), false);
+  assert.throws(() => summarizePhotoSources([{ sourceId: "onedrive", accountRef: "invalid" }]), TypeError);
+});
 
 test("résultat Drive : copie distincte, date de modification et accès non garanti", () => {
   const document = { id: "1", name: "Facture.pdf", type: "PDF", date: "9 oct. 2026",

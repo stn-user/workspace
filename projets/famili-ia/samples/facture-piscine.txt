@@ -1,9 +1,9 @@
-FACTURE FICTIVE — AQUA JARDIN
-Numero : AJ-2023-0318
-Date : 4 mars 2023
-Objet : Installation d'une piscine familiale
+EXEMPLE FICTIF — FACTURE
+Reference fictive : EXEMPLE-FACTURE-001
+Date fictive : 1 janvier 2099
+Objet : Installation d'une piscine fictive
 Montant total : 8 900 euros TTC
-Statut : reglee
+Statut fictif : reglee
 
-Document invente pour tester la recherche locale de Famili-IA.
+Toutes les donnees de ce document sont inventees.
 Ne correspond a aucun client ni achat reel.

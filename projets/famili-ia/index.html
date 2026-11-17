@@ -119,58 +119,81 @@
               <button class="onboarding-back-btn" type="button" data-wizard-prev="2" aria-label="Retour au choix du parcours">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
               </button>
-              <span class="onboarding-progress">Étape 3 sur 3 · Démo avec exemples fictifs</span>
+              <span class="onboarding-progress">Étape 3 sur 3 · Visite guidée</span>
             </div>
-            <h2 id="step-3-title" tabindex="-1">Moins de recherches.<br>Plus de moments pour vous.</h2>
-            <p>Une facture retrouvée, une garantie vérifiée, un souvenir qui refait surface. Essayez avec un foyer entièrement fictif.</p>
+            <h2 id="step-3-title" tabindex="-1">Une maison, des souvenirs,<br>moins de recherches.</h2>
+            <p>Suivons Camille et Alex : retrouver un document, vérifier une échéance et revoir un moment d’été.</p>
+            <p class="demo-disclosure"><strong>Univers de démonstration.</strong> Fichiers, dates et comptes sont préparés ; aucune connexion ni écriture réelle.</p>
             <div class="demo-layout">
-            <section class="ui-card demo-guide" id="demo-guide" aria-label="Guide de découverte">
+            <section class="demo-intro" id="demo-intro" aria-labelledby="demo-intro-title">
+              <div class="demo-intro-copy">
+                <p class="eyebrow">VISITE GUIDÉE · ENVIRON 2 MINUTES</p>
+                <h3 id="demo-intro-title">Bienvenue chez Camille &amp; Alex</h3>
+                <p>Les papiers de la maison sont rangés, les souvenirs d’été aussi. On va suivre leur histoire pas à pas.</p>
+                <div class="demo-intro-actions">
+                  <button class="ui-button ui-button--primary" type="button" id="demo-start-guided">Commencer la visite</button>
+                  <button class="ui-button ui-button--text" type="button" id="demo-start-free">Explorer librement</button>
+                </div>
+              </div>
+              <div class="demo-intro-gallery" aria-label="La maison et les souvenirs d’été de la famille">
+                <img id="demo-intro-home-image" class="demo-intro-home-image" src="assets/maison/maison-photo.jpg" alt="Maison de famille au soleil">
+                <img id="demo-intro-memory-image" class="demo-intro-memory-image" src="assets/piscine/piscine-photo.jpg" alt="Piscine de la maison, un jour d’été">
+                <span>La maison de Camille &amp; Alex</span>
+              </div>
+            </section>
+            <section class="ui-card demo-guide" id="demo-guide" aria-label="Étapes de la visite guidée" hidden>
               <div role="status" aria-live="polite" aria-atomic="true">
                 <p class="demo-guide-progress" id="demo-guide-progress"></p>
                 <p class="demo-guide-instruction" id="demo-guide-instruction"></p>
               </div>
               <div class="demo-guide-actions">
                 <button class="ui-button ui-button--secondary" type="button" id="demo-guide-prev" hidden>Précédent</button>
-                <button class="ui-button ui-button--primary" type="button" id="demo-guide-next">Voir le résultat</button>
-                <button class="ui-button ui-button--text" type="button" id="demo-guide-skip">Passer le guide</button>
+                <button class="ui-button ui-button--primary" type="button" id="demo-guide-next">Voir la réponse</button>
+                <button class="ui-button ui-button--text" type="button" id="demo-guide-skip">Passer la visite</button>
               </div>
             </section>
-            <section class="ui-card demo-workspace" aria-labelledby="demo-screen-title">
-              <span class="ui-badge">Aperçus fictifs · aucune connexion</span>
-              <h3 id="demo-screen-title" tabindex="-1">Recherche</h3>
-              <p id="demo-screen-benefit"></p>
-              <nav class="demo-screen-nav" aria-label="Vues de démonstration">
+            <section class="ui-card demo-workspace" id="demo-workspace" aria-labelledby="demo-screen-title" hidden>
+              <div class="demo-workspace-heading">
+                <div>
+                  <p class="eyebrow" id="demo-screen-kicker">Chez Camille &amp; Alex</p>
+                  <h3 id="demo-screen-title" tabindex="-1">Recherche</h3>
+                  <p id="demo-screen-benefit"></p>
+                </div>
+                <span class="demo-guide-counter" id="demo-guide-counter" aria-hidden="true">01 / 06</span>
+              </div>
+              <nav class="demo-screen-nav" id="demo-screen-nav" aria-label="Vues de démonstration">
                 <button class="ui-button ui-button--secondary" type="button" data-demo-screen="recherche" aria-pressed="true">Recherche</button>
                 <button class="ui-button ui-button--secondary" type="button" data-demo-screen="alertes" aria-pressed="false">Alertes</button>
                 <button class="ui-button ui-button--secondary" type="button" data-demo-screen="maison" aria-pressed="false">Maison</button>
                 <button class="ui-button ui-button--secondary" type="button" data-demo-screen="photos" aria-pressed="false">Photos</button>
                 <button class="ui-button ui-button--secondary" type="button" data-demo-screen="donnees" aria-pressed="false">Vos données</button>
               </nav>
-              <section id="demo-search-panel" data-demo-panel="recherche" aria-label="Recherche fictive">
+              <section id="demo-search-panel" data-demo-panel="recherche" aria-label="Recherche">
             <form class="demo-search-form" id="demo-search-form">
-              <label class="ui-label" for="demo-query">Question d'exemple préremplie</label>
+              <label class="ui-label" for="demo-query">La question de Camille</label>
               <textarea class="ui-input" id="demo-query" rows="2" readonly aria-describedby="demo-query-note"></textarea>
-              <p id="demo-query-note">Réponse préparée et fictive, sans recherche dans vos fichiers.</p>
-              <button class="ui-button ui-button--primary" type="submit">Voir cet exemple</button>
+              <p id="demo-query-note">La question se compose ici, puis la réponse apparaît à l’étape suivante.</p>
+              <p id="demo-typing-status" class="visually-hidden" role="status" aria-live="polite"></p>
+              <button class="ui-button ui-button--primary" type="submit">Voir cette réponse</button>
             </form>
             <details class="demo-examples">
-              <summary>Changer d'exemple</summary>
+              <summary>Choisir une autre question</summary>
             <div class="demo-questions" aria-label="Exemples de recherche">
               <button class="demo-question" type="button" data-demo-question="facture-piscine">
                 <span class="question-icon" aria-hidden="true">⌕</span>
-                <span class="question-text">Retrouve la facture de ma piscine</span>
+                <span class="question-text">Tu me retrouves la facture de la piscine ?</span>
               </button>
               <button class="demo-question" type="button" data-demo-question="contrat-habitation">
                 <span class="question-icon" aria-hidden="true">⌕</span>
-                <span class="question-text">Que prévoit mon contrat d’assurance habitation ?</span>
+                <span class="question-text">Quand faut-il renouveler l’assurance de la maison ?</span>
               </button>
               <button class="demo-question" type="button" data-demo-question="garantie-pompe">
                 <span class="question-icon" aria-hidden="true">⌕</span>
-                <span class="question-text">Quand expire la garantie de la pompe ?</span>
+                <span class="question-text">Jusqu’à quand la pompe est-elle garantie ?</span>
               </button>
-              <button class="demo-question" type="button" data-demo-question="photos-aaron">
+              <button class="demo-question" type="button" data-demo-question="photos-ete">
                 <span class="question-icon" aria-hidden="true">⌕</span>
-                <span class="question-text">Montre-moi les photos de Aaron</span>
+                <span class="question-text">Montre-moi nos souvenirs de l’été</span>
               </button>
             </div>
             </details>
@@ -181,40 +204,45 @@
               </section>
               <section data-demo-panel="alertes" aria-labelledby="demo-alert-title" hidden>
                 <article class="ui-card demo-preview-card" id="demo-alert-preview">
-                  <span class="ui-badge">Rappel fictif</span>
+                  <span class="ui-badge">À confirmer</span>
                   <h4 id="demo-alert-title" tabindex="-1">Garantie de la pompe</h4>
-                  <p>Échéance illustrée : <mark id="demo-alert-date"></mark></p>
+                  <p>Échéance proposée : <mark id="demo-alert-date"></mark></p>
                   <blockquote class="demo-evidence"><small id="demo-alert-source"></small><mark id="demo-alert-evidence"></mark></blockquote>
                   <p>Dans votre espace, une échéance trouvée ne devient une alerte qu'après votre confirmation.</p>
-                  <button class="ui-button ui-button--primary" type="button" id="demo-confirm-alert">Simuler la confirmation</button>
-                  <p id="demo-alert-status" role="status">Aucune alerte créée. Aucune notification envoyée.</p>
+                  <button class="ui-button ui-button--primary" type="button" id="demo-confirm-alert">Prévisualiser le rappel</button>
+                  <p id="demo-alert-status" role="status">Aucun rappel n’a été ajouté.</p>
                 </article>
               </section>
               <section data-demo-panel="maison" aria-labelledby="demo-house-title" hidden>
                 <article class="ui-card demo-preview-card" id="demo-house-preview">
-                  <img class="demo-preview-image" src="assets/pompe/pompe-photo.jpg" alt="Illustration d'une pompe de piscine, pas un équipement personnel" loading="lazy">
-                  <h4 id="demo-house-title" tabindex="-1">La pompe du foyer fictif</h4>
-                  <p>Retrouvez un équipement et ses documents au même endroit.</p>
+                  <img class="demo-preview-image" src="assets/maison/maison-photo.jpg" alt="Maison de Camille et Alex" loading="lazy">
+                  <h4 id="demo-house-title" tabindex="-1">La maison de Camille &amp; Alex</h4>
+                  <p>La pompe, sa facture et sa garantie sont réunies au même endroit.</p>
                   <ul id="demo-house-documents"></ul>
-                  <button class="ui-button ui-button--secondary" type="button" id="demo-open-warranty">Voir la garantie fictive</button>
+                  <button class="ui-button ui-button--secondary" type="button" id="demo-open-warranty">Ouvrir la garantie</button>
                 </article>
               </section>
               <section data-demo-panel="photos" aria-labelledby="demo-photos-title" hidden>
-                <h4 id="demo-photos-title" tabindex="-1">Des souvenirs, pas des dossiers à fouiller</h4>
-                <p>Exemple préparé à partir d'associations explicites. Aucune reconnaissance faciale ou visuelle.</p>
-                <img class="demo-preview-image" src="assets/piscine/piscine-photo.jpg" alt="Illustration d'une piscine, pas une photo personnelle" loading="lazy">
+                <h4 id="demo-photos-title" tabindex="-1">Un été à la maison</h4>
+                <p>Les repères viennent des annotations ajoutées par la famille, pas d’une reconnaissance de visages.</p>
                 <div id="demo-photo-list" class="demo-preview-list"></div>
               </section>
               <section data-demo-panel="donnees" aria-labelledby="demo-data-title" hidden>
-                <h4 id="demo-data-title" tabindex="-1">Savoir d'où vient chaque résultat</h4>
-                <p>Dans Vos données, consultez vos copies et leurs sources. Une copie Famili-IA n'est pas l'original ; retirer cette copie ne supprime pas le fichier source.</p>
+                <h4 id="demo-data-title" tabindex="-1">La provenance, toujours visible</h4>
+                <p>Chaque résultat indique la copie utilisée et sa source. L’original reste chez son fournisseur.</p>
                 <div id="demo-data-list" class="demo-preview-list"></div>
               </section>
             </section>
             </div>
-            <button class="ui-button ui-button--text" type="button" id="demo-guide-restart" hidden>Revoir le guide</button>
-            <p class="onboarding-demo-note">Tout reste dans cet aperçu : aucune donnée personnelle consultée, aucun exemple enregistré. Les sources affichées sont fictives, pas des comptes connectés.</p>
-            <p class="view-tour-invitation">Vous pouvez aussi parcourir les autres vues. Certaines peuvent afficher les données déjà présentes sur cet appareil.</p>
+            <div class="demo-spotlight" id="demo-guide-spotlight" aria-hidden="true" hidden>
+              <span data-spotlight-region="top"></span>
+              <span data-spotlight-region="left"></span>
+              <span data-spotlight-region="right"></span>
+              <span data-spotlight-region="bottom"></span>
+              <span data-spotlight-frame></span>
+            </div>
+            <button class="ui-button ui-button--text" type="button" id="demo-guide-restart" hidden>Revoir la visite</button>
+            <p class="view-tour-invitation">Vous pouvez aussi parcourir les autres vues. Elles peuvent afficher les données déjà présentes sur cet appareil.</p>
             <button class="ui-button ui-button--secondary ui-button--full" type="button" id="start-view-tour-demo">Visiter les autres vues</button>
             <button class="ui-button ui-button--primary ui-button--full" type="button" id="finish-onboarding-demo">Terminer et accéder à mon espace</button>
           </div>
@@ -352,6 +380,11 @@
               </div>
             </div>
             <p id="moments-life-search-status" role="status" aria-live="polite"></p>
+            <div id="moments-life-source-summary" hidden>
+              <p>Copies trouvées dans l'index :</p>
+              <ul id="moments-life-source-list"></ul>
+              <p>Les numéros de compte sont propres à cette recherche. Ces copies peuvent représenter les mêmes photos. D'autres sources peuvent ne pas être indexées ; l'accès actuel aux originaux n'est pas garanti.</p>
+            </div>
             <div id="moments-life-grouping-controls" class="moments-life-grouping-controls" hidden>
               <label for="moments-life-grouping">Regrouper les photos</label>
               <select class="ui-input" id="moments-life-grouping">
@@ -677,7 +710,7 @@
             <div class="user-header">
               <div class="user-avatar-large" id="profile-avatar">S</div>
               <div class="user-meta">
-                <strong id="profile-name">Steve</strong>
+                <strong id="profile-name">Mon espace</strong>
                 <span id="profile-role">Administrateur</span>
               </div>
             </div>

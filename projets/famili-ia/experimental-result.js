@@ -13,6 +13,36 @@ const dateLabels = {
   echeance: "Échéance"
 };
 
+export function summarizePhotoSources(matches) {
+  if (!Array.isArray(matches)) throw new TypeError("Les résultats photo doivent être un tableau.");
+  const names = { local: "Fichiers locaux", drive: "Google Drive", onedrive: "OneDrive", dropbox: "Dropbox" };
+  const groups = new Map();
+  const accountCounts = new Map();
+  for (const match of matches) {
+    if (!match || !Object.hasOwn(names, match.sourceId) ||
+        (match.accountRef != null && (typeof match.accountRef !== "string" || !/^[a-f0-9]{64}$/.test(match.accountRef)))) {
+      throw new TypeError("Source de photo invalide.");
+    }
+    const accountRef = match.accountRef ?? null;
+    const key = JSON.stringify([match.sourceId, accountRef]);
+    if (!groups.has(key)) {
+      let label = names[match.sourceId];
+      if (match.sourceId !== "local") {
+        if (accountRef) {
+          const number = (accountCounts.get(match.sourceId) ?? 0) + 1;
+          accountCounts.set(match.sourceId, number);
+          label += ` — compte ${number}`;
+        } else {
+          label += " — compte non attribué";
+        }
+      }
+      groups.set(key, { sourceId: match.sourceId, accountRef, label, count: 0 });
+    }
+    groups.get(key).count += 1;
+  }
+  return [...groups.values()];
+}
+
 function describeValue(entry) {
   const provenance = provenanceLabels[entry.source] || "provenance inconnue";
   return `${entry.value} (${provenance}${entry.estimated ? ", estimation non confirmée" : ""})`;

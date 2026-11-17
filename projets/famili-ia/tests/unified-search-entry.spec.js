@@ -22,6 +22,51 @@ async function expectUsable(panel) {
   }))).toEqual({ small: [], overflow: false });
 }
 
+test('où sont mes photos : synthèse des copies par source et compte après rechargement', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openReady(page, 'recherche');
+  await page.evaluate(async () => {
+    const { addDocument } = await import('/state.js');
+    const { normalizePhotoAnnotations } = await import('/photo-annotations.js');
+    const annotations = normalizePhotoAnnotations({ eventTags: ['Mariage'] });
+    for (const [id, source] of [
+      ['fictive-locale', {}],
+      ['fictive-onedrive-a', { oneDriveSource: true, oneDriveAccountFingerprint: 'a'.repeat(64), sourceDir: 'Dossier fictif A' }],
+      ['fictive-onedrive-b', { oneDriveSource: true, oneDriveAccountFingerprint: 'b'.repeat(64) }],
+      ['fictive-drive', { driveSource: true }]
+    ]) {
+      await addDocument({ id, type: 'Image', name: `${id}.jpg`, isLocal: true,
+        photoAnnotations: annotations, ...source });
+    }
+    await addDocument({ id: 'autre-photo', type: 'Image', name: 'autre.jpg', isLocal: true,
+      photoAnnotations: normalizePhotoAnnotations({ eventTags: ['Voyage'] }) });
+  });
+  await openReady(page, 'recherche', true);
+  const query = page.locator('#experimental-index-query');
+  await query.fill('Où sont mes photos de mon mariage ?');
+  await query.press('Enter');
+  const summary = page.locator('#moments-life-source-summary');
+  await expect(summary).toBeVisible();
+  await expect(summary.locator('li')).toHaveCount(4);
+  await expect(summary).toContainText('Fichiers locaux : 1 copie indexée');
+  await expect(summary).toContainText('OneDrive — compte 1 : 1 copie indexée');
+  await expect(summary).toContainText('OneDrive — compte 2 : 1 copie indexée');
+  await expect(summary).toContainText('Google Drive — compte non attribué : 1 copie indexée');
+  await expect(summary).toContainText('peuvent représenter les mêmes photos');
+  await expect(summary).toContainText("l'accès actuel aux originaux n'est pas garanti");
+  const results = page.locator('#moments-life-search-results .moments-life-result');
+  await expect(results).toHaveCount(4);
+  await expect(results.filter({ hasText: 'fictive-onedrive-a.jpg' })).toContainText('Dossier fictif A');
+  await expect(results.filter({ hasText: 'fictive-onedrive-b.jpg' })).toContainText('Dernière vérification de la copie : inconnue');
+  await expect(results.filter({ hasText: 'autre.jpg' })).toHaveCount(0);
+  await expectUsable(page.locator('#view-recherche'));
+
+  await query.fill('Sur quelle source sont mes photos de randonnée ?');
+  await query.press('Enter');
+  await expect(summary).toBeHidden();
+  await expect(page.locator('#moments-life-search-status')).toContainText('sources non indexées ne sont pas couvertes');
+});
+
 for (const viewport of [
   { width: 390, height: 844 },
   { width: 768, height: 1024 },
@@ -38,12 +83,19 @@ for (const viewport of [
     await page.evaluate(async () => {
       const { put } = await import('/db.js');
       const { createIndexRecord } = await import('/index-record.js');
+      const { createPhotoMetadata } = await import('/photo-metadata.js');
       const photo = {
         id: 'unified-search-photo',
         type: 'Image',
         name: 'Vacances Québec.jpg',
         isLocal: true,
         importedAt: '2024-07-14T10:00:00.000Z',
+        photoMetadata: createPhotoMetadata('unified-search-photo', {
+          captureDate: {
+            raw: '2024:07:14 10:00:00', localDateTime: '2024-07-14T10:00:00',
+            offsetMinutes: null, source: { kind: 'exif', field: 'DateTimeOriginal' }
+          }
+        }),
         photoAnnotations: {
           schemaVersion: 1,
           personIds: [],

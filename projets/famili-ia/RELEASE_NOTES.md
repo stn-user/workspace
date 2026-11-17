@@ -14,7 +14,7 @@
 - ✅ Masquage de la sidebar latérale pour correspondre à la maquette
 - ✅ Affichage correct du contenu principal sur toute la largeur
 - ✅ Icônes SVG colorées dans les cartes statistiques
-- ✅ Greeting personnalisé : "Bonjour Steve 👋"
+- ✅ Greeting personnalisé avec le prénom renseigné
 - ✅ Palette de couleurs alignée sur CLAUDE.md
 
 **Configuration Android :**

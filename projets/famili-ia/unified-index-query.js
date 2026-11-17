@@ -5,6 +5,7 @@ import { normalizeText } from "./search-utils.js";
 
 const PHOTO_INTENT = /\b(?:photo|photos|image|images|souvenir|souvenirs)\b/;
 const COORDINATE_PAIR = /(^|\s)([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*[,;]\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))(?=$|[\s.!?])/u;
+const PHOTO_SOURCE_INTENT = /(^|\s)(?:(?:où|ou)\s+(?:sont|est|se trouvent|se trouve)|sur\s+quelles?\s+sources?(?:\s+(?:sont|est|se trouvent|se trouve))?)(?=\s|$)/iu;
 const QUERY_STOP_WORDS = new Set([
   "a", "au", "aux", "avec", "c", "d", "dans", "de", "des", "du", "elle", "en",
   "et", "il", "j", "je", "l", "la", "le", "les", "m", "ma", "mes", "moi",
@@ -97,7 +98,8 @@ export function createUnifiedIndexQuery(query, { members = [], photos = [] } = {
 
   const coordinateMatch = COORDINATE_PAIR.exec(trimmedQuery);
   let coordinates = null;
-  let interpretationQuery = trimmedQuery;
+  const sourceIntent = PHOTO_SOURCE_INTENT.test(trimmedQuery);
+  let interpretationQuery = trimmedQuery.replace(PHOTO_SOURCE_INTENT, "$1");
   let coordinatePhrase = null;
   if (coordinateMatch) {
     coordinatePhrase = `${coordinateMatch[2]}, ${coordinateMatch[3]}`;
@@ -112,9 +114,10 @@ export function createUnifiedIndexQuery(query, { members = [], photos = [] } = {
         clarificationReason: "invalid-coordinates"
       };
     }
-    interpretationQuery = trimmedQuery.slice(0, coordinateMatch.index)
+    const withoutCoordinates = trimmedQuery.slice(0, coordinateMatch.index)
       + coordinateMatch[1]
       + trimmedQuery.slice(coordinateMatch.index + coordinateMatch[0].length);
+    interpretationQuery = withoutCoordinates.replace(PHOTO_SOURCE_INTENT, "$1");
   }
 
   const photoMembers = members
@@ -161,11 +164,12 @@ export function createUnifiedIndexQuery(query, { members = [], photos = [] } = {
 
   return {
     kind: "photo",
-    query: remainingQueryTerms(trimmedQuery, explanations),
+    query: remainingQueryTerms(interpretationQuery, explanations),
     filters,
     importDateRange: importedDateRange(interpreted),
     explanations,
-    profileMismatch
+    profileMismatch,
+    sourceIntent
   };
 }
 

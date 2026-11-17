@@ -1,6 +1,51 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { reconcileDocumentAlerts } from "../state.js";
+import {
+  hashLegacyRecord,
+  reconcileDocumentAlerts,
+  removeUnmodifiedLegacyRecords
+} from "../state.js";
+
+test("removes only exact legacy-state matches and preserves edited records", async () => {
+  const unchanged = { id: "legacy-user", name: "Synthetic example", preferences: { localAccess: true } };
+  const edited = { ...unchanged, name: "User-edited value" };
+  const unrelated = { id: "custom-user", name: "Custom value" };
+  const removed = [];
+  const expectedHash = await hashLegacyRecord(unchanged);
+
+  const retained = await removeUnmodifiedLegacyRecords({
+    users: [unchanged, edited, unrelated],
+    family: []
+  }, {
+    users: { "legacy-user": expectedHash }
+  }, async (storeName, id) => removed.push({ storeName, id }));
+
+  assert.deepEqual(removed, [{ storeName: "users", id: "legacy-user" }]);
+  assert.deepEqual(retained.users, [edited, unrelated]);
+  assert.deepEqual(retained.family, []);
+});
+
+test("preserves legacy candidates when SHA-256 is unavailable", async () => {
+  const candidate = { id: "legacy-user", name: "Synthetic example" };
+  const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  const originalWarn = console.warn;
+  const warnings = [];
+  delete globalThis.crypto;
+  console.warn = message => warnings.push(message);
+  try {
+    const retained = await removeUnmodifiedLegacyRecords({
+      users: [candidate]
+    }, {
+      users: { "legacy-user": "known-hash" }
+    }, async () => assert.fail("must not delete without a verifiable hash"));
+
+    assert.deepEqual(retained.users, [candidate]);
+    assert.match(warnings[0], /SHA-256 indisponible.*données préservées/);
+  } finally {
+    Object.defineProperty(globalThis, "crypto", cryptoDescriptor);
+    console.warn = originalWarn;
+  }
+});
 
 test("reconciles document alerts idempotently and preserves choices and missing-copy alerts", () => {
   const existingAlerts = [

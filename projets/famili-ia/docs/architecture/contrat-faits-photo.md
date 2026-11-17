@@ -41,6 +41,8 @@ Pour les fichiers locaux JPEG/PNG, l'extraction retient uniquement XMP `dc:descr
 
 Le retrait du consentement retire les coordonnées et leurs dérivés des copies et de l'index dans l'onglet actif ; les mutations photo y sont sérialisées. La coordination entre plusieurs onglets ouverts n'est pas garantie : fermer les autres onglets avant de modifier ce consentement. Autoriser le GPS ne déclenche pas la relecture des photos existantes ; les possibilités et pertes éventuelles lors d'une nouvelle lecture sont détaillées dans les études des connecteurs.
 
+La première synthèse « où sont mes photos ? » utilise uniquement les correspondances photo de l'index local. Elle regroupe les copies par fournisseur et empreinte opaque de compte, sans dédupliquer les images ni conclure à l'exclusivité d'une source ; les comptes sont numérotés uniquement pour la synthèse affichée et ne sont pas identifiés. Chaque résultat rappelle l'emplacement connu et la dernière vérification, ou leur absence, ainsi que l'incertitude d'accès à l'original. Les tests sont synthétiques : ils ne prouvent pas la disponibilité réelle d'un fournisseur.
+
 ## Comparaison P2 des jeux de géolocalisation inverse
 
 **Évaluation documentaire : 16 novembre 2026. Décision : ne pas ajouter de conversion automatique pour l'instant.** La recherche GPS par coordonnées exactes reste disponible sous consentement ; aucune donnée de localisation n'est envoyée à un service distant. Un nom de localité présenté comme réponse certaine serait trompeur sans géométrie adaptée ou règle explicite de proximité.

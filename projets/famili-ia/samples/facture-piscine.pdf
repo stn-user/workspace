@@ -12,24 +12,29 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 331 >>
+<< /Length 439 >>
 stream
 BT
 /F1 12 Tf
 72 780 Td
-(FACTURE FICTIVE - AQUA JARDIN) Tj
+(EXEMPLE FICTIF - FACTURE) Tj
 0 -24 Td
-(Numero : AJ-2023-0318) Tj
+(Reference fictive : EXEMPLE-FACTURE-001) Tj
 0 -24 Td
-(Date : 4 mars 2023) Tj
+(Date fictive : 1 janvier 2099) Tj
 0 -24 Td
-(Objet : Installation piscine familiale) Tj
+(Objet : Installation d'une piscine fictive) Tj
 0 -24 Td
 (Montant total : 8 900 euros TTC) Tj
 0 -24 Td
-(Statut : reglee) Tj
+(Statut fictif : reglee) Tj
 0 -24 Td
-(Document invente pour tester Famili-IA. Aucun achat reel.) Tj
+() Tj
+0 -24 Td
+(Toutes les donnees de ce document sont inventees.) Tj
+0 -24 Td
+(Ne correspond a aucun client ni achat reel.) Tj
+0 -24 Td
 ET
 endstream
 endobj
@@ -44,5 +49,5 @@ xref
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-692
+801
 %%EOF

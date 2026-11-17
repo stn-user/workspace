@@ -61,14 +61,14 @@ test("extracts and quotes the amount line from the selected text file", () => {
 test("selects the warranty end date when the question concerns expiry", () => {
   assert.equal(
     extractExactFact("Quand se termine la garantie de la pompe ?", warrantyLines),
-    "Fin de garantie : 4 mai 2028"
+    "Fin de garantie : 1 janvier 2104"
   );
 });
 
 test("extracts invoice identifiers, warranty durations, and maintenance frequencies", () => {
   assert.equal(
     extractExactFact("Quel est le numéro de la facture ?", invoiceLines),
-    "Numero : AJ-2023-0318"
+    "Reference fictive : EXEMPLE-FACTURE-001"
   );
   assert.equal(
     extractExactFact("Combien d'années dure la garantie ?", warrantyLines),
@@ -82,7 +82,7 @@ test("extracts invoice identifiers, warranty durations, and maintenance frequenc
 
 test("extracts the same fact from common alternative question formulations", () => {
   assert.equal(extractExactFact("Quel prix pour l'installation de la piscine ?", invoiceLines), "Montant total : 8 900 euros TTC");
-  assert.equal(extractExactFact("À quelle date finit la garantie Hayward ?", warrantyLines), "Fin de garantie : 4 mai 2028");
+  assert.equal(extractExactFact("À quelle date finit la garantie de la pompe ?", warrantyLines), "Fin de garantie : 1 janvier 2104");
   assert.equal(extractExactFact("Combien d'années vaut la garantie de la pompe ?", warrantyLines), "Duree de garantie : 5 ans");
 });
 

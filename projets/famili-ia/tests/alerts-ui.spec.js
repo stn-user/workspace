@@ -8,6 +8,36 @@ async function openAlerts(page, hash = '#/alertes') {
   const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
   await page.goto(`http://127.0.0.1:5179/${hash}`);
   await ready;
+  await page.evaluate(async () => {
+    const { put } = await import('/db.js');
+    await Promise.all([
+      put('alerts', {
+        id: 'a2',
+        title: 'Rappel fictif à traiter',
+        detail: 'Rappel de test arrivé à échéance.',
+        type: 'red',
+        docId: 'source-absente',
+        dueDate: '2026-11-10'
+      }),
+      put('alerts', {
+        id: 'a1',
+        title: 'Garantie fictive',
+        detail: 'Rappel de test sans effet réel.',
+        type: 'red',
+        docId: 'piscine-garantie',
+        dueDate: '2026-11-15'
+      }),
+      put('alerts', {
+        id: 'a3',
+        title: 'Rappel sans source',
+        detail: 'Exemple de test.',
+        type: 'amber',
+        docId: 'source-absente',
+        dueDate: '2026-12-08'
+      })
+    ]);
+  });
+  await reloadReady(page);
 }
 
 async function reloadReady(page) {

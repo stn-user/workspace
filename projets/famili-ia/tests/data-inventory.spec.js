@@ -60,7 +60,7 @@ async function seedPhotoRecords(page, count = 1) {
       photo.indexRecord = await createDocumentIndexRecord(photo);
       documents.push(photo);
     }
-    const request = indexedDB.open('FamiliIADatabase', 3);
+    const request = indexedDB.open('FamiliIADatabase');
     const database = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -216,7 +216,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await expect(detailButton).toBeFocused();
   });
 
-  test('migre un document IndexedDB v2 vers une fiche durable en v3', async ({ page }) => {
+  test('migre un document IndexedDB v2 vers une fiche durable avec le schéma courant', async ({ page }) => {
     await page.goto('http://localhost:5179/styles.css');
     await page.evaluate(async () => {
       const request = indexedDB.open('FamiliIADatabase', 2);
@@ -276,7 +276,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
       };
     });
 
-    expect(migrated.version).toBe(3);
+    expect(migrated.version).toBe(4);
     expect(migrated.document.content).toBe('Contenu historique à conserver');
     expect(migrated.document.indexRecord.sourceId).toBe('local');
     expect(migrated.document.indexRecord.itemId).toBe('legacy-local');
@@ -313,7 +313,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await page.locator('#view-vos-donnees [data-filter-type="Garantie"]').click();
     await expect(page).toHaveURL(/#\/vos-donnees\?type=Garantie$/);
     await expect(page.locator('.data-file-row')).toHaveCount(1);
-    await expect(page.locator('.data-file-name')).toHaveText('Garantie - Pompe piscine.pdf');
+    await expect(page.locator('.data-file-name')).toHaveText('Fictif - garantie pompe piscine.pdf');
 
     await page.goBack();
     await expect(page).toHaveURL(/#\/vos-donnees\?type=document&category=Facture$/);
@@ -376,7 +376,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await expect(page.locator('#summary-demo')).toHaveText('5');
     await page.evaluate(async () => {
       localStorage.setItem('famili-ia-family', JSON.stringify([{ id: 'custom-family-member' }]));
-      const request = indexedDB.open('FamiliIADatabase', 3);
+      const request = indexedDB.open('FamiliIADatabase');
       const database = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -397,7 +397,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await reload;
 
     const storedState = await page.evaluate(async () => {
-      const request = indexedDB.open('FamiliIADatabase', 3);
+      const request = indexedDB.open('FamiliIADatabase');
       const database = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -478,7 +478,7 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await expect(confirmation).toBeHidden();
     await expect(page.locator('#moments-life-search-status')).toContainText('Les fichiers originaux sont préservés');
     const remainingPhotoIds = await page.evaluate(async () => {
-      const request = indexedDB.open('FamiliIADatabase', 3);
+      const request = indexedDB.open('FamiliIADatabase');
       const database = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);

@@ -5,6 +5,27 @@ async function openHousehold(page, view = 'famille') {
   const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
   await page.goto(`http://127.0.0.1:5179/#/${view}`);
   await ready;
+  await page.evaluate(async () => {
+    const { put } = await import('/db.js');
+    const members = [
+      { id: 'u1', name: 'Profil principal fictif', role: 'Admin', avatar: 'P', access: 'full' },
+      { id: 'u2', name: 'Profil fictif B', role: 'Member', avatar: 'B', access: 'limited' },
+      { id: 'u3', name: 'Profil fictif C', role: 'Member', avatar: 'C', access: 'limited' },
+      { id: 'u4', name: 'Profil fictif D', role: 'Member', avatar: 'D', access: 'limited' },
+      { id: 'u5', name: 'Profil fictif E', role: 'Member', avatar: 'E', access: 'limited' }
+    ];
+    const equipment = [
+      { id: 'eq-piscine-pompe', category: 'pompe', name: 'Pompe de piscine - modele fictif', status: 'Bon etat', docs: ['piscine-garantie'] },
+      { id: 'eq-piscine-filtre', category: 'piscine', name: 'Filtre de piscine - modele fictif', status: 'A nettoyer', docs: ['maison-notice'] },
+      { id: 'eq-imprimante', category: 'imprimante', name: 'Imprimante - modele fictif', status: 'Operationnelle', docs: ['imprimante-facture'] },
+      { id: 'eq-assurance-hab', category: 'assurance', name: 'Contrat habitation fictif', status: 'Actif', docs: ['habitation-contrat'] }
+    ];
+    await Promise.all([
+      ...members.map(member => put('family', member)),
+      ...equipment.map(item => put('equipment', item))
+    ]);
+  });
+  await reloadHousehold(page);
 }
 
 async function reloadHousehold(page) {
@@ -64,7 +85,7 @@ for (const width of [390, 768, 1280, 1920]) {
       await image.decode();
       return image.naturalWidth > 0;
     })).toBe(true);
-    await expect(page.locator('[data-equipment="eq-bambu-a1"] svg')).toBeVisible();
+    await expect(page.locator('[data-equipment="eq-imprimante"] svg')).toBeVisible();
     await expect(page.locator('#view-maison')).toContainText("pas des photos de vos équipements");
     await page.locator('#add-equipment-btn').click();
     await expect(page.locator('#eq-name-input')).toBeFocused();
@@ -72,7 +93,7 @@ for (const width of [390, 768, 1280, 1920]) {
     await page.keyboard.press('Escape');
     await expect(page.locator('#add-equipment-btn')).toBeFocused();
     await page.locator('[data-equipment="eq-piscine-pompe"]').click();
-    await expect(page.locator('#detail-title')).toHaveText('Pompe Hayward Modèle 2022');
+    await expect(page.locator('#detail-title')).toHaveText('Pompe de piscine - modele fictif');
     await expectUsable(page.locator('#view-detail'));
     await page.locator('#edit-equipment').click();
     await expect(page.locator('#equipment-dialog-title')).toHaveText('Modifier un équipement');
@@ -185,7 +206,7 @@ test('filtres valides et invalides, historique et raccourcis documentaires', asy
   await expect(page.locator('.equipment-row')).toHaveCount(1);
   await page.evaluate(() => { location.hash = '#/famille'; });
   await page.getByRole('button', { name: 'Garanties', exact: false }).click();
-  await expect(page.locator('.data-file-name')).toHaveText('Garantie - Pompe piscine.pdf');
+  await expect(page.locator('.data-file-name')).toHaveText('Fictif - garantie pompe piscine.pdf');
   await page.goBack();
   await page.getByRole('button', { name: 'Voir tout', exact: true }).click();
   await expect(page.locator('.data-file-name')).toHaveCount(5);

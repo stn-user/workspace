@@ -75,12 +75,12 @@ async function synchronizeDocumentAlerts(documents) {
 const defaultState = {
   currentUser: {
     id: 'u1',
-    name: 'Steve',
+    name: 'Mon espace',
     role: 'Admin',
-    avatar: 'S',
-    address: '12 rue des Bleuets',
-    postalCode: '31000',
-    city: 'Saint-Martin',
+    avatar: 'M',
+    address: '',
+    postalCode: '',
+    city: '',
     preferences: {
       localAccess: true,
       driveConnection: false,
@@ -96,31 +96,115 @@ const defaultState = {
       lastConsentDate: null
     }
   },
-  family: [
-    { id: 'u1', name: 'Steve', role: 'Admin', avatar: 'S', access: 'full' },
-    { id: 'u2', name: 'Conjointe', role: 'Member', avatar: 'C', access: 'limited' },
-    { id: 'u3', name: 'Aaron', role: 'Member', avatar: 'A', access: 'limited' },
-    { id: 'u4', name: 'Lorena', role: 'Member', avatar: 'L', access: 'limited' },
-    { id: 'u5', name: 'Elyana', role: 'Member', avatar: 'E', access: 'limited' }
-  ],
-  homeEquipment: [
-    { id: 'eq-piscine-pompe', category: 'pompe', name: 'Pompe Hayward Modèle 2022', status: 'Bon état', docs: ['piscine-garantie'] },
-    { id: 'eq-piscine-filtre', category: 'piscine', name: 'Filtre de piscine', status: 'À nettoyer', docs: ['maison-notice'] },
-    { id: 'eq-bambu-a1', category: 'imprimante', name: 'Bambu Lab A1', status: 'Opérationnelle', docs: ['bambu-facture'] },
-    { id: 'eq-assurance-hab', category: 'assurance', name: 'Contrat Habitation', status: 'Actif', docs: ['habitation-contrat'] }
-  ],
-  alerts: [
-    { id: 'a1', title: 'Garantie piscine', detail: 'Vérifiez les conditions et préparez le renouvellement.', type: 'red', docId: 'piscine-garantie', dueDate: '2026-11-15' },
-    { id: 'a2', title: 'Entretien chaudière', detail: 'Pensez à faire le contrôle annuel.', type: 'amber', docId: 'chaudiere-entretien', dueDate: '2026-11-02' },
-    { id: 'a3', title: 'Assurance habitation', detail: 'Renouvellement à prévoir.', type: 'amber', docId: 'assurance-habitation', dueDate: '2026-12-08' },
-    { id: 'a4', title: 'Contrôle technique', detail: 'Vérifiez les documents du véhicule.', type: 'blue', docId: 'vehicule-ct', dueDate: '2027-01-20' },
-    { id: 'a5', title: 'Facture électricité', detail: 'Paiement en attente.', type: 'muted', docId: 'facture-elec', dueDate: '2026-10-20' }
-  ],
+  family: [],
+  homeEquipment: [],
+  alerts: [],
   documents: [],
   isDemoMode: false
 };
 
-let state = { ...defaultState };
+const LEGACY_DEMO_RECORD_HASHES = {
+  users: {
+    u1: '33cebd9db14e65f2fbca5153b5d22eea83a9b38a61356e9e8ff60c2c4eef1566'
+  },
+  family: {
+    u1: 'f2da34c8ca721f7d2c70cc6a0586cb519b753e3d8b9380ac1c30edd017aefc8d',
+    u2: '21d7a798db2e773dc1dafb88cbd87278c2c85313b59b926ad64c0c0d190cd433',
+    u3: 'c2a6f88ab1643dae678155eb4262b1eb61bb3994167d37c528d504e2c0722bf1',
+    u4: 'd96485cd62faf01156eb2d77436bcc1b267ae3baed0d3cdf9fc81ccbc2b0a445',
+    u5: 'c94dc4cd46b79cf6021117530017b50cf52a8323af5521b321aff229efc0a39f'
+  },
+  equipment: {
+    'eq-piscine-pompe': '3a9ef9f161807ae81ae9a927d5a706c6437061ca24a6b44aff32908479b6da25',
+    'eq-piscine-filtre': '1fc85343cc5ceda55da44a5b77913e5dc5ca82dbb01a511ce50a50a2bcbc8c2d',
+    'eq-bambu-a1': 'a42a2bd9b9bdca4b5a3dbd35d1f8107845b908d4990e3f72d1007312ec6b0bc3',
+    'eq-assurance-hab': 'cfd280e50ba18737dc1dbee1665173344c57d8e8c0267efeac24b9857f3fde56'
+  },
+  alerts: {
+    a1: '7258d62875e89e4fd4667d9315a537d837ab0e812ee006c3755a3128018aee20',
+    a2: '5c0a1321d6b3c51993bb899d1ccccb9d5f004d9a829fef3d0ffe69fa6fbde5d8',
+    a3: '24781fe677ce6155e6029c4605a57eaa2af2f37fc5527f0b784e1d47ab0e5545',
+    a4: 'aaeff19ed3d255fbb5cc054858787b49ff0a2f8afb742c44df8734d886481e8f',
+    a5: '633fa3dbef314a37e6e36f761f538fdc12733cebd5467bcf884b3ec8db2f0a11'
+  }
+};
+
+function sortRecordKeys(value, ancestors = new WeakSet()) {
+  if (!value || typeof value !== 'object') return value;
+  if (ancestors.has(value)) return { circularReference: true };
+  ancestors.add(value);
+  const sorted = Array.isArray(value)
+    ? value.map(item => sortRecordKeys(item, ancestors))
+    : Object.fromEntries(Object.keys(value).sort()
+      .map(key => [key, sortRecordKeys(value[key], ancestors)]));
+  ancestors.delete(value);
+  return sorted;
+}
+
+export async function hashLegacyRecord(record) {
+  const digest = await globalThis.crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(JSON.stringify(sortRecordKeys(record)))
+  );
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+export async function removeUnmodifiedLegacyRecords(
+  recordsByStore,
+  expectedHashes = LEGACY_DEMO_RECORD_HASHES,
+  removeRecord = remove
+) {
+  const hasLegacyCandidates = Object.entries(recordsByStore).some(([storeName, records]) =>
+    records.some(record => record && expectedHashes[storeName]?.[record.id])
+  );
+  if (!hasLegacyCandidates) return recordsByStore;
+
+  if (!globalThis.crypto?.subtle?.digest || typeof TextEncoder !== 'function') {
+    console.warn('Nettoyage des anciennes données de démonstration ignoré : SHA-256 indisponible, données préservées.');
+    return recordsByStore;
+  }
+
+  const retainedByStore = {};
+  let removedCount = 0;
+  for (const [storeName, records] of Object.entries(recordsByStore)) {
+    const retained = [];
+    for (const record of records) {
+      const expectedHash = record && expectedHashes[storeName]?.[record.id];
+      if (expectedHash && await hashLegacyRecord(record) === expectedHash) {
+        await removeRecord(storeName, record.id);
+        removedCount += 1;
+      } else {
+        retained.push(record);
+      }
+    }
+    retainedByStore[storeName] = retained;
+  }
+  if (removedCount > 0) {
+    console.info(`${removedCount} ancienne(s) donnée(s) de démonstration inchangée(s) retirée(s).`);
+  }
+  return retainedByStore;
+}
+
+function createDefaultState() {
+  return {
+    ...defaultState,
+    currentUser: {
+      ...defaultState.currentUser,
+      preferences: {
+        ...defaultState.currentUser.preferences,
+        scanDirectories: [],
+        alertNotifications: normalizeAlertNotificationPreferences()
+      },
+      privacy: { ...defaultState.currentUser.privacy }
+    },
+    family: [],
+    homeEquipment: [],
+    alerts: [],
+    documents: []
+  };
+}
+
+let state = createDefaultState();
 let photoMutationQueue = Promise.resolve();
 
 function serializePhotoMutation(operation) {
@@ -151,10 +235,13 @@ export async function initState() {
   let documentIndexMigrationInProgress = false;
   try {
     await initDB();
-    const family = await getAll('family');
-    const equipment = await getAll('equipment');
-    const alerts = await getAll('alerts');
-    const users = await getAll('users');
+    const legacyCleanup = await removeUnmodifiedLegacyRecords({
+      family: await getAll('family'),
+      equipment: await getAll('equipment'),
+      alerts: await getAll('alerts'),
+      users: await getAll('users')
+    });
+    const { family, equipment, alerts, users } = legacyCleanup;
     const storedDocuments = await getAll('documents');
     const documents = [];
     for (const storedDocument of storedDocuments) {
@@ -212,17 +299,9 @@ export async function initState() {
     }
     documentIndexMigrationInProgress = false;
 
-    if (family.length > 0) state.family = family;
-    else for (const m of defaultState.family) await put('family', m);
-
-    if (equipment.length > 0) state.homeEquipment = equipment;
-    else for (const e of defaultState.homeEquipment) await put('equipment', e);
-
-    if (alerts.length > 0) state.alerts = alerts;
-    else {
-      state.alerts = [...defaultState.alerts];
-      for (const a of defaultState.alerts) await put('alerts', a);
-    }
+    state.family = family;
+    state.homeEquipment = equipment;
+    state.alerts = alerts;
 
     if (users.length > 0) state.currentUser = users[0];
     else await put('users', defaultState.currentUser);
@@ -574,7 +653,7 @@ export async function addLog(action, details) {
 
 async function resetStateUnlocked() {
   await purgeDatabase();
-  state = { ...defaultState };
+  state = createDefaultState();
   return state;
 }
 
@@ -596,34 +675,4 @@ export function setDemoMode(mode) {
  * Initialise un foyer de démonstration complet dans l'état local.
  * Utilisé par le bouton "Explorer la démo" (Phase 13.2.a)
  */
-export async function initializeDemoState() {
-  // Réinitialiser d'abord pour partir sur une base propre
-  await resetState();
-
-  // 1. Membres de la famille fictifs
-  const demoMembers = [
-    { id: 'u1', name: 'Steve', role: 'Admin', avatar: 'S', access: 'full' },
-    { id: 'u2', name: 'Marie', role: 'Member', avatar: 'M', access: 'limited' }
-  ];
-  for (const m of demoMembers) await addFamilyMember(m);
-
-  // 2. Équipements fictifs
-  const demoEquipments = [
-    { id: 'eq-1', category: 'piscine', name: 'Piscine Extérieure', status: 'Bon état', docs: [] },
-    { id: 'eq-2', category: 'pompe', name: 'Pompe de filtration', status: 'À réviser', docs: [] }
-  ];
-  for (const e of demoEquipments) await addEquipment(e);
-
-  // 3. Alertes fictives
-  const demoAlerts = [
-    { id: 'a-1', title: 'Entretien Pompe', detail: 'Révision annuelle requise.', type: 'amber', docId: '', dueDate: '2026-11-30' }
-  ];
-  for (const a of demoAlerts) {
-    state.alerts.push(a);
-    await put('alerts', a);
-  }
-
-  return state;
-}
-
 export default state;

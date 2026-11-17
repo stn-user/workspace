@@ -32,7 +32,7 @@ test.describe('Famili-IA Onboarding & Sync (Phase 13.4 & 13.5)', () => {
     await demoBtn.waitFor({ state: 'visible' });
     await demoBtn.click();
 
-    await expect(page.locator('#demo-result-heading')).toContainText('Facture de piscine');
+    await expect(page.locator('#demo-result-heading')).toContainText('Exemple fictif de facture');
     await page.locator('#finish-onboarding-demo').click();
 
     // Vérifier que le localStorage a bien stocké la fin de l'onboarding

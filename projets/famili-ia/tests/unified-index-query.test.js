@@ -88,6 +88,25 @@ test("ignores photo quantifiers without dropping content terms or negations", ()
   assert.equal(createUnifiedIndexQuery("toutes les photos pas mariage", { photos: catalog }).query, "pas");
 });
 
+test("reconnaît la question de source sans perdre les critères photo", () => {
+  const catalog = [{ ...photos[0], photoAnnotations: { eventTags: ["Mariage"] } }];
+  for (const text of [
+    "Où sont mes photos de mon mariage ?",
+    "Sur quelles sources se trouvent mes photos de mariage ?"
+  ]) {
+    const request = createUnifiedIndexQuery(text, { photos: catalog });
+    assert.equal(request.sourceIntent, true);
+    assert.equal(request.query, "");
+    assert.deepEqual(request.filters, { type: "photo", eventTag: "Mariage" });
+  }
+  const withCoordinates = createUnifiedIndexQuery("Où sont les photos à 12.345, -45.678 ?");
+  assert.equal(withCoordinates.sourceIntent, true);
+  assert.equal(withCoordinates.query, "");
+  assert.equal(withCoordinates.filters.coordinates, "12.345, -45.678");
+  assert.equal(createUnifiedIndexQuery("photos de la source chaude").query, "source chaude");
+  assert.equal(createUnifiedIndexQuery("photos de mariage").sourceIntent, false);
+});
+
 test("uses the complete numeric or written photo date instead of only its year", () => {
   for (const date of ["17/09/2024", "17-09-2024", "17.09.2024", "2024-09-17", "17 septembre 2024"]) {
     const request = createUnifiedIndexQuery(`montre moi toutes les photos du ${date}`);

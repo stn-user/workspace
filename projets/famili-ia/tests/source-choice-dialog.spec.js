@@ -96,9 +96,9 @@ test('démo depuis Accueil reste fictive et préserve les données', async ({ pa
   await expect(page.locator('#source-choice-dialog')).toBeHidden();
   await expect(page.locator('#step-3')).toBeVisible();
   await expect(page.locator('#step-3-title')).toBeFocused();
-  await expect(page.locator('#demo-result-heading')).toContainText('Facture de piscine');
+  await expect(page.locator('#demo-result-heading')).toContainText('Exemple fictif de facture');
   await page.locator('.demo-examples summary').click();
-  await page.locator('[data-demo-question="photos-aaron"]').click();
+  await page.locator('[data-demo-question="photos-membre-fictif-a"]').click();
   await page.locator('#demo-guide-next').click();
   await expect(page.locator('#demo-result-heading')).toContainText('Photos');
   expect(await snapshot()).toEqual(before);
