@@ -13,7 +13,8 @@ export function findIndexDeadlines(session, referenceDate, daysToExamine) {
   const needReview = [];
 
   for (const record of records) {
-    const doc = documents.find(entry => entry.sourceId === record.sourceId && entry.itemId === record.itemId);
+    const doc = documents.find(entry => entry.sourceId === record.sourceId &&
+      entry.accountRef === record.accountRef && entry.itemId === record.itemId);
     if (!doc) throw new Error("Segments de la fiche introuvables dans la session");
     if (record.dates.echeance && record.dates.echeance.source === "extracted" &&
         !record.dates.echeance.estimated && record.dates.echeance.proof) {
@@ -21,26 +22,26 @@ export function findIndexDeadlines(session, referenceDate, daysToExamine) {
       continue;
     }
     if (record.dates.echeance) {
-      needReview.push({ sourceId: record.sourceId, itemId: record.itemId, name: record.name?.value ?? null,
+      needReview.push({ sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId, name: record.name?.value ?? null,
         reason: "Échéance déjà enregistrée : aucune nouvelle proposition automatique." });
       continue;
     }
     if (!doc.segments.length) {
-      needReview.push({ sourceId: record.sourceId, itemId: record.itemId, name: record.name?.value ?? null,
+      needReview.push({ sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId, name: record.name?.value ?? null,
         reason: "Aucun texte extrait fiable disponible." });
       continue;
     }
     const result = extractDeadlineFromText(record, doc.segments.join("\n"));
     if (result.status === "ambiguous") {
-      needReview.push({ sourceId: record.sourceId, itemId: record.itemId, name: record.name?.value ?? null,
+      needReview.push({ sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId, name: record.name?.value ?? null,
         reason: "Échéance ambiguë : vérification nécessaire." });
     } else if (result.status === "invalid-date") {
-      needReview.push({ sourceId: record.sourceId, itemId: record.itemId, name: record.name?.value ?? null,
+      needReview.push({ sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId, name: record.name?.value ?? null,
         reason: "Date d'échéance invalide : vérification nécessaire." });
     } else if (result.status === "extracted" || result.status === "estimated") {
       processed.push(result.record);
     } else if (result.status === "estimate-ineligible") {
-      needReview.push({ sourceId: record.sourceId, itemId: record.itemId, name: record.name?.value ?? null,
+      needReview.push({ sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId, name: record.name?.value ?? null,
         reason: result.reason });
     }
   }

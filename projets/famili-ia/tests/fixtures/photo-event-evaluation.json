@@ -1,0 +1,41 @@
+[
+  {
+    "document": {
+      "id": "photo-01",
+      "type": "Image",
+      "name": "photo-01.jpg",
+      "photoFacts": {
+        "facts": [
+          {
+            "id": "keyword-01",
+            "kind": "keyword",
+            "value": { "text": "mariage" },
+            "status": "extracted",
+            "provenance": { "kind": "iptc", "field": "Keywords" }
+          }
+        ]
+      }
+    },
+    "expectedWedding": true
+  },
+  {
+    "document": { "id": "photo-02", "type": "Image", "name": "mariage-02.jpg" },
+    "expectedWedding": true
+  },
+  {
+    "document": { "id": "photo-03", "type": "Image", "name": "invitation-mariage.jpg" },
+    "expectedWedding": false
+  },
+  {
+    "document": { "id": "photo-04", "type": "Image", "name": "photo-04.jpg" },
+    "expectedWedding": true
+  },
+  {
+    "document": { "id": "photo-05", "type": "Image", "name": "photo-05.jpg" },
+    "expectedWedding": false
+  },
+  {
+    "document": { "id": "photo-06", "type": "Image", "name": "mariage-06.jpg" },
+    "expectedWedding": null
+  }
+]

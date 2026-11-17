@@ -121,6 +121,14 @@ const defaultState = {
 };
 
 let state = { ...defaultState };
+let photoMutationQueue = Promise.resolve();
+
+function serializePhotoMutation(operation) {
+  const pending = photoMutationQueue.then(operation);
+  // Keep the queue usable after a failed operation while returning that failure to its caller.
+  photoMutationQueue = pending.then(() => undefined, () => undefined);
+  return pending;
+}
 
 function clearPhotoLocation(document, field) {
   if (document.photoMetadata?.location?.status !== "available") return document;
@@ -285,7 +293,7 @@ export async function updateFamilyMember(member) {
   return state.family;
 }
 
-export async function deleteFamilyMember(id) {
+async function deleteFamilyMemberUnlocked(id) {
   const validMemberIds = state.family.filter(member => member.id !== id).map(member => member.id);
   const updatedDocuments = [];
   for (const document of state.documents) {
@@ -308,7 +316,11 @@ export async function deleteFamilyMember(id) {
   return state.family;
 }
 
-export async function updatePhotoAnnotations(documentId, annotations) {
+export function deleteFamilyMember(id) {
+  return serializePhotoMutation(() => deleteFamilyMemberUnlocked(id));
+}
+
+async function updatePhotoAnnotationsUnlocked(documentId, annotations) {
   const index = state.documents.findIndex(document => document.id === documentId);
   if (index === -1 || !isPhotoDocument(state.documents[index])) {
     throw new TypeError("Le fichier photo à annoter est introuvable.");
@@ -326,6 +338,10 @@ export async function updatePhotoAnnotations(documentId, annotations) {
   await put('documents', updatedDocument);
   state.documents[index] = updatedDocument;
   return updatedDocument;
+}
+
+export function updatePhotoAnnotations(documentId, annotations) {
+  return serializePhotoMutation(() => updatePhotoAnnotationsUnlocked(documentId, annotations));
 }
 
 export async function addEquipment(equipment) {
@@ -349,7 +365,7 @@ export async function deleteEquipment(id) {
   return state.homeEquipment;
 }
 
-export async function addDocument(document) {
+async function addDocumentUnlocked(document) {
   document = normalizePhotoDocument(document);
   if (isPhotoDocument(document)) {
     if (state.currentUser.privacy?.photoLocationConsent !== true) {
@@ -378,6 +394,10 @@ export async function addDocument(document) {
   await synchronizeDocumentAlerts(state.documents);
 
   return state.documents;
+}
+
+export function addDocument(document) {
+  return serializePhotoMutation(() => addDocumentUnlocked(document));
 }
 
 function dropboxCheckpointId(accountFingerprint) {
@@ -419,7 +439,7 @@ export async function clearDropboxIndexCheckpoints() {
   await Promise.all(checkpoints.map(checkpoint => remove('source_sync', checkpoint.id)));
 }
 
-export async function deleteDocument(id, { invalidateDropboxCheckpoint = true } = {}) {
+async function deleteDocumentUnlocked(id, { invalidateDropboxCheckpoint = true } = {}) {
   const document = state.documents.find(existing => existing.id === id);
   if (invalidateDropboxCheckpoint && document?.dropboxSource && document.dropboxAccountFingerprint) {
     await clearDropboxIndexCheckpoint(document.dropboxAccountFingerprint);
@@ -434,6 +454,10 @@ export async function deleteDocument(id, { invalidateDropboxCheckpoint = true } 
     state.alerts = state.alerts.filter(alert => alert.id !== linkedAlert.id);
   }
   return state.documents;
+}
+
+export function deleteDocument(id, options) {
+  return serializePhotoMutation(() => deleteDocumentUnlocked(id, options));
 }
 
 export async function confirmDocumentAlert(documentId) {
@@ -499,7 +523,7 @@ export async function updatePrivacyConsent(newPrivacySettings) {
   return state.currentUser.privacy;
 }
 
-export async function updatePhotoLocationConsent(enabled) {
+async function updatePhotoLocationConsentUnlocked(enabled) {
   const photoLocationConsent = enabled === true;
   if (photoLocationConsent) {
     await updatePrivacyConsent({ photoLocationConsent: true });
@@ -533,6 +557,10 @@ export async function updatePhotoLocationConsent(enabled) {
   return false;
 }
 
+export function updatePhotoLocationConsent(enabled) {
+  return serializePhotoMutation(() => updatePhotoLocationConsentUnlocked(enabled));
+}
+
 export async function addLog(action, details) {
   const logEntry = {
     id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -544,10 +572,14 @@ export async function addLog(action, details) {
   return logEntry;
 }
 
-export async function resetState() {
+async function resetStateUnlocked() {
   await purgeDatabase();
   state = { ...defaultState };
   return state;
+}
+
+export function resetState() {
+  return serializePhotoMutation(resetStateUnlocked);
 }
 
 /**

@@ -16,13 +16,9 @@ export function findDeadlineCandidates(records, referenceDate, daysToExamine, { 
   const identities = new Map();
   for (const record of records) {
     if (!isValidIndexRecord(record)) throw new TypeError("fiche d'index invalide");
-    let items = identities.get(record.sourceId);
-    if (!items) {
-      items = new Set();
-      identities.set(record.sourceId, items);
-    }
-    if (items.has(record.itemId)) throw new TypeError("identités dupliquées");
-    items.add(record.itemId);
+    const identity = JSON.stringify([record.sourceId, record.accountRef, record.itemId]);
+    if (identities.has(identity)) throw new TypeError("identités dupliquées");
+    identities.set(identity, record);
   }
 
   const start = Date.parse(`${referenceDate}T00:00:00.000Z`);
@@ -31,6 +27,7 @@ export function findDeadlineCandidates(records, referenceDate, daysToExamine, { 
   for (const record of records) {
     if (!record.dates.echeance) continue;
     const normalized = createIndexRecord(record.sourceId, record.itemId, {
+      accountRef: record.accountRef,
       type: record.type, name: record.name, dates: record.dates,
       coverage: record.coverage, lastCheck: record.lastCheck, fields: record.fields
     });
@@ -41,13 +38,13 @@ export function findDeadlineCandidates(records, referenceDate, daysToExamine, { 
     if (deadline.estimated && !allowedEstimate) reasons.push("échéance estimée");
     if (!deadline.proof) reasons.push("preuve absente");
     if (reasons.length) {
-      ineligible.push({ sourceId: record.sourceId, itemId: record.itemId, reasons });
+      ineligible.push({ sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId, reasons });
       continue;
     }
     const daysUntil = (Date.parse(`${deadline.value}T00:00:00.000Z`) - start) / DAY_MS;
     if (daysUntil >= 0 && daysUntil <= daysToExamine) {
       candidates.push({
-        sourceId: record.sourceId, itemId: record.itemId,
+        sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId,
         name: normalized.name ? normalized.name.value : null,
         dueDate: deadline.value, source: deadline.source,
         proof: { ...deadline.proof }, daysUntil,

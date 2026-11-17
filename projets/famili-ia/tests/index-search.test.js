@@ -23,6 +23,17 @@ test("recherche multisource normalisée par sous-chaînes, dans l'ordre", () => 
   assert.deepEqual(searchIndex(records, "elec inconnu"), []);
 });
 
+test("recherche autorise le même identifiant fournisseur dans deux comptes distincts", () => {
+  const records = [
+    make("onedrive", "same-item", { accountRef: "a".repeat(64), name: name("Contrat A") }),
+    make("onedrive", "same-item", { accountRef: "b".repeat(64), name: name("Contrat B") })
+  ];
+  assert.deepEqual(searchIndex(records, "contrat").map(({ accountRef, itemId }) => [accountRef, itemId]), [
+    ["a".repeat(64), "same-item"], ["b".repeat(64), "same-item"]
+  ]);
+  assert.throws(() => searchIndex([records[0], records[0]], "contrat"), /dupliquées/);
+});
+
 test("mots répartis entre nom, date et champ : raisons et preuve exactes", () => {
   const record = make("s", "id", {
     name: name("Garantie aspirateur"), coverage: "partial",

@@ -2,7 +2,7 @@
 import { buildSearchResponse, rankDocuments } from "./search-utils.js";
 import { GoogleDriveClient, prepareDriveDocumentForIndex } from "./google-drive.js";
 import { GoogleDriveSource } from "./google-drive-source.js";
-import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
+import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryAccountRef, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
 import { Capacitor } from "@capacitor/core";
 import { selectNativePhotoFiles } from "./native-photo-picker.js";
 import { parseDocument } from "./document-parser.js";
@@ -35,7 +35,7 @@ import { OneDriveAuth } from "./onedrive-auth.js";
 import { scanOneDrive } from "./onedrive-graph.js";
 import {
   canRefreshOneDriveCopy, compareOneDriveCopy, describeOneDriveChanges, mergeOneDriveDocumentUpdate,
-  oneDriveDocumentId, readOneDriveDocument
+  oneDriveDocumentId, readOneDriveDocument, resolveOneDriveOriginalUrl
 } from "./onedrive-document.js";
 import { formatOneDriveAccountFingerprint, getOneDriveAccountFingerprint } from "./onedrive-account.js";
 import {
@@ -636,6 +636,19 @@ const documents = [
 ];
 
 const uploadedDocuments = [];
+function storedDocument(id) {
+  const document = getDocuments().find(entry => entry.id === id);
+  if (!document) throw new Error("La copie enregistrée n'est plus présente.");
+  return document;
+}
+
+function synchronizeStoredPhotoDocuments() {
+  for (let index = 0; index < uploadedDocuments.length; index += 1) {
+    if (!isPhotoDocument(uploadedDocuments[index])) continue;
+    const current = getDocuments().find(document => document.id === uploadedDocuments[index].id);
+    if (current) uploadedDocuments[index] = current;
+  }
+}
 const experimentalIndex = new IndexSession();
 const invalidContentProvenance = new WeakSet();
 let driveSelectionGeneration = 0;
@@ -797,7 +810,8 @@ async function persistSourceRun({
   finishedAt = null,
   discoveredCount = null,
   processedCount = 0,
-  failedCount = 0
+  failedCount = 0,
+  failureReason = null
 }) {
   const id = sourceRunStatusId(sourceId, accountRef);
   const previous = sourceRunStatuses.get(id);
@@ -811,7 +825,8 @@ async function persistSourceRun({
     lastSuccessfulAt: state === "complete" ? finishedAt : previous?.lastSuccessfulAt || null,
     discoveredCount,
     processedCount,
-    failedCount
+    failedCount,
+    failureReason
   });
   sourceRunStatuses.set(record.id, record);
   renderExperimentalSources();
@@ -824,6 +839,12 @@ async function persistSourceRun({
     console.error("Impossible de persister l'état de parcours d'une source :", error);
   }
   renderExperimentalSources();
+}
+
+function sourceRunFailureReason(error) {
+  const message = error instanceof Error ? error.message : "Erreur non détaillée.";
+  return message.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 240)
+    || "Erreur non détaillée.";
 }
 
 async function restoreSourceRunStatuses() {
@@ -845,16 +866,17 @@ async function restoreSourceRunStatuses() {
   renderExperimentalSources();
 }
 
-function findExperimentalDocument(sourceId, itemId) {
+function findExperimentalDocument(sourceId, itemId, accountRef) {
   for (let i = uploadedDocuments.length - 1; i >= 0; i -= 1) {
     const doc = uploadedDocuments[i];
-    if (doc.id === itemId && getInventorySource(doc) === sourceId) return doc;
+    if (doc.id === itemId && getInventorySource(doc) === sourceId &&
+        (accountRef === undefined || getInventoryAccountRef(doc) === accountRef)) return doc;
   }
   return undefined;
 }
 
-function addDeadlineCopyAction(item, sourceId, itemId) {
-  const sourceDocument = findExperimentalDocument(sourceId, itemId);
+function addDeadlineCopyAction(item, sourceId, itemId, accountRef) {
+  const sourceDocument = findExperimentalDocument(sourceId, itemId, accountRef);
   if (!sourceDocument || typeof sourceDocument.content !== "string" || !sourceDocument.content.trim()) {
     addTextElement(item, "p", "", "Copie textuelle indisponible dans Famili-IA.");
     return;
@@ -862,7 +884,7 @@ function addDeadlineCopyAction(item, sourceId, itemId) {
   const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir la copie dans Famili-IA");
   button.type = "button";
   button.addEventListener("click", () => {
-    const current = findExperimentalDocument(sourceId, itemId);
+    const current = findExperimentalDocument(sourceId, itemId, accountRef);
     if (!current || typeof current.content !== "string" || !current.content.trim()) {
       refreshExperimentalIndex();
       deadlineStatus.textContent = "Cette copie n'est plus disponible dans Famili-IA.";
@@ -890,7 +912,7 @@ function renderExperimentalDeadlines(sourceStatuses) {
     const accessElement = addTextElement(item, "p", "", access?.access || "Accès actuel à l'original inconnu.");
     accessElement.dataset.deadlineSource = candidate.sourceId;
     addTextElement(item, "p", "", "Couverture : texte partiellement recherché ; fraîcheur inconnue.");
-    addDeadlineCopyAction(item, candidate.sourceId, candidate.itemId);
+    addDeadlineCopyAction(item, candidate.sourceId, candidate.itemId, candidate.accountRef);
     addDeadlineAlertAction(item, candidate);
     deadlineResults.appendChild(item);
   }
@@ -898,7 +920,7 @@ function renderExperimentalDeadlines(sourceStatuses) {
     const item = document.createElement("li");
     item.className = "experimental-result";
     addTextElement(item, "p", "", `${entry.name || "Nom inconnu"} · ${sourceName(entry.sourceId)} · ${entry.reason}`);
-    addDeadlineCopyAction(item, entry.sourceId, entry.itemId);
+    addDeadlineCopyAction(item, entry.sourceId, entry.itemId, entry.accountRef);
     deadlineReviewList.appendChild(item);
   }
   deadlineReview.hidden = result.needReview.length === 0;
@@ -907,8 +929,9 @@ function renderExperimentalDeadlines(sourceStatuses) {
 }
 
 function addDeadlineAlertAction(item, candidate) {
-  const document = findExperimentalDocument(candidate.sourceId, candidate.itemId);
-  const matchingStoredDocuments = getDocuments().filter(entry => entry.id === candidate.itemId);
+  const document = findExperimentalDocument(candidate.sourceId, candidate.itemId, candidate.accountRef);
+  const matchingStoredDocuments = getDocuments().filter(entry => entry.id === candidate.itemId &&
+    getInventorySource(entry) === candidate.sourceId && getInventoryAccountRef(entry) === candidate.accountRef);
   const proofLines = candidate.proof.excerpt.split(/\r\n|\n|\r/).map(line => line.trim()).filter(Boolean);
   if (!document || matchingStoredDocuments.length !== 1 ||
       getInventorySource(matchingStoredDocuments[0]) !== candidate.sourceId ||
@@ -940,12 +963,14 @@ function addDeadlineAlertAction(item, candidate) {
   const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", buttonLabel);
   button.type = "button";
   button.addEventListener("click", async () => {
-    const currentDocuments = getDocuments().filter(entry => entry.id === candidate.itemId);
+    const currentDocuments = getDocuments().filter(entry => entry.id === candidate.itemId &&
+      getInventorySource(entry) === candidate.sourceId && getInventoryAccountRef(entry) === candidate.accountRef);
     const current = currentDocuments[0];
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const currentProposal = findIndexDeadlines(experimentalIndex, today, 90).candidates
-      .find(entry => entry.sourceId === candidate.sourceId && entry.itemId === candidate.itemId);
+      .find(entry => entry.sourceId === candidate.sourceId && entry.accountRef === candidate.accountRef &&
+        entry.itemId === candidate.itemId);
     if (currentDocuments.length !== 1 || !current ||
         getInventorySource(current) !== candidate.sourceId ||
         current.content !== document.content ||
@@ -993,7 +1018,8 @@ function addDeadlineAlertAction(item, candidate) {
       await addDocument(confirmedDocument);
       await confirmDocumentAlert(confirmedDocument.id);
       const uploadedIndex = uploadedDocuments.findIndex(entry =>
-        entry.id === candidate.itemId && getInventorySource(entry) === candidate.sourceId);
+        entry.id === candidate.itemId && getInventorySource(entry) === candidate.sourceId &&
+        getInventoryAccountRef(entry) === candidate.accountRef);
       if (uploadedIndex !== -1) uploadedDocuments[uploadedIndex] = confirmedDocument;
       const restoreStatus = await experimentalIndex.restoreDocumentContent(confirmedDocument);
       if (restoreStatus !== "verified") {
@@ -1052,9 +1078,9 @@ function refreshExperimentalIndex() {
       return;
     }
     let matches = experimentalIndex.search(request.query, filters);
-    const matchKey = ({ sourceId, itemId }) => JSON.stringify([sourceId, itemId]);
+    const matchKey = ({ sourceId, accountRef, itemId }) => JSON.stringify([sourceId, accountRef ?? null, itemId]);
     const documentsByMatch = new Map(matches.map(match =>
-      [matchKey(match), findExperimentalDocument(match.sourceId, match.itemId)]
+      [matchKey(match), findExperimentalDocument(match.sourceId, match.itemId, match.accountRef)]
     ));
     if (request.importDateRange) {
       matches = matches.filter(match => isWithinDateRange(
@@ -1071,7 +1097,11 @@ function refreshExperimentalIndex() {
     renderUnifiedPhotoResults(photoMatches, request, documentsByMatch);
     const matchedKeys = new Set(documentMatches.map(matchKey));
     const duplicateDocuments = uploadedDocuments
-      .map(document => ({ ...document, sourceId: INDEX_SOURCES[getInventorySource(document)] }))
+      .map(document => ({
+        ...document,
+        sourceId: INDEX_SOURCES[getInventorySource(document)],
+        accountRef: getInventoryAccountRef(document)
+      }))
       .filter(document => document.sourceId);
     const duplicateCandidates = findDocumentDuplicateCandidates(duplicateDocuments);
     const duplicatePairs = [...duplicateCandidates.exactDuplicates, ...duplicateCandidates.possibleDuplicates]
@@ -1080,7 +1110,8 @@ function refreshExperimentalIndex() {
     const renderMatch = (match, tagName = "li") => {
       const item = document.createElement(tagName);
       const sourceDocument = documentsByMatch.get(matchKey(match));
-      const record = records.find(entry => entry.sourceId === match.sourceId && entry.itemId === match.itemId);
+      const record = records.find(entry => entry.sourceId === match.sourceId &&
+        entry.accountRef === (match.accountRef ?? null) && entry.itemId === match.itemId);
       const sourceAccess = sourceStatuses.find(status => status.sourceId === match.sourceId)?.access;
       const result = describeExperimentalResult(match, record, sourceDocument, sourceAccess);
       item.className = "experimental-result";
@@ -1091,7 +1122,7 @@ function refreshExperimentalIndex() {
         const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir la copie dans Famili-IA");
         button.type = "button";
         button.addEventListener("click", () => {
-          const current = findExperimentalDocument(match.sourceId, match.itemId);
+          const current = findExperimentalDocument(match.sourceId, match.itemId, match.accountRef);
           if (!current || typeof current.content !== "string" || !current.content.trim()) {
             refreshExperimentalIndex();
             experimentalIndexStatus.textContent = "Cette copie n'est plus disponible dans Famili-IA.";
@@ -1102,11 +1133,12 @@ function refreshExperimentalIndex() {
       } else {
         addTextElement(item, "p", "", "Copie textuelle indisponible dans Famili-IA.");
       }
+      if (match.sourceId === "onedrive") addOneDriveOriginalAction(item, sourceDocument);
       if (sourceDocument && isPhotoDocument(sourceDocument)) {
         const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir le détail de la photo");
         button.type = "button";
         button.addEventListener("click", () => {
-          const current = findExperimentalDocument(match.sourceId, match.itemId);
+          const current = findExperimentalDocument(match.sourceId, match.itemId, match.accountRef);
           if (!current || !isPhotoDocument(current)) {
             refreshExperimentalIndex();
             experimentalIndexStatus.textContent = "Cette photo n'est plus disponible dans Famili-IA.";
@@ -1217,7 +1249,9 @@ const fileStatus = document.querySelector("#file-status");
 const connectGoogleDriveButton = document.querySelector("#connect-google-drive");
 const disconnectGoogleDriveButton = document.querySelector("#disconnect-google-drive");
 const driveConnectionStatus = document.querySelector("#drive-connection-status");
-const googleDriveClient = hasGoogleDriveConfig && !isNativePlatform ? new GoogleDriveClient(googleDriveConfig) : null;
+const googleDriveClient = hasGoogleDriveConfig && !isNativePlatform ? new GoogleDriveClient({
+  ...googleDriveConfig, getPhotoLocationConsent: () => getCurrentUser().privacy?.photoLocationConsent === true
+}) : null;
 const googleDriveSource = googleDriveClient ? new GoogleDriveSource({ client: googleDriveClient, sourceId: INDEX_SOURCES.drive }) : null;
 const sourceChoiceDialog = document.querySelector("#source-choice-dialog");
 const googleDriveChoiceDescription = document.querySelector("#google-drive-choice-description");
@@ -1330,7 +1364,7 @@ function openSource(document) {
       : document.oneDriveSource
       ? `${document.type} · copie locale issue de OneDrive${document.date && document.date !== "Date inconnue" ? ` · modifié le ${document.date}` : ""}`
       : document.driveSource
-      ? `${document.type} · copie textuelle locale issue de Google Drive${document.date && document.date !== "Date inconnue" ? ` · modifié le ${document.date}` : ""}`
+      ? `${document.type} · ${document.type === "Image" ? "métadonnées locales issues" : "copie textuelle locale issue"} de Google Drive${document.date && document.date !== "Date inconnue" ? ` · modifié le ${document.date}` : ""}`
       : document.driveDemo
         ? `${document.type} · exemple fictif copié dans cette session`
         : document.sourceDir && Capacitor.isNativePlatform()
@@ -1343,7 +1377,9 @@ function openSource(document) {
       : document.oneDriveSource
       ? "Copie conservée dans Famili-IA, non synchronisée automatiquement. L'accès actuel à l'original n'est pas vérifié ; ce fichier peut être ancien ou ne contenir que ses métadonnées."
       : document.driveSource
-      ? "Copie textuelle d'un fichier choisi dans Google Picker, conservée dans Famili-IA. Ce n'est pas l'original ; son accès actuel n'est pas vérifié et la copie peut être ancienne ou contenir du texte non vérifié."
+      ? document.type === "Image"
+        ? "Métadonnées d'une photo choisie dans Google Picker, conservées dans Famili-IA sans télécharger l'image. Ce n'est pas l'original ; son accès actuel n'est pas vérifié et les métadonnées peuvent être anciennes."
+        : "Copie textuelle d'un fichier choisi dans Google Picker, conservée dans Famili-IA. Ce n'est pas l'original ; son accès actuel n'est pas vérifié et la copie peut être ancienne ou contenir du texte non vérifié."
       : document.driveDemo
         ? "Ceci est un contenu fictif. Aucun compte Google n'est connecté et aucun fichier Drive réel n'a été consulté."
         : document.isLocal
@@ -1727,7 +1763,7 @@ function openSourceChoices(source) {
   document.querySelector("#onedrive-options").hidden = source === "drive" || source === "dropbox";
   document.querySelector("#dropbox-options").hidden = source !== "dropbox" && Boolean(providerButton);
   document.querySelector("#source-choice-permissions").textContent = source === "drive"
-    ? "Google Drive ne donne accès qu'aux fichiers sélectionnés."
+    ? "Google Drive ne donne accès qu'aux fichiers sélectionnés. Les photos JPEG/PNG sont enregistrées en métadonnées sans télécharger l'image ; le GPS n'est demandé qu'avec votre consentement."
     : source === "dropbox"
       ? "Full Dropbox peut autoriser la lecture de tous les fichiers existants du compte. Aucun droit d'écriture ou de suppression Dropbox n'est demandé. La connexion ne lance pas l'indexation."
       : source === "onedrive"
@@ -1791,6 +1827,65 @@ if (googleDriveClient) {
   }
 }
 updateGoogleDriveButton();
+
+function addOneDriveOriginalAction(item, sourceDocument) {
+  if (!sourceDocument?.oneDriveItemId) {
+    addTextElement(item, "p", "", "Réouverture directe indisponible pour cette copie historique ; recherchez l'original par son nom dans OneDrive.");
+    return;
+  }
+  const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Vérifier et ouvrir l’original OneDrive");
+  button.type = "button";
+  const status = addTextElement(item, "p", "", "");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  button.addEventListener("click", async () => {
+    if (!oneDriveAuth?.connected || !oneDriveAccountFingerprint) {
+      status.textContent = "Reconnectez OneDrive au compte d'origine avant de vérifier l'accès.";
+      return;
+    }
+    const requestAccountRef = oneDriveAccountFingerprint;
+    if (getInventoryAccountRef(sourceDocument) !== requestAccountRef) {
+      status.textContent = "Connectez le compte OneDrive d'origine de cette copie avant de continuer.";
+      return;
+    }
+    const currentCopy = getDocuments().find(entry =>
+      entry.id === sourceDocument.id && getInventorySource(entry) === "onedrive" &&
+      getInventoryAccountRef(entry) === requestAccountRef &&
+      entry.oneDriveItemId === sourceDocument.oneDriveItemId);
+    if (!currentCopy) {
+      status.textContent = "Cette copie ou son identifiant fournisseur n'est plus disponible dans Famili-IA.";
+      return;
+    }
+    const target = window.open("about:blank", "_blank");
+    if (!target) {
+      status.textContent = "La fenêtre d'ouverture a été bloquée ; autorisez une nouvelle fenêtre puis réessayez.";
+      return;
+    }
+    try {
+      target.opener = null;
+      status.textContent = "Vérification de l'accès à l'original en cours…";
+      const originalUrl = await resolveOneDriveOriginalUrl({
+        itemId: currentCopy.oneDriveItemId,
+        accountFingerprint: currentCopy.oneDriveAccountFingerprint,
+        activeAccountFingerprint: requestAccountRef,
+        getToken: () => oneDriveAuth.getToken()
+      });
+      if (target.closed) throw new Error("La fenêtre d'ouverture a été fermée avant la fin de la vérification.");
+      const stillCurrent = getDocuments().some(entry =>
+        entry.id === currentCopy.id && getInventorySource(entry) === "onedrive" &&
+        getInventoryAccountRef(entry) === requestAccountRef &&
+        entry.oneDriveItemId === currentCopy.oneDriveItemId);
+      if (!oneDriveAuth.connected || oneDriveAccountFingerprint !== requestAccountRef || !stillCurrent) {
+        throw new Error("La session ou la copie a changé pendant la vérification ; recommencez depuis le résultat.");
+      }
+      target.location.replace(originalUrl);
+      status.textContent = "Accès vérifié à l'instant ; l'original s'ouvre dans un nouvel onglet. Cela ne garantit pas les accès ultérieurs.";
+    } catch (error) {
+      target.close();
+      status.textContent = `Ouverture de l'original impossible : ${error instanceof Error ? error.message : "erreur non détaillée"}`;
+    }
+  });
+}
 
 const oneDriveClientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID?.trim();
 const oneDriveAuth = oneDriveClientId && !isNativePlatform ? new OneDriveAuth(oneDriveClientId) : null;
@@ -1874,6 +1969,7 @@ async function applyOneDriveUpdates(candidates) {
           accountId: oneDriveAuth.accountId,
           accountFingerprint: oneDriveAccountFingerprint,
           getToken: () => oneDriveAuth.getToken(),
+          getPhotoLocationConsent: () => getCurrentUser().privacy?.photoLocationConsent === true,
           signal: controller.signal
         });
         if (controller.signal.aborted) break;
@@ -1881,8 +1977,8 @@ async function applyOneDriveUpdates(candidates) {
         await addDocument(replacement);
         const index = uploadedDocuments.findIndex(document => document.id === replacement.id);
         if (index === -1) throw new Error("La copie OneDrive à actualiser n'est plus présente.");
-        uploadedDocuments[index] = replacement;
-        if (result.segments) experimentalIndex.trustExtractedContent(replacement, result.segments);
+        uploadedDocuments[index] = storedDocument(replacement.id);
+        if (result.segments) experimentalIndex.trustExtractedContent(uploadedDocuments[index], result.segments);
         if (result.coverage === "metadata") {
           metadataOnly.push(`${candidate.item.name} (${result.reason || "contenu non disponible"})`);
         }
@@ -1975,6 +2071,7 @@ oneDriveStartButton.addEventListener("click", () => {
   const runStartedAt = new Date().toISOString();
   const runAccountRef = oneDriveAccountFingerprint;
   let runState = "error";
+  let failureReason = null;
   let discoveredCount = null;
   let processedCount = 0;
   const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${progress.foldersRead} dossier(s) ; ${added} copie(s) ajoutée(s), dont ${metadataOnly} en métadonnées seules ; copies existantes : ${compared.unchanged} même version observée, ${compared.changed} changement détecté, ${compared.unknown} version inconnue.`;
@@ -2007,13 +2104,15 @@ oneDriveStartButton.addEventListener("click", () => {
           }
           const result = await readOneDriveDocument({
             item, accountId, accountFingerprint,
-            getToken: () => oneDriveAuth.getToken(), signal: controller.signal
+            getToken: () => oneDriveAuth.getToken(), signal: controller.signal,
+            getPhotoLocationConsent: () => getCurrentUser().privacy?.photoLocationConsent === true
           });
           if (controller.signal.aborted) throw new DOMException("Indexation arrêtée.", "AbortError");
           await addDocument(result.document);
-          uploadedDocuments.push(result.document);
-          existing.set(id, result.document);
-          if (result.segments) experimentalIndex.trustExtractedContent(result.document, result.segments);
+          const stored = storedDocument(result.document.id);
+          uploadedDocuments.push(stored);
+          existing.set(id, stored);
+          if (result.segments) experimentalIndex.trustExtractedContent(stored, result.segments);
           added += 1;
           if (result.coverage === "metadata") metadataOnly += 1;
           if (added % 10 === 0) refreshExperimentalIndex();
@@ -2027,8 +2126,9 @@ oneDriveStartButton.addEventListener("click", () => {
       oneDriveStatus.textContent = `Parcours terminé. ${summary()} Les éléments absents ne sont pas déclarés supprimés.`;
     } catch (error) {
       runState = error.name === "AbortError" ? "interrupted" : "error";
-      discoveredCount = progress.files;
+      discoveredCount = null;
       processedCount = progress.files;
+      failureReason = sourceRunFailureReason(error);
       oneDriveObservation = error.name === "AbortError" ? "connected" : "error";
       oneDriveStatus.textContent = `${error.name === "AbortError" ? "Indexation arrêtée" : `Indexation interrompue : ${error.message}`}. ${summary()} Les copies déjà enregistrées sont conservées.`;
     } finally {
@@ -2040,7 +2140,8 @@ oneDriveStartButton.addEventListener("click", () => {
         startedAt: runStartedAt,
         finishedAt: new Date().toISOString(),
         discoveredCount,
-        processedCount
+        processedCount,
+        failureReason
       });
       oneDriveScanController = null;
       oneDriveScanSettled = null;
@@ -2204,10 +2305,10 @@ async function applyDropboxUpdates(candidates) {
         const index = uploadedDocuments.findIndex(document => document.id === replacement.id);
         if (index === -1) throw new Error("La copie Dropbox à actualiser n'est plus présente.");
         await addDocument(replacement);
-        uploadedDocuments[index] = replacement;
+        uploadedDocuments[index] = storedDocument(replacement.id);
         remaining.delete(candidate);
         updated += 1;
-        if (result.segments) experimentalIndex.trustExtractedContent(replacement, result.segments);
+        if (result.segments) experimentalIndex.trustExtractedContent(uploadedDocuments[index], result.segments);
         invalidContentProvenance.delete(existing);
         if (result.coverage === "metadata") {
           metadataOnly.push(`${candidate.item.name} (${result.reason || "contenu non disponible"})`);
@@ -2301,6 +2402,7 @@ function startDropboxIndex({ resume = false } = {}) {
   let progress = { files: 0, pages: 0 };
   const runStartedAt = new Date().toISOString();
   let runState = "error";
+  let failureReason = null;
   let discoveredCount = null;
   let processedCount = 0;
   const summary = () => `${progress.files} fichier(s) parcouru(s), ${progress.pages} page(s), ${added} copie(s) ajoutée(s), dont ${metadata} en métadonnées seules ; ${changed} changement(s), ${unchanged} même(s) version(s), ${unknown} version(s) inconnue(s).`;
@@ -2371,9 +2473,10 @@ function startDropboxIndex({ resume = false } = {}) {
           });
           if (controller.signal.aborted) throw new DOMException("Indexation Dropbox arrêtée.", "AbortError");
           await addDocument(result.document);
-          uploadedDocuments.push(result.document);
-          existing.set(identity.id, result.document);
-          if (result.segments) experimentalIndex.trustExtractedContent(result.document, result.segments);
+          const stored = storedDocument(result.document.id);
+          uploadedDocuments.push(stored);
+          existing.set(identity.id, stored);
+          if (result.segments) experimentalIndex.trustExtractedContent(stored, result.segments);
           added++;
           if (result.coverage === "metadata") metadata++;
           if (added % 10 === 0) refreshExperimentalIndex();
@@ -2390,8 +2493,9 @@ function startDropboxIndex({ resume = false } = {}) {
       dropboxStatus.textContent = `${resume ? "Reprise" : "Parcours"} Dropbox terminée. ${summary()} Les absences ne prouvent pas une suppression.${candidates.length ? " Examinez et confirmez les changements ci-dessous." : ""}`;
     } catch (error) {
       runState = error.name === "AbortError" ? "interrupted" : "error";
-      discoveredCount = progress.files;
+      discoveredCount = null;
       processedCount = progress.files;
+      failureReason = sourceRunFailureReason(error);
       clearDropboxReview();
       if (resume && error instanceof DropboxApiError && error.status === 409 && accountFingerprint) {
         try {
@@ -2416,7 +2520,8 @@ function startDropboxIndex({ resume = false } = {}) {
         startedAt: runStartedAt,
         finishedAt: new Date().toISOString(),
         discoveredCount,
-        processedCount
+        processedCount,
+        failureReason
       });
       dropboxScanController = null;
       dropboxScanSettled = null;
@@ -2589,7 +2694,7 @@ connectGoogleDriveButton.addEventListener("click", async () => {
     for (const doc of newFiles) {
       await prepareDriveDocumentForIndex(doc, experimentalIndex);
       await addDocument(doc);
-      uploadedDocuments.push(doc);
+      uploadedDocuments.push(storedDocument(doc.id));
     }
     refreshExperimentalIndex();
     updateClearFilesButtonsVisibility();
@@ -3308,6 +3413,8 @@ function initProfileHandlers() {
 
       try {
         await updatePhotoLocationConsent(photoLocationConsent);
+        synchronizeStoredPhotoDocuments();
+        refreshExperimentalIndex();
         await updatePrivacyConsent({
           telemetryEnabled: user.privacy.telemetryEnabled,
           dataSharingConsent: user.privacy.dataSharingConsent
@@ -3317,6 +3424,8 @@ function initProfileHandlers() {
         showDemoNotice(`Profil mis à jour : ${newName}`);
       } catch (error) {
         console.error("Impossible d'enregistrer les préférences de confidentialité :", error);
+        synchronizeStoredPhotoDocuments();
+        refreshExperimentalIndex();
         const savedPrivacy = getCurrentUser().privacy || {};
         document.querySelector("#consent-photo-gps").checked = savedPrivacy.photoLocationConsent === true;
         document.querySelector("#consent-telemetry").checked = savedPrivacy.telemetryEnabled === true;
@@ -4865,6 +4974,7 @@ function initUnifiedPhotoResults() {
     correctButton.textContent = 'Corriger les annotations';
     correctButton.addEventListener('click', () => openPhotoAnnotationsDialog(item.photo));
     actions.append(openButton, correctButton);
+    if (getInventorySource(item.photo) === "onedrive") addOneDriveOriginalAction(actions, item.photo);
     row.append(actions);
     return row;
   }
@@ -5010,7 +5120,7 @@ function initUnifiedPhotoResults() {
   return (matches, request = {}, documentsByMatch = new Map()) => {
     clearResults();
     const photos = matches
-      .map(match => documentsByMatch.get(JSON.stringify([match.sourceId, match.itemId])))
+      .map(match => documentsByMatch.get(JSON.stringify([match.sourceId, match.accountRef ?? null, match.itemId])))
       .filter(isPhotoDocument)
       .map((photo, index) => ({
         photo,

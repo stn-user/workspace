@@ -22,7 +22,7 @@ test("fiche document complète : dates, provenance, preuve et estimation distinc
   const record = createIndexRecord("src", "id", options);
   assert.deepEqual(options, inputCopy);
   assert.deepEqual(record, {
-    schema: "1.1.0", sourceId: "src", itemId: "id", type: "document",
+    schema: "1.2.0", sourceId: "src", accountRef: null, itemId: "id", type: "document",
     name: { value: "facture.pdf", source: "provider", estimated: false, proof: null },
     location: null,
     dates: {
@@ -67,6 +67,16 @@ test("identités composites et niveaux de couverture valides", () => {
     assert.notEqual(first.sourceId, second.sourceId);
     assert.equal(first.itemId, second.itemId);
   }
+});
+
+test("l'identité distingue les comptes tout en autorisant les fiches historiques non attribuées", () => {
+  const first = createIndexRecord("onedrive", "same-item", { accountRef: "a".repeat(64) });
+  const second = createIndexRecord("onedrive", "same-item", { accountRef: "b".repeat(64) });
+  const unattributed = createIndexRecord("onedrive", "same-item");
+  assert.notEqual(first.accountRef, second.accountRef);
+  assert.equal(unattributed.accountRef, null);
+  assert.equal(isValidIndexRecord(first), true);
+  assert.throws(() => createIndexRecord("onedrive", "same-item", { accountRef: "account-a" }), /accountRef/);
 });
 
 test("refuse identités, champs, preuves, options et dates incohérents", () => {
@@ -116,7 +126,7 @@ test("conversion de plusieurs pages fictives sans lire le contenu ni déduire le
   assert.equal(discovered.pagesRead, 2);
   const records = fakeConnectorAdapter({ items: discovered.items }, "source-a");
   assert.deepEqual(records, ["facture.pdf", "photo.jpg"].map((name, index) => ({
-    schema: "1.1.0", sourceId: "source-a", itemId: String(index + 1), type: null,
+    schema: "1.2.0", sourceId: "source-a", accountRef: null, itemId: String(index + 1), type: null,
     name: { value: name, source: "provider", estimated: false, proof: null },
     location: null, dates: {}, coverage: "metadata", lastCheck: null, fields: []
   })));

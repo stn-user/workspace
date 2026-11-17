@@ -23,7 +23,7 @@ test("fiche locale durable : identité, couverture vérifiée et échéance sour
   );
 
   const record = await createDocumentIndexRecord(document);
-  assert.equal(record.schema, "1.1.0");
+  assert.equal(record.schema, "1.2.0");
   assert.equal(record.sourceId, "local");
   assert.equal(record.itemId, "local-1");
   assert.equal(record.type, "document");
@@ -82,6 +82,19 @@ test("fiche conserve emplacement local et date fournisseur sans les confondre av
     proof: null
   });
   assert.equal(record.coverage, "metadata");
+});
+
+test("fiche durable rattache l'empreinte déjà enregistrée au bon compte", async () => {
+  const record = await createDocumentIndexRecord({
+    id: "onedrive-item",
+    name: "contrat.pdf",
+    isLocal: true,
+    oneDriveSource: true,
+    oneDriveAccountFingerprint: "A".repeat(64),
+    content: ""
+  });
+  assert.equal(record.sourceId, "onedrive");
+  assert.equal(record.accountRef, "a".repeat(64));
 });
 
 test("faits du parseur : classification estimée, émetteur, montant et échéance prouvés", async () => {
@@ -292,7 +305,7 @@ test("migration refuse de réécrire une enveloppe chiffrée non déchiffrée", 
   );
 });
 
-test("mise à niveau de fiche 1.0 vers 1.1 et retour arrière non destructif", async () => {
+test("mise à niveau de fiche 1.0 vers 1.2 sans attribuer un compte historique", async () => {
   const legacyDocument = {
     id: "legacy-index",
     name: "ancien.pdf",
@@ -313,8 +326,9 @@ test("mise à niveau de fiche 1.0 vers 1.1 et retour arrière non destructif", a
   };
   const writes = [];
   const upgraded = await migrateDocumentIndexes([legacyDocument], async document => writes.push(document));
-  assert.equal(upgraded[0].indexRecord.schema, "1.1.0");
+  assert.equal(upgraded[0].indexRecord.schema, "1.2.0");
   assert.equal(upgraded[0].indexRecord.location, null);
+  assert.equal(upgraded[0].indexRecord.accountRef, null);
   assert.equal(writes.length, 1);
 
   const rolledBack = await rollbackDocumentIndexes(upgraded, async document => writes.push(document));
@@ -323,6 +337,29 @@ test("mise à niveau de fiche 1.0 vers 1.1 et retour arrière non destructif", a
   assert.deepEqual(rolledBack[0].customData, { kept: true });
   assert.equal(writes.length, 2);
   assert.equal((await rollbackDocumentIndexes(rolledBack, async () => assert.fail("Aucune réécriture attendue")))[0], rolledBack[0]);
+});
+
+test("migration 1.1 reprend uniquement l'empreinte OneDrive déjà conservée", async () => {
+  const accountRef = "a".repeat(64);
+  const document = {
+    id: "onedrive-item",
+    name: "contrat.pdf",
+    isLocal: true,
+    oneDriveSource: true,
+    oneDriveAccountFingerprint: accountRef,
+    indexRecord: {
+      schema: "1.1.0", sourceId: "onedrive", itemId: "onedrive-item",
+      type: "document", name: { value: "contrat.pdf", source: "provider", estimated: false, proof: null },
+      location: null, dates: {}, coverage: "metadata", lastCheck: null, fields: []
+    }
+  };
+  const [migrated] = await migrateDocumentIndexes([document], async () => {});
+  assert.equal(migrated.indexRecord.accountRef, accountRef);
+
+  const unattributed = { ...document, oneDriveAccountFingerprint: undefined };
+  delete unattributed.oneDriveAccountFingerprint;
+  const [legacy] = await migrateDocumentIndexes([unattributed], async () => {});
+  assert.equal(legacy.indexRecord.accountRef, null);
 });
 
 test("réindexation préserve les corrections utilisateur et rejette une identité incohérente", async () => {

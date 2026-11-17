@@ -1,4 +1,4 @@
-import { getInventorySource } from "./data-inventory.js";
+import { getInventoryAccountRef, getInventorySource } from "./data-inventory.js";
 import { restoreContentSegments } from "./content-index.js";
 import { createIndexRecord, isValidDate, isValidIndexRecord } from "./index-record.js";
 import { isPhotoDocument } from "./photo-annotations.js";
@@ -162,7 +162,8 @@ function extractedDocumentFields(context) {
 export function preserveUserValues(record, previous) {
   if (!previous) return record;
   if (!isValidIndexRecord(previous) ||
-      previous.sourceId !== record.sourceId || previous.itemId !== record.itemId) {
+      previous.sourceId !== record.sourceId || previous.accountRef !== record.accountRef ||
+      previous.itemId !== record.itemId) {
     throw new TypeError("La fiche d'index existante est invalide ou liée à une autre identité");
   }
 
@@ -183,6 +184,7 @@ export function preserveUserValues(record, previous) {
   const name = previous.name?.source === "user-input" ? previous.name : record.name;
   const location = previous.location?.source === "user-input" ? previous.location : record.location;
   return createIndexRecord(record.sourceId, record.itemId, {
+    accountRef: record.accountRef,
     type: record.type,
     name,
     location,
@@ -251,6 +253,7 @@ export async function createDocumentIndexRecord(document, { previous = document?
     }
   }
   const record = createIndexRecord(sourceId, document.id, {
+    accountRef: getInventoryAccountRef(document),
     type: photo ? "photo" : "document",
     name: typeof name === "string" && name.trim()
       ? { value: name.trim(), source: "provider", estimated: false }

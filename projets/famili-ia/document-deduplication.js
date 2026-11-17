@@ -22,12 +22,18 @@ function normalizedName(document) {
 }
 
 function identity(document) {
-  return { sourceId: document.sourceId, itemId: document.id, name: document.name ?? document.originalName ?? null };
+  return {
+    sourceId: document.sourceId,
+    accountRef: document.accountRef?.toLowerCase() ?? null,
+    itemId: document.id,
+    name: document.name ?? document.originalName ?? null
+  };
 }
 
 function pair(first, second, match) {
   const [left, right] = [identity(first), identity(second)]
-    .sort((a, b) => `${a.sourceId}\u0000${a.itemId}`.localeCompare(`${b.sourceId}\u0000${b.itemId}`));
+    .sort((a, b) => JSON.stringify([a.sourceId, a.accountRef, a.itemId])
+      .localeCompare(JSON.stringify([b.sourceId, b.accountRef, b.itemId])));
   return { first: left, second: right, match };
 }
 
@@ -40,10 +46,13 @@ export function findDocumentDuplicateCandidates(documents) {
   for (const document of documents) {
     if (!document || typeof document !== "object" || Array.isArray(document) ||
         typeof document.id !== "string" || !document.id.trim() ||
-        typeof document.sourceId !== "string" || !document.sourceId.trim()) {
+        typeof document.sourceId !== "string" || !document.sourceId.trim() ||
+        (document.accountRef !== undefined && document.accountRef !== null &&
+          (typeof document.accountRef !== "string" || !/^[0-9a-f]{64}$/i.test(document.accountRef)))) {
       throw new TypeError("Chaque document doit avoir une source et une identité non vides");
     }
-    const key = `${document.sourceId}\u0000${document.id}`;
+    const accountRef = document.accountRef?.toLowerCase() ?? null;
+    const key = JSON.stringify([document.sourceId, accountRef, document.id]);
     if (identities.has(key)) throw new TypeError("Identités dupliquées dans les documents");
     identities.add(key);
 
@@ -82,8 +91,10 @@ export function findDocumentDuplicateCandidates(documents) {
   }
 
   const sortPairs = (items) => items.sort((a, b) =>
-    `${a.first.sourceId}\u0000${a.first.itemId}\u0000${a.second.sourceId}\u0000${a.second.itemId}`
-      .localeCompare(`${b.first.sourceId}\u0000${b.first.itemId}\u0000${b.second.sourceId}\u0000${b.second.itemId}`));
+    JSON.stringify([a.first.sourceId, a.first.accountRef, a.first.itemId,
+      a.second.sourceId, a.second.accountRef, a.second.itemId])
+      .localeCompare(JSON.stringify([b.first.sourceId, b.first.accountRef, b.first.itemId,
+        b.second.sourceId, b.second.accountRef, b.second.itemId])));
   return {
     exactDuplicates: sortPairs(exactDuplicates),
     possibleDuplicates: sortPairs(possibleDuplicates)

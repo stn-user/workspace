@@ -1,5 +1,28 @@
 # [Non publié] - Recherche multi-sources : socle expérimental
 
+### Lot C — coordonnées photo des fournisseurs
+- Google Drive et OneDrive récupèrent les coordonnées fournisseur valides uniquement avec consentement GPS, sans télécharger les images ; le consentement est recontrôlé à la réponse. L'altitude n'est pas conservée. La révocation retire coordonnées, faits dépendants et champs d'index dans l'onglet actif.
+- Tests unitaires et navigateur avec réponses synthétiques ; disponibilité réelle des champs et comportement multi-onglets restent à vérifier. Les photos déjà indexées ne sont pas automatiquement relues ; voir les études des connecteurs avant de retirer une copie pour la réimporter.
+
+### Lot C — métadonnées des photos Google Drive choisies
+- Sélection Web explicite de JPEG/PNG avec `drive.file` inchangé : nom, date de prise de vue fournisseur au format EXIF, dimensions et appareil lorsqu'ils sont disponibles. Aucun octet image demandé ; aucune date de modification n'est substituée à une date de prise de vue.
+- Métadonnées persistées et date recherchable après rechargement ; compte non attribué, pas d'actualisation ni de réouverture directe. Tests unitaires et navigateur avec Picker/API simulés ; disponibilité réelle et parcours mobiles restent à valider.
+
+### Lot C — mesure locale des indices de mariage
+- Outil local de mesure de la baseline textuelle à partir d'un corpus JSON annoté : précision, rappel et abstentions par photo, indices explicites et lexicaux séparés, références incertaines exclues. Aucune photo n'est lue ni transmise ; seules des statistiques agrégées sont affichées.
+- Six cas fictifs illustrent la mesure, y compris faux positifs, faux négatifs et incertitude ; neuf tests ciblés passent. Le corpus réel indépendant, le seuil de précision et les suggestions dans la recherche restent à valider.
+
+### Lot C — fuseau des dates EXIF
+- Une date EXIF utilise seulement son propre fuseau : `OffsetTimeOriginal` pour `DateTimeOriginal`, ou `OffsetTimeDigitized` pour le repli `CreateDate`. Sinon, le fuseau reste inconnu ; les photos déjà importées ne sont pas réextraites.
+- Validation : 49 tests ciblés sur l'extraction, les faits et la recherche photo réussis avec données synthétiques.
+
+### Lot B — identité durable des fiches
+- Les fiches d'index passent au schéma `1.2.0` et portent explicitement `(sourceId, accountRef, itemId)`. Les empreintes OneDrive/Dropbox déjà présentes sur une copie sont reprises ; l'historique sans empreinte reste non attribué.
+- Recherche, rapprochement, suppression et propositions d'échéance distinguent maintenant deux comptes ayant le même identifiant d'élément. Cela ne met pas en place la synchronisation ni ne valide l'isolation sur appareils réels.
+- Les nouvelles copies OneDrive conservent leur identifiant d'élément ; depuis un résultat Recherche, l'ouverture explicite relit le `webUrl` via Graph, contrôle le compte et l'identité, puis ouvre seulement un lien HTTPS OneDrive/SharePoint courant. La copie et la session sont recontrôlées après la requête ; aucun lien ni jeton n'est persisté. Les copies historiques sans identifiant fournisseur restent en recherche manuelle.
+- Un scan OneDrive/Dropbox incomplet ne présente plus un total provisoire comme un inventaire exhaustif : le nombre traité et un motif d'erreur borné sont enregistrés, tandis que les copies déjà enregistrées restent accessibles.
+- Validation sur données synthétiques : suite Node complète (359 tests), build Vite et sept scénarios Playwright réussis : six couvrent la pagination OneDrive et l'ouverture (page suivante en erreur, ouverture, fenêtre bloquée, compte modifié, copie supprimée avant/pendant la requête, fenêtre fermée), un couvre l'échec Dropbox après une page. L'ouverture réelle sur compte Microsoft et les validations Android/iOS restent à faire.
+
 ### Lot F — reprise explicite de l'indexation Dropbox
 - Le curseur Dropbox est conservé dans IndexedDB, associé à l'empreinte du compte, et sauvegardé après chaque page entièrement traitée. Le jeton OAuth reste en mémoire uniquement ; après rechargement, l'utilisateur doit se reconnecter au même compte et choisir explicitement de reprendre.
 - Une reprise refusée par HTTP 409 efface le curseur et propose de recommencer depuis la racine. Purge et suppression de copies Dropbox invalident les curseurs. La migration vers IndexedDB v4 préserve les données existantes ; aucune reprise en arrière-plan ni synchronisation automatique n'est ajoutée.

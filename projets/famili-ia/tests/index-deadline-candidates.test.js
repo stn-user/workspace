@@ -47,11 +47,11 @@ describe("isValidCalendarDate", () => {
       const snapshot = structuredClone([uncertain, good]);
       const result = findDeadlineCandidates([uncertain, good], "2024-03-15", 10);
       assert.deepEqual(result.ineligible, [{
-        sourceId: "s", itemId: "uncertain",
+        sourceId: "s", accountRef: null, itemId: "uncertain",
         reasons: ["date-heure non prise en charge", "échéance estimée", "preuve absente"]
       }]);
       assert.deepEqual(result.candidates[0], {
-        sourceId: "s", itemId: "good", name: "Contrat", dueDate: "2024-03-18",
+        sourceId: "s", accountRef: null, itemId: "good", name: "Contrat", dueDate: "2024-03-18",
         source: "extracted", proof: { excerpt: "Échéance fictive", location: "page 1" }, daysUntil: 3
       });
       result.candidates[0].proof.excerpt = "modifié";

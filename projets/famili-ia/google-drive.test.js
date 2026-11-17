@@ -16,7 +16,9 @@ test("accepts only supported file types within the existing local limits", () =>
   assert.equal(getGoogleDriveFileType("text/markdown").extension, "md");
   assert.equal(getGoogleDriveFileType("application/vnd.google-apps.document").type, "Document Google");
   assert.equal(getGoogleDriveFileType("application/vnd.google-apps.spreadsheet"), null);
-  assert.equal(getGoogleDriveFileType("image/jpeg"), null);
+  assert.equal(getGoogleDriveFileType("image/jpeg").type, "Image");
+  assert.equal(getGoogleDriveFileType("image/png").type, "Image");
+  assert.equal(getGoogleDriveFileType("image/gif"), null);
 });
 
 test("reads only the file returned by Picker and keeps its text in the session result", async (t) => {
@@ -104,7 +106,7 @@ test("reads only the file returned by Picker and keeps its text in the session r
   assert.equal(files[0].driveSource, true);
   assert.equal(requests.length, 2);
   assert.ok(requests.every(({ url }) => url.pathname === "/drive/v3/files/picker-selected-id"));
-  assert.equal(requests[0].url.searchParams.get("fields"), "id,name,mimeType,size,modifiedTime");
+  assert.equal(requests[0].url.searchParams.get("fields"), "id,name,mimeType,size,modifiedTime,imageMediaMetadata(time,width,height,cameraMake,cameraModel)");
   assert.equal(requests[1].url.searchParams.get("alt"), "media");
   assert.ok(requests.every(({ authorization }) => authorization === "Bearer memory-only-token"));
 });
@@ -301,7 +303,7 @@ test("rejects PDF larger than 10MB", async (t) => {
     const requestUrl = new URL(url);
     requests.push({ url: requestUrl, authorization: options.headers.Authorization });
     if (requestUrl.pathname === `/drive/v3/files/${oversizedPdf.id}` &&
-        requestUrl.searchParams.get("fields") === "id,name,mimeType,size,modifiedTime") {
+        requestUrl.searchParams.get("fields") === "id,name,mimeType,size,modifiedTime,imageMediaMetadata(time,width,height,cameraMake,cameraModel)") {
       return Response.json(oversizedPdf);
     }
     // If it tries to download the content, we should not reach here because the size check should throw first.
@@ -333,8 +335,8 @@ test("rejects unsupported file type", async (t) => {
   const requests = [];
   const unsupportedFile = {
     id: "unsupported-id",
-    name: "image.jpg",
-    mimeType: "image/jpeg",
+    name: "image.gif",
+    mimeType: "image/gif",
     size: "1000",
     modifiedTime: "2026-10-09T12:00:00.000Z"
   };
@@ -386,7 +388,7 @@ test("rejects unsupported file type", async (t) => {
     const requestUrl = new URL(url);
     requests.push({ url: requestUrl, authorization: options.headers.Authorization });
     if (requestUrl.pathname === `/drive/v3/files/${unsupportedFile.id}` &&
-        requestUrl.searchParams.get("fields") === "id,name,mimeType,size,modifiedTime") {
+        requestUrl.searchParams.get("fields") === "id,name,mimeType,size,modifiedTime,imageMediaMetadata(time,width,height,cameraMake,cameraModel)") {
       return Response.json(unsupportedFile);
     }
     return new Response("Should not be called", { status: 500 });
@@ -407,6 +409,6 @@ test("rejects unsupported file type", async (t) => {
 
   await assert.rejects(
     client.pickFiles(1),
-    { message: /Le format de « image.jpg » n’est pas pris en charge/ }
+    { message: /Le format de « image.gif » n’est pas pris en charge/ }
   );
 });

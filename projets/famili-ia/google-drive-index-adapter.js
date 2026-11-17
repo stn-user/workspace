@@ -1,6 +1,6 @@
 import { createIndexRecord } from "./index-record.js";
 
-const DRIVE_TYPES = ["PDF", "Texte", "Markdown", "Document Google"];
+const DRIVE_TYPES = ["PDF", "Texte", "Markdown", "Document Google", "Image"];
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -11,7 +11,8 @@ export function isValidDriveResult(result) {
     typeof result.id === "string" && result.id.startsWith("drive-") &&
     isNonEmptyString(result.id.slice("drive-".length)) &&
     isNonEmptyString(result.name) && DRIVE_TYPES.includes(result.type) &&
-    isNonEmptyString(result.date) && isNonEmptyString(result.content) &&
+    isNonEmptyString(result.date) &&
+    (result.type === "Image" ? result.content === "" : isNonEmptyString(result.content)) &&
     typeof result.keywords === "string" && typeof result.summary === "string" &&
     result.isLocal === true && result.driveSource === true;
 }

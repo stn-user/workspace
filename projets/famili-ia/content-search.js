@@ -8,6 +8,8 @@ function queryWords(query) {
 function validateDocument(doc) {
   if (!doc || typeof doc !== "object" || Array.isArray(doc) ||
       typeof doc.sourceId !== "string" || !doc.sourceId.trim() ||
+      (doc.accountRef !== undefined && doc.accountRef !== null &&
+        (typeof doc.accountRef !== "string" || !/^[0-9a-f]{64}$/i.test(doc.accountRef))) ||
       typeof doc.itemId !== "string" || !doc.itemId.trim() ||
       typeof doc.name !== "string" || !doc.name.trim() ||
       !Array.isArray(doc.segments) || doc.segments.some(segment => typeof segment !== "string")) {
@@ -51,15 +53,17 @@ export function searchContent(doc, query) {
 export function searchContentInDocuments(documents, query) {
   const words = queryWords(query);
   if (!Array.isArray(documents)) throw new TypeError("Documents invalides");
-  const seen = new Map();
+  const seen = new Set();
   const results = [];
   for (const doc of documents) {
     validateDocument(doc);
-    if (!seen.has(doc.sourceId)) seen.set(doc.sourceId, new Set());
-    if (seen.get(doc.sourceId).has(doc.itemId)) throw new TypeError("Identité dupliquée");
-    seen.get(doc.sourceId).add(doc.itemId);
+    const identity = JSON.stringify([doc.sourceId, doc.accountRef?.toLowerCase() ?? null, doc.itemId]);
+    if (seen.has(identity)) throw new TypeError("Identité dupliquée");
+    seen.add(identity);
     const reasons = findEvidence(doc.segments, words);
-    if (reasons.length) results.push({ sourceId: doc.sourceId, itemId: doc.itemId, reasons });
+    if (reasons.length) results.push({
+      sourceId: doc.sourceId, accountRef: doc.accountRef?.toLowerCase() ?? null, itemId: doc.itemId, reasons
+    });
   }
   return results;
 }

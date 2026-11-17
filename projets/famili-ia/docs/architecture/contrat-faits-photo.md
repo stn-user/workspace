@@ -33,11 +33,13 @@ Chaque fiche porte une version, un document parent, une empreinte exacte faculta
 }
 ```
 
-Les dates de fichier, de prise de vue, d'import, d'analyse et de dernier contrôle restent distinctes. Une date seule reste une date seule ; une date EXIF sans fuseau conserve `offsetMinutes: null`. La date Graph OneDrive `photo.takenDateTime` conserve son heure locale et son décalage explicite, avec provenance `provider`. Aucune date d'import ou de modification n'est substituée à une date de prise de vue.
+Les dates de fichier, de prise de vue, d'import, d'analyse et de dernier contrôle restent distinctes. Une date seule reste une date seule ; une date EXIF sans fuseau conserve `offsetMinutes: null`. `DateTimeOriginal` utilise uniquement `OffsetTimeOriginal` et le repli `CreateDate` utilise uniquement `OffsetTimeDigitized` : le fuseau d'une autre date n'est jamais réutilisé. La date Graph OneDrive `photo.takenDateTime` conserve son heure locale et son décalage explicite, avec provenance `provider`. Aucune date d'import ou de modification n'est substituée à une date de prise de vue.
 
 Chaque fait contient son type, sa valeur typée, sa provenance, son statut, son indice justificatif, sa date d'analyse éventuelle et ses dépendances. Les faits pris en charge sont `captureDate`, `location`, `place`, `person`, `event`, `caption` et `keyword`. Une légende et un mot-clé sont conservés comme texte borné avec leur source XMP/IPTC ; ils ne sont pas convertis en événement, lieu ou identité.
 
-Pour les fichiers locaux JPEG/PNG, l'extraction retient uniquement XMP `dc:description`/`dc:subject` et IPTC `Caption`/`Keywords`. XMP est lu en mode XML brut puis ces seuls champs DC sont sélectionnés ; tous les autres champs XMP, notamment les coordonnées, sont ignorés. IPTC est limité par la sélection de tags du parseur. OneDrive demande le facet Graph `photo` et retient, s'ils sont présents, `takenDateTime`, `cameraMake` et `cameraModel` avec provenance fournisseur. Dropbox retient `media_info.metadata.time_taken` et n'accède à `media_info.metadata.location` qu'avec le consentement GPS actif. Les images cloud restent en métadonnées seules : aucun octet image n'est téléchargé. Ces parcours sont validés par réponses synthétiques ; leur disponibilité réelle reste à vérifier. Les albums, sidecars et adaptateurs des autres fournisseurs restent hors de cette tranche.
+Pour les fichiers locaux JPEG/PNG, l'extraction retient uniquement XMP `dc:description`/`dc:subject` et IPTC `Caption`/`Keywords`. XMP est lu en mode XML brut puis ces seuls champs DC sont sélectionnés ; tous les autres champs XMP, notamment les coordonnées, sont ignorés. IPTC est limité par la sélection de tags du parseur. Google Drive demande pour les JPEG/PNG choisis `imageMediaMetadata.time`, les dimensions et l'appareil ; la date EXIF fournisseur reste sans fuseau. OneDrive demande le facet Graph `photo` et retient, s'ils sont présents, `takenDateTime`, `cameraMake` et `cameraModel` avec provenance fournisseur. Avec consentement GPS actif, Drive demande `imageMediaMetadata.location`, OneDrive relit séparément `id,location` et Dropbox consulte `media_info.metadata.location` ; seules les coordonnées valides sont conservées, sans altitude fournisseur. Les images cloud restent en métadonnées seules : aucun octet image n'est téléchargé. Ces parcours sont validés par réponses synthétiques ; leur disponibilité réelle reste à vérifier. Les albums, sidecars et adaptateurs des autres fournisseurs restent hors de cette tranche.
+
+Le retrait du consentement retire les coordonnées et leurs dérivés des copies et de l'index dans l'onglet actif ; les mutations photo y sont sérialisées. La coordination entre plusieurs onglets ouverts n'est pas garantie : fermer les autres onglets avant de modifier ce consentement. Autoriser le GPS ne déclenche pas la relecture des photos existantes ; les possibilités et pertes éventuelles lors d'une nouvelle lecture sont détaillées dans les études des connecteurs.
 
 ## Comparaison P2 des jeux de géolocalisation inverse
 
@@ -60,6 +62,27 @@ Cette comparaison n'est pas une validation des données sur un corpus réel. Ava
 Un mot-clé entier correspondant à `mariage`, `mariages`, `noces`, `wedding` ou `weddings` est rendu comme `explicit-label`; une occurrence dans une légende, un nom ou un chemin est un `lexical-match`. Dans les deux cas, le résultat reste un **candidat**, conserve la source, le champ, la provenance fournisseur éventuelle et le fait texte d'origine ; il ne signifie pas « mon mariage » et n'identifie aucune personne. Les faits textuels rejetés sont ignorés.
 
 Cette fonction ne modifie ni ne persiste les faits, n'alimente pas encore la recherche de suggestions et ne les affiche pas dans l'interface : ces raccordements relèvent de 15.5ter.3.c. Les connecteurs présents n'exposent pas de titres d'albums. Les tests sont synthétiques ; aucune baseline de précision sur un corpus réel n'est disponible. Le test doit rester local sur les photos de l'utilisateur si ce corpus est évalué.
+
+### Mesure locale de la baseline
+
+Depuis la racine du projet, exécuter :
+
+```powershell
+node scripts\evaluate-photo-events.js tests\fixtures\photo-event-evaluation.json
+```
+
+Cette commande lit uniquement le JSON indiqué et affiche des statistiques agrégées dans le terminal. Elle ne lit pas les photos, n'effectue aucune requête réseau et ne crée aucun fichier. Le corpus fourni est entièrement fictif : ses résultats ne mesurent pas la qualité sur une photothèque réelle.
+
+Pour une évaluation indépendante, préparer **hors dépôt** un JSON sur son propre appareil, puis passer son chemin à la même commande. Ne pas partager ni committer ce fichier : les noms, chemins et descriptions peuvent eux-mêmes être personnels. Il doit être constitué avant de consulter les résultats, avec des photos pertinentes et non pertinentes, y compris celles sans indice ; une sélection limitée aux photos déjà détectées fausserait le rappel. L'annotation doit être décidée par une personne autorisée, à partir de la photo et de son contexte, sans transmettre les images.
+
+Le format est une liste de cas, comme dans le fichier fictif. Chaque cas comporte :
+
+- `document` : un objet photo avec un `id` unique et `type: "Image"`, son nom et, si disponibles, `sourceDir` et les `photoFacts.facts` de légendes/mots-clés ou `photoFacts.sourceCopies` avec leurs chemins. Reproduire les seuls indices effectivement disponibles pour la baseline, sans ajouter les annotations de référence aux indices. Le script ne construit pas automatiquement le corpus depuis l'application.
+- `expectedWedding` : `true` si la photo concerne un mariage, `false` sinon, `null` si la référence est incertaine. Cela ne signifie jamais « mon mariage » et ne déduit aucune identité.
+
+Chaque photo compte une fois, même si plusieurs indices correspondent. Le résultat `all` regroupe toutes les suggestions ; `explicitLabel` et `lexicalMatch` les mesurent séparément et peuvent se chevaucher pour une même photo. Les annotations `null` sont exclues des calculs et comptées à part. `precision` vaut vrais positifs / suggestions, `recall` vaut vrais positifs / photos positives annotées ; une division impossible donne `null`. Les cas sans suggestion sont des abstentions, pas une preuve d'absence de mariage. Les vrais négatifs et faux négatifs décrivent uniquement leur comparaison aux annotations.
+
+Le seuil cible de précision de 95 % concerne des étiquettes exploitées automatiquement sur un jeu indépendant ; ce script affiche la mesure sans déclarer une validation ou activer les suggestions. Il faut également examiner le rappel, les faux positifs, la diversité et la taille du corpus avant toute décision. Aucune mesure sur corpus réel ni validation fournisseur/appareil ne découle du test fictif.
 
 ## Faisabilité initiale P3.b : classification visuelle locale
 
@@ -130,4 +153,4 @@ La migration actuelle est additive et rejouable : au chargement, les fiches phot
 
 ## Vérification
 
-Les tests utilisent uniquement des identifiants, dates, coordonnées et fichiers synthétiques. Ils couvrent la conversion, la migration additive, l'extraction locale de légendes/mots-clés XMP/IPTC, leur recherche après rechargement, les dates OneDrive, la date Dropbox sans GPS, l'accès GPS Dropbox conditionné au consentement et sa révocation dans le navigateur, les conflits, les dépendances GPS et l'export expurgé. Aucun compte réel, photo personnelle, service de géocodage ou modèle de vision n'est utilisé. Les albums fournisseur, sidecars, autres adaptateurs cloud et géolocalisation inverse ne sont pas couverts par cette tranche.
+Les tests utilisent uniquement des identifiants, dates, coordonnées et fichiers synthétiques. Ils couvrent la conversion, la migration additive, l'extraction locale de légendes/mots-clés XMP/IPTC, leur recherche après rechargement, les métadonnées et le GPS sous consentement de Drive, OneDrive et Dropbox, la révocation dans le navigateur, les conflits, les dépendances GPS et l'export expurgé. Aucun compte réel, photo personnelle, service de géocodage ou modèle de vision n'est utilisé. Les albums fournisseur, sidecars, autres adaptateurs cloud et géolocalisation inverse ne sont pas couverts par cette tranche.

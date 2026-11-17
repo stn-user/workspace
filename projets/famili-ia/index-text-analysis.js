@@ -8,6 +8,7 @@ const negatedDeadline = /\b(?:pas d['’]?(?:echeance|expiration)|pas de fin de 
 
 function copyRecord(record, dates = record.dates) {
   return createIndexRecord(record.sourceId, record.itemId, {
+    accountRef: record.accountRef,
     type: record.type, name: record.name, dates,
     coverage: record.coverage, lastCheck: record.lastCheck, fields: record.fields
   });

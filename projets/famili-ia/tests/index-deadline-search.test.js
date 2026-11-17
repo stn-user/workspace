@@ -166,7 +166,7 @@ test("reconnaît une fin de garantie explicite après une date d'achat dans la m
   const result = findIndexDeadlines(session, "2026-11-10", 90);
   assert.equal(result.candidates.length, 1);
   assert.deepEqual(result.candidates[0], {
-    sourceId: "local", itemId: "pergola", name: "Pergola.txt",
+    sourceId: "local", accountRef: null, itemId: "pergola", name: "Pergola.txt",
     dueDate: "2026-11-15", source: "extracted",
     proof: { excerpt: content, location: null }, daysUntil: 5
   });
@@ -182,7 +182,7 @@ test("propose une estimation à confirmer depuis la date d'achat et la durée de
   const result = findIndexDeadlines(session, "2026-11-10", 90);
   assert.equal(result.candidates.length, 1);
   assert.deepEqual(result.candidates[0], {
-    sourceId: "local", itemId: "pergola-estimee", name: "Pergola estimée.txt",
+    sourceId: "local", accountRef: null, itemId: "pergola-estimee", name: "Pergola estimée.txt",
     dueDate: "2026-11-15", source: "auto-estimate",
     proof: { excerpt: content, location: null }, daysUntil: 5, estimated: true
   });

@@ -1,5 +1,5 @@
 import { createDocumentIndexRecord } from "./document-index.js";
-import { getInventorySource } from "./data-inventory.js";
+import { getInventoryAccountRef, getInventorySource } from "./data-inventory.js";
 import { INDEX_RECORD_SCHEMA_VERSION, migrateIndexRecord } from "./index-record.js";
 
 export async function migrateDocumentIndexes(documents, persist) {
@@ -16,9 +16,12 @@ export async function migrateDocumentIndexes(documents, persist) {
       throw new Error(`Impossible de migrer le document ${document.id ?? "inconnu"} : données chiffrées illisibles`);
     }
     if (Object.hasOwn(document, "indexRecord")) {
-      const indexRecord = migrateIndexRecord(document.indexRecord);
+      const indexRecord = migrateIndexRecord(document.indexRecord, {
+        accountRef: getInventoryAccountRef(document)
+      });
       if (indexRecord.itemId !== document.id ||
-          indexRecord.sourceId !== getInventorySource(document)) {
+          indexRecord.sourceId !== getInventorySource(document) ||
+          indexRecord.accountRef !== getInventoryAccountRef(document)) {
         throw new TypeError(`Fiche d'index invalide pour le document ${document.id ?? "inconnu"}`);
       }
       if (document.indexRecord.schema === INDEX_RECORD_SCHEMA_VERSION) {
@@ -60,8 +63,10 @@ export async function rollbackDocumentIndexes(documents, persist) {
       continue;
     }
 
-    const indexRecord = migrateIndexRecord(document.indexRecord);
-    if (indexRecord.itemId !== document.id || indexRecord.sourceId !== getInventorySource(document)) {
+    const accountRef = getInventoryAccountRef(document);
+    const indexRecord = migrateIndexRecord(document.indexRecord, { accountRef });
+    if (indexRecord.itemId !== document.id || indexRecord.sourceId !== getInventorySource(document) ||
+        indexRecord.accountRef !== accountRef) {
       throw new TypeError(`Fiche d'index invalide pour le document ${document.id}`);
     }
     const { indexRecord: removed, ...restored } = document;

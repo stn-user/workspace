@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { adaptDriveResult, adaptDriveResults, isValidDriveResult } from "../google-drive-index-adapter.js";
-import { GoogleDriveClient } from "../google-drive.js";
+import { GoogleDriveClient, prepareDriveDocumentForIndex } from "../google-drive.js";
+import { createDocumentIndexRecord } from "../document-index.js";
+import { photoFactSetFromDocument } from "../photo-facts.js";
 import { createIndexRecord, isValidIndexRecord } from "../index-record.js";
 import { reconcileIndex } from "../index-reconciliation.js";
 
@@ -14,7 +16,7 @@ test("conversion exacte, sans contenu ni date inventée", () => {
   for (const date of ["15 janv. 2024", "Date inconnue"]) {
     const record = adaptDriveResult("source", result("drive-123", "facture.pdf", date));
     assert.deepEqual(record, {
-      schema: "1.1.0", sourceId: "source", itemId: "drive-123", type: null,
+      schema: "1.2.0", sourceId: "source", accountRef: null, itemId: "drive-123", type: null,
       name: { value: "facture.pdf", source: "provider", estimated: false, proof: null },
       location: null, dates: {}, coverage: "metadata", lastCheck: null, fields: []
     });
@@ -96,8 +98,114 @@ test("sortie réelle du client Drive simulé sans appel réseau supplémentaire"
   const [record] = adaptDriveResults("instance", [loaded]);
   assert.equal(calls.length, 2);
   assert.deepEqual(record, {
-    schema: "1.1.0", sourceId: "instance", itemId: "drive-picker-id", type: null,
+    schema: "1.2.0", sourceId: "instance", accountRef: null, itemId: "drive-picker-id", type: null,
     name: { value: "facture.txt", source: "provider", estimated: false, proof: null },
     location: null, dates: {}, coverage: "metadata", lastCheck: null, fields: []
   });
+});
+
+test("photo choisie : métadonnées fournisseur seulement, indexation de la date sans GPS ni contenu", async () => {
+  const client = new GoogleDriveClient({ apiKey: "test", appId: "test", clientId: "test" });
+  const calls = [];
+  client.driveRequest = async url => {
+    calls.push(url);
+    return Response.json({
+      id: "photo-choisie", name: "photo.jpg", mimeType: "image/jpeg",
+      modifiedTime: "2026-10-09T12:00:00Z",
+      imageMediaMetadata: {
+        time: "2024:05:06 12:30:45", width: 1200, height: 800,
+        cameraMake: "Fictif", cameraModel: "Test", location: { latitude: 42, longitude: 1 }
+      }
+    });
+  };
+  const document = await client.readSelectedFile({ id: "photo-choisie", name: "photo.jpg" });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].searchParams.has("alt"), false);
+  assert.doesNotMatch(calls[0].searchParams.get("fields"), /location/);
+  assert.equal(document.content, "");
+  assert.deepEqual(document.photoMetadata.captureDate, {
+    raw: "2024:05:06 12:30:45", localDateTime: "2024-05-06T12:30:45",
+    offsetMinutes: null, source: { kind: "provider", field: "imageMediaMetadata.time" }
+  });
+  assert.equal(document.photoMetadata.dimensions.width, 1200);
+  assert.equal(document.photoMetadata.device.model, "Test");
+  assert.equal(document.photoMetadata.location.status, "not_requested");
+  assert.equal(document.photoMetadata.location.latitude, null);
+  assert.equal(document.photoMetadata.location.longitude, null);
+  assert.equal(adaptDriveResult("drive", document).coverage, "metadata");
+  await prepareDriveDocumentForIndex(document, {
+    trustExtractedContent() { throw new Error("Une photo sans contenu ne doit pas être approuvée comme texte."); }
+  });
+  document.photoFacts = photoFactSetFromDocument(document);
+  const index = await createDocumentIndexRecord(document);
+  assert.equal(index.dates.priseDeVue.value, "2024-05-06");
+  assert.equal(index.accountRef, null);
+  assert.equal(index.coverage, "metadata");
+});
+
+test("photo Drive sans métadonnées utilisables reste présente sans date inventée", async () => {
+  const client = new GoogleDriveClient({ apiKey: "test", appId: "test", clientId: "test" });
+  client.driveRequest = async () => Response.json({
+    id: "image", name: "photo.png", mimeType: "image/png", modifiedTime: "2026-10-09T12:00:00Z",
+    imageMediaMetadata: { time: "2025:02:30 12:00:00", width: 0, height: 600 }
+  });
+  const document = await client.readSelectedFile({ id: "image", name: "photo.png" });
+  assert.equal(document.photoMetadata, undefined);
+  assert.equal(isValidDriveResult(document), true);
+  assert.equal((await createDocumentIndexRecord(document)).dates.priseDeVue, undefined);
+});
+
+test("refuse une identité de fichier différente de celle choisie", async () => {
+  const client = new GoogleDriveClient({ apiKey: "test", appId: "test", clientId: "test" });
+  client.driveRequest = async () => Response.json({
+    id: "autre", name: "photo.jpg", mimeType: "image/jpeg"
+  });
+  await assert.rejects(client.readSelectedFile({ id: "choisi", name: "photo.jpg" }), /identité.*incohérente/i);
+});
+
+test("Google Drive ne demande et ne conserve le GPS qu'avec le consentement toujours actif", async () => {
+  let allowed = false;
+  const client = new GoogleDriveClient({
+    apiKey: "test", appId: "test", clientId: "test",
+    getPhotoLocationConsent: () => allowed
+  });
+  const requestedFields = [];
+  let revokeBeforeResponse = false;
+  client.driveRequest = async url => {
+    requestedFields.push(url.searchParams.get("fields"));
+    if (revokeBeforeResponse) allowed = false;
+    return Response.json({
+      id: "photo", name: "photo.jpg", mimeType: "image/jpeg",
+      imageMediaMetadata: { location: { latitude: 12.345, longitude: -45.678 } }
+    });
+  };
+  const selected = { id: "photo", name: "photo.jpg" };
+  const denied = await client.readSelectedFile(selected);
+  assert.doesNotMatch(requestedFields[0], /location/);
+  assert.equal(denied.photoMetadata, undefined);
+  allowed = true;
+  const granted = await client.readSelectedFile(selected);
+  assert.match(requestedFields[1], /location\(latitude,longitude\)/);
+  assert.deepEqual(granted.photoMetadata.location, {
+    status: "available", latitude: 12.345, longitude: -45.678, altitudeMeters: null,
+    source: { kind: "provider", field: "imageMediaMetadata.location" }
+  });
+  assert.equal(photoFactSetFromDocument(granted, { includeLocation: true })
+    .facts.find(fact => fact.kind === "location").provenance.providerId, "drive");
+  allowed = true;
+  revokeBeforeResponse = true;
+  const revoked = await client.readSelectedFile(selected);
+  assert.equal(revoked.photoMetadata, undefined);
+});
+
+test("Google Drive ignore les coordonnées invalides sans inventer de localisation", async () => {
+  const client = new GoogleDriveClient({
+    apiKey: "test", appId: "test", clientId: "test", getPhotoLocationConsent: () => true
+  });
+  client.driveRequest = async () => Response.json({
+    id: "photo", name: "photo.png", mimeType: "image/png",
+    imageMediaMetadata: { location: { latitude: 91, longitude: 0 } }
+  });
+  const document = await client.readSelectedFile({ id: "photo", name: "photo.png" });
+  assert.equal(document.photoMetadata, undefined);
 });

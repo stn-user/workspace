@@ -79,6 +79,32 @@ async function setup({ page, context }, { invalidState = false, writeScope = fal
   };
 }
 
+test("Dropbox : conserve les copies traitées et le motif après l'échec d'une page", async ({ page, context }) => {
+  const mock = await setup({ page, context });
+  await page.locator("#connect-dropbox").click();
+  await expect(page.locator("#dropbox-status")).toContainText("Dropbox connecté");
+  mock.continueStatus(503);
+  await page.locator("#start-dropbox").click();
+  await expect(page.locator("#dropbox-status")).toContainText("HTTP 503");
+
+  const state = await page.evaluate(async () => {
+    const { getAll } = await import("/db.js");
+    return { documents: await getAll("documents"), runs: await getAll("source_sync") };
+  });
+  expect(state.documents.some(document => document.name === file.name)).toBe(true);
+  const run = state.runs.find(record => record.kind === "source-run-status");
+  expect(run.state).toBe("error");
+  expect(run.discoveredCount).toBeNull();
+  expect(run.processedCount).toBe(1);
+  expect(run.failureReason).toBe("Lecture Dropbox impossible (HTTP 503).");
+
+  const reinitialized = page.waitForEvent("console", message => message.text().includes("Async init - COMPLETE"));
+  await page.reload();
+  await reinitialized;
+  await expect(page.locator("#experimental-source-status"))
+    .toContainText("Motif : Lecture Dropbox impossible (HTTP 503)");
+});
+
 test("Dropbox : date photo indexée et GPS uniquement avec consentement, puis purgé au retrait", async ({ page, context }) => {
   const mock = await setup({ page, context });
   mock.photoMediaInfo({

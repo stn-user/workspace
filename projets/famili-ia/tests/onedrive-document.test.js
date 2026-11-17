@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   canRefreshOneDriveCopy, compareOneDriveCopy, describeOneDriveChanges,
-  mergeOneDriveDocumentUpdate, oneDriveDocumentId, readOneDriveDocument
+  mergeOneDriveDocumentUpdate, oneDriveDocumentId, readOneDriveDocument, resolveOneDriveOriginalUrl
 } from "../onedrive-document.js";
 import { formatOneDriveAccountFingerprint, getOneDriveAccountFingerprint } from "../onedrive-account.js";
 import { IndexSession } from "../index-session.js";
@@ -24,6 +24,8 @@ test("texte OneDrive recherché et provenance restaurée, isolé par compte", as
   assert.equal(result.coverage, "partial");
   assert.equal(result.document.contentProvenance.method, "onedrive-text");
   assert.equal(result.document.oneDriveAccountFingerprint, await getOneDriveAccountFingerprint("account-a"));
+  assert.equal(result.document.oneDriveItemId, item.id);
+  assert.equal("webUrl" in result.document, false);
   assert.equal(JSON.stringify(result.document).includes("account-a"), false);
   assert.notEqual(
     result.document.oneDriveAccountFingerprint,
@@ -42,6 +44,63 @@ test("texte OneDrive recherché et provenance restaurée, isolé par compte", as
   assert.equal(session.search("rare")[0].sourceId, "onedrive");
   restored.content += " altéré";
   assert.equal(await session.restoreDocumentContent(restored), "invalid");
+});
+
+test("vérifie l'identifiant fournisseur et le compte avant de résoudre l'URL courante", async () => {
+  const accountFingerprint = "a".repeat(64);
+  const calls = [];
+  const originalUrl = "https://onedrive.live.com/?cid=synthetic&id=file";
+  const resolved = await resolveOneDriveOriginalUrl({
+    itemId: item.id,
+    accountFingerprint,
+    activeAccountFingerprint: accountFingerprint,
+    getToken: async () => "synthetic-token",
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      return Response.json({ id: item.id, webUrl: originalUrl });
+    }
+  });
+  assert.equal(resolved, originalUrl);
+  assert.equal(new URL(calls[0].url).origin, "https://graph.microsoft.com");
+  assert.ok(new URL(calls[0].url).pathname.endsWith(encodeURIComponent(item.id)));
+  assert.equal(new URL(calls[0].url).searchParams.get("$select"), "id,webUrl");
+  assert.equal(calls[0].init.headers.Authorization, "Bearer synthetic-token");
+  assert.equal(calls[0].init.credentials, "omit");
+  assert.equal(calls[0].init.redirect, "error");
+  await assert.rejects(resolveOneDriveOriginalUrl({
+    itemId: item.id,
+    accountFingerprint,
+    activeAccountFingerprint: "b".repeat(64),
+    getToken: async () => assert.fail("Un jeton ne doit pas être demandé pour un autre compte"),
+    fetchImpl: async () => assert.fail("Graph ne doit pas être appelé pour un autre compte")
+  }), /ne correspond pas/);
+});
+
+test("refuse un identifiant incohérent et les URL web non autorisées ou sans élément", async () => {
+  const input = {
+    itemId: item.id,
+    accountFingerprint: "a".repeat(64),
+    activeAccountFingerprint: "a".repeat(64),
+    getToken: async () => "synthetic-token"
+  };
+  await assert.rejects(resolveOneDriveOriginalUrl({
+    ...input, fetchImpl: async () => Response.json({ id: "another-item", webUrl: "https://onedrive.live.com/file" })
+  }), /identité/);
+  await assert.rejects(resolveOneDriveOriginalUrl({
+    ...input, fetchImpl: async () => Response.json({ id: item.id, webUrl: "https://evil.invalid/file" })
+  }), /non autorisé/);
+  await assert.rejects(resolveOneDriveOriginalUrl({
+    ...input, fetchImpl: async () => Response.json({ id: item.id, webUrl: "http://onedrive.live.com/file" })
+  }), /non autorisé/);
+  await assert.rejects(resolveOneDriveOriginalUrl({
+    ...input, fetchImpl: async () => Response.json({ id: item.id, webUrl: "https://onedrive.live.com/" })
+  }), /non autorisé/);
+  await assert.rejects(resolveOneDriveOriginalUrl({
+    ...input, fetchImpl: async () => Response.json({ id: item.id, webUrl: "https://onedrive.live.com/file#fragment" })
+  }), /non autorisé/);
+  await assert.rejects(resolveOneDriveOriginalUrl({
+    ...input, fetchImpl: async () => new Response("", { status: 403 })
+  }), /HTTP 403/);
 });
 
 test("métadonnées seules pour format non pris en charge, taille et PDF non lisible", async () => {
@@ -112,6 +171,53 @@ test("date de prise de vue fournisseur invalide ignorée sans empêcher l'indexa
   assert.equal(result.coverage, "metadata");
 });
 
+test("GPS OneDrive demandé à part seulement avec consentement actif", async () => {
+    const photo = { ...item, name: "photo.jpg", file: { mimeType: "image/jpeg" } };
+    let allowed = false;
+    const calls = [];
+    let revokeBeforeResponse = false;
+    const read = () => readOneDriveDocument({
+      ...options, item: photo, getPhotoLocationConsent: () => allowed,
+      fetchImpl: async (url, request) => {
+        calls.push({ url: new URL(url), request });
+        if (revokeBeforeResponse) allowed = false;
+        return Response.json({ id: photo.id, location: { latitude: 12.345, longitude: -45.678 } });
+      }
+    });
+    const denied = await read();
+    assert.equal(calls.length, 0);
+    assert.equal(denied.document.photoMetadata, undefined);
+    allowed = true;
+    const granted = await read();
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url.searchParams.get("$select"), "id,location");
+    assert.equal(calls[0].request.redirect, "error");
+    assert.deepEqual(granted.document.photoMetadata.location, {
+      status: "available", latitude: 12.345, longitude: -45.678, altitudeMeters: null,
+      source: { kind: "provider", field: "location" }
+    });
+    assert.equal(photoFactSetFromDocument(granted.document, { includeLocation: true })
+      .facts.find(fact => fact.kind === "location").provenance.providerId, "onedrive");
+    allowed = true;
+    revokeBeforeResponse = true;
+    const revoked = await read();
+    assert.equal(revoked.document.photoMetadata, undefined);
+  });
+
+test("GPS OneDrive : coordonnées invalides ignorées et erreurs de lecture signalées", async () => {
+    const photo = { ...item, name: "photo.jpg", file: { mimeType: "image/jpeg" } };
+    const base = { ...options, item: photo, getPhotoLocationConsent: () => true };
+    const invalid = await readOneDriveDocument({
+      ...base, fetchImpl: async () => Response.json({ id: photo.id, location: { latitude: 0, longitude: 181 } })
+    });
+    assert.equal(invalid.document.photoMetadata, undefined);
+    await assert.rejects(readOneDriveDocument({
+      ...base, fetchImpl: async () => new Response("", { status: 403 })
+    }), /localisation OneDrive impossible \(HTTP 403\)/);
+    await assert.rejects(readOneDriveDocument({
+      ...base, fetchImpl: async () => Response.json({ id: "autre" })
+    }), /identité.*incohérente/i);
+  });
 test("refuse lien malveillant et erreur Graph sans divulguer l'URL de téléchargement", async () => {
   await assert.rejects(readOneDriveDocument({ ...options, fetchImpl: async () =>
     Response.json({ id: item.id, "@microsoft.graph.downloadUrl": "https://evil.invalid/secret" })

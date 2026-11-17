@@ -24,6 +24,17 @@ export function getInventorySource(document) {
   return "local";
 }
 
+export function getInventoryAccountRef(document) {
+  const source = getInventorySource(document);
+  const field = source === "onedrive" ? "oneDriveAccountFingerprint"
+    : source === "dropbox" ? "dropboxAccountFingerprint" : null;
+  if (!field || document[field] === undefined || document[field] === null) return null;
+  if (typeof document[field] !== "string" || !/^[0-9a-f]{64}$/i.test(document[field])) {
+    throw new TypeError(`Empreinte de compte ${source} invalide`);
+  }
+  return document[field].toLowerCase();
+}
+
 export function getInventoryTypeKey(document) {
   const type = String(document.type || "").trim().toLocaleLowerCase("fr");
   const knownTypes = new Set(["facture", "garantie", "contrat", "notice", "pdf", "markdown", "image", "texte", "vidéo", "video"]);

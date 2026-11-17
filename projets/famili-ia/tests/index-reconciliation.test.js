@@ -63,6 +63,29 @@ test("identités exactes, séparateurs ambigus et idempotence", () => {
   assert.deepEqual(again, first);
 });
 
+test("rapprochement et suppression isolent deux comptes du même fournisseur", () => {
+  const firstRef = "a".repeat(64);
+  const secondRef = "b".repeat(64);
+  const existing = [
+    withOptions("onedrive", "same-item", {
+      accountRef: firstRef, name: { value: "Ancien A.pdf", source: "provider" }, coverage: "metadata"
+    }),
+    withOptions("onedrive", "same-item", {
+      accountRef: secondRef, name: { value: "Ancien B.pdf", source: "provider" }, coverage: "metadata"
+    })
+  ];
+  const incoming = [createIndexRecord("onedrive", "same-item", {
+    accountRef: firstRef, name: { value: "Nouveau A.pdf", source: "provider" }, coverage: "metadata"
+  })];
+  const result = reconcileIndex(existing, incoming);
+  assert.deepEqual(result.map(({ record }) => record.name.value), ["Nouveau A.pdf", "Ancien B.pdf"]);
+  assert.throws(() => removeIndexRecord(existing, "onedrive", "same-item"), /ambiguë/);
+  assert.deepEqual(
+    removeIndexRecord(existing, "onedrive", "same-item", firstRef).records.map(record => record.accountRef),
+    [secondRef]
+  );
+});
+
 test("fiche absente conservée et analyse jamais présentée comme vérifiée", () => {
   const original = [
     withOptions("s", "a", { coverage: "partial" }),

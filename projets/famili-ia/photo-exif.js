@@ -7,7 +7,6 @@ const EXIF_TAGS = [
   "CreateDate",
   "OffsetTimeOriginal",
   "OffsetTimeDigitized",
-  "OffsetTime",
   "Orientation",
   "ImageWidth",
   "ImageHeight",
@@ -141,7 +140,9 @@ export function mapExifToPhotoMetadata(documentId, tags = {}, {
   const issues = [];
   const dateField = tags.DateTimeOriginal != null ? "DateTimeOriginal" : "CreateDate";
   const rawCaptureDate = tags.DateTimeOriginal ?? tags.CreateDate ?? null;
-  const offsetRaw = tags.OffsetTimeOriginal ?? tags.OffsetTimeDigitized ?? tags.OffsetTime ?? null;
+  const offsetRaw = dateField === "DateTimeOriginal"
+    ? tags.OffsetTimeOriginal ?? null
+    : tags.OffsetTimeDigitized ?? null;
   const captureDate = parseExifDate(rawCaptureDate, offsetRaw, dateField, issues);
   const orientation = Number.isInteger(tags.Orientation) && tags.Orientation >= 1 && tags.Orientation <= 8
     ? { value: tags.Orientation, source: { kind: "exif", field: "Orientation" } }

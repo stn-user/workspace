@@ -82,6 +82,31 @@ test("extracts an EXIF capture date without inventing a timezone", async () => {
   assert.deepEqual(issues, []);
 });
 
+test("uses only the timezone associated with the selected EXIF capture date", () => {
+  const original = mapExifToPhotoMetadata("original", {
+    DateTimeOriginal: "2024:05:06 12:30:45",
+    OffsetTimeDigitized: "+03:00",
+    OffsetTime: "+04:00"
+  });
+  assert.equal(original.metadata.captureDate.offsetMinutes, null);
+
+  const digitized = mapExifToPhotoMetadata("digitized", {
+    CreateDate: "2024:05:06 12:30:45",
+    OffsetTimeOriginal: "+02:00",
+    OffsetTimeDigitized: "-05:00",
+    OffsetTime: "+04:00"
+  });
+  assert.equal(digitized.metadata.captureDate.source.field, "CreateDate");
+  assert.equal(digitized.metadata.captureDate.offsetMinutes, -300);
+
+  const digitizedWithoutOffset = mapExifToPhotoMetadata("digitized-unknown", {
+    CreateDate: "2024:05:06 12:30:45",
+    OffsetTimeOriginal: "+02:00",
+    OffsetTime: "+04:00"
+  });
+  assert.equal(digitizedWithoutOffset.metadata.captureDate.offsetMinutes, null);
+});
+
 test("extracts an explicit EXIF timezone and image orientation", async () => {
   const image = createJpegExifFixture(demoJpeg, {
     dateTimeOriginal: "2025:11:02 08:15:00",

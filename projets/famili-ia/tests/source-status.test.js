@@ -105,6 +105,30 @@ test("un parcours incomplet conserve distinctement la date du dernier parcours c
   assert.match(local.freshness, /Dernier parcours complet/);
 });
 
+test("un parcours interrompu conserve son motif sans prétendre connaître le total découvert", () => {
+  const reason = "Lecture OneDrive impossible (HTTP 503).";
+  const run = createSourceRunStatus({
+    sourceId: "onedrive",
+    accountRef: "a".repeat(64),
+    scopeKind: "account",
+    state: "error",
+    startedAt: "2026-03-19T10:00:00.000Z",
+    finishedAt: "2026-03-19T10:01:00.000Z",
+    discoveredCount: null,
+    processedCount: 2,
+    failedCount: 0,
+    failureReason: reason
+  });
+  const [onedrive] = describeSources(records, {
+    ...initial,
+    sourceRuns: [run],
+    accountRefs: { onedrive: "a".repeat(64) }
+  }).filter(source => source.sourceId === "onedrive");
+  assert.equal(onedrive.run.discoveredCount, null);
+  assert.equal(onedrive.run.processedCount, 2);
+  assert.match(onedrive.freshness, /Motif : Lecture OneDrive impossible \(HTTP 503\)/);
+});
+
 test("les états complets incohérents et les identités non pseudonymisées sont rejetés", () => {
   assert.throws(() => createSourceRunStatus({
     sourceId: "drive",
@@ -120,5 +144,21 @@ test("les états complets incohérents et les identités non pseudonymisées son
     accountRef: "compte-en-clair",
     state: "running",
     startedAt: "2026-03-19T10:00:00.000Z"
+  }), TypeError);
+  assert.throws(() => createSourceRunStatus({
+    sourceId: "drive",
+    state: "complete",
+    startedAt: "2026-03-19T10:00:00.000Z",
+    finishedAt: "2026-03-19T10:01:00.000Z",
+    discoveredCount: 0,
+    processedCount: 0,
+    failureReason: "échec"
+  }), TypeError);
+  assert.throws(() => createSourceRunStatus({
+    sourceId: "drive",
+    state: "error",
+    startedAt: "2026-03-19T10:00:00.000Z",
+    finishedAt: "2026-03-19T10:01:00.000Z",
+    failureReason: `motif ${"x".repeat(241)}`
   }), TypeError);
 });

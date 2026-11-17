@@ -34,7 +34,7 @@ test("dates explicites acceptées et proposition traçable", () => {
   assert.equal(result.status, "extracted");
   assert.deepEqual(findDeadlineCandidates([result.record], "2025-03-14", 1), {
     candidates: [{
-      sourceId: "src", itemId: "id", name: "garantie.pdf",
+      sourceId: "src", accountRef: null, itemId: "id", name: "garantie.pdf",
       dueDate: "2025-03-15", source: "extracted",
       proof: { excerpt: "Date d’échéance : 2025-03-15", location: null }, daysUntil: 1
     }], ineligible: []
@@ -92,7 +92,7 @@ test("calcule une proposition estimée depuis une date d'achat prouvée et une d
   assert.equal(findDeadlineCandidates([result.record], "2026-11-10", 90).candidates.length, 0);
   const candidates = findDeadlineCandidates([result.record], "2026-11-10", 90, { includeEstimated: true });
   assert.deepEqual(candidates.candidates[0], {
-    sourceId: "src", itemId: "id", name: null, dueDate: "2026-11-15", source: "auto-estimate",
+    sourceId: "src", accountRef: null, itemId: "id", name: null, dueDate: "2026-11-15", source: "auto-estimate",
     proof: { excerpt: `${purchaseExcerpt}\n${durationExcerpt}`, location: null },
     daysUntil: 5, estimated: true
   });

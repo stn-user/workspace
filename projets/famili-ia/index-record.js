@@ -1,7 +1,7 @@
 import { isValidCoverageLevel } from "./index-coverage.js";
 
-export const INDEX_RECORD_SCHEMA_VERSION = "1.1.0";
-const PREVIOUS_SCHEMA_VERSION = "1.0.0";
+export const INDEX_RECORD_SCHEMA_VERSION = "1.2.0";
+const PREVIOUS_SCHEMA_VERSIONS = new Set(["1.0.0", "1.1.0"]);
 const DATE_TYPES = ["creation", "modification", "priseDeVue", "achat", "echeance"];
 const SOURCES = ["provider", "extracted", "user-input", "auto-estimate"];
 
@@ -18,6 +18,14 @@ function assertKeys(value, allowed, label) {
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function normalizeAccountRef(value) {
+  if (value === null) return null;
+  if (typeof value !== "string" || !/^[0-9a-f]{64}$/i.test(value)) {
+    throw new TypeError("accountRef invalide");
+  }
+  return value.toLowerCase();
 }
 
 export function isValidDate(value) {
@@ -62,8 +70,9 @@ export function createIndexRecord(sourceId, itemId, options = {}) {
   if (!isNonEmptyString(sourceId) || !isNonEmptyString(itemId)) {
     throw new TypeError("sourceId et itemId doivent être des chaînes non vides");
   }
-  assertKeys(options, ["type", "name", "location", "dates", "coverage", "lastCheck", "fields"], "options");
-  const { type = null, name = null, location = null, dates = {}, coverage = null, lastCheck = null, fields = [] } = options;
+  assertKeys(options, ["accountRef", "type", "name", "location", "dates", "coverage", "lastCheck", "fields"], "options");
+  const { accountRef = null, type = null, name = null, location = null, dates = {}, coverage = null, lastCheck = null, fields = [] } = options;
+  const normalizedAccountRef = normalizeAccountRef(accountRef);
   if (type !== null && !["document", "photo"].includes(type)) throw new TypeError("type invalide");
   if (coverage !== null && !isValidCoverageLevel(coverage)) throw new TypeError("couverture invalide");
   if (lastCheck !== null && !isValidDate(lastCheck)) throw new TypeError("dernière vérification invalide");
@@ -83,6 +92,7 @@ export function createIndexRecord(sourceId, itemId, options = {}) {
   return {
     schema: INDEX_RECORD_SCHEMA_VERSION,
     sourceId,
+    accountRef: normalizedAccountRef,
     itemId,
     type,
     name: name === null ? null : normalizeValue(name, "nom"),
@@ -97,28 +107,39 @@ export function createIndexRecord(sourceId, itemId, options = {}) {
 export function isValidIndexRecord(record) {
   if (!isObject(record)) return false;
   try {
-    assertKeys(record, ["schema", "sourceId", "itemId", "type", "name", "location", "dates", "coverage", "lastCheck", "fields"], "fiche");
+    assertKeys(record, ["schema", "sourceId", "accountRef", "itemId", "type", "name", "location", "dates", "coverage", "lastCheck", "fields"], "fiche");
     if (record.schema !== INDEX_RECORD_SCHEMA_VERSION ||
-        ["type", "name", "location", "dates", "coverage", "lastCheck", "fields"].some((key) =>
+        ["accountRef", "type", "name", "location", "dates", "coverage", "lastCheck", "fields"].some((key) =>
           !Object.prototype.hasOwnProperty.call(record, key) || record[key] === undefined)) {
       return false;
     }
-    createIndexRecord(record.sourceId, record.itemId, {
+    const normalized = createIndexRecord(record.sourceId, record.itemId, {
+      accountRef: record.accountRef,
       type: record.type, name: record.name, location: record.location, dates: record.dates,
       coverage: record.coverage, lastCheck: record.lastCheck, fields: record.fields
     });
-    return true;
+    return normalized.accountRef === record.accountRef;
   } catch (error) {
     if (error instanceof TypeError) return false;
     throw error;
   }
 }
 
-export function migrateIndexRecord(record) {
+export function migrateIndexRecord(record, options = {}) {
   if (!isObject(record)) throw new TypeError("Fiche d'index invalide");
+  if (!isObject(options) || Object.keys(options).some(key => key !== "accountRef")) {
+    throw new TypeError("Options de migration de fiche invalides");
+  }
+  const expectedAccountRef = Object.hasOwn(options, "accountRef")
+    ? normalizeAccountRef(options.accountRef)
+    : undefined;
   if (record.schema === INDEX_RECORD_SCHEMA_VERSION) {
     if (!isValidIndexRecord(record)) throw new TypeError("Fiche d'index invalide");
+    if (expectedAccountRef !== undefined && record.accountRef !== expectedAccountRef) {
+      throw new TypeError("Empreinte de compte incohérente avec la fiche d'index");
+    }
     return createIndexRecord(record.sourceId, record.itemId, {
+      accountRef: record.accountRef,
       type: record.type,
       name: record.name,
       location: record.location,
@@ -128,15 +149,21 @@ export function migrateIndexRecord(record) {
       fields: record.fields
     });
   }
-  if (record.schema !== PREVIOUS_SCHEMA_VERSION) {
+  if (!PREVIOUS_SCHEMA_VERSIONS.has(record.schema)) {
     throw new TypeError(`Version de fiche d'index non prise en charge : ${record.schema ?? "absente"}`);
   }
-  assertKeys(record, ["schema", "sourceId", "itemId", "type", "name", "dates", "coverage", "lastCheck", "fields"], "fiche historique");
+  const hasLocation = record.schema === "1.1.0";
+  assertKeys(record, [
+    "schema", "sourceId", "itemId", "type", "name",
+    ...(hasLocation ? ["location"] : []),
+    "dates", "coverage", "lastCheck", "fields"
+  ], "fiche historique");
   try {
     return createIndexRecord(record.sourceId, record.itemId, {
+      accountRef: expectedAccountRef ?? null,
       type: record.type,
       name: record.name,
-      location: null,
+      location: hasLocation ? record.location : null,
       dates: record.dates,
       coverage: record.coverage,
       lastCheck: record.lastCheck,

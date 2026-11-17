@@ -1,9 +1,11 @@
 import { createContentProvenance } from "./content-index.js";
+import { createPhotoMetadata, parseProviderExifCaptureDate, providerPhotoLocation } from "./photo-metadata.js";
 
 export const googleDriveScope = "https://www.googleapis.com/auth/drive.file";
 const extractedPdfSegments = new WeakMap();
 
 export async function prepareDriveDocumentForIndex(document, index) {
+  if (document.type === "Image" && document.content === "") return;
   let segments;
   let method;
   if (["Texte", "Markdown", "Document Google"].includes(document.type)) {
@@ -29,7 +31,9 @@ const supportedMimeTypes = [
   "application/pdf",
   "text/plain",
   "text/markdown",
-  "application/vnd.google-apps.document"
+  "application/vnd.google-apps.document",
+  "image/jpeg",
+  "image/png"
 ];
 const maxTextFileSize = 1024 * 1024;
 const maxPdfFileSize = 10 * 1024 * 1024;
@@ -85,7 +89,39 @@ export function getGoogleDriveFileType(mimeType) {
   if (mimeType === "application/vnd.google-apps.document") {
     return { extension: "txt", type: "Document Google", maxSize: maxTextFileSize };
   }
+  if (mimeType === "image/jpeg" || mimeType === "image/png") {
+    return { extension: mimeType === "image/jpeg" ? "jpg" : "png", type: "Image" };
+  }
   return null;
+}
+
+function readDrivePhotoMetadata(documentId, image, includeLocation) {
+  if (!image || typeof image !== "object" || Array.isArray(image)) return null;
+  const values = {};
+  const captureDate = parseProviderExifCaptureDate(image.time, "imageMediaMetadata.time");
+  if (captureDate) values.captureDate = captureDate;
+  if (Number.isSafeInteger(image.width) && image.width > 0
+    && Number.isSafeInteger(image.height) && image.height > 0) {
+    values.dimensions = {
+      width: image.width, height: image.height,
+      source: { kind: "provider", field: "imageMediaMetadata.width/height" }
+    };
+  }
+  const make = typeof image.cameraMake === "string" && image.cameraMake.trim().length <= 120
+    ? image.cameraMake.trim() : "";
+  const model = typeof image.cameraModel === "string" && image.cameraModel.trim().length <= 120
+    ? image.cameraModel.trim() : "";
+  if (make || model) {
+    values.device = {
+      make: make || null, model: model || null,
+      source: { kind: "provider", field: "imageMediaMetadata.cameraMake/cameraModel" }
+    };
+  }
+  if (includeLocation) {
+    const location = providerPhotoLocation(image.location, "imageMediaMetadata.location");
+    if (location) values.location = location;
+  }
+  return Object.keys(values).length ? createPhotoMetadata(documentId, values) : null;
 }
 
 async function readResponse(response, description) {
@@ -134,10 +170,14 @@ async function readBoundedBytes(response, maxSize, fileName) {
 }
 
 export class GoogleDriveClient {
-  constructor({ apiKey, appId, clientId }) {
+  constructor({ apiKey, appId, clientId, getPhotoLocationConsent = () => false }) {
+    if (typeof getPhotoLocationConsent !== "function") {
+      throw new TypeError("Le contrôle du consentement GPS doit être une fonction.");
+    }
     this.apiKey = apiKey;
     this.appId = appId;
     this.clientId = clientId;
+    this.getPhotoLocationConsent = getPhotoLocationConsent;
     this.accessToken = null;
     this.tokenClient = null;
   }
@@ -237,14 +277,38 @@ export class GoogleDriveClient {
   }
 
   async readSelectedFile(selectedFile) {
+    const includeLocation = this.getPhotoLocationConsent() === true;
     const metadataUrl = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(selectedFile.id)}`);
-    metadataUrl.searchParams.set("fields", "id,name,mimeType,size,modifiedTime");
+    const photoFields = `time,width,height,cameraMake,cameraModel${includeLocation ? ",location(latitude,longitude)" : ""}`;
+    metadataUrl.searchParams.set("fields", `id,name,mimeType,size,modifiedTime,imageMediaMetadata(${photoFields})`);
     metadataUrl.searchParams.set("supportsAllDrives", "true");
     const metadataResponse = await this.driveRequest(metadataUrl, `Impossible de vérifier « ${selectedFile.name} »`);
     const metadata = await metadataResponse.json();
+    if (metadata.id !== selectedFile.id) throw new Error("Identité du fichier Google Drive incohérente.");
     const fileType = getGoogleDriveFileType(metadata.mimeType);
     if (!fileType) {
-      throw new Error(`Le format de « ${metadata.name} » n’est pas pris en charge. Formats acceptés : PDF, TXT, Markdown et Google Docs.`);
+      throw new Error(`Le format de « ${metadata.name} » n’est pas pris en charge. Formats acceptés : PDF, TXT, Markdown, Google Docs, JPEG et PNG.`);
+    }
+
+    const modified = typeof metadata.modifiedTime === "string" ? new Date(metadata.modifiedTime) : null;
+    const validModified = modified && !Number.isNaN(modified.getTime());
+    const document = {
+      id: `drive-${metadata.id}`,
+      name: metadata.name,
+      type: fileType.type,
+      date: validModified ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(modified) : "Date inconnue",
+      ...(validModified ? { modificationDate: modified.toISOString() } : {}),
+      keywords: "",
+      summary: "",
+      content: "",
+      isLocal: true,
+      driveSource: true
+    };
+    if (fileType.type === "Image") {
+      const photoMetadata = readDrivePhotoMetadata(document.id, metadata.imageMediaMetadata,
+        includeLocation && this.getPhotoLocationConsent() === true);
+      if (photoMetadata) document.photoMetadata = photoMetadata;
+      return document;
     }
 
     const declaredSize = Number(metadata.size ?? 0);
@@ -277,22 +341,7 @@ export class GoogleDriveClient {
     }
     if (!content.trim()) throw new Error(`« ${metadata.name} » ne contient aucun texte exploitable.`);
 
-    const document = {
-      id: `drive-${metadata.id}`,
-      name: metadata.name,
-      type: fileType.type,
-      date: metadata.modifiedTime
-        ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(metadata.modifiedTime))
-        : "Date inconnue",
-      ...(typeof metadata.modifiedTime === "string" && !Number.isNaN(Date.parse(metadata.modifiedTime))
-        ? { modificationDate: new Date(metadata.modifiedTime).toISOString() }
-        : {}),
-      keywords: "",
-      summary: "",
-      content,
-      isLocal: true,
-      driveSource: true
-    };
+    document.content = content;
     if (segments) extractedPdfSegments.set(document, { content, segments });
     return document;
   }

@@ -6,6 +6,16 @@ const PROVIDER_DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d{
 const SOURCES = new Set(["exif", "xmp", "iptc", "provider", "user", "filename", "legacy"]);
 const LOCATION_STATUSES = new Set(["not_requested", "not_found", "omitted", "available", "cleared"]);
 
+export function providerPhotoLocation(value, field) {
+  if (!value || typeof value !== "object" || Array.isArray(value)
+    || !Number.isFinite(value.latitude) || value.latitude < -90 || value.latitude > 90
+    || !Number.isFinite(value.longitude) || value.longitude < -180 || value.longitude > 180) return null;
+  return {
+    status: "available", latitude: value.latitude, longitude: value.longitude, altitudeMeters: null,
+    source: { kind: "provider", field }
+  };
+}
+
 export function parseProviderCaptureDate(value, field) {
   if (typeof value !== "string" || typeof field !== "string" || !field.trim()) return null;
   const match = PROVIDER_DATE_TIME_PATTERN.exec(value);
@@ -29,6 +39,19 @@ export function parseProviderCaptureDate(value, field) {
     raw: value,
     localDateTime: `${localDateTime}${fraction.slice(0, 4)}`,
     offsetMinutes,
+    source: { kind: "provider", field: field.trim() }
+  };
+}
+
+export function parseProviderExifCaptureDate(value, field) {
+  if (typeof value !== "string" || typeof field !== "string" || !field.trim()) return null;
+  const match = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, year, month, day, hour, minute, second] = match;
+  const localDateTime = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  if (!isValidDateTime(localDateTime)) return null;
+  return {
+    raw: value, localDateTime, offsetMinutes: null,
     source: { kind: "provider", field: field.trim() }
   };
 }

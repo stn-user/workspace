@@ -36,7 +36,8 @@ export function createSourceRunStatus({
   lastSuccessfulAt = null,
   discoveredCount = null,
   processedCount = 0,
-  failedCount = 0
+  failedCount = 0,
+  failureReason = null
 }) {
   const id = sourceRunStatusId(sourceId, accountRef);
   if (!SOURCE_RUN_SCOPES.has(scopeKind) || !SOURCE_RUN_STATES.has(state)
@@ -45,11 +46,14 @@ export function createSourceRunStatus({
     || (lastSuccessfulAt !== null && !isIsoTimestamp(lastSuccessfulAt))
     || (discoveredCount !== null && !isCount(discoveredCount))
     || !isCount(processedCount) || !isCount(failedCount)
+    || (failureReason !== null && (typeof failureReason !== "string"
+      || !failureReason.trim() || failureReason.length > 240 || /[\u0000-\u001f\u007f]/.test(failureReason)))
     || (discoveredCount !== null && processedCount + failedCount > discoveredCount)
     || (state === "running" && finishedAt !== null)
     || (state !== "running" && (finishedAt === null || finishedAt < startedAt))
     || (lastSuccessfulAt !== null && finishedAt !== null && lastSuccessfulAt > finishedAt)
-    || (state === "complete" && (discoveredCount === null || processedCount !== discoveredCount || failedCount !== 0))) {
+    || (state === "complete" && (discoveredCount === null || processedCount !== discoveredCount
+      || failedCount !== 0 || failureReason !== null))) {
     throw new TypeError("État de parcours de source invalide");
   }
   return {
@@ -65,7 +69,8 @@ export function createSourceRunStatus({
     lastSuccessfulAt,
     discoveredCount,
     processedCount,
-    failedCount
+    failedCount,
+    failureReason
   };
 }
 
@@ -87,10 +92,11 @@ function describeRun(run) {
   const outcome = run.state === "partial" ? "partiel"
     : run.state === "interrupted" ? "interrompu" : "en erreur";
   const failures = run.failedCount ? ` ${run.failedCount} échec(s) enregistré(s).` : "";
+  const reason = run.failureReason ? ` Motif : ${run.failureReason}` : "";
   const lastSuccess = run.lastSuccessfulAt
     ? ` Dernier parcours complet : ${formatDate(run.lastSuccessfulAt)}.`
     : " Aucun parcours complet antérieur n'est enregistré.";
-  return `Dernier parcours ${outcome} le ${formatDate(run.finishedAt)}.${failures}${lastSuccess}`;
+  return `Dernier parcours ${outcome} le ${formatDate(run.finishedAt)}.${failures}${reason}${lastSuccess}`;
 }
 
 function coverageSummary(records, sourceId) {

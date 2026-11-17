@@ -8,16 +8,12 @@ const VALID_DATE_TYPES = Object.freeze(["creation", "modification", "priseDeVue"
 
 function validateRecords(records) {
   if (!Array.isArray(records)) throw new TypeError("records doit être un tableau");
-  const identities = new Map();
+  const identities = new Set();
   for (const record of records) {
     if (!isValidIndexRecord(record)) throw new TypeError("Fiche d'index invalide");
-    let items = identities.get(record.sourceId);
-    if (!items) {
-      items = new Set();
-      identities.set(record.sourceId, items);
-    }
-    if (items.has(record.itemId)) throw new TypeError("Identités dupliquées");
-    items.add(record.itemId);
+    const identity = JSON.stringify([record.sourceId, record.accountRef, record.itemId]);
+    if (identities.has(identity)) throw new TypeError("Identités dupliquées");
+    identities.add(identity);
   }
 }
 
@@ -138,7 +134,7 @@ export function searchIndex(records, query, options = {}) {
     }
     if (matched.size !== words.length) continue;
     results.push({
-      sourceId: record.sourceId, itemId: record.itemId,
+      sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId,
       name: record.name ? record.name.value : null,
       type: record.type, coverage: record.coverage, reasons
     });

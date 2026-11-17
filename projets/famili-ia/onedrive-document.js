@@ -1,5 +1,5 @@
 import { createContentProvenance } from "./content-index.js";
-import { createPhotoMetadata, hashPhotoBytes, parseProviderCaptureDate } from "./photo-metadata.js";
+import { createPhotoMetadata, hashPhotoBytes, parseProviderCaptureDate, providerPhotoLocation } from "./photo-metadata.js";
 import { getOneDriveAccountFingerprint } from "./onedrive-account.js";
 import { readBoundedBytes } from "./read-bounded-bytes.js";
 
@@ -13,8 +13,8 @@ function isOneDrivePhoto(item, extension) {
     || PHOTO_FILE_PATTERN.test(`.${extension}`);
 }
 
-function readProviderPhotoMetadata(documentId, photo) {
-  if (!photo || typeof photo !== "object" || Array.isArray(photo)) return null;
+function readProviderPhotoMetadata(documentId, photo, location) {
+  if (!photo || typeof photo !== "object" || Array.isArray(photo)) photo = {};
   const values = {};
   const captureDate = parseProviderCaptureDate(photo.takenDateTime, "photo.takenDateTime");
   if (captureDate) values.captureDate = captureDate;
@@ -30,7 +30,8 @@ function readProviderPhotoMetadata(documentId, photo) {
       source: { kind: "provider", field: "photo.cameraMake/photo.cameraModel" }
     };
   }
-  return captureDate || make || model ? createPhotoMetadata(documentId, values) : null;
+  if (location) values.location = location;
+  return captureDate || make || model || location ? createPhotoMetadata(documentId, values) : null;
 }
 
 export async function oneDriveDocumentId(accountId, itemId) {
@@ -80,10 +81,56 @@ export function mergeOneDriveDocumentUpdate(existing, refreshed) {
     ...refreshed,
     ...(existing.photoAnnotations ? { photoAnnotations: existing.photoAnnotations } : {})
   };
-  for (const field of ["contentProvenance", "oneDriveETag", "photoMetadata"]) {
+  for (const field of ["contentProvenance", "oneDriveETag", "oneDriveItemId", "photoMetadata"]) {
     if (!Object.hasOwn(refreshed, field)) delete merged[field];
   }
   return merged;
+}
+
+function oneDriveWebUrl(value) {
+  let url;
+  try { url = new URL(value); } catch { throw new Error("Lien d'origine OneDrive invalide."); }
+  const host = url.hostname.toLowerCase();
+  const allowed = ["1drv.com", "1drv.ms", "onedrive.com", "onedrive.live.com", "sharepoint.com"];
+  if (url.protocol !== "https:" || url.username || url.password ||
+      !allowed.some(domain => host === domain || host.endsWith(`.${domain}`)) ||
+      (url.pathname === "/" && !url.search) || url.hash) {
+    throw new Error("Lien d'origine OneDrive non autorisé.");
+  }
+  return url.href;
+}
+
+export async function resolveOneDriveOriginalUrl({
+  itemId, accountFingerprint, activeAccountFingerprint, getToken, signal, fetchImpl = fetch
+}) {
+  if (typeof itemId !== "string" || !itemId.trim() ||
+      !/^[0-9a-f]{64}$/i.test(accountFingerprint ?? "") ||
+      !/^[0-9a-f]{64}$/i.test(activeAccountFingerprint ?? "") ||
+      typeof getToken !== "function" || typeof fetchImpl !== "function") {
+    throw new TypeError("Paramètres d'ouverture OneDrive invalides.");
+  }
+  if (accountFingerprint.toLowerCase() !== activeAccountFingerprint.toLowerCase()) {
+    throw new Error("Le compte OneDrive connecté ne correspond pas au compte d'origine de cette copie.");
+  }
+  if (signal?.aborted) throw new DOMException("Ouverture OneDrive annulée.", "AbortError");
+  const token = await getToken();
+  if (typeof token !== "string" || !token) throw new Error("Jeton OneDrive indisponible.");
+  const url = new URL(`https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(itemId)}`);
+  url.searchParams.set("$select", "id,webUrl");
+  const response = await fetchImpl(url.href, {
+    headers: { Authorization: `Bearer ${token}` },
+    credentials: "omit",
+    redirect: "error",
+    signal
+  });
+  if (!response.ok) {
+    throw new Error(response.status === 401 || response.status === 403
+      ? `Accès à l'original OneDrive refusé ou expiré (HTTP ${response.status}). Reconnectez-vous puis réessayez.`
+      : `Vérification de l'original OneDrive impossible (HTTP ${response.status}).`);
+  }
+  const item = await response.json();
+  if (item?.id !== itemId) throw new Error("L'identité de l'original OneDrive ne correspond plus à la copie.");
+  return oneDriveWebUrl(item.webUrl);
 }
 
 function downloadUrl(value) {
@@ -101,7 +148,13 @@ async function boundedBytes(response, limit) {
   return readBoundedBytes(response, limit, "Fichier OneDrive au-delà de la limite de taille.");
 }
 
-export async function readOneDriveDocument({ item, accountId, accountFingerprint, getToken, signal, fetchImpl = fetch }) {
+export async function readOneDriveDocument({
+  item, accountId, accountFingerprint, getToken, signal, fetchImpl = fetch,
+  getPhotoLocationConsent = () => false
+}) {
+  if (typeof getPhotoLocationConsent !== "function") {
+    throw new TypeError("Le contrôle du consentement GPS doit être une fonction.");
+  }
   const id = await oneDriveDocumentId(accountId, item.id);
   const originFingerprint = accountFingerprint ?? await getOneDriveAccountFingerprint(accountId);
   if (!/^[0-9a-f]{64}$/i.test(originFingerprint)) {
@@ -117,11 +170,29 @@ export async function readOneDriveDocument({ item, accountId, accountFingerprint
       ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(modified) : "Date inconnue",
     ...(modified && !Number.isNaN(modified.getTime()) ? { modificationDate: modified.toISOString() } : {}),
     isLocal: true, oneDriveSource: true, oneDriveAccountFingerprint: originFingerprint,
+    oneDriveItemId: item.id,
     content: "", summary: "", keywords: ""
   };
   if (typeof item.eTag === "string" && item.eTag) document.oneDriveETag = item.eTag;
   if (type === "Image") {
-    const photoMetadata = readProviderPhotoMetadata(id, item.photo);
+    let location = null;
+    if (getPhotoLocationConsent() === true) {
+      const token = await getToken();
+      if (getPhotoLocationConsent() === true) {
+        const url = new URL(`https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(item.id)}`);
+        url.searchParams.set("$select", "id,location");
+        const response = await fetchImpl(url.href, {
+          headers: { Authorization: `Bearer ${token}` }, credentials: "omit", redirect: "error", signal
+        });
+        if (!response.ok) throw new Error(`Lecture des métadonnées de localisation OneDrive impossible (HTTP ${response.status}).`);
+        const metadata = await response.json();
+        if (metadata.id !== item.id) throw new Error("Identité du fichier OneDrive incohérente.");
+        if (getPhotoLocationConsent() === true) {
+          location = providerPhotoLocation(metadata.location, "location");
+        }
+      }
+    }
+    const photoMetadata = readProviderPhotoMetadata(id, item.photo, location);
     if (photoMetadata) document.photoMetadata = photoMetadata;
     return { document, coverage: "metadata", reason: "photo : métadonnées fournisseur uniquement, sans lecture des pixels" };
   }

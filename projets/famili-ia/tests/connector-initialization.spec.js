@@ -1,5 +1,52 @@
 import { test, expect } from '@playwright/test';
 
+async function prepareOneDriveOriginalResult(page, resolveOriginal) {
+  const originalUrl = 'https://onedrive.live.com/?cid=synthetic&id=element-original';
+  await page.route('**/onedrive-auth.js*', route => route.fulfill({
+    contentType: 'application/javascript',
+    body: `export class OneDriveAuth {
+      connected = false;
+      accountId = "compte-fictif";
+      constructor() { window.__testOneDriveAuth = this; }
+      async initialize() {}
+      async connect() { this.connected = true; }
+      async getToken() { return "jeton-fictif"; }
+      async disconnect() { this.connected = false; }
+    }`
+  }));
+  await page.route('https://graph.microsoft.com/**', route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/v1.0/me/drive/root/children') {
+      return route.fulfill({ json: {
+        value: [{ id: 'element-original', name: 'original.txt', size: 20, file: {} }]
+      } });
+    }
+    return url.searchParams.get('$select') === 'id,webUrl'
+      ? resolveOriginal(route, originalUrl)
+      : route.fulfill({
+        json: { id: 'element-original', '@microsoft.graph.downloadUrl': 'https://files.1drv.com/synthetic' }
+      });
+  });
+  await page.route('https://files.1drv.com/**', route => route.fulfill({ body: 'contenu original fictif' }));
+  await page.context().route('https://onedrive.live.com/**', route =>
+    route.fulfill({ contentType: 'text/html', body: 'original fictif' }));
+  const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.goto('http://127.0.0.1:5188/#/recherche');
+  await initialized;
+  await page.getByRole('button', { name: 'Ajouter des fichiers', exact: true }).click();
+  await page.getByRole('button', { name: 'Options OneDrive', exact: true }).click();
+  await page.locator('#connect-onedrive').click();
+  await page.locator('#start-onedrive').click();
+  await expect(page.locator('#onedrive-status')).toContainText('Parcours terminé.');
+  await page.getByRole('button', { name: 'Fermer le choix des sources' }).click();
+  await page.getByRole('button', { name: 'Retour — Recherche', exact: true }).click();
+  await page.locator('#experimental-index-query').fill('contenu original');
+  await page.locator('#experimental-index-query').press('Enter');
+  const result = page.locator('#experimental-index-results').filter({ hasText: 'original.txt' });
+  await expect(result).toContainText('original.txt');
+  return { result, originalUrl };
+}
+
 for (const scenario of [
   { name: 'sans configuration Google', port: 5188 },
   { name: 'avec bibliothèques Google indisponibles', port: 5189 }
@@ -111,6 +158,167 @@ test('persiste localement le résultat du parcours et le restaure après recharg
   await expect(page.locator('#experimental-source-status')).toContainText('Dernier parcours complet');
 });
 
+test('conserve les copies traitées et le motif si une page OneDrive suivante échoue', async ({ page }) => {
+  await page.route('**/onedrive-auth.js*', route => route.fulfill({
+    contentType: 'application/javascript',
+    body: `export class OneDriveAuth {
+      connected = false;
+      accountId = "compte-fictif";
+      async initialize() {}
+      async connect() { this.connected = true; }
+      async getToken() { return "jeton-fictif"; }
+      async disconnect() { this.connected = false; }
+    }`
+  }));
+  await page.route('https://graph.microsoft.com/**', route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/v1.0/me/drive/root/children') {
+      if (url.searchParams.has('$skiptoken')) return route.fulfill({ status: 503, body: '' });
+      return route.fulfill({ json: {
+        value: [{ id: 'element-partiel', name: 'partiel.txt', size: 20, file: {} }],
+        '@odata.nextLink': 'https://graph.microsoft.com/v1.0/me/drive/root/children?$skiptoken=suivant'
+      } });
+    }
+    return route.fulfill({
+      json: { id: 'element-partiel', '@microsoft.graph.downloadUrl': 'https://files.1drv.com/synthetic' }
+    });
+  });
+  await page.route('https://files.1drv.com/**', route => route.fulfill({ body: 'contenu fictif' }));
+  const initialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.goto('http://127.0.0.1:5188/#/recherche');
+  await initialized;
+  await page.getByRole('button', { name: 'Ajouter des fichiers', exact: true }).click();
+  await page.getByRole('button', { name: 'Options OneDrive', exact: true }).click();
+  await page.locator('#connect-onedrive').click();
+  await expect(page.locator('#start-onedrive')).toBeEnabled();
+  await page.locator('#start-onedrive').click();
+  await expect(page.locator('#onedrive-status')).toContainText('HTTP 503');
+
+  const state = await page.evaluate(async () => {
+    const { getAll } = await import('/db.js');
+    return {
+      documents: await getAll('documents'),
+      runs: await getAll('source_sync')
+    };
+  });
+  expect(state.documents.some(document => document.name === 'partiel.txt')).toBe(true);
+  const run = state.runs.find(record => record.kind === 'source-run-status');
+  expect(run.state).toBe('error');
+  expect(run.discoveredCount).toBeNull();
+  expect(run.processedCount).toBe(1);
+  expect(run.failureReason).toBe('Lecture OneDrive impossible (HTTP 503).');
+
+  const reinitialized = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.reload();
+  await reinitialized;
+  await expect(page.locator('#experimental-source-status')).toContainText('Motif : Lecture OneDrive impossible (HTTP 503)');
+});
+
+test('vérifie puis ouvre l’original OneDrive depuis un résultat de recherche', async ({ page }) => {
+  const { result, originalUrl } = await prepareOneDriveOriginalResult(page,
+    (route, url) => route.fulfill({ json: { id: 'element-original', webUrl: url } }));
+  const popupPromise = page.waitForEvent('popup');
+  await result.getByRole('button', { name: 'Vérifier et ouvrir l’original OneDrive' }).click();
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL(originalUrl);
+  await expect(result).toContainText("Accès vérifié à l'instant");
+});
+
+test('refuse la fenêtre bloquée et la copie supprimée avant la vérification', async ({ page }) => {
+  let lookups = 0;
+  const { result } = await prepareOneDriveOriginalResult(page, route => {
+    lookups++;
+    return route.fulfill({ json: { id: 'element-original', webUrl: 'https://onedrive.live.com/file' } });
+  });
+  const openButton = result.getByRole('button', { name: 'Vérifier et ouvrir l’original OneDrive' });
+  await page.evaluate(() => {
+    window.__nativeWindowOpenForTest = window.open;
+    window.open = () => null;
+  });
+  await openButton.click();
+  await expect(result).toContainText("La fenêtre d'ouverture a été bloquée");
+  expect(lookups).toBe(0);
+  await page.evaluate(() => { window.open = window.__nativeWindowOpenForTest; });
+
+  const documentId = await page.evaluate(async () => {
+    const { getAll } = await import('/db.js');
+    return (await getAll('documents')).find(document => document.name === 'original.txt').id;
+  });
+  await page.evaluate(async id => {
+    const { deleteDocument } = await import('/state.js');
+    await deleteDocument(id);
+  }, documentId);
+  await openButton.click();
+  await expect(result).toContainText("Cette copie ou son identifiant fournisseur n'est plus disponible");
+  expect(lookups).toBe(0);
+});
+
+test('ne navigue pas si le compte change pendant la vérification Graph', async ({ page }) => {
+  let markLookupStarted;
+  let releaseLookup;
+  const lookupStarted = new Promise(resolve => { markLookupStarted = resolve; });
+  const lookupGate = new Promise(resolve => { releaseLookup = resolve; });
+  const { result } = await prepareOneDriveOriginalResult(page, async (route, url) => {
+    markLookupStarted();
+    await lookupGate;
+    return route.fulfill({ json: { id: 'element-original', webUrl: url } });
+  });
+  const popupPromise = page.waitForEvent('popup');
+  await result.getByRole('button', { name: 'Vérifier et ouvrir l’original OneDrive' }).click();
+  const popup = await popupPromise;
+  await lookupStarted;
+  await page.evaluate(() => { window.__testOneDriveAuth.connected = false; });
+  releaseLookup();
+  await expect.poll(() => popup.isClosed()).toBe(true);
+  await expect(result).toContainText('La session ou la copie a changé pendant la vérification');
+});
+
+test('n’ouvre pas une copie supprimée pendant la vérification', async ({ page }) => {
+  let markLookupStarted;
+  let releaseLookup;
+  const lookupStarted = new Promise(resolve => { markLookupStarted = resolve; });
+  const lookupGate = new Promise(resolve => { releaseLookup = resolve; });
+  const { result } = await prepareOneDriveOriginalResult(page, async (route, url) => {
+    markLookupStarted();
+    await lookupGate;
+    return route.fulfill({ json: { id: 'element-original', webUrl: url } });
+  });
+  const popupPromise = page.waitForEvent('popup');
+  await result.getByRole('button', { name: 'Vérifier et ouvrir l’original OneDrive' }).click();
+  const popup = await popupPromise;
+  await lookupStarted;
+  const documentId = await page.evaluate(async () => {
+    const { getAll } = await import('/db.js');
+    return (await getAll('documents')).find(document => document.name === 'original.txt').id;
+  });
+  await page.evaluate(async id => {
+    const { deleteDocument } = await import('/state.js');
+    await deleteDocument(id);
+  }, documentId);
+  releaseLookup();
+  await expect.poll(() => popup.isClosed()).toBe(true);
+  await expect(result).toContainText('La session ou la copie a changé pendant la vérification');
+});
+
+test('ferme le nouvel onglet si l’utilisateur l’a fermé pendant la vérification', async ({ page }) => {
+  let markLookupStarted;
+  let releaseLookup;
+  const lookupStarted = new Promise(resolve => { markLookupStarted = resolve; });
+  const lookupGate = new Promise(resolve => { releaseLookup = resolve; });
+  const { result } = await prepareOneDriveOriginalResult(page, async (route, url) => {
+    markLookupStarted();
+    await lookupGate;
+    return route.fulfill({ json: { id: 'element-original', webUrl: url } });
+  });
+  const popupPromise = page.waitForEvent('popup');
+  await result.getByRole('button', { name: 'Vérifier et ouvrir l’original OneDrive' }).click();
+  const popup = await popupPromise;
+  await lookupStarted;
+  await popup.close();
+  releaseLookup();
+  await expect(result).toContainText("La fenêtre d'ouverture a été fermée avant la fin de la vérification");
+});
+
 test('fait examiner et confirmer les changements OneDrive avant de remplacer une copie', async ({ page }) => {
   await page.route('**/onedrive-auth.js*', route => route.fulfill({
     contentType: 'application/javascript',
@@ -151,7 +359,8 @@ test('fait examiner et confirmer les changements OneDrive avant de remplacer une
   await page.route('https://files.1drv.com/**', route => route.fulfill({ body: content }));
   await page.goto('http://127.0.0.1:5188/#/recherche');
   await expect(page.locator('#connect-onedrive')).toBeEnabled();
-  await page.locator('[data-open-source-dialog]').click();
+  await page.getByRole('button', { name: 'Ajouter des fichiers', exact: true }).click();
+  await page.getByRole('button', { name: 'Options OneDrive', exact: true }).click();
   await expect(page.locator('#source-choice-dialog')).toBeVisible();
   await expect(page.locator('#start-onedrive')).toBeDisabled();
   await expect(page.locator('#stop-onedrive')).toBeHidden();

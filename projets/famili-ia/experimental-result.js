@@ -19,7 +19,8 @@ function describeValue(entry) {
 }
 
 export function describeExperimentalResult(match, record, document, sourceAccess) {
-  if (!match || !record || match.sourceId !== record.sourceId || match.itemId !== record.itemId) {
+  if (!match || !record || match.sourceId !== record.sourceId ||
+      (match.accountRef ?? null) !== record.accountRef || match.itemId !== record.itemId) {
     throw new TypeError("Résultat et fiche incompatibles");
   }
   const details = [];
@@ -56,8 +57,10 @@ export function describeExperimentalResult(match, record, document, sourceAccess
   details.push(`Couverture : ${match.coverage === "partial" ? "texte partiellement recherché" : "métadonnées uniquement"}`);
   details.push(`Dernière vérification de la source : ${record.lastCheck ?? "inconnue"}`);
   details.push(sourceAccess || "Accès actuel à l'original inconnu.");
-  details.push(["drive", "onedrive", "dropbox"].includes(match.sourceId)
-    ? `Original : recherchez ce fichier par son nom dans ${sourceName} ; son accès n'a pas été vérifié.`
+  details.push(match.sourceId === "onedrive" && typeof document?.oneDriveItemId === "string"
+    ? "Original : une action du résultat peut vérifier son accès maintenant et tenter de l'ouvrir ; cela ne garantit pas les accès ultérieurs."
+    : ["drive", "onedrive", "dropbox"].includes(match.sourceId)
+      ? `Original : recherchez ce fichier par son nom dans ${sourceName} ; son accès n'a pas été vérifié.`
     : "Original : recherchez ce fichier sur l'appareil à l'emplacement indiqué s'il est disponible ; son accès n'a pas été vérifié.");
   const reasons = match.reasons.map(reason => {
     const label = reason.location === "content" ? "Texte extrait"
