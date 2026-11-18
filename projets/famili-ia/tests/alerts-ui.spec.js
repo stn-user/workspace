@@ -348,7 +348,7 @@ test('chronologie : dates normalisees, reperes relatifs et dates inconnues sans 
   expect(await snapshot(page)).toEqual(before);
   await page.evaluate(() => { location.hash = '#/profil'; });
   await expect(page.locator('#view-profil')).toBeVisible();
-  await expect(page.locator('body')).not.toHaveClass(/ui-warm/);
+  await expect(page.locator('body')).toHaveClass(/ui-warm/);
 });
 
 test('chronologie des reports : reprise prioritaire, echeance conservee et lecture temporaire', async ({ page }) => {

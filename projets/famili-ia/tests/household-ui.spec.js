@@ -373,7 +373,7 @@ test('cercle personnel : noms litteraux, avatars existants et metadonnees preser
   expect(await snapshot(page)).toEqual(after);
   await page.evaluate(() => { location.hash = '#/profil'; });
   await expect(page.locator('#view-profil')).toBeVisible();
-  await expect(page.locator('body')).not.toHaveClass(/ui-warm/);
+  await expect(page.locator('body')).toHaveClass(/ui-warm/);
 });
 
 test('equipements : filtres, modification sans perte de documents et ajout persistant', async ({ page }) => {

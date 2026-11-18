@@ -51,6 +51,7 @@ for (const width of [390, 768, 1280, 1920]) {
     page.on('pageerror', error => errors.push(error.message));
     await openAssistant(page);
     await expect(page.locator('body')).toHaveClass(/ui-theme/);
+    await expect(page.locator('body')).toHaveClass(/ui-warm/);
     await expect(page.locator('#assistant-context')).toContainText('exemples fictifs');
     await expect(page.locator('#assistant-chat')).toHaveAccessibleName("Conversation avec l'assistant");
     const form = await page.locator('#assistant-form').boundingBox();
@@ -68,10 +69,11 @@ for (const width of [390, 768, 1280, 1920]) {
     await expectUsable(page.locator('#view-assistant'));
     await page.locator('.assistant-suggestion-chip').first().click();
     const input = page.locator('#assistant-input');
-    await expect(input).toHaveValue('Combien ai-je payé pour ma piscine ?');
+    await expect(input).toHaveValue("Quel est le montant de ma facture d'électricité ?");
     await expect(input).toBeFocused();
     await expect(page.locator('#experimental-index-query')).toBeEmpty();
     await expect(page.locator('.chat-message')).toHaveCount(1);
+    await input.fill('Combien ai-je payé pour ma piscine ?');
     await input.press('Enter');
     await expect(page.locator('.chat-message')).toHaveCount(3);
     await expect(page.locator('.chat-message.ai').last()).toContainText('8 900');
@@ -80,10 +82,31 @@ for (const width of [390, 768, 1280, 1920]) {
     const copy = page.locator('.assistant-source').first().getByRole('button', { name: /Voir la copie de/ });
     await copy.click();
     await expect(page.locator('#source-dialog')).toBeVisible();
-    await expect(page.locator('#dialog-content')).toContainText('Exemple fictif');
+    await expect(page.locator('#dialog-content')).toContainText(/exemple fictif/i);
     await page.keyboard.press('Escape');
     await expect(copy).toBeFocused();
     await expectUsable(page.locator('#view-assistant'));
+    await page.locator('.assistant-limits > summary').click();
+    await expect(page.locator('.assistant-limits')).toContainText('sans IA distante ni synthèse de plusieurs documents');
+    await expectUsable(page.locator('#view-assistant'));
+    await page.locator('#assistant-form').scrollIntoViewIfNeeded();
+    const scroll = await page.evaluate(() => {
+      const main = document.querySelector('.main-content');
+      main.scrollTop = main.scrollHeight;
+      window.scrollTo(0, document.scrollingElement.scrollHeight);
+      const lastAction = [...document.querySelectorAll('.assistant-next-question')].at(-1).getBoundingClientRect();
+      const bounds = main.getBoundingClientRect();
+      return {
+        overflow: document.scrollingElement.scrollHeight - innerHeight,
+        outer: window.scrollY, bottomVisible: lastAction.bottom <= bounds.bottom && lastAction.top >= bounds.top
+      };
+    });
+    expect(scroll.overflow).toBeLessThanOrEqual(1);
+    expect(scroll.outer).toBe(0);
+    expect(scroll.bottomVisible).toBe(true);
+    await page.locator('.assistant-next-question').last().click();
+    await expect(input).toBeFocused();
+    await expect(input).toBeInViewport();
 
     // This dormant preview has no application entry point or scan handler.
     await input.focus();
@@ -117,7 +140,7 @@ test('fichiers locaux restaurés : preuve, nom littéral long, copie et conversa
   const name = `<b>Facture piscine & ${'archive'.repeat(22)}</b>.txt`;
   await seedDocuments(page, [{
     id: 'assistant-local', name,
-    content: 'FACTURE PISCINE FICTIVE\nMontant total : 1 234 euros TTC'
+    content: 'FACTURE PISCINE FICTIVE\nMontant total : 1 234 euros TTC <b>à vérifier</b>'
   }]);
   await expect(page.locator('#assistant-context')).toContainText('1 fichier chargé');
   const before = await snapshot(page);
@@ -127,6 +150,15 @@ test('fichiers locaux restaurés : preuve, nom littéral long, copie et conversa
   await expect(response).toContainText('1 234');
   await expect(response.locator('.assistant-response-label')).toContainText('EXTRAIT');
   await expect(response.locator('.assistant-source-name')).toHaveText(`Source : ${name}`);
+  await expect(response.locator('.assistant-answer').first()).toHaveText('Montant total : 1 234 euros TTC <b>à vérifier</b>');
+  await expect(response.locator('.assistant-evidence mark')).toHaveText('Montant total : 1 234 euros TTC <b>à vérifier</b>');
+  expect(await response.locator('.assistant-source').evaluate(source => {
+    const proof = source.querySelector('.assistant-evidence');
+    const name = source.querySelector('.assistant-source-name');
+    const action = source.querySelector('button');
+    return Boolean(proof.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING)
+      && Boolean(name.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING);
+  })).toBe(true);
   await expect(response.locator('b')).toHaveCount(0);
   await expect(response.locator('.assistant-source')).toContainText('Fichier local');
   await expectUsable(page.locator('#view-assistant'));
@@ -171,6 +203,12 @@ test('incertitude, métadonnées seules et saisie littérale ne deviennent pas d
   await expect(metadataResponse).toContainText('preuve suffisante');
   await expect(metadataResponse).toContainText('Assurance drone.txt');
   await expect(metadataResponse.getByRole('button', { name: /Voir la copie/ })).toHaveCount(0);
+  await expect(metadataResponse.locator('.assistant-proof-missing')).toHaveText('Aucun extrait textuel disponible pour cette source.');
+  await expect(metadataResponse.locator('mark')).toHaveCount(0);
+  const before = await snapshot(page);
+  await metadataResponse.getByRole('button', { name: 'Explorer dans Recherche', exact: true }).click();
+  await expect(page.locator('#view-recherche')).toBeVisible();
+  expect(await snapshot(page)).toEqual(before);
 });
 
 test('question blanche et erreur locale explicites, saisie conservée pour réessayer', async ({ page }) => {
@@ -209,6 +247,13 @@ test('petite hauteur et navigation : champ atteignable et conversation conservé
   await input.fill('question fictive introuvable-519');
   await input.press('Enter');
   await expect(page.locator('.chat-message')).toHaveCount(3);
+  await expect(page.locator('#assistant-question-hint')).toContainText('Chaque question est indépendante');
+  const before = await snapshot(page);
+  await page.locator('.chat-message.ai').last().getByRole('button', { name: 'Explorer dans Recherche', exact: true }).click();
+  await expect(page.locator('#view-recherche')).toBeVisible();
+  await page.goBack();
+  await expect(page.locator('#view-assistant')).toBeVisible();
+  expect(await snapshot(page)).toEqual(before);
   await expectUsable(page.locator('#view-assistant'));
   await page.getByRole('button', { name: 'Ouvrir la recherche unifiée' }).click();
   await expect(page.locator('#view-recherche')).toBeVisible();

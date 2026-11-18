@@ -120,9 +120,32 @@ for (const width of [390, 768, 1280, 1920]) {
     expect(externalRequests).toBe(requestsBeforeOptions);
     await page.evaluate(() => { location.hash = '#/profil'; });
     await expect(page.locator('#profile-title')).toBeVisible();
-    await expect(page.locator('body')).not.toHaveClass(/ui-warm/);
+    await expect(page.locator('body')).toHaveClass(/ui-warm/);
     await expectUsable(page.locator('#view-profil'));
-    await expect(page.locator('#pref-auto-scan')).toBeDisabled();
+    await expect(page.locator('#pref-auto-scan')).toHaveCount(0);
+    await expect(page.locator('.profile-address')).not.toHaveAttribute('open', '');
+    await page.locator('.profile-address summary').click();
+    await expectUsable(page.locator('#view-profil'));
+    for (const view of ['profil', 'plus']) {
+      await page.evaluate(view => { location.hash = `#/${view}`; }, view);
+      await expect(page.locator(`#view-${view}`)).toBeVisible();
+      const scroll = await page.evaluate(() => {
+        const main = document.querySelector('.main-content');
+        main.scrollTop = main.scrollHeight;
+        window.scrollTo(0, document.scrollingElement.scrollHeight);
+        const last = document.querySelector(location.hash.endsWith('profil')
+          ? '#start-view-tour-profile' : '#view-plus [data-nav="vos-donnees"]').getBoundingClientRect();
+        const bounds = main.getBoundingClientRect();
+        return {
+          overflow: document.scrollingElement.scrollHeight - innerHeight,
+          scroll: window.scrollY,
+          lastVisible: last.top >= bounds.top && last.bottom <= bounds.bottom
+        };
+      });
+      expect(scroll.overflow).toBeLessThanOrEqual(1);
+      expect(scroll.scroll).toBe(0);
+      expect(scroll.lastVisible).toBe(true);
+    }
     await page.evaluate(() => { location.hash = '#/plus'; });
     await expect(page.locator('#plus-title')).toBeVisible();
     await expect(page.locator('#view-plus .plus-item')).toHaveCount(5);
@@ -332,18 +355,26 @@ test('import : interruption entre deux lots garde les compteurs atteints sans an
 
 test('profil : routes directes, sauvegarde clavier, champs vides et preferences conservees', async ({ page }) => {
   await openView(page, 'profil');
-  const { preferences: initialPreferences, role: initialRole } = await page.evaluate(async () => {
+  const initial = await page.evaluate(async () => {
     const { getCurrentUser } = await import('/state.js');
-    return getCurrentUser();
+    const { put } = await import('/db.js');
+    const user = {
+      ...getCurrentUser(), avatar: '🌿', customMetadata: { preserved: true },
+      preferences: { ...getCurrentUser().preferences, enableAutoScan: true, scanDirectories: ['Archives'] },
+      privacy: { ...getCurrentUser().privacy, telemetryEnabled: true, dataSharingConsent: true,
+        photoLocationConsent: true, lastConsentDate: '2025-01-02T03:04:05.000Z' }
+    };
+    await put('users', user);
+    return user;
   });
+  await reloadView(page);
+  await expect(page.locator('#consent-telemetry, #consent-sharing, #profile-role-readonly, #pref-auto-scan')).toHaveCount(0);
   const name = '<Profil & Test> ' + 'Long'.repeat(30);
   await page.locator('#edit-name').fill(name);
+  await page.locator('.profile-address summary').click();
   await page.locator('#edit-profile-address').fill('');
   await page.locator('#edit-profile-postal').fill('');
   await page.locator('#edit-profile-city').fill('');
-  await page.locator('#consent-telemetry').check();
-  await page.locator('#consent-sharing').check();
-  await page.locator('#consent-photo-gps').check();
   await page.locator('#edit-name').press('Enter');
   await expect(page.locator('#profile-save-status')).toHaveText('Préférences enregistrées.');
   await expect(page.locator('#profile-name')).toHaveText(name);
@@ -351,9 +382,14 @@ test('profil : routes directes, sauvegarde clavier, champs vides et preferences 
   await reloadView(page);
   await expect(page.locator('#edit-name')).toHaveValue(name);
   await expect(page.locator('#edit-profile-address')).toHaveValue('');
-  await expect(page.locator('#consent-telemetry')).toBeChecked();
-  await expect(page.locator('#consent-sharing')).toBeChecked();
   await expect(page.locator('#consent-photo-gps')).toBeChecked();
+  const unchanged = (await snapshot(page))[0][0];
+  expect(unchanged).toEqual({ ...initial, name, address: '', postalCode: '', city: '' });
+  await expect(page.locator('#profile-avatar')).toHaveText('🌿');
+  await page.locator('.profile-address summary').click();
+  await page.locator('#edit-profile-address').fill('12 rue du Test');
+  await page.locator('#edit-profile-postal').fill('75000');
+  await page.locator('#edit-profile-city').fill('Ville choisie');
   await page.locator('#consent-photo-gps').uncheck();
   await page.locator('#save-profile').click();
   await expect(page.locator('#profile-save-status')).toHaveText('Préférences enregistrées.');
@@ -361,17 +397,20 @@ test('profil : routes directes, sauvegarde clavier, champs vides et preferences 
     const { getCurrentUser } = await import('/state.js');
     return getCurrentUser();
   });
-  expect(saved.role).toBe(initialRole);
-  expect(saved.preferences).toEqual(initialPreferences);
+  expect(saved.role).toBe(initial.role);
+  expect(saved.preferences).toEqual(initial.preferences);
+  expect(saved.privacy.telemetryEnabled).toBe(true);
+  expect(saved.privacy.dataSharingConsent).toBe(true);
   expect(saved.privacy.photoLocationConsent).toBe(false);
   await page.locator('#edit-name').fill('   ');
   await page.locator('#save-profile').click();
   await expect(page.locator('#profile-save-status')).toContainText("nom d'affichage");
   await expect(page.locator('#edit-name')).toBeFocused();
   await page.evaluate(() => { location.hash = '#/maison'; });
+  await expect(page.locator('#view-maison')).toContainText('12 rue du Test');
+  await expect(page.locator('#view-maison')).toContainText('Ville choisie');
   await page.locator('.property-edit-btn').click();
   await expect(page.locator('#edit-name')).toHaveValue(name);
-  await expect(page.locator('#profile-role-readonly')).toHaveText('Administrateur');
   await page.getByRole('button', { name: 'Gérer mes données', exact: true }).click();
   await expect(page.locator('#view-vos-donnees')).toBeVisible();
 });
@@ -380,6 +419,7 @@ test('Plus : chaque destination et retour restent accessibles sans changer les d
   await page.setViewportSize({ width: 390, height: 800 });
   await openView(page, 'plus');
   const before = await snapshot(page);
+  await expect(page.locator('.plus-group')).toHaveCount(2);
   for (const destination of ['alertes', 'famille', 'assistant', 'profil', 'vos-donnees']) {
     const button = page.locator(`#view-plus [data-nav="${destination}"]`);
     await button.focus();
@@ -396,7 +436,8 @@ test('profil : erreur de stockage annoncee sans perdre la saisie', async ({ page
   await openView(page, 'profil');
   const before = await snapshot(page);
   await page.locator('#edit-name').fill('Profil fictif');
-  await page.evaluate(() => {
+  await page.locator('#consent-photo-gps').check();
+  const failNextUserWrite = () => page.evaluate(() => {
     const original = IDBObjectStore.prototype.put;
     IDBObjectStore.prototype.put = function (...args) {
       if (this.name === 'users') {
@@ -406,14 +447,101 @@ test('profil : erreur de stockage annoncee sans perdre la saisie', async ({ page
       return original.apply(this, args);
     };
   });
+  await failNextUserWrite();
+  await page.locator('#save-profile').click();
+  await expect(page.locator('#profile-save-status')).toContainText("n'ont pas pu être enregistrées");
+  await expect(page.locator('#edit-name')).toHaveValue('Profil fictif');
+  await expect(page.locator('#consent-photo-gps')).not.toBeChecked();
+  expect((await snapshot(page))[0]).toEqual(before[0]);
+  expect(await page.evaluate(async () => (await import('/state.js')).getCurrentUser())).toEqual(before[0][0]);
+  await failNextUserWrite();
   await page.locator('#save-profile').click();
   await expect(page.locator('#profile-save-status')).toContainText("n'ont pas pu être enregistrées");
   await expect(page.locator('#edit-name')).toHaveValue('Profil fictif');
   expect((await snapshot(page))[0]).toEqual(before[0]);
+  expect(await page.evaluate(async () => (await import('/state.js')).getCurrentUser())).toEqual(before[0][0]);
   await page.locator('#save-profile').click();
   await expect(page.locator('#profile-save-status')).toHaveText('Préférences enregistrées.');
   await reloadView(page);
   await expect(page.locator('#edit-name')).toHaveValue('Profil fictif');
+});
+
+test('profil : retrait GPS partiel signale puis purge persistante sans toucher aux originaux', async ({ page }) => {
+  await openView(page, 'profil');
+  await page.locator('#consent-photo-gps').check();
+  await page.locator('#save-profile').click();
+  await expect(page.locator('#profile-save-status')).toHaveText('Préférences enregistrées.');
+  await page.evaluate(async () => {
+    const { addDocument } = await import('/state.js');
+    const { createPhotoMetadata } = await import('/photo-metadata.js');
+    for (const id of ['gps-first', 'gps-second']) {
+      await addDocument({
+        id, type: 'Image', name: `${id}.jpg`, isLocal: true,
+        originalUrl: `https://example.invalid/${id}.jpg`,
+        photoMetadata: createPhotoMetadata(id, { location: {
+          status: 'available', latitude: 48.8566, longitude: 2.3522,
+          source: { kind: 'exif', field: 'GPS' }
+        } })
+      });
+    }
+  });
+  const before = await snapshot(page);
+  expect(before[1].filter(doc => doc.id.startsWith('gps-')).every(doc =>
+    doc.photoFacts.facts.some(fact => fact.kind === 'location')
+      && doc.indexRecord.fields.some(field => field.name === 'coordinates'))).toBe(true);
+  await page.evaluate(() => {
+    const original = IDBObjectStore.prototype.put;
+    let writes = 0;
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === 'documents' && ++writes === 2) {
+        IDBObjectStore.prototype.put = original;
+        throw new DOMException('Purge de test interrompue', 'QuotaExceededError');
+      }
+      return original.apply(this, args);
+    };
+  });
+  await page.locator('#consent-photo-gps').uncheck();
+  await page.locator('#save-profile').click();
+  await expect(page.locator('#profile-save-status')).toContainText('déjà effacées ne sont pas restaurées');
+  await expect(page.locator('#consent-photo-gps')).toBeChecked();
+  const partial = (await snapshot(page))[1].filter(doc => doc.id.startsWith('gps-'));
+  expect(partial.filter(doc => doc.photoMetadata.location.status === 'available')).toHaveLength(1);
+  await page.locator('#consent-photo-gps').uncheck();
+  await page.locator('#save-profile').click();
+  await expect(page.locator('#profile-save-status')).toHaveText('Préférences enregistrées.');
+  await reloadView(page);
+  await expect(page.locator('#consent-photo-gps')).not.toBeChecked();
+  const after = await snapshot(page);
+  for (const doc of after[1].filter(doc => doc.id.startsWith('gps-'))) {
+    expect(doc.originalUrl).toBe(before[1].find(item => item.id === doc.id).originalUrl);
+    expect(JSON.stringify(doc)).not.toContain('48.8566');
+    expect(doc.photoFacts.facts.some(fact => fact.kind === 'location')).toBe(false);
+    expect(doc.indexRecord.fields.some(field => field.name === 'coordinates')).toBe(false);
+  }
+  for (const index of [2, 3, 4]) expect(after[index]).toEqual(before[index]);
+});
+
+test('profil : acces global, initiale Unicode et raccourcis sans ecriture implicite', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('famili-ia-source-choice-complete', 'true'));
+  await openView(page, 'accueil');
+  await page.getByRole('button', { name: 'Ouvrir mon profil', exact: true }).click();
+  await expect(page.locator('#view-profil')).toBeVisible();
+  await page.locator('#edit-name').fill('Éloïse');
+  await page.locator('#save-profile').click();
+  await expect(page.locator('#profile-save-status')).toHaveText('Préférences enregistrées.');
+  await expect(page.locator('#profile-avatar')).toHaveText('É');
+  await reloadView(page);
+  await expect(page.locator('#profile-avatar')).toHaveText('É');
+  const before = await snapshot(page);
+  for (const [label, view] of [['Ajouter des fichiers', 'importer'], ['Mes alertes', 'alertes'], ['Gérer mes données', 'vos-donnees']]) {
+    await page.getByRole('button', { name: label, exact: true }).click();
+    await expect(page.locator(`#view-${view}`)).toBeVisible();
+    if (view === 'importer') await page.locator('#return-from-import').click();
+    else await page.goBack();
+    await expect(page.locator('#view-profil')).toBeVisible();
+    if (view === 'importer') await expect(page.getByRole('button', { name: label, exact: true })).toBeFocused();
+  }
+  expect(await snapshot(page)).toEqual(before);
 });
 
 test('dossier sur navigateur mobile simule : choix multiple explicite et sans import automatique', async ({ page }) => {

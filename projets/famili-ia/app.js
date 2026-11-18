@@ -10,7 +10,7 @@ import { clearFamilyState, loadFamilyState } from "./family-storage.js";
 import {
   initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts,
   getDocuments, addDocument, confirmDocumentAlert, deleteDocument, calculateAlertType, updateAlert,
-  updateAlertNotificationPreferences, updatePrivacyConsent, updatePhotoLocationConsent, getFullState,
+  updateAlertNotificationPreferences, updateUserProfile, getFullState,
   addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember,
   updatePhotoAnnotations, resetState, getDropboxIndexCheckpoint, saveDropboxIndexCheckpoint,
   clearDropboxIndexCheckpoint, clearDropboxIndexCheckpoints
@@ -3146,7 +3146,7 @@ function showView(name, { addHistory = true, params = {} } = {}) {
     document.querySelector("#return-from-import").hidden = true;
   }
   document.body.classList.toggle('ui-theme', ['accueil', 'recherche', 'alertes', 'vos-donnees', 'maison', 'detail', 'famille', 'assistant', 'importer', 'profil', 'plus'].includes(name));
-  document.body.classList.toggle('ui-warm', ['accueil', 'recherche', 'maison', 'detail', 'importer', 'alertes', 'famille', 'vos-donnees'].includes(name));
+  document.body.classList.toggle('ui-warm', ['accueil', 'recherche', 'maison', 'detail', 'importer', 'alertes', 'famille', 'vos-donnees', 'profil', 'plus', 'assistant'].includes(name));
   if (name !== 'alertes') document.querySelector('#alert-preferences-dialog')?.close();
 
   views.forEach((view) => {
@@ -3387,30 +3387,6 @@ document.querySelectorAll("[data-nav~='importer']").forEach((button) => {
 document.querySelectorAll("[data-nav~='profil']").forEach((button) => {
   button.addEventListener("click", () => {
     showView("profil");
-    // Populate profile data from state
-    const user = getCurrentUser();
-    const avatar = document.querySelector("#profile-avatar");
-    const nameInput = document.querySelector("#edit-name");
-    const addressInput = document.querySelector("#edit-profile-address");
-    const postalInput = document.querySelector("#edit-profile-postal");
-    const cityInput = document.querySelector("#edit-profile-city");
-    const roleEl = document.querySelector("#profile-role");
-    if (avatar && nameInput) {
-      avatar.textContent = user.avatar || 'S';
-      nameInput.value = user.name || 'Mon espace';
-    }
-    if (addressInput && user.address) {
-      addressInput.value = user.address;
-    }
-    if (postalInput && user.postalCode) {
-      postalInput.value = user.postalCode;
-    }
-    if (cityInput && user.city) {
-      cityInput.value = user.city;
-    }
-    if (roleEl) {
-      roleEl.textContent = user.role || 'Administrateur';
-    }
   });
 });
 
@@ -3431,63 +3407,34 @@ function initProfileHandlers() {
       document.querySelector("#edit-name").focus();
       return;
     }
-    if (newName) {
-      // Update current user in state
-      const user = getCurrentUser();
-      user.privacy ??= {};
-      user.name = newName;
-      user.avatar = newName.charAt(0).toUpperCase();
-
-      // Update address, postal code, city
-      const addressInput = document.querySelector("#edit-profile-address");
-      const postalInput = document.querySelector("#edit-profile-postal");
-      const cityInput = document.querySelector("#edit-profile-city");
-      if (addressInput) {
-        user.address = addressInput.value.trim();
-      }
-      if (postalInput) {
-        user.postalCode = postalInput.value.trim();
-      }
-      if (cityInput) {
-        user.city = cityInput.value.trim();
-      }
-      user.privacy.telemetryEnabled = document.querySelector('#consent-telemetry').checked;
-      user.privacy.dataSharingConsent = document.querySelector('#consent-sharing').checked;
-      const photoLocationConsent = document.querySelector("#consent-photo-gps").checked;
-
-      // Update avatar display in profile
-      const avatar = document.querySelector("#profile-avatar");
-      if (avatar) {
-        avatar.textContent = user.avatar;
-      }
-
-      // Trigger a re-render of the dashboard if it's visible
-      if (activeView === 'accueil') {
-        renderAccueilDashboard();
-      }
-
-      try {
-        await updatePhotoLocationConsent(photoLocationConsent);
-        synchronizeStoredPhotoDocuments();
-        refreshExperimentalIndex();
-        await updatePrivacyConsent({
-          telemetryEnabled: user.privacy.telemetryEnabled,
-          dataSharingConsent: user.privacy.dataSharingConsent
-        });
-        initProfileView();
-        if (status) status.textContent = "Préférences enregistrées.";
-        showDemoNotice(`Profil mis à jour : ${newName}`);
-      } catch (error) {
-        console.error("Impossible d'enregistrer les préférences de confidentialité :", error);
-        synchronizeStoredPhotoDocuments();
-        refreshExperimentalIndex();
-        const savedPrivacy = getCurrentUser().privacy || {};
-        document.querySelector("#consent-photo-gps").checked = savedPrivacy.photoLocationConsent === true;
-        document.querySelector("#consent-telemetry").checked = savedPrivacy.telemetryEnabled === true;
-        document.querySelector("#consent-sharing").checked = savedPrivacy.dataSharingConsent === true;
-        if (status) status.textContent = "Les préférences n'ont pas pu être enregistrées. Réessayez.";
-        showDemoNotice("Impossible d'enregistrer les préférences de confidentialité.");
-      }
+    const user = getCurrentUser();
+    const changes = {
+      name: newName,
+      avatar: !user.avatar || user.avatar === getNameInitial(user.name || '')
+        ? getNameInitial(newName) : user.avatar,
+      address: document.querySelector("#edit-profile-address").value.trim(),
+      postalCode: document.querySelector("#edit-profile-postal").value.trim(),
+      city: document.querySelector("#edit-profile-city").value.trim(),
+      photoLocationConsent: document.querySelector("#consent-photo-gps").checked
+    };
+    const saveButton = document.querySelector('#save-profile');
+    saveButton.disabled = true;
+    try {
+      await updateUserProfile(changes);
+      synchronizeStoredPhotoDocuments();
+      refreshExperimentalIndex();
+      initProfileView();
+      status.textContent = "Préférences enregistrées.";
+      showDemoNotice(`Profil mis à jour : ${newName}`);
+    } catch (error) {
+      console.error("Impossible d'enregistrer le profil :", error);
+      synchronizeStoredPhotoDocuments();
+      refreshExperimentalIndex();
+      document.querySelector("#consent-photo-gps").checked = getCurrentUser().privacy?.photoLocationConsent === true;
+      status.textContent = "Les préférences n'ont pas pu être enregistrées. Réessayez. Le choix GPS affiché reflète l'état conservé ; les coordonnées déjà effacées ne sont pas restaurées.";
+      showDemoNotice("Impossible d'enregistrer le profil.");
+    } finally {
+      saveButton.disabled = false;
     }
   });
 
@@ -3496,17 +3443,12 @@ function initProfileHandlers() {
 function initProfileView() {
   const user = getCurrentUser();
   document.querySelector('#profile-save-status').textContent = '';
-  document.querySelector('#profile-avatar').textContent = user.avatar || user.name?.charAt(0).toUpperCase() || '?';
+  document.querySelector('#profile-avatar').textContent = user.avatar || getNameInitial(user.name || '');
   document.querySelector('#profile-name').textContent = user.name || '';
   document.querySelector('#edit-name').value = user.name || '';
   document.querySelector('#edit-profile-address').value = user.address || '';
   document.querySelector('#edit-profile-postal').value = user.postalCode || '';
   document.querySelector('#edit-profile-city').value = user.city || '';
-  const role = user.role === 'Admin' ? 'Administrateur' : user.role === 'Member' ? 'Membre' : user.role || 'Non renseigné';
-  document.querySelector('#profile-role').textContent = role;
-  document.querySelector('#profile-role-readonly').textContent = role;
-  document.querySelector('#consent-telemetry').checked = user.privacy?.telemetryEnabled === true;
-  document.querySelector('#consent-sharing').checked = user.privacy?.dataSharingConsent === true;
   document.querySelector('#consent-photo-gps').checked = user.privacy?.photoLocationConsent === true;
 }
 
@@ -4325,7 +4267,7 @@ function initHouseView(params = {}) {
   }
 }
 
-function getFamilyMemberInitial(name) {
+function getNameInitial(name) {
   return Array.from(name.trim())[0]?.toLocaleUpperCase('fr') || '?';
 }
 
@@ -4349,7 +4291,7 @@ function renderFamilyMembers() {
   } else {
     memberList.innerHTML = members.map(member => {
       const isCurrentUser = member.id === currentUser.id;
-      const avatarText = member.avatar || getFamilyMemberInitial(member.name || '');
+      const avatarText = member.avatar || getNameInitial(member.name || '');
 
       return `
         <li class="ui-card member-card" data-family-member="${escapeHtml(member.id)}">
@@ -4426,8 +4368,8 @@ function initAddMemberDialog() {
         await updateFamilyMember({
           ...existingMember,
           name,
-          avatar: !existingMember.avatar || existingMember.avatar === getFamilyMemberInitial(existingMember.name || '')
-            ? getFamilyMemberInitial(name) : existingMember.avatar,
+          avatar: !existingMember.avatar || existingMember.avatar === getNameInitial(existingMember.name || '')
+            ? getNameInitial(name) : existingMember.avatar,
           birthDate
         });
         showDemoNotice(`Membre modifié : ${name}`);
@@ -4436,7 +4378,7 @@ function initAddMemberDialog() {
           id: `u-${Date.now()}`,
           name,
           role: 'Member',
-          avatar: getFamilyMemberInitial(name),
+          avatar: getNameInitial(name),
           access: 'limited',
           birthDate
         });
@@ -4529,7 +4471,7 @@ function updateManageMembersList(restoreFocusId = null) {
     return `
       <div class="managed-member" data-member-id="${escapeHtml(member.id)}">
         <div class="managed-member-info">
-          <div class="member-avatar" aria-hidden="true">${escapeHtml(member.avatar || getFamilyMemberInitial(member.name || ''))}</div>
+          <div class="member-avatar" aria-hidden="true">${escapeHtml(member.avatar || getNameInitial(member.name || ''))}</div>
           <div class="managed-member-copy">
             <strong>${escapeHtml(member.name)}</strong> ${isCurrentUser ? '<span class="member-you">Vous</span>' : ''}
           </div>
@@ -5761,7 +5703,7 @@ function refreshAssistantContext() {
     context.textContent = 'Mode exemples fictifs : aucun fichier personnel chargé. Les réponses utilisent uniquement les documents de démonstration.';
   } else {
     const counts = countInventorySources(uploadedDocuments);
-    context.textContent = `${counts.total} fichier${counts.total > 1 ? 's' : ''} chargé${counts.total > 1 ? 's' : ''} dans Famili-IA. Recherche documentaire locale limitée aux informations disponibles, pas à tout l'appareil ni au cloud.${counts.demo ? ' Certains fichiers sont des exemples fictifs ; consultez la provenance de chaque source.' : ''}`;
+    context.textContent = `${counts.total} fichier${counts.total > 1 ? 's' : ''} chargé${counts.total > 1 ? 's' : ''} dans Famili-IA. Réponses locales limitées au texte disponible, pas à tout l'appareil ni au cloud.${counts.demo ? ' Certains fichiers sont des exemples fictifs ; consultez la provenance de chaque source.' : ''}`;
   }
 }
 
@@ -5771,7 +5713,7 @@ function refreshAssistantContext() {
 function addUserMessage(text, container) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'chat-message user';
-  const avatar = addTextElement(msgDiv, "div", "chat-avatar", getCurrentUser().name?.trim().charAt(0).toUpperCase() || 'V');
+  const avatar = addTextElement(msgDiv, "div", "chat-avatar", getNameInitial(getCurrentUser().name || ''));
   avatar.setAttribute("aria-hidden", "true");
   const bubble = addTextElement(msgDiv, "div", "chat-bubble", "");
   addTextElement(bubble, "p", "chat-speaker", "Vous");
@@ -5792,12 +5734,20 @@ function addAIMessage(response, container) {
   const bubble = addTextElement(msgDiv, "div", "chat-bubble", "");
   addTextElement(bubble, "p", "chat-speaker", "Famili-IA");
   addTextElement(bubble, "p", "assistant-response-label", response.label);
-  addTextElement(bubble, "p", "assistant-answer", response.answer);
+  const answer = response.status === 'supported' && response.matches[0]?.exactFact
+    ? response.matches[0].exactFact : response.answer;
+  addTextElement(bubble, "p", "assistant-answer", answer);
   for (const match of response.matches) {
     const source = addTextElement(bubble, "div", "assistant-source", "");
+    if (match.evidence) {
+      addTextElement(source, "p", "assistant-proof-label", match.exactFact ? "Passage du document" : "Passage rapproché · à vérifier");
+      const evidence = addTextElement(source, "blockquote", "assistant-evidence", "");
+      addTextElement(evidence, "mark", "", match.evidence);
+    } else {
+      addTextElement(source, "p", "household-note assistant-proof-missing", "Aucun extrait textuel disponible pour cette source.");
+    }
     addTextElement(source, "p", "assistant-source-name", `Source : ${match.document.name}`);
     addTextElement(source, "p", "household-note", match.provenance);
-    if (match.evidence) addTextElement(source, "p", "assistant-answer", `« ${match.evidence} »`);
     if (typeof match.document.content === 'string' && match.document.content.trim()) {
       const button = addTextElement(source, "button", "ui-button ui-button--secondary", "Voir la copie");
       button.type = 'button';
@@ -5812,10 +5762,22 @@ function addAIMessage(response, container) {
         }
         openSource(current);
       });
+    } else {
+      const button = addTextElement(source, "button", "ui-button ui-button--secondary", "Explorer dans Recherche");
+      button.type = 'button';
+      button.dataset.openView = 'recherche';
     }
   }
+  if (!response.matches.length) {
+    const button = addTextElement(bubble, "button", "ui-button ui-button--secondary assistant-search-action", "Explorer dans Recherche");
+    button.type = 'button';
+    button.dataset.openView = 'recherche';
+  }
+  const nextQuestion = addTextElement(bubble, "button", "ui-button ui-button--text assistant-next-question", "Poser une autre question");
+  nextQuestion.type = 'button';
+  nextQuestion.addEventListener('click', () => document.querySelector('#assistant-input').focus());
   container.appendChild(msgDiv);
-  container.scrollTop = container.scrollHeight;
+  msgDiv.scrollIntoView({ block: 'nearest' });
 }
 
 /**

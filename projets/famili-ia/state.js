@@ -593,13 +593,29 @@ export function calculateAlertType(dueDate, currentType, documentType) {
 }
 
 export async function updatePrivacyConsent(newPrivacySettings) {
-  state.currentUser.privacy = {
-    ...state.currentUser.privacy,
-    ...newPrivacySettings,
-    lastConsentDate: new Date().toISOString()
+  const user = {
+    ...state.currentUser,
+    privacy: {
+      ...state.currentUser.privacy,
+      ...newPrivacySettings,
+      lastConsentDate: new Date().toISOString()
+    }
   };
-  await put('users', state.currentUser);
-  return state.currentUser.privacy;
+  await put('users', user);
+  state.currentUser = user;
+  return user.privacy;
+}
+
+export function updateUserProfile({ name, avatar, address, postalCode, city, photoLocationConsent }) {
+  return serializePhotoMutation(async () => {
+    if (!photoLocationConsent || state.currentUser.privacy?.photoLocationConsent !== true) {
+      await updatePhotoLocationConsentUnlocked(photoLocationConsent);
+    }
+    const user = { ...state.currentUser, name, avatar, address, postalCode, city };
+    await put('users', user);
+    state.currentUser = user;
+    return user;
+  });
 }
 
 async function updatePhotoLocationConsentUnlocked(enabled) {

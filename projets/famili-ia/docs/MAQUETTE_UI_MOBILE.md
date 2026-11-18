@@ -181,28 +181,30 @@ Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour r
 - **Validation** : 22 scénarios navigateur réussis (13 foyer/fiches, 6 audits Famille/contrastes et 3 parcours photo/Recherche), 7 tests Node ciblés et build Vite réussi. Quatre largeurs 390/768/1280/1920 px, dialogues à 390 × 660 px, cibles de 48 px, focus, état vide, erreur de stockage puis nouvelle tentative, noms longs/littéraux, avatars, conservation des champs internes et persistance couverts. Renommage et suppression annulée/confirmée préservent les autres associations photo. Consultation sans écriture vérifiée. Inspection visuelle mobile/bureau et mouvement réduit dans des contextes isolés ; document limité au viewport et contenu accessible au-dessus du menu. Appareils physiques, clavier virtuel, lecteur d'écran et audit complet des contrastes non textuels restent à valider.
 
 ### 8. Assistant (issue du menu «Plus»)
-- **Identité** : en-tête compact, palette bleu/marine et composants partagés ; conversation défilable et focalisable au clavier, champ de question dans une carte, suggestions repliables. Le formulaire initial reste visible aux quatre formats de référence.
-- **Contenu réel** : réponses issues du moteur documentaire local existant, statut de vérification, extraits et jusqu'à deux sources. Sans fichier chargé, un mode exemples fictifs est indiqué ; après lecture de la base, le périmètre est réactualisé. Aucun appel à une IA distante.
+- **Identité** : thème chaleureux `ui-warm`, cartes crème, accents ambrés et promesse « Un coup de main pour comprendre vos documents. » La saisie précède les idées et les réponses ; elle est visible dès le premier écran aux quatre formats. Les échanges se déroulent dans le contenu principal, sans hauteur imposée ni défilement imbriqué qui comprime les preuves sur smartphone.
+- **Contenu réel** : moteur documentaire local existant, montant/date/référence repérés dans le texte disponible, statut de vérification et jusqu'à deux sources. Une réponse factuelle présente d'abord la ligne retenue, sans répéter le nom du fichier ; chaque carte place ensuite passage surligné, nom, provenance et action. Un passage rapproché non factuel reste « à vérifier » ; sans preuve, aucun surlignage n'est inventé. Sans fichier chargé, les exemples sont annoncés ; après lecture de la base, le périmètre est réactualisé. Aucun appel à une IA distante ni synthèse multi-documents.
+- **Assistant ou Recherche ?** : volet natif dépliable au clavier. Ici, une question documentaire précise ; dans Recherche, exploration des fichiers et photos avec filtres. L'indépendance de chaque question est rappelée près du champ : aucune mémoire contextuelle entre questions, même si les échanges restent affichés. Pas d'action automatique.
 - **Interactions** :
   - Soumission par bouton ou Entrée → réponse et preuves dans la conversation, sans délai simulé ; le focus reste dans le champ.
-  - Suggestion → prépare la question et referme les idées, sans soumettre ni déclencher la recherche de l'autre écran. La question peut être modifiée avant l'envoi.
+  - Suggestion montant/date/référence → prépare une question à adapter à ses documents et referme les idées, sans soumettre ni déclencher la recherche de l'autre écran.
   - Copie disponible → dialogue d'extrait partagé, distinction avec l'original et retour du focus au bouton. Une copie devenue indisponible est signalée explicitement.
   - Question blanche → message et focus ; erreur locale → message, question conservée et nouvelle tentative possible. Ambiguïtés, absence de preuve ou de résultat restent explicites.
   - La conversation reste dans la page lors d'une navigation et disparaît au rechargement ; aucun historique n'est persisté.
-  - « Rechercher » → recherche unifiée pour les filtres multi-sources et annotations photo ; l'Assistant ne prétend pas utiliser ce moteur photo. La brique proactive sur l'Accueil (10.7.d) n'est pas ajoutée ici.
+  - « Rechercher » → recherche unifiée pour les filtres multi-sources et annotations photo ; en l'absence de résultat ou de copie textuelle, « Explorer dans Recherche » ouvre aussi cette vue sans recherche cachée ni écriture. L'Assistant ne prétend pas utiliser ce moteur photo.
+  - « Poser une autre question » → focus et retour au champ. La réponse ajoutée est mise en vue dans le défilement principal ; le champ conserve son focus après envoi sans forcer le retour en haut.
 - **Dernier dialogue applicatif** : l'ancien aperçu de scan, sans point d'entrée ni traitement relié, adopte `ui-dialog`, avec champs désactivés et case non précochée. Aucun bouton d'autorisation ni nouveau scan ; fermeture nommée, Échap et retour du focus. Les confirmations natives des suppressions et échéances restent inchangées.
-- **Validation** : neuf tests `tests/assistant-ui.spec.js` passent : quatre largeurs, petite hauteur 390 × 480, clavier, sources, copie, données fictives/réelles de test, noms longs littéraux, incertitude, erreur/reprise et conservation des données. La suite réunie passe 131 tests navigateur, dont 42 audits des dix vues aux quatre formats et clavier/mouvement réduit. Cinq tests unitaires du moteur documentaire et compilation réussis. Pas de requête externe liée aux interactions testées.
-- **Limites** : appareils physiques, clavier virtuel réel, lecteur d'écran et contrastes complets restent à vérifier. Les limites historiques PDF/tests des sources ne sont pas corrigées ni revalidées dans cette tranche ; les comptes réels et le scan automatique ne sont pas validés.
+- **Validation de l'harmonisation** : 22 scénarios navigateur passent (9 Assistant, 6 audits Assistant/contrastes, 1 navigation Plus et 6 visites), 5 tests Node du moteur documentaire et build réussis. Quatre largeurs, petite hauteur 390 × 480, noms longs, preuve littérale non interprétée, ordre preuve/source/action, source sans texte, navigation, clavier/focus, erreur/reprise et absence d'écriture couverts. Inspection visuelle mobile/bureau, mouvement réduit, contrastes des réponses et absence de défilement sous le menu vérifiés en contexte isolé. Le test d'aperçu accepte la casse du document d'exemple existant, sans changer son contenu. La validation historique bleu/marine comptait 131 tests navigateur ; elle n'est pas assimilée à la suite ciblée actuelle.
+- **Limites** : appareils physiques, clavier virtuel réel, lecteur d'écran et audit complet des contrastes non textuels restent à vérifier. Comptes réels et scan automatique non validés ici. L'Assistant enrichi (index commun, compréhension/synthèse, actions confirmées, suivi proactif) est un chantier de conception séparé du plan actif ; aucun modèle, reconnaissance faciale ou paiement n'est ajouté par cette refonte.
 
 ### 9. Profil (issue du menu «Plus»)
-- **Identité** : formulaire partagé et cartes bleu/marine, colonne secondaire sur grand écran, empilement sous 900 px. Nom et adresse occupent la largeur ; code postal et ville restent côte à côte.
-- **Contenu** : identité locale, rôle en lecture seule et préférences de confidentialité existantes. Aucune création de compte, modification de rôle ou nouvelle permission.
+- **Identité** : thème chaleureux, carte crème, avatar texte ou initiale ambrée, nom choisi et introduction courte. Colonne secondaire sur grand écran, empilement sous 900 px. L'adresse facultative est repliée par défaut ; code postal et ville restent côte à côte hors mobile.
+- **Contenu** : nom d'affichage, adresse utilisée dans Maison et consentement GPS fonctionnel. Aucun rôle affiché, compte créé, partage ni nouvelle permission. Le bouton de profil de l'en-tête ouvre réellement cette vue.
 - **Interactions** :
   - Formulaire renseigné depuis l'état sur route directe, après chargement de la base et depuis toute navigation (y compris Maison). Champs vides conservés, nom constitué d'espaces refusé avec message et focus.
-  - Enregistrement par bouton ou Entrée → mécanismes existants ; résultat annoncé. Rôle et préférences de scan/connexion restent inchangés. Le consentement GPS conserve son traitement existant de retrait des coordonnées.
-  - Télémétrie/partage : préférences enregistrées, sans prétendre activer un envoi ou un partage familial réel.
-  - Les anciens contrôles non reliés d'accès local, scan automatique, répertoires et connexion Drive sont désactivés dans un aperçu explicitement non opérationnel. Aucun nouveau branchement de scan ou d'authentification.
-  - « Gérer mes données », « Revoir la découverte » et « Visiter les autres vues » conservent leurs parcours.
+  - Enregistrement par bouton ou Entrée → sauvegarde attendue avant publication de l'identité ; bouton désactivé pendant l'opération et résultat annoncé. Nom blanc refusé explicitement. Avatar personnalisé conservé, initiale automatique actualisée.
+  - Les contrôles de télémétrie/partage et l'aperçu non relié d'accès local, scan automatique, répertoires et connexion Drive sont retirés. Rôle, anciennes préférences, consentements et métadonnées restent enregistrés sans être réinitialisés lors d'un renommage.
+  - GPS : prochains imports uniquement, sans relecture automatique des copies. Désactiver conserve la purge locale existante des coordonnées/faits/index et ne modifie aucun original. En cas d'erreur, la saisie reste disponible et la case reflète le consentement réellement enregistré ; des coordonnées déjà effacées ne sont pas restaurées.
+  - « Vos fichiers et vos rappels » conserve les accès aux données et ajoute des raccourcis vers Importer et Alertes. « Un coup de main » réunit « Revoir la découverte » et « Visiter les autres vues », sans aide imposée.
 
 ### 10. Vos données (issue du menu «Plus»)
 - **Contenu** : fichiers enregistrés dans Famili-IA, issus de l'appareil, Google Drive, OneDrive ou Dropbox, avec provenance et couverture. Sans fichier personnel, les exemples intégrés restent disponibles et sont explicitement distingués des données de l'utilisateur. L'inventaire ne représente pas l'ensemble des comptes.
@@ -220,12 +222,17 @@ Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour r
 - **Limites** : le PDF est un bilan chiffré, pas l'intégralité des données du JSON. Appareils physiques, téléchargement natif, lecteur d'écran, audit complet des contrastes non textuels et connexions réelles restent à valider.
 
 ### 11. Écran «Plus» *(nouveauté 9.16)*
-- **Contenu** : cinq cartes de destination (voir ci-dessus), icônes SVG et badges bleu/marine ; sous-titres sans troncature.
+- **Contenu** : cinq cartes crème avec icônes SVG ambrées et compteurs existants, sans troncature des sous-titres. Deux groupes : « Au quotidien » (Alertes, Famille, Assistant) et « Votre espace » (Profil, Vos données). Les descriptions ne suggèrent plus des permissions ou un partage familial opérationnel.
 - **Interactions** :
   - Tap destination → navigation correspondante (le menu «Plus» perd son état actif, la vue d'origine reprend l'état actif au retour)
   - Bouton retour → vue d'origine
 
-### Validation de la tranche Importer / Profil / Plus
+### Validation de l'harmonisation Profil / Plus
+- 60 scénarios navigateur réussis : 16 gestion/import/profil, 13 foyer/fiches, 14 Alertes, 6 visite des vues, 10 audits Profil/Plus/contrastes et 1 rejeu de découverte. Build Vite réussi.
+- Quatre largeurs, cibles de 48 px, clavier/focus, noms longs/littéraux, avatars, champs facultatifs, erreurs de sauvegarde et reprise, conservation des anciennes valeurs et purge GPS interrompue puis reprise couverts. Les cinq destinations de Plus et les raccourcis Profil n'écrivent pas dans les données à la navigation.
+- Inspection visuelle mobile/bureau et mouvement réduit dans des contextes isolés ; adresse fermée/ouverte et absence de défilement sous le menu vérifiées. Appareils physiques, lecteur d'écran et connexions réelles restent à valider.
+
+### Validation historique de la tranche Importer / Profil / Plus
 - `tests/management-ui.spec.js` : onze scénarios passent, dont les quatre largeurs 390, 768, 1280 et 1920 px, la saisie à 390 × 480 px, clavier/focus, annulation, stockage indisponible et reprise, import TXT fictif, profil persistant et navigation depuis Plus.
 - Douze audits ciblés Importer/Profil/Plus et 49 tests de non-régression (foyer, Alertes, données, onboarding, extraits et visite guidée), ainsi que la compilation, complètent cette validation.
 - Le repli de dossier mobile est simulé par user-agent ; il ne valide ni le sélecteur natif ni la caméra sur appareil réel. Aucun compte externe réel n'est connecté pour ces tests.
