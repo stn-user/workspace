@@ -11,7 +11,7 @@ import {
   initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts,
   getDocuments, addDocument, confirmDocumentAlert, confirmDocumentDeadline, deleteDocument, calculateAlertType, updateAlert,
   updateAlertNotificationPreferences, updateUserProfile, updateHousePhoto, getFullState,
-  addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember,
+  addFamilyMember, addEquipment, updateEquipment, updateEquipmentPhoto, deleteEquipment, deleteFamilyMember, updateFamilyMember,
   updatePhotoAnnotations, resetState, getDropboxIndexCheckpoint, saveDropboxIndexCheckpoint,
   clearDropboxIndexCheckpoint, clearDropboxIndexCheckpoints
 } from "./state.js";
@@ -20,7 +20,7 @@ import { redactPhotoFactLocationsForExport } from "./photo-facts.js";
 import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
 import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
 import { getPhotoThumbnailDataUrl } from "./photo-thumbnails.js";
-import { prepareHousePhoto, validateHousePhoto } from "./house-photo.js";
+import { prepareCoverPhoto, validateCoverPhoto } from "./cover-photo.js";
 import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline } from "./photo-timeline.js";
 import { getAlertsToNotify, getDaysUntilDate, normalizeAlertDate, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
@@ -3457,6 +3457,51 @@ function getEquipmentIllustration(category) {
   return Object.hasOwn(illustrations, category) ? illustrations[category] : null;
 }
 
+function getEquipmentCover(equipment) {
+  let photo = null;
+  let error = '';
+  try {
+    if (equipment.coverPhoto) photo = validateCoverPhoto(equipment.coverPhoto);
+  } catch (cause) {
+    console.error("Photo personnelle d'équipement invalide :", cause);
+    error = 'Votre photo ne peut pas être affichée. Le visuel par défaut est utilisé.';
+  }
+  const illustration = getEquipmentIllustration(equipment.category);
+  const source = photo?.dataUrl || illustration;
+  const visual = source
+    ? `<img src="${escapeHtml(source)}" alt="" loading="lazy" decoding="async" data-equipment-cover="${escapeHtml(equipment.id)}" data-personal-photo="${Boolean(photo)}" style="object-position: ${photo?.positionX ?? 50}% ${photo?.positionY ?? 50}%">`
+    : getEquipmentIcon(equipment.category);
+  return {
+    photo, illustration, visual, error,
+    origin: photo ? 'Photo personnelle · cet appareil' : illustration ? 'Illustration IA' : 'Repère de catégorie'
+  };
+}
+
+function bindEquipmentPhotoErrors(root) {
+  root.querySelectorAll('img[data-equipment-cover]').forEach(image => {
+    image.addEventListener('error', () => {
+      const equipment = getEquipmentDetail(image.dataset.equipmentCover);
+      if (!equipment) return;
+      const scope = image.closest('.equipment-row, .equipment-cover');
+      const personal = image.dataset.personalPhoto === 'true';
+      const illustration = getEquipmentIllustration(equipment.category);
+      console.error(personal ? "Photo personnelle d'équipement illisible." : "Illustration d'équipement indisponible.");
+      const fallbackImage = personal && illustration;
+      if (fallbackImage) {
+        image.dataset.personalPhoto = 'false';
+        image.style.objectPosition = '50% 50%';
+        image.src = illustration;
+      } else image.outerHTML = getEquipmentIcon(equipment.category);
+      scope.querySelector('.equipment-photo-origin').textContent = fallbackImage ? 'Illustration IA' : 'Repère de catégorie';
+      const notice = scope.querySelector('.equipment-photo-error');
+      notice.hidden = false;
+      notice.textContent = personal
+        ? 'Votre photo est illisible. Le visuel par défaut est utilisé ; vous pouvez remplacer ou retirer votre photo.'
+        : "L'illustration est indisponible. Le repère de catégorie est utilisé.";
+    });
+  });
+}
+
 /**
  * Render equipment list based on category filter
  */
@@ -3489,11 +3534,8 @@ function renderEquipmentList(category = 'tout') {
   }
 
   equipmentList.innerHTML = equipment.map(eq => {
-    const illustration = getEquipmentIllustration(eq.category);
+    const cover = getEquipmentCover(eq);
     const documentCount = new Set(eq.docs || []).size;
-    const icon = illustration
-      ? `<img src="${illustration}" alt="" loading="lazy" decoding="async">`
-      : getEquipmentIcon(eq.category);
     let iconClass = 'blue';
     if (eq.category === 'pompe') { iconClass = 'green'; }
     else if (eq.category === 'piscine') { iconClass = 'violet'; }
@@ -3502,14 +3544,15 @@ function renderEquipmentList(category = 'tout') {
 
     return `
       <button class="ui-button ui-button--secondary equipment-row" type="button" data-equipment="${escapeHtml(eq.id)}" data-open-view="detail?id=${escapeHtml(encodeURIComponent(eq.id))}">
-        <span class="ui-icon row-icon ${iconClass}${illustration ? ' equipment-visual' : ''}" aria-hidden="true">${icon}</span>
-        <span class="row-copy"><strong>${escapeHtml(eq.name)}</strong><small>Statut saisi : ${escapeHtml(eq.status || 'non renseigné')}</small><small>${documentCount} document${documentCount > 1 ? 's' : ''} associé${documentCount > 1 ? 's' : ''}</small></span>
+        <span class="ui-icon row-icon ${iconClass} equipment-visual" aria-hidden="true">${cover.visual}</span>
+        <span class="row-copy"><strong>${escapeHtml(eq.name)}</strong><small class="equipment-photo-origin">${cover.origin}</small><small class="equipment-photo-error" ${cover.error ? '' : 'hidden'}>${cover.error}</small><small>Statut saisi : ${escapeHtml(eq.status || 'non renseigné')}</small><small>${documentCount} document${documentCount > 1 ? 's' : ''} associé${documentCount > 1 ? 's' : ''}</small></span>
         <span class="stat-arrow" aria-hidden="true">›</span>
       </button>
     `;
   }).join('');
 
   equipmentEmpty.hidden = true;
+  bindEquipmentPhotoErrors(equipmentList);
 }
 
 /**
@@ -3654,9 +3697,7 @@ function initEquipmentDetailView(eqId) {
   document.querySelector('#detail-description').textContent = 'Ses repères, ses papiers et ce qui mérite votre attention.';
   if (detailBreadcrumb) detailBreadcrumb.textContent = name;
 
-  const categoryIcon = getCategorySvgIcon(eqDetail.category);
-  const colorClass = getCategoryColorClass(eqDetail.category);
-  const illustration = getEquipmentIllustration(eqDetail.category);
+  const cover = getEquipmentCover(eqDetail);
   const documentIds = new Set(eqDetail.docs || []);
   const availableDocuments = [...uploadedDocuments, ...documents];
   const reminders = getAlerts().filter(alert =>
@@ -3665,8 +3706,12 @@ function initEquipmentDetailView(eqId) {
   detailContent.innerHTML = `
     <section class="ui-card equipment-overview">
       <div class="equipment-cover">
-        ${illustration ? `<img src="${illustration}" alt="" loading="lazy" decoding="async">` : `<span class="spec-icon ${colorClass}" aria-hidden="true">${categoryIcon}</span>`}
-        <small>${illustration ? "Visuel d'illustration, pas une photo de votre équipement." : 'Repère de catégorie'}</small>
+        <div class="equipment-cover-frame">
+          ${cover.visual}
+          <button class="ui-button ui-button--secondary equipment-photo-edit" type="button" data-edit-equipment-photo="${escapeHtml(eqDetail.id)}" aria-haspopup="dialog">Modifier la photo</button>
+        </div>
+        <small class="equipment-photo-origin">${cover.photo || !cover.illustration ? cover.origin : "Visuel d'illustration IA, pas une photo de votre équipement."}</small>
+        <small class="equipment-photo-error" role="status" ${cover.error ? '' : 'hidden'}>${cover.error}</small>
       </div>
       <div class="equipment-specs">
       <h2>Ses repères</h2>
@@ -3727,6 +3772,7 @@ function initEquipmentDetailView(eqId) {
       <div class="equipment-actions"><button class="ui-button ui-button--danger" type="button" id="delete-equipment">Supprimer cet équipement</button></div>
   `;
 
+  bindEquipmentPhotoErrors(detailContent);
   document.querySelector('#edit-equipment').addEventListener('click', () => {
     openEquipmentForm(eqDetail);
   });
@@ -4248,7 +4294,7 @@ function setHousePhotoVisual(photo) {
 function renderHousePhoto(message = '') {
   let photo = null;
   try {
-    if (getCurrentUser().housePhoto) photo = validateHousePhoto(getCurrentUser().housePhoto);
+    if (getCurrentUser().housePhoto) photo = validateCoverPhoto(getCurrentUser().housePhoto);
   } catch (error) {
     console.error('Photo personnelle de Maison invalide :', error);
     message = "Votre photo ne peut pas être affichée. L'illustration IA est utilisée ; vous pouvez remplacer ou retirer votre photo.";
@@ -4260,7 +4306,7 @@ function renderHousePhoto(message = '') {
   return photo;
 }
 
-function initHousePhotoDialog() {
+function initCoverPhotoDialog() {
   const dialog = document.querySelector('#house-photo-dialog');
   const input = document.querySelector('#house-photo-input');
   const choose = document.querySelector('#choose-house-photo');
@@ -4274,6 +4320,7 @@ function initHousePhotoDialog() {
   const y = document.querySelector('#house-photo-y');
   let draft = null;
   let expectedUser = null;
+  let equipmentTarget = null;
   let generation = 0;
   let preparing = false;
   let saving = false;
@@ -4291,16 +4338,31 @@ function initHousePhotoDialog() {
     }
   }
 
-  document.querySelector('#edit-house-photo').addEventListener('click', () => {
-    draft = renderHousePhoto();
+  function open(equipment = null) {
+    equipmentTarget = equipment;
+    draft = equipment ? getEquipmentCover(equipment).photo : renderHousePhoto();
     expectedUser = getCurrentUser();
-    remove.hidden = !expectedUser.housePhoto;
+    remove.hidden = !(equipment ? equipment.coverPhoto : expectedUser.housePhoto);
+    document.querySelector('#house-photo-title').textContent = equipment ? "Photo de l'équipement" : 'Photo de la maison';
+    input.setAttribute('aria-label', equipment ? "Photo personnelle pour cet équipement" : 'Photo personnelle pour Maison');
     status.textContent = '';
-    const frame = document.querySelector('.property-illustration').getBoundingClientRect();
+    const frame = document.querySelector(equipment ? '.equipment-cover-frame' : '.property-illustration').getBoundingClientRect();
     preview.parentElement.style.aspectRatio = `${frame.width} / ${frame.height}`;
     preview.parentElement.style.width = `${Math.min(480, 240 * frame.width / frame.height)}px`;
     updateControls();
     dialog.showModal();
+  }
+  document.querySelector('#edit-house-photo').addEventListener('click', () => open());
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-edit-equipment-photo]');
+    if (!button) return;
+    const equipment = getEquipmentDetail(button.dataset.editEquipmentPhoto);
+    if (!equipment) {
+      console.error("L'équipement à personnaliser n'existe plus.");
+      showDemoNotice("Cet équipement n'existe plus.");
+      return;
+    }
+    open(equipment);
   });
   choose.addEventListener('click', () => input.click());
   close.addEventListener('click', () => dialog.close());
@@ -4308,7 +4370,7 @@ function initHousePhotoDialog() {
   dialog.addEventListener('cancel', event => { if (saving) event.preventDefault(); });
   dialog.addEventListener('close', () => {
     generation += 1;
-    draft = expectedUser = null;
+    draft = expectedUser = equipmentTarget = null;
     preparing = false;
     input.value = '';
     preview.removeAttribute('src');
@@ -4322,13 +4384,13 @@ function initHousePhotoDialog() {
     status.textContent = 'Préparation locale de la photo…';
     updateControls();
     try {
-      const photo = await prepareHousePhoto(file);
+      const photo = await prepareCoverPhoto(file);
       if (current !== generation || !dialog.open) return;
       draft = photo;
       status.textContent = 'Ajustez le cadrage si besoin, puis enregistrez.';
     } catch (error) {
       if (current !== generation || !dialog.open) return;
-      console.error('Impossible de préparer la photo de Maison :', error);
+      console.error('Impossible de préparer la photo de couverture :', error);
       status.textContent = error.message;
     } finally {
       if (current === generation) {
@@ -4345,7 +4407,7 @@ function initHousePhotoDialog() {
   });
   preview.addEventListener('error', () => {
     if (!dialog.open || !draft) return;
-    console.error("L'aperçu de la photo de Maison est illisible.");
+    console.error("L'aperçu de la photo de couverture est illisible.");
     draft = null;
     status.textContent = 'Cette copie est illisible. Choisissez une autre photo ou retirez la copie enregistrée.';
     updateControls();
@@ -4361,13 +4423,15 @@ function initHousePhotoDialog() {
       : "L'illustration de Maison est indisponible.";
   });
   async function persist(photo, message) {
+    const target = equipmentTarget;
     saving = true;
     status.textContent = 'Enregistrement sur cet appareil…';
     updateControls();
     try {
-      await updateHousePhoto(photo, expectedUser);
+      if (target) await updateEquipmentPhoto(photo, target, expectedUser);
+      else await updateHousePhoto(photo, expectedUser);
     } catch (error) {
-      console.error('Impossible de modifier la photo de Maison :', error);
+      console.error('Impossible de modifier la photo de couverture :', error);
       status.textContent = `La modification n'a pas pu être enregistrée : ${error.message}`;
       return;
     } finally {
@@ -4375,12 +4439,20 @@ function initHousePhotoDialog() {
       updateControls();
     }
     dialog.close();
-    renderHousePhoto(message);
+    if (target) {
+      initHouseView(parseHash().params);
+      if (activeView === 'detail') {
+        initEquipmentDetailView(parseHash().params.id);
+        document.querySelector('[data-edit-equipment-photo]')?.focus();
+      }
+      showDemoNotice(message);
+    } else renderHousePhoto(message);
   }
   save.addEventListener('click', () => { if (draft && !saving && !preparing) void persist(draft, 'Photo enregistrée sur cet appareil.'); });
   remove.addEventListener('click', () => {
-    if (saving || preparing || !confirm("Retirer votre photo de cet appareil et réafficher l'illustration IA ? L'original reste inchangé.")) return;
-    void persist(null, "Photo retirée. L'illustration IA est réaffichée.");
+    const fallback = equipmentTarget ? 'le visuel par défaut' : "l'illustration IA";
+    if (saving || preparing || !confirm(`Retirer votre photo de cet appareil et réafficher ${fallback} ? L'original reste inchangé.`)) return;
+    void persist(null, equipmentTarget ? 'Photo retirée. Le visuel par défaut est réaffiché.' : "Photo retirée. L'illustration IA est réaffichée.");
   });
 }
 
@@ -6404,4 +6476,4 @@ function initResetOnboardingButton() {
 // Initialiser le bouton de réinitialisation de l'onboarding
 initResetOnboardingButton();
 initViewTour();
-initHousePhotoDialog();
+initCoverPhotoDialog();

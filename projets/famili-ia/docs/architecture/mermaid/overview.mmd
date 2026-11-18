@@ -17,7 +17,7 @@ graph TD
         H[index-session.js - instance commune des copies]
         L[assistant-context.js - sujet, faits et preuves vérifiées]
         M[document-alert-action.js - propositions et preuves]
-        N[house-photo.js - copie de couverture locale sans analyse]
+        N[cover-photo.js - copies locales Maison et équipements sans analyse]
     end
 
     subgraph "Intégrations Externes [Capacitor / Google Drive]"
@@ -41,7 +41,7 @@ graph TD
     H -->|échéances et segments vérifiés| M
     M -->|confirmation explicite : confirmDocumentDeadline| D
     D -->|transaction document et alerte, puis résultat| C
-    C -->|choix facultatif et cadrage Maison| N
+    C -->|choix facultatif et cadrage de couverture| N
     N -->|copie JPEG bornée, confirmation utilisateur| D
 
     %% Flux cloud

@@ -7,7 +7,7 @@ import { generateAlertForDoc, getAlertLevelForDate, normalizeAlertNotificationPr
 import { createPhotoMetadata, mergePhotoMetadata, normalizePhotoDocument } from './photo-metadata.js';
 import { reconcilePhotoFactSet, removePhotoFactsAndDependents } from './photo-facts.js';
 import { normalizeOptionalBirthDate } from './family-members.js';
-import { validateHousePhoto } from './house-photo.js';
+import { validateCoverPhoto } from './cover-photo.js';
 import { isPhotoDocument, normalizePhotoAnnotations, removePhotoMemberAssociation } from './photo-annotations.js';
 import { createDocumentIndexRecord } from './document-index.js';
 import { migrateDocumentIndexes } from './document-index-migration.js';
@@ -429,25 +429,49 @@ export function updatePhotoAnnotations(documentId, annotations) {
   return serializePhotoMutation(() => updatePhotoAnnotationsUnlocked(documentId, annotations));
 }
 
-export async function addEquipment(equipment) {
-  state.homeEquipment.push(equipment);
-  await put('equipment', equipment);
-  return state.homeEquipment;
-}
-
-export async function updateEquipment(equipment) {
-  const index = state.homeEquipment.findIndex(eq => eq.id === equipment.id);
-  if (index !== -1) {
-    state.homeEquipment[index] = equipment;
+export function addEquipment(equipment) {
+  return serializePhotoMutation(async () => {
     await put('equipment', equipment);
-  }
-  return state.homeEquipment;
+    state.homeEquipment.push(equipment);
+    return state.homeEquipment;
+  });
 }
 
-export async function deleteEquipment(id) {
-  state.homeEquipment = state.homeEquipment.filter(eq => eq.id !== id);
-  await remove('equipment', id);
-  return state.homeEquipment;
+export function updateEquipment(equipment) {
+  return serializePhotoMutation(async () => {
+    const index = state.homeEquipment.findIndex(eq => eq.id === equipment.id);
+    if (index === -1) throw new Error("Cet équipement n'existe plus.");
+    const updated = { ...equipment };
+    if (state.homeEquipment[index].coverPhoto) updated.coverPhoto = state.homeEquipment[index].coverPhoto;
+    else delete updated.coverPhoto;
+    await put('equipment', updated);
+    state.homeEquipment[index] = updated;
+    return state.homeEquipment;
+  });
+}
+
+export function deleteEquipment(id) {
+  return serializePhotoMutation(async () => {
+    await remove('equipment', id);
+    state.homeEquipment = state.homeEquipment.filter(eq => eq.id !== id);
+    return state.homeEquipment;
+  });
+}
+
+export function updateEquipmentPhoto(photo, expectedEquipment, expectedUser) {
+  const copy = photo === null ? null : validateCoverPhoto(photo);
+  return serializePhotoMutation(async () => {
+    const index = state.homeEquipment.findIndex(eq => eq === expectedEquipment);
+    if (state.currentUser !== expectedUser || index === -1) {
+      throw new Error("Cet équipement ou votre espace a changé. Fermez puis rouvrez le choix de photo avant de réessayer.");
+    }
+    const equipment = { ...state.homeEquipment[index] };
+    if (copy === null) delete equipment.coverPhoto;
+    else equipment.coverPhoto = copy;
+    await put('equipment', equipment);
+    state.homeEquipment[index] = equipment;
+    return equipment;
+  });
 }
 
 async function addDocumentUnlocked(document) {
@@ -692,12 +716,7 @@ export function updateUserProfile({ name, avatar, address, postalCode, city, pho
 }
 
 export function updateHousePhoto(photo, expectedUser) {
-  const validated = photo === null ? null : validateHousePhoto(photo);
-  const copy = validated === null ? null : {
-    schemaVersion: validated.schemaVersion, mimeType: validated.mimeType,
-    width: validated.width, height: validated.height, byteLength: validated.byteLength,
-    dataUrl: validated.dataUrl, positionX: validated.positionX, positionY: validated.positionY
-  };
+  const copy = photo === null ? null : validateCoverPhoto(photo);
   return serializePhotoMutation(async () => {
     if (state.currentUser !== expectedUser) {
       throw new Error("Votre espace a changé. Fermez puis rouvrez le choix de photo avant de réessayer.");

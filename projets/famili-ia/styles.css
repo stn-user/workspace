@@ -5347,7 +5347,7 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }.breadcrum
 
 .house-view .property-card { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 0; padding: 0; overflow: hidden; background: linear-gradient(120deg, var(--ui-surface), var(--ui-tint)); }
 .house-view .property-illustration { position: relative; aspect-ratio: 1; width: 100%; height: 100%; min-height: 260px; border-radius: 0; }
-.house-view .property-photo-edit { position: absolute; right: 0.6rem; bottom: 0.6rem; max-width: calc(100% - 1.2rem); background: var(--ui-surface); color: var(--ui-ink); font-size: 0.8rem; }
+.house-view .property-photo-edit, .equipment-photo-edit { position: absolute; right: 0.6rem; bottom: 0.6rem; max-width: calc(100% - 1.2rem); background: var(--ui-surface); color: var(--ui-ink); font-size: 0.8rem; }
 .house-photo-preview { min-width: 0; max-width: 100%; margin-inline: auto; overflow: hidden; border-radius: 12px; background: var(--ui-tint); }
 .house-photo-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
 #house-photo-dialog .household-note { margin: 0; }
@@ -5376,6 +5376,9 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }.breadcrum
 .detail-view .detail-content { display: grid; gap: 1.25rem; }
 .equipment-overview { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); padding: 0; overflow: hidden; }
 .equipment-cover { display: flex; min-width: 0; flex-direction: column; justify-content: center; align-items: center; background: var(--ui-tint); }
+.equipment-cover-frame { position: relative; display: grid; place-items: center; flex: 0 0 auto; width: 100%; height: 240px; color: var(--ui-ink); }
+.equipment-cover-frame > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.equipment-cover-frame > svg { width: 48px; height: 48px; }
 .equipment-cover > img { display: block; width: 100%; height: 240px; object-fit: cover; }
 .equipment-cover > .spec-icon { width: 100px; height: 150px; background: transparent; color: var(--ui-accent); }
 .equipment-cover > .spec-icon svg { width: 48px; height: 48px; }
@@ -5404,6 +5407,7 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }.breadcrum
   .house-view .property-card, .equipment-overview { grid-template-columns: minmax(0, 1fr); }
   .house-view .property-illustration, .house-view .property-photo { min-height: 0; height: 180px; }
   .equipment-cover > img { height: 200px; }
+  .equipment-cover-frame { height: 200px; }
   .detail-view :is(.equipment-documents, .equipment-reminder) > .ui-button { width: 100%; white-space: normal; }
 }
 

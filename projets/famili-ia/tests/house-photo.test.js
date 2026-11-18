@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { prepareHousePhoto, validateHousePhoto } from "../house-photo.js";
+import { prepareCoverPhoto, validateCoverPhoto } from "../cover-photo.js";
 
 test("refuse les copies persistées avec format, taille, cadrage ou contenu incohérents", () => {
   const photo = {
@@ -15,13 +15,21 @@ test("refuse les copies persistées avec format, taille, cadrage ou contenu inco
     { dataUrl: "https://example.invalid/photo.jpg" },
     { dataUrl: "data:image/jpeg;base64,YWJjZA==" },
     { dataUrl: "data:image/jpeg;base64,A" }
-  ]) assert.throws(() => validateHousePhoto({ ...photo, ...fields }));
+  ]) assert.throws(() => validateCoverPhoto({ ...photo, ...fields }));
 });
 
 test("refuse les formats non pris en charge, fichiers vides et trop grands avant décodage", async () => {
-  await assert.rejects(prepareHousePhoto({ type: "image/svg+xml", size: 20 }), /JPEG, PNG ou WebP/);
-  await assert.rejects(prepareHousePhoto({ type: "image/jpeg", size: 0 }), /non vide/);
-  await assert.rejects(prepareHousePhoto({ type: "image/png", size: 10 * 1024 * 1024 + 1 }), /10 Mio/);
+  await assert.rejects(prepareCoverPhoto({ type: "image/svg+xml", size: 20 }), /JPEG, PNG ou WebP/);
+  await assert.rejects(prepareCoverPhoto({ type: "image/jpeg", size: 0 }), /non vide/);
+  await assert.rejects(prepareCoverPhoto({ type: "image/png", size: 10 * 1024 * 1024 + 1 }), /10 Mio/);
+});
+
+test("ne conserve ni nom de fichier ni métadonnées supplémentaires dans une couverture", () => {
+  const photo = {
+    schemaVersion: 1, mimeType: "image/jpeg", width: 2, height: 2, byteLength: 4,
+    dataUrl: "data:image/jpeg;base64,/9j/2Q==", positionX: 50, positionY: 50
+  };
+  assert.deepEqual(validateCoverPhoto({ ...photo, fileName: "fictif.jpg", exif: { date: "2001" } }), photo);
 });
 
 test("refuse plus de 40 mégapixels et libère le bitmap sans allouer de rendu", async t => {
@@ -38,6 +46,6 @@ test("refuse plus de 40 mégapixels et libère le bitmap sans allouer de rendu",
     width: 8001, height: 5000, close() { released = true; }
   });
   globalThis.document = { createElement: () => ({}) };
-  await assert.rejects(prepareHousePhoto({ type: "image/jpeg", size: 100 }), /40 mégapixels/);
+  await assert.rejects(prepareCoverPhoto({ type: "image/jpeg", size: 100 }), /40 mégapixels/);
   assert.equal(released, true);
 });
