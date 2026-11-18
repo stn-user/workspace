@@ -143,12 +143,16 @@ test('filtres multi-sources disponibles par source, type, couverture, date, pers
     const { createContentProvenance } = await import('/content-index.js');
     const { createIndexRecord } = await import('/index-record.js');
     const { createPhotoMetadata } = await import('/photo-metadata.js');
+    const { normalizePhotoAnnotations } = await import('/photo-annotations.js');
     const photo = {
       id: 'filters-photo',
       name: 'Archive vacances.jpg',
       type: 'Image',
       isLocal: true,
-      content: 'Souvenir vacances en famille'
+      content: 'Souvenir vacances en famille',
+      photoAnnotations: normalizePhotoAnnotations({
+        personIds: ['member-filter-test'], placeLabel: 'Québec', placeSource: 'user'
+      }, ['member-filter-test'])
     };
     photo.contentProvenance = await createContentProvenance(
       photo, [photo.content], 'local-text'
@@ -185,7 +189,11 @@ test('filtres multi-sources disponibles par source, type, couverture, date, pers
       dates: { modification: { value: '2024-07-14', source: 'provider' } },
       coverage: 'metadata'
     });
-    await Promise.all([put('documents', photo), put('documents', drive)]);
+    await Promise.all([
+      put('family', { id: 'member-filter-test', name: 'Membre de test' }),
+      put('documents', photo),
+      put('documents', drive)
+    ]);
   });
   const initialized = page.waitForEvent('console', message => message.text().includes('dialogs initialized'));
   await page.reload();

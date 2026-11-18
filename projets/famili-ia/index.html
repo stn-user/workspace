@@ -46,8 +46,8 @@
       <div id="dashboard-content" hidden data-view="accueil" class="household-header home-header">
         <div class="view-titles">
           <p class="eyebrow">VOTRE ESPACE FAMILIAL</p>
-          <h1 id="dashboard-title" tabindex="-1">Bonjour <span id="dashboard-user-name"></span></h1>
-          <p id="dashboard-subtitle">Moins de recherches. Plus de temps pour vous.</p>
+          <h1 id="dashboard-title" tabindex="-1"><span id="dashboard-greeting">Bienvenue chez vous</span><span id="dashboard-user-name"></span></h1>
+          <p id="dashboard-subtitle">Votre espace, à votre rythme.</p>
           <div id="demo-welcome-banner" class="demo-welcome-banner" hidden>
             Espace de démonstration — exemples fictifs
           </div>
@@ -249,33 +249,55 @@
         </section>
 
         <section class="ui-card home-actions-panel" aria-labelledby="home-actions-title">
-          <h2 id="home-actions-title">Votre quotidien, plus simple</h2>
-          <p>Vos rappels et votre foyer en un coup d’œil. Un fichier à retrouver ou à ajouter ?</p>
-          <div class="management-actions">
-            <button class="ui-button ui-button--primary" type="button" data-open-view="recherche">Ouvrir la recherche</button>
-            <button class="ui-button ui-button--secondary" type="button" data-open-import>Ajouter des fichiers</button>
-            <button class="ui-button ui-button--text" type="button" data-replay-demo>Essayer un exemple fictif</button>
+          <div class="home-actions-copy">
+            <p class="eyebrow">PLACE À CE QUI COMPTE</p>
+            <h2 id="home-actions-title">Moins de recherches.<br>Plus de temps pour vous.</h2>
+            <p>Une facture à retrouver, un souvenir à revoir ? Commencez par une question, parmi les fichiers ajoutés à Famili-IA.</p>
+            <div class="management-actions">
+              <button class="ui-button ui-button--primary" type="button" data-open-view="recherche">Ouvrir la recherche <span aria-hidden="true">→</span></button>
+              <button class="ui-button ui-button--secondary" type="button" data-open-import>Ajouter des fichiers</button>
+            </div>
           </div>
+          <svg class="home-welcome-art" viewBox="0 0 280 250" fill="none" aria-hidden="true" focusable="false">
+            <circle cx="151" cy="122" r="103" fill="#efe9d8"/>
+            <circle cx="222" cy="51" r="25" fill="#f3cd86"/>
+            <rect x="45" y="46" width="125" height="164" rx="16" fill="#fffdf8" stroke="#cdbd9f" stroke-width="2" transform="rotate(-9 45 46)"/>
+            <path d="m66 74 52-8m-49 27 71-11m-68 30 55-9" stroke="#a68b60" stroke-width="4" stroke-linecap="round"/>
+            <rect x="124" y="112" width="118" height="96" rx="14" fill="#fffdf8" stroke="#cdbd9f" stroke-width="2" transform="rotate(8 124 112)"/>
+            <path d="m131 181 28-29 22 23 14-13 30 33" stroke="#648c7c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="207" cy="140" r="10" fill="#f3cd86"/>
+            <path d="M56 228c-8-27-15-41-32-53m24 29c-25-1-32-12-34-27 21 0 32 8 34 27Zm-7-13c4-22 13-29 27-30 0 19-9 28-27 30Z" stroke="#648c7c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </section>
+
+        <section class="ui-card verify-panel" aria-labelledby="verify-title"></section>
+        <nav class="ui-card home-shortcuts" aria-labelledby="home-shortcuts-title">
+          <div>
+            <p class="eyebrow">AU FIL DU QUOTIDIEN</p>
+            <h2 id="home-shortcuts-title">Un foyer, des repères</h2>
+            <p class="household-note">Retrouvez les équipements et les profils que vous avez enregistrés sur cet appareil.</p>
+          </div>
+          <div class="management-actions">
+            <button class="ui-button ui-button--secondary" type="button" data-open-view="maison">Ma maison <span aria-hidden="true">↗</span></button>
+            <button class="ui-button ui-button--secondary" type="button" data-open-view="famille">Ma famille <span aria-hidden="true">↗</span></button>
+          </div>
+        </nav>
+
+        <section class="home-inventory" aria-labelledby="home-inventory-title">
         <div class="home-section-heading">
-          <h2>Votre espace en un coup d’œil</h2>
+          <h2 id="home-inventory-title">Vos fichiers, en quelques repères</h2>
           <p class="household-note" id="dashboard-data-note"></p>
         </div>
-
         <div class="stats-grid home-stats" aria-label="Résumé des fichiers visibles">
           <button class="ui-button ui-button--secondary stat-card" type="button" data-open-view="vos-donnees"><span class="ui-icon stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg></span><span class="stat-copy"><span>Fichiers visibles</span><strong id="home-file-count">0</strong></span><span class="stat-arrow" aria-hidden="true">›</span></button>
           <button class="ui-button ui-button--secondary stat-card" type="button" data-open-view="vos-donnees?type=Garantie"><span class="ui-icon stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span class="stat-copy"><span>Garanties</span><strong id="home-warranty-count">0</strong></span><span class="stat-arrow" aria-hidden="true">›</span></button>
           <button class="ui-button ui-button--secondary stat-card" type="button" data-open-view="vos-donnees?type=Contrat"><span class="ui-icon stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6v20h14V8zM14 2v6h6M8 13h8m-8 4h6"/></svg></span><span class="stat-copy"><span>Contrats</span><strong id="home-contract-count">0</strong></span><span class="stat-arrow" aria-hidden="true">›</span></button>
         </div>
-
-        <section class="ui-card verify-panel" aria-labelledby="verify-title"></section>
-        <nav class="ui-card home-shortcuts" aria-label="Organiser mon foyer">
-          <p class="household-note">Retrouvez aussi vos profils et équipements. Ils peuvent contenir les exemples initiaux du prototype.</p>
-          <div class="management-actions">
-            <button class="ui-button ui-button--secondary" type="button" data-open-view="maison">Ma maison</button>
-            <button class="ui-button ui-button--secondary" type="button" data-open-view="famille">Ma famille</button>
-          </div>
-        </nav>
+        </section>
+        <aside class="home-demo-invitation" aria-label="Découvrir avec la démo">
+          <p>Besoin d’un premier aperçu ? <span>Suivez une histoire, sans utiliser vos fichiers.</span></p>
+          <button class="ui-button ui-button--text" type="button" data-replay-demo>Revoir la démo <span aria-hidden="true">→</span></button>
+        </aside>
       </section>
 
       <!-- Progress bar -->
@@ -289,14 +311,14 @@
           <div class="view-titles">
             <p class="eyebrow">RETROUVER L'ESSENTIEL</p>
             <h1 id="page-title">Que cherchez-vous&nbsp;?</h1>
-            <p>Documents et photos, dans une seule recherche locale.</p>
+            <p>Une facture, une date, un souvenir : commencez par quelques mots.</p>
           </div>
-          <button class="ui-button ui-button--primary household-header-action" type="button" data-open-import aria-label="Ajouter des fichiers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter des fichiers</span></button>
+          <button class="ui-button ui-button--secondary household-header-action" type="button" data-open-import aria-label="Ajouter des fichiers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter des fichiers</span></button>
         </header>
 
         <form class="search-form shared-search-form unified-search-form" id="experimental-index-form" role="search">
+          <label class="ui-label" for="experimental-index-query">Rechercher dans vos sources</label>
           <div class="unified-search-query">
-            <label class="visually-hidden" for="experimental-index-query">Rechercher dans vos sources</label>
             <input class="ui-input" id="experimental-index-query" name="question" type="search" autocomplete="off" placeholder="Ex. : facture pergola, photos de vacances">
             <button class="ui-button ui-button--primary submit-button" type="submit" aria-label="Lancer la recherche">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -368,7 +390,7 @@
           <div class="ui-card search-start" id="search-start">
             <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg></span>
             <h2>Quelques mots suffisent pour commencer</h2>
-            <p>Indiquez un nom, un sujet ou des critères photo. Ajoutez vos fichiers si l'index est encore vide.</p>
+            <p>Un nom de fichier, un sujet, un lieu annoté… Retrouvez les documents et photos que vous avez ajoutés. Pour commencer votre collection, choisissez « Ajouter des fichiers ».</p>
           </div>
           <button class="ui-button ui-button--secondary" type="button" id="reset-empty-search" hidden>Effacer la recherche et les filtres</button>
           <ul id="experimental-index-results" aria-label="Résultats multi-sources"></ul>
@@ -448,7 +470,7 @@
           <div class="view-titles">
             <p class="eyebrow">VOTRE ESPACE DE VIE</p>
             <h1 id="house-title">Maison</h1>
-            <p>Chaque équipement, ses informations et ses documents.</p>
+            <p>Les repères de votre maison, réunis au même endroit.</p>
           </div>
           <button class="ui-button ui-button--primary household-header-action" type="button" id="add-equipment-btn" aria-label="Ajouter un équipement"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter un équipement</span></button>
         </header>
@@ -458,7 +480,9 @@
           </div>
           <div class="property-content">
             <div class="property-copy">
-              <strong>Ma maison</strong>
+              <p class="eyebrow">LE CARNET DE LA MAISON</p>
+              <h2>Un peu moins à garder en tête</h2>
+              <p>Retrouvez vos équipements et les papiers qui les accompagnent, à votre rythme.</p>
               <small>Visuel d'illustration</small>
               <span id="display-address"></span>
               <span id="display-city"></span>
@@ -477,13 +501,15 @@
           <button class="ui-button ui-button--secondary category-tab" type="button" data-house-category="imprimante" aria-pressed="false">Imprimante</button>
         </div>
         <section class="ui-card equipment-panel household-panel" aria-labelledby="equipment-title">
-          <div class="section-heading"><h2 id="equipment-title">Équipements</h2><span id="equipment-list-status" role="status" aria-live="polite"></span></div>
+          <div class="section-heading"><h2 id="equipment-title">Vos équipements</h2><span id="equipment-list-status" role="status" aria-live="polite"></span></div>
           <p class="household-note">Visuels d'illustration par catégorie, pas des photos de vos équipements.</p>
           <div class="equipment-list" id="equipment-list">
             <!-- Equipment list will be populated dynamically by app.js -->
           </div>
           <div class="empty-state" id="equipment-empty" hidden role="status">
-            <p>Aucun équipement dans cette catégorie.</p>
+            <h3 id="equipment-empty-title">Votre carnet commence ici</h3>
+            <p id="equipment-empty-description">Ajoutez votre premier équipement pour retrouver ses informations ici.</p>
+            <button class="ui-button ui-button--primary" type="button" id="add-first-equipment">Ajouter mon premier équipement</button>
             <button class="ui-button ui-button--secondary" type="button" id="show-all-equipment">Voir tous les équipements</button>
           </div>
         </section>
@@ -494,33 +520,33 @@
           <div class="view-titles">
             <p class="eyebrow">VOTRE CERCLE FAMILIAL</p>
             <h1 id="family-title">Famille</h1>
-            <p>Vos proches, réunis dans un espace plus simple.</p>
+            <p>Les noms et les visages qui donnent du sens à vos souvenirs.</p>
           </div>
-          <button class="ui-button ui-button--primary household-header-action" type="button" id="manage-family-btn" aria-label="Gérer les membres et accès"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2m4-13v6m-3-3h6"/></svg><span>Gérer les membres</span></button>
+          <button class="ui-button ui-button--primary household-header-action" type="button" id="manage-family-btn" aria-label="Personnaliser le cercle familial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2m4-13v6m-3-3h6"/></svg><span>Personnaliser</span></button>
         </header>
         <section class="ui-card members-panel household-panel" aria-label="Membres de la famille" id="family-members-panel">
-          <div class="section-heading"><h2>Membres</h2><span id="family-members-count" role="status" aria-live="polite"></span></div>
-          <p class="household-note">Les profils et niveaux d'accès sont enregistrés sur cet appareil. Ils ne créent ni compte ni partage familial réel.</p>
-          <div class="member-list" id="member-list">
+          <div class="section-heading"><h2 id="family-circle-title">Votre cercle</h2><span id="family-members-count" role="status" aria-live="polite"></span></div>
+          <p class="household-note">Ces fiches restent sur cet appareil. Aucun compte ni partage n'est créé.</p>
+          <ul class="member-list" id="member-list" aria-labelledby="family-circle-title">
             <!-- Members will be rendered dynamically by app.js -->
-          </div>
+          </ul>
         </section>
         <div class="family-panels">
           <section class="ui-card household-panel">
             <div class="section-heading"><h2>Retrouver les documents</h2><button class="ui-button ui-button--text" type="button" data-open-view="vos-donnees">Voir tout</button></div>
-            <p class="household-note">Raccourcis vers l'inventaire, sans partage automatique.</p>
+            <p class="household-note">Un accès direct aux catégories de votre inventaire.</p>
             <button class="ui-button ui-button--secondary family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Contrat">Contrats<span class="stat-arrow" aria-hidden="true">›</span></button>
             <button class="ui-button ui-button--secondary family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Facture">Factures<span class="stat-arrow" aria-hidden="true">›</span></button>
             <button class="ui-button ui-button--secondary family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Garantie">Garanties<span class="stat-arrow" aria-hidden="true">›</span></button>
             <button class="ui-button ui-button--secondary family-doc-row" type="button" data-open-view="vos-donnees?type=document&category=Notice">Notices<span class="stat-arrow" aria-hidden="true">›</span></button>
           </section>
-          <section class="ui-card household-panel family-preview">
-            <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/><path d="M12 8v5m0 3h.01"/></svg></span>
-            <div><h2>Mode urgence <span class="household-preview-label">À venir</span></h2><p>Ce mode n'est pas opérationnel. Aucun accès d'urgence ni partage automatique n'est activé.</p></div>
-            <button class="ui-button ui-button--secondary" type="button" data-demo-action>Découvrir</button>
+          <section class="ui-card household-panel family-memories">
+            <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1"/><path d="m3 17 5-4 4 3 4-5 5 6"/></svg></span>
+            <h2>Un prénom pour retrouver un souvenir</h2>
+            <p>Dans le détail d'une photo, indiquez vous-même les personnes présentes. Leurs noms vous aideront ensuite à retrouver les photos annotées dans Recherche.</p>
+            <button class="ui-button ui-button--secondary" type="button" data-open-view="recherche">Ouvrir Recherche</button>
           </section>
         </div>
-        <!-- <p class="demo-disclaimer">Les membres, documents et autorisations de cette maquette sont fictifs. Aucun accès familial réel n'est configuré.</p> -->
       </section>
 
       <section class="view alerts-view" id="view-alertes" data-view="alertes" aria-labelledby="alerts-title" hidden>
@@ -542,7 +568,10 @@
           <button class="ui-button ui-button--secondary alert-filter-tab" type="button" data-filter="historique" aria-pressed="false">Ignorées / terminées<span class="alert-badge">0</span></button>
         </div>
         <div class="alerts-list-heading">
-          <p id="alert-list-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <div>
+            <h2 id="alert-period-title">À traiter en premier</h2>
+            <p id="alert-list-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
           <button class="ui-button ui-button--text" id="mark-alerts-read" type="button">Tout marquer comme lu</button>
         </div>
         <div class="alert-list" id="alert-list" aria-label="Alertes">
@@ -555,9 +584,9 @@
         <nav class="breadcrumbs" aria-label="Fil d'Ariane"><button type="button" data-open-view="maison">Maison</button><span aria-hidden="true">/</span><strong id="detail-breadcrumb">Équipement</strong></nav>
         <header class="household-header">
           <div class="view-titles">
-            <p class="eyebrow">DÉTAILS ÉQUIPEMENT</p>
+            <p class="eyebrow">DANS VOTRE CARNET</p>
             <h1 id="detail-title">Chargement...</h1>
-            <p>Fiche d'informations de l'équipement.</p>
+            <p id="detail-description">Ses repères, ses papiers et ce qui mérite votre attention.</p>
           </div>
         </header>
         <div id="detail-content" class="detail-content">
@@ -608,11 +637,16 @@
           <div class="view-titles">
             <p class="eyebrow">UN ESPACE PLUS ORGANISÉ</p>
             <h1 id="import-title" tabindex="-1">Importer</h1>
-            <p>Vos fichiers à portée de main, sur cet appareil.</p>
+            <p>Un fichier ou une collection : choisissez ce que vous souhaitez retrouver.</p>
           </div>
           <button class="ui-button ui-button--secondary" id="return-from-import" type="button" hidden>Retour</button>
         </header>
         <div class="import-container">
+          <ol class="import-steps" aria-label="Les repères de l'import">
+            <li><span aria-hidden="true">1</span>Choisir une source</li>
+            <li><span aria-hidden="true">2</span>Comprendre l'accès</li>
+            <li><span aria-hidden="true">3</span>Suivre et retrouver</li>
+          </ol>
           <section aria-labelledby="import-sources-title">
           <h2 class="management-section-title" id="import-sources-title">Où se trouvent vos fichiers ?</h2>
           <div class="import-source-grid">
@@ -625,6 +659,7 @@
             <button type="button" class="ui-button ui-button--primary" id="choose-import-files">Choisir des fichiers</button>
             <input type="file" id="import-input" class="visually-hidden" aria-label="Choisir des fichiers à importer" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
             <p class="import-intro">Traitement local. Les originaux ne sont ni déplacés ni supprimés.</p>
+            <p class="import-intro">Après la sélection, Recherche s'ouvre pendant le traitement. Vous pouvez revenir ici pour consulter le bilan local.</p>
           </div>
           <article class="ui-card import-source-card">
             <span class="ui-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/google-drive.svg" width="1440" height="810"></image></svg></span>
@@ -641,7 +676,7 @@
             <button class="ui-button ui-button--secondary" type="button" data-import-source="onedrive">Options OneDrive</button>
           </article>
           <article class="ui-card import-source-card">
-            <span class="ui-icon" aria-hidden="true"><img src="assets/icone/dropbox.svg" width="48" height="48" alt=""></span>
+            <span class="ui-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/dropbox.svg" width="1440" height="810"></image></svg></span>
             <h3>Dropbox</h3>
             <p class="import-intro" id="import-dropbox-availability">Vérification de la disponibilité…</p>
             <p class="import-intro">Full Dropbox en lecture seule : accès possible aux fichiers existants du compte. Indexation sur demande.</p>
@@ -688,10 +723,19 @@
             <p class="drop-formats">Formats acceptés : .txt, .md, .pdf, .jpg, .jpeg, .png, .docx, .xlsx, .xls. Indexation en arrière-plan avec progression, sans limite de nombre (10 Mo max par photo ou PDF, 1 Mo par autre fichier). Le contenu indexable dépend du format et de l'extraction disponible.</p>
           </details>
           <section class="ui-card import-library-note" aria-labelledby="import-library-title">
-            <h2 class="management-section-title" id="import-library-title">Tout retrouver, au même endroit</h2>
-            <p>Consultez les copies enregistrées et leur couverture d'indexation.</p>
+            <p class="eyebrow">À VOTRE RYTHME</p>
+            <h2 class="management-section-title" id="import-library-title">Suivre l'ajout, puis retrouver vos fichiers</h2>
+            <p id="import-feedback-intro">Choisissez vos fichiers pour démarrer. Le suivi local apparaîtra ici, au rythme du traitement réel.</p>
+            <div class="import-feedback" id="import-feedback" hidden>
+              <h3 id="import-feedback-title"></h3>
+              <p id="import-feedback-status" role="status" aria-live="polite"></p>
+              <progress id="import-progress" max="1" aria-label="Progression des fichiers traités, réussis ou non" hidden></progress>
+              <p id="import-feedback-warnings" class="import-intro"></p>
+            </div>
+            <p class="import-intro">Bilan de session, non conservé au rechargement. Les ajouts simultanés ne sont pas regroupés. Pour les services cloud, le suivi et le bilan restent dans leurs options.</p>
             <div class="management-actions">
               <button class="ui-button ui-button--secondary" type="button" data-open-view="vos-donnees">Voir mes fichiers</button>
+              <button class="ui-button ui-button--text" type="button" data-open-view="recherche">Ouvrir la recherche</button>
             </div>
           </section>
         </div>
@@ -794,9 +838,9 @@
       <section class="view data-view" id="view-vos-donnees" data-view="vos-donnees" aria-labelledby="data-title" hidden>
         <header class="data-page-header">
           <div class="view-titles">
-            <p class="eyebrow">VOTRE ESPACE NUMÉRIQUE</p>
+            <p class="eyebrow">VOS FICHIERS, EN CONFIANCE</p>
             <h1 id="data-title">Vos données</h1>
-            <p>Vos documents et photos, avec leur provenance.</p>
+            <p>Retrouvez ce qui est enregistré, d'où cela vient et ce que Famili-IA connaît vraiment.</p>
           </div>
           <div class="data-privacy-note">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -807,32 +851,27 @@
           </button>
         </header>
 
-        <div class="data-summary" aria-label="Résumé des fichiers">
-          <div class="ui-card data-stat-card data-stat-card--total">
-            <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span>
-            <span class="data-stat-copy"><strong id="summary-total">0</strong><span class="data-stat-label">Fichiers visibles</span></span>
-          </div>
-          <div class="ui-card data-stat-card data-stat-card--local">
-            <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="8" rx="2"/><rect x="3" y="13" width="18" height="8" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg></span>
-            <span class="data-stat-copy"><strong id="summary-local">0</strong><span class="data-stat-label">Fichiers locaux</span></span>
-          </div>
-          <div class="ui-card data-stat-card data-stat-card--drive">
-            <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 11h18"/></svg></span>
-            <span class="data-stat-copy"><strong id="summary-drive">0</strong><span class="data-stat-label">Google Drive</span></span>
-          </div>
-          <div class="ui-card data-stat-card data-stat-card--demo">
-            <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 9v4m0 3h.01"/></svg></span>
-            <span class="data-stat-copy"><strong id="summary-demo">0</strong><span class="data-stat-label">Exemples fictifs</span></span>
-          </div>
-          <div class="ui-card data-stat-card data-stat-card--onedrive">
-            <span class="data-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 1 1 .5-8A5 5 0 0 1 17 8a5 5 0 1 1 1 10z"/></svg></span>
-            <span class="data-stat-copy"><strong id="summary-onedrive">0</strong><span class="data-stat-label">OneDrive</span></span>
-          </div>
-        </div>
+        <section class="ui-card data-trust" aria-labelledby="data-trust-title">
+          <div class="section-heading"><h2 id="data-trust-title">Ce que vous retrouvez ici</h2><span><strong id="summary-total">0</strong> éléments visibles</span></div>
+          <p id="data-trust-status"></p>
+          <p id="data-source-warning" role="status" hidden></p>
+          <details class="data-trust-details">
+            <summary>Sources, contrôle et limites</summary>
+            <p id="data-last-check"></p>
+            <p>Ces nombres décrivent les fichiers enregistrés, pas des comptes connectés. Un parcours peut ne concerner qu'un compte ou une sélection.</p>
+            <ul class="data-summary" aria-label="Origine des fichiers">
+              <li class="data-stat-card"><h3>Appareil <strong id="summary-local">0</strong></h3><p id="data-source-local"></p></li>
+              <li class="data-stat-card"><h3>Google Drive <strong id="summary-drive">0</strong></h3><p id="data-source-drive"></p></li>
+              <li class="data-stat-card"><h3>OneDrive <strong id="summary-onedrive">0</strong></h3><p id="data-source-onedrive"></p></li>
+              <li class="data-stat-card"><h3>Dropbox <strong id="summary-dropbox">0</strong></h3><p id="data-source-dropbox"></p></li>
+              <li class="data-stat-card"><h3>Exemples intégrés <strong id="summary-demo">0</strong></h3><p>Contenus de démonstration, distincts de vos fichiers et absents de votre index personnel.</p></li>
+            </ul>
+            <p>Un parcours terminé ne garantit ni l'accès actuel aux originaux ni l'actualisation des copies. L'inventaire ne couvre pas l'ensemble de vos comptes. « Métadonnées seules » signifie que le contenu n'est pas indexé.</p>
+          </details>
+        </section>
 
-        <p id="summary-dropbox" hidden></p>
         <div class="data-filters ui-card">
-          <h2 class="data-filters-heading">Affiner l’inventaire</h2>
+          <h2 class="data-filters-heading visually-hidden">Affiner l’inventaire</h2>
           <div class="filter-chips" role="group" aria-label="Filtrer les fichiers">
             <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-type="document" aria-pressed="false">Tout</button>
             <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-type="Facture" aria-pressed="false">Facture</button>
@@ -851,20 +890,24 @@
               <h2 id="data-inventory-title">Inventaire des fichiers</h2>
               <p id="data-inventory-status" role="status" aria-live="polite" aria-atomic="true"></p>
             </div>
-            <p class="data-coverage-note">Uniquement les fichiers enregistrés dans Famili-IA.</p>
             <div class="data-list" id="data-inventory-list">
               <!-- Liste des fichiers indexés -->
             </div>
             <p class="data-coverage-note">Cet inventaire ne couvre pas l’ensemble de vos comptes. « Métadonnées seules » signifie que le contenu n’est pas indexé.</p>
           </section>
           <section class="ui-card data-management" aria-labelledby="data-management-title">
-            <div class="section-heading"><h2 id="data-management-title">Gestion des données</h2></div>
-            <p>Gardez la main sur vos copies locales et vos accès.</p>
+            <p class="eyebrow">À VOTRE MAIN</p>
+            <div class="section-heading"><h2 id="data-management-title">Export et suppression</h2></div>
+            <p>Un espace distinct pour emporter vos données ou gérer ce qui reste sur cet appareil.</p>
+            <h3>Emporter mes données</h3>
+            <p>Le JSON contient les données applicatives détaillées ; le PDF en donne un bilan chiffré, sans noms de fichiers ni de proches. Ni l'un ni l'autre n'exporte les originaux. Les coordonnées GPS des photos sont exclues par défaut.</p>
             <div class="data-management-actions">
               <button class="ui-button ui-button--secondary" type="button" id="export-all-data">Exporter mes données (JSON)</button>
               <button class="ui-button ui-button--secondary" type="button" id="export-pdf-data">Exporter le rapport (PDF)</button>
             </div>
+            <p id="data-export-status" role="status" aria-live="polite"></p>
             <div class="data-connections">
+            <h3>Mes sessions et autorisations</h3>
             <p id="drive-connection-status" class="purge-status" role="status" aria-live="polite">Google Drive : état de session inconnu.</p>
             <button class="ui-button ui-button--secondary" type="button" id="disconnect-google-drive" hidden>Révoquer l'accès Google Drive</button>
             <p>OneDrive : la déconnexion locale ne révoque pas l'autorisation Microsoft et ne supprime pas les copies enregistrées.</p>
@@ -872,7 +915,8 @@
             <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener noreferrer">Gérer les autorisations Microsoft</a>
             </div>
             <div class="data-delete-section">
-              <p>La suppression efface les données enregistrées par Famili-IA sur cet appareil. Les fichiers d’origine locaux, Google Drive et OneDrive ne sont pas supprimés.</p>
+              <h3>Effacer sur cet appareil</h3>
+              <p>La suppression efface les données enregistrées par Famili-IA sur cet appareil. Les fichiers d’origine locaux, Google Drive, OneDrive et Dropbox ne sont pas supprimés.</p>
               <button class="ui-button ui-button--danger" type="button" id="purge-all-data">Supprimer toutes mes données</button>
             </div>
           </section>
@@ -987,7 +1031,7 @@
       <button class="ui-dialog__close" id="close-purge-confirmation" type="button" aria-label="Fermer la confirmation de suppression">×</button>
     </div>
     <p id="purge-confirmation-description">Cette action effacera les données enregistrées par Famili-IA dans cette application, dont les documents copiés en mémoire locale et les données de foyer dans IndexedDB.</p>
-    <p class="purge-safety-note">Les fichiers d’origine locaux, Google Drive et OneDrive ne seront pas supprimés. Les exemples fictifs intégrés resteront disponibles.</p>
+    <p class="purge-safety-note">Les fichiers d’origine locaux, Google Drive et OneDrive ne seront pas supprimés. Les originaux Dropbox restent également inchangés. Les exemples fictifs intégrés resteront disponibles.</p>
     <p class="purge-status" id="purge-status" role="status" aria-live="polite" hidden></p>
     <div class="purge-actions">
       <button class="ui-button ui-button--secondary" id="cancel-purge" type="button" autofocus>Annuler</button>
@@ -1116,21 +1160,15 @@
     <form id="add-member-form" class="household-form">
       <input type="hidden" id="member-id-input">
       <div class="field">
-        <label class="ui-label" for="member-name-input">Nom</label>
-        <input class="ui-input" type="text" id="member-name-input" required placeholder="Ex. : Marie" autofocus>
+        <label class="ui-label" for="member-name-input">Nom à afficher</label>
+        <input class="ui-input" type="text" id="member-name-input" required placeholder="Prénom, nom ou surnom de votre choix" autofocus>
       </div>
       <div class="field">
         <label class="ui-label" for="member-birth-date-input">Date de naissance (facultative)</label>
         <input class="ui-input" type="date" id="member-birth-date-input" autocomplete="bday">
         <small>Enregistrée localement pour calculer l’âge sur demande. Elle n’est pas obligatoire.</small>
       </div>
-      <div class="field">
-        <label class="ui-label" for="member-access-input">Accès</label>
-        <select class="ui-input" id="member-access-input">
-          <option value="limited">Accès limité</option>
-          <option value="full">Accès complet</option>
-        </select>
-      </div>
+      <p class="household-note">Une fiche enregistrée sur cet appareil, sans créer de compte.</p>
       <p id="member-form-status" role="status" aria-live="polite"></p>
       <div class="household-form-actions">
         <button class="ui-button ui-button--danger" id="delete-member-btn" type="button" hidden>Supprimer</button>

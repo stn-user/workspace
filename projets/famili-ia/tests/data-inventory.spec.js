@@ -7,6 +7,19 @@ async function openInventory(page) {
   await ready;
 }
 
+async function reloadInventory(page) {
+  const ready = page.waitForEvent('console', message => message.text().includes('Async init - COMPLETE'));
+  await page.reload();
+  await ready;
+}
+
+async function inventorySnapshot(page) {
+  return page.evaluate(async () => {
+    const { getAll } = await import('/db.js');
+    return Promise.all(['users', 'documents', 'family', 'equipment', 'alerts', 'source_sync'].map(getAll));
+  });
+}
+
 async function expectUsablePanel(panel) {
   const result = await panel.evaluate(root => {
     const undersized = [...root.querySelectorAll('button, a[href], input:not([type="hidden"]):not(.visually-hidden), textarea')]
@@ -90,11 +103,17 @@ test.describe('Vue Vos données et recherche unifiée', () => {
       await page.setViewportSize({ width, height: width < 600 ? 800 : 900 });
       await openInventory(page);
       await expect(page.locator('#data-inventory-status')).toHaveText('5 fichiers affichés sur 5');
+      await expect(page.locator('body')).toHaveClass(/ui-warm/);
       const firstFile = await page.locator('.data-file-row').first().boundingBox();
       const contentViewport = await page.locator('.main-content').boundingBox();
       expect(firstFile.y + firstFile.height).toBeLessThanOrEqual(contentViewport.y + contentViewport.height);
       await expectUsablePanel(page.locator('#view-vos-donnees'));
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.locator('.data-trust-details > summary').click();
+      await expect(page.locator('#data-last-check')).toBeVisible();
+      await expectUsablePanel(page.locator('#view-vos-donnees'));
+      expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(width < 600 ? 800 : 900);
+      await page.locator('.data-trust-details > summary').click();
 
       const addButton = page.getByRole('button', { name: 'Ajouter des fichiers', exact: true });
       await addButton.focus();
@@ -119,8 +138,149 @@ test.describe('Vue Vos données et recherche unifiée', () => {
       await page.keyboard.press('Escape');
       await expect(page.locator('#purge-all-data')).toBeFocused();
       await expect(page.locator('.data-file-row')).toHaveCount(5);
+      expect(await page.evaluate(() => ({
+        height: document.documentElement.scrollHeight,
+        viewport: innerHeight,
+        outerScroll: scrollY
+      }))).toEqual({ height: width < 600 ? 800 : 900, viewport: width < 600 ? 800 : 900, outerScroll: 0 });
     });
   }
+
+  test('confiance : exemples identifies, controle inconnu et gestion distincte sans ecriture', async ({ page }) => {
+    await openInventory(page);
+    const before = await inventorySnapshot(page);
+    await expect(page.locator('#data-trust-status')).toContainText('des exemples, pas vos fichiers');
+    await page.locator('.data-trust-details > summary').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#data-last-check')).toHaveText('Dernier contrôle : aucun parcours de source enregistré.');
+    await expect(page.locator('#data-source-warning')).toBeHidden();
+    await expect(page.locator('#data-source-drive')).toContainText("compte d'origine non identifié");
+    await expect(page.locator('#data-source-onedrive')).toContainText('Accès actuel à OneDrive inconnu');
+    await expect(page.locator('#data-source-dropbox')).toContainText('Accès actuel à Dropbox inconnu');
+    expect(await page.locator('.data-management').evaluate(element =>
+      Boolean(element.compareDocumentPosition(document.querySelector('.data-files-panel')) & Node.DOCUMENT_POSITION_PRECEDING)
+    )).toBe(true);
+    await page.locator('#purge-all-data').click();
+    await expect(page.locator('#purge-confirmation')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#purge-all-data')).toBeFocused();
+    expect(await inventorySnapshot(page)).toEqual(before);
+  });
+
+  test('confiance multi-sources : dernier parcours partiel, comptes et limites sans actualisation implicite', async ({ page }) => {
+    await openInventory(page);
+    await page.evaluate(async () => {
+      const { put } = await import('/db.js');
+      const { createSourceRunStatus } = await import('/source-status.js');
+      const records = [
+        { id: 'trust-local', isLocal: true },
+        { id: 'trust-drive', isLocal: true, driveSource: true },
+        { id: 'trust-one-a', isLocal: true, oneDriveSource: true, oneDriveAccountFingerprint: 'a'.repeat(64) },
+        { id: 'trust-one-b', isLocal: true, oneDriveSource: true, oneDriveAccountFingerprint: 'b'.repeat(64) },
+        { id: 'trust-dropbox', isLocal: true, dropboxSource: true, dropboxAccountFingerprint: 'c'.repeat(64) }
+      ];
+      for (const record of records) await put('documents', {
+        ...record, name: `<copie & ${record.id}>.txt`, type: 'Texte',
+        importedAt: '2025-12-01T10:00:00.000Z', modificationDate: '2025-12-01T10:00:00.000Z'
+      });
+      await put('source_sync', createSourceRunStatus({
+        sourceId: 'local', scopeKind: 'selected-files', state: 'complete',
+        startedAt: '2024-06-01T09:00:00.000Z', finishedAt: '2024-06-01T10:00:00.000Z',
+        lastSuccessfulAt: '2024-06-01T10:00:00.000Z', discoveredCount: 1, processedCount: 1
+      }));
+      await put('source_sync', createSourceRunStatus({
+        sourceId: 'onedrive', accountRef: 'a'.repeat(64), scopeKind: 'account', state: 'partial',
+        startedAt: '2024-06-03T09:00:00.000Z', finishedAt: '2024-06-03T10:00:00.000Z',
+        discoveredCount: 3, processedCount: 1, failedCount: 1, failureReason: '<panne & origine>'
+      }));
+    });
+    await reloadInventory(page);
+    const before = await inventorySnapshot(page);
+    const externalRequests = [];
+    page.on('request', request => { if (request.url().startsWith('https://')) externalRequests.push(request.url()); });
+    await expect(page.locator('#data-trust-status')).toHaveText('5 fichiers enregistrés dans Famili-IA.');
+    await page.locator('.data-trust-details > summary').click();
+    await expect(page.locator('#summary-onedrive')).toHaveText('2');
+    await expect(page.locator('#summary-dropbox')).toHaveText('1');
+    await expect(page.locator('#summary-demo')).toHaveText('0');
+    await expect(page.locator('#data-last-check')).toContainText('OneDrive : Dernier parcours partiel le 3 juin 2024');
+    await expect(page.locator('#data-last-check')).not.toContainText('2025');
+    await expect(page.locator('#data-source-onedrive')).toContainText('<panne & origine>');
+    await expect(page.locator('#data-source-onedrive')).toContainText('compte …aaaaaaaaaaaaaaaa');
+    await expect(page.locator('#data-source-onedrive')).toContainText('Accès actuel à OneDrive inconnu');
+    const localRow = page.locator('[data-document-id="trust-local"]');
+    await expect(localRow.locator('.data-file-name')).toHaveText('<copie & trust-local>.txt');
+    await expect(localRow.locator('.data-file-date')).toHaveText('Date non renseignée');
+    await page.locator('#view-vos-donnees [data-filter-category="Images"]').click();
+    await expect(page.locator('#data-inventory-status')).toHaveText('0 fichier affiché sur 5');
+    await expect(page.locator('#summary-total')).toHaveText('5');
+    await expect(page.locator('#data-last-check')).toContainText('partiel');
+    await page.getByRole('button', { name: 'Afficher tous les fichiers' }).click();
+    expect(externalRequests).toEqual([]);
+    expect(await inventorySnapshot(page)).toEqual(before);
+  });
+
+  test('confiance : erreur de lecture des parcours visible, sans faux controle ni effacement', async ({ page }) => {
+    await openInventory(page);
+    await page.evaluate(async () => {
+      const { put } = await import('/db.js');
+      await put('source_sync', {
+        id: 'source-run:v1:onedrive:unattributed',
+        kind: 'source-run-status', schemaVersion: 1, sourceId: 'onedrive', startedAt: 'invalide'
+      });
+    });
+    await reloadInventory(page);
+    const before = await inventorySnapshot(page);
+    await expect(page.locator('#data-source-warning')).toBeVisible();
+    await expect(page.locator('#data-source-warning')).toContainText("n'ont pas pu être lus ou enregistrés");
+    await page.locator('.data-trust-details > summary').click();
+    await expect(page.locator('#data-last-check')).toHaveText('Dernier contrôle indisponible.');
+    expect(await inventorySnapshot(page)).toEqual(before);
+  });
+
+  test('rapport PDF : erreur explicite puis bilan lisible, sans donnees personnelles ni mutation', async ({ page }) => {
+    await openInventory(page);
+    await page.evaluate(async () => {
+      const { put } = await import('/db.js');
+      await put('documents', { id: 'pdf-copy', name: 'Nom privé 🧾.txt', type: 'Texte', isLocal: true });
+      await put('family', { id: 'pdf-person', name: '匿名 🌿', avatar: '🌿', role: 'Member', access: 'limited' });
+    });
+    await reloadInventory(page);
+    const before = await inventorySnapshot(page);
+    await page.evaluate(() => {
+      const original = URL.createObjectURL;
+      URL.createObjectURL = function (blob) {
+        if (blob.type === 'application/pdf') {
+          URL.createObjectURL = original;
+          throw new Error('Export de test indisponible');
+        }
+        return original.call(URL, blob);
+      };
+    });
+    await page.locator('#export-pdf-data').click();
+    await expect(page.locator('#data-export-status')).toHaveAttribute('data-state', 'error');
+    await expect(page.locator('#data-export-status')).toContainText('Export de test indisponible');
+    await expect(page.locator('#export-pdf-data')).toBeEnabled();
+    const downloading = page.waitForEvent('download');
+    await page.locator('#export-pdf-data').click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe('famili-ia-data.pdf');
+    const chunks = [];
+    for await (const chunk of await download.createReadStream()) chunks.push(chunk);
+    const report = await page.evaluate(async bytes => {
+      const { readPdfFileWithSegments } = await import('/document-reader.js');
+      return readPdfFileWithSegments(new File([new Uint8Array(bytes)], 'bilan.pdf', { type: 'application/pdf' }));
+    }, Array.from(Buffer.concat(chunks)));
+    expect(report.segments).toHaveLength(1);
+    expect(report.content).toContain('Fichiers enregistrés : 1');
+    expect(report.content).toContain('Appareil : 1');
+    expect(report.content).toContain('Membres du cercle : 1');
+    expect(report.content).toContain('Les fichiers originaux ne sont pas inclus.');
+    expect(report.content).not.toContain('Nom privé');
+    expect(report.content).not.toContain('匿名');
+    await expect(page.locator('#data-export-status')).not.toHaveAttribute('data-state', 'error');
+    expect(await inventorySnapshot(page)).toEqual(before);
+  });
 
   test('état vide : réinitialiser les filtres retrouve les fichiers et actualise le résumé', async ({ page }) => {
     await openInventory(page);

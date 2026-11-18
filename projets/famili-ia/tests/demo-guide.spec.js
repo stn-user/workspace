@@ -161,6 +161,10 @@ for (const viewport of viewports) {
     await expect(progress).toHaveText('Étape 5 sur 6 · Les souvenirs');
     await expect(page.locator('#demo-photos-title')).toBeFocused();
     await expect(page.locator('#demo-photo-list .onboarding-demo-result')).toHaveCount(2);
+    await expect(page.locator('#demo-photo-list .demo-result-photo').nth(0))
+      .toHaveAttribute('src', /\/assets\/demo\/am-piscine\.jpg/);
+    await expect(page.locator('#demo-photo-list .demo-result-photo').nth(1))
+      .toHaveAttribute('src', /\/assets\/demo\/gouter-pergola\.jpg/);
     await expect(page.locator('[data-demo-panel="photos"]')).toContainText('pas d’une reconnaissance de visages');
     for (const image of await page.locator('#demo-photo-list .demo-result-photo').all()) {
       expect(await image.evaluate(async element => {

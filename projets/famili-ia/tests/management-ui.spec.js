@@ -46,12 +46,35 @@ for (const width of [390, 768, 1280, 1920]) {
     page.on('pageerror', error => errors.push(error.message));
     await openView(page, 'importer');
     await expect(page.locator('body')).toHaveClass(/ui-theme/);
+    await expect(page.locator('body')).toHaveClass(/ui-warm/);
     await expect(page.locator('.plus-item').first()).toBeHidden();
     await expectUsable(page.locator('#view-importer'));
     const add = page.locator('#choose-import-files');
     const bounds = await add.boundingBox();
     const viewport = await page.locator('.main-content').boundingBox();
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.y + viewport.height);
+    await page.locator('#import-library-title').scrollIntoViewIfNeeded();
+    const scroll = await page.evaluate(() => {
+      const main = document.querySelector('.main-content');
+      main.scrollTop = main.scrollHeight;
+      window.scrollTo(0, document.scrollingElement.scrollHeight);
+      const mainBounds = main.getBoundingClientRect();
+      const lastAction = document.querySelector('#view-importer [data-open-view="recherche"]').getBoundingClientRect();
+      const menu = document.querySelector('.bottom-nav').getBoundingClientRect();
+      return {
+        outerOverflow: document.scrollingElement.scrollHeight - document.scrollingElement.clientHeight,
+        outerScroll: window.scrollY,
+        innerScroll: main.scrollTop,
+        lastActionWithinMain: lastAction.top >= mainBounds.top && lastAction.bottom <= mainBounds.bottom,
+        menuBottom: menu.height > 0 ? menu.bottom : null,
+        viewportHeight: innerHeight
+      };
+    });
+    expect(scroll.outerOverflow, 'pas de page vide sous le menu').toBeLessThanOrEqual(1);
+    expect(scroll.outerScroll, 'seul le contenu principal doit défiler').toBe(0);
+    expect(scroll.innerScroll).toBeGreaterThan(0);
+    expect(scroll.lastActionWithinMain, 'dernière action accessible en bas du contenu').toBe(true);
+    if (scroll.menuBottom !== null) expect(scroll.menuBottom).toBe(scroll.viewportHeight);
     const manual = page.locator('[data-action="manual"]');
     await manual.focus();
     await page.keyboard.press('Enter');
@@ -85,10 +108,19 @@ for (const width of [390, 768, 1280, 1920]) {
     await expectUsable(page.locator('#source-choice-dialog'));
     await page.keyboard.press('Escape');
     await expect(google).toBeFocused();
+    const dropbox = page.getByRole('button', { name: 'Options Dropbox', exact: true });
+    await dropbox.click();
+    await expect(page.locator('#dropbox-options')).toBeVisible();
+    await expect(page.locator('#source-choice-dialog .source-choice:visible')).toHaveCount(1);
+    await expect(page.locator('#source-choice-dialog')).toContainText('Full Dropbox');
+    await expectUsable(page.locator('#source-choice-dialog'));
+    await page.keyboard.press('Escape');
+    await expect(dropbox).toBeFocused();
     expect(await snapshot(page)).toEqual(before);
     expect(externalRequests).toBe(requestsBeforeOptions);
     await page.evaluate(() => { location.hash = '#/profil'; });
     await expect(page.locator('#profile-title')).toBeVisible();
+    await expect(page.locator('body')).not.toHaveClass(/ui-warm/);
     await expectUsable(page.locator('#view-profil'));
     await expect(page.locator('#pref-auto-scan')).toBeDisabled();
     await page.evaluate(() => { location.hash = '#/plus'; });
@@ -122,6 +154,9 @@ test('saisie manuelle : annuler sans ecriture, enregistrer, retrouver et recharg
   await page.locator('#manual-form [type="submit"]').click();
   await expect(page.locator('#manual-entry-dialog')).toHaveCount(0);
   await expect(page.locator('[data-action="manual"]')).toBeFocused();
+  await expect(page.locator('#import-feedback')).toHaveAttribute('data-state', 'success');
+  await expect(page.locator('#import-feedback-status')).toContainText(name);
+  await expect(page.locator('#import-progress')).toBeHidden();
   await page.getByRole('button', { name: 'Voir mes fichiers', exact: true }).click();
   await expect(page.locator('.data-file-name')).toHaveText(`${name}.pdf`);
   await page.locator('.data-file-row button').click();
@@ -170,6 +205,16 @@ test('import : selecteurs uniques, annulation et fichier local toujours indexes'
     if (selector !== '#btn-folder') await control.setFiles([]);
   }
   expect(await snapshot(page)).toEqual(before);
+  await expect(page.locator('#import-feedback')).toBeHidden();
+  await page.evaluate(() => {
+    const original = File.prototype.text;
+    File.prototype.text = async function () {
+      File.prototype.text = original;
+      await new Promise(resolve => { window.releaseImportRead = resolve; });
+      return original.call(this);
+    };
+  });
+  await page.clock.install();
   const chooser = page.waitForEvent('filechooser');
   await page.locator('#choose-import-files').click();
   await (await chooser).setFiles({
@@ -177,9 +222,112 @@ test('import : selecteurs uniques, annulation et fichier local toujours indexes'
     mimeType: 'text/plain',
     buffer: Buffer.from('Notice fictive. Nettoyer le filtre chaque mois.')
   });
+  await expect(page.locator('#view-recherche')).toBeVisible();
+  await expect(page.locator('#import-progress')).toHaveJSProperty('value', 0);
+  await page.clock.fastForward(5000);
+  await expect(page.locator('#import-progress')).toHaveJSProperty('value', 0);
+  expect((await snapshot(page))[1]).toHaveLength(0);
+  await page.evaluate(() => window.releaseImportRead());
   await expect(page.locator('#scan-progress-text')).toContainText('1/1 fichiers indexés');
+  await page.clock.fastForward(5100);
+  await expect(page.locator('#scan-progress-container')).toBeHidden();
+  await page.evaluate(() => { location.hash = '#/importer'; });
+  await expect(page.locator('#import-feedback-status')).toContainText('1/1 fichiers indexés');
+  await expect(page.locator('#import-feedback')).toHaveAttribute('data-state', 'success');
+  await expect(page.locator('#import-progress')).toHaveJSProperty('value', 1);
+  await reloadView(page);
+  await expect(page.locator('#import-feedback')).toBeHidden();
   await page.evaluate(() => { location.hash = '#/vos-donnees'; });
   await expect(page.locator('.data-file-name')).toHaveText('notice-fictive.txt');
+});
+
+test('import : selection invalide sans ecriture, bilan partiel et nouvel ajout sans erreur residuelle', async ({ page }) => {
+  await openView(page, 'importer');
+  const before = await snapshot(page);
+  for (const file of [
+    { name: 'refuse.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('test') },
+    { name: 'trop-grand.txt', mimeType: 'text/plain', buffer: Buffer.alloc(1024 * 1024 + 1) }
+  ]) {
+    await page.locator('#import-input').setInputFiles(file);
+    await expect(page.locator('#import-feedback')).toHaveAttribute('data-state', 'error');
+    await expect(page.locator('#import-feedback-status')).toContainText("Aucun fichier de cette sélection n'a été ajouté");
+    await expect(page.locator('#import-progress')).toBeHidden();
+    expect(await snapshot(page)).toEqual(before);
+  }
+  await page.evaluate(() => {
+    const original = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === 'documents') {
+        IDBObjectStore.prototype.put = original;
+        throw new DOMException('Stockage de test indisponible', 'QuotaExceededError');
+      }
+      return original.apply(this, args);
+    };
+  });
+  await page.locator('#import-input').setInputFiles(
+    ['notice-a.txt', 'notice-b.txt'].map(name => ({
+      name, mimeType: 'text/plain', buffer: Buffer.from('Nettoyer le filtre.')
+    }))
+  );
+  await expect(page.locator('#scan-progress-text')).toContainText('1/2 fichiers indexés');
+  await page.evaluate(() => { location.hash = '#/importer'; });
+  await expect(page.locator('#import-feedback')).toHaveAttribute('data-state', 'warning');
+  await expect(page.locator('#import-feedback-status')).toContainText('1 échec');
+  await expect(page.locator('#import-progress')).toHaveJSProperty('value', 2);
+  await expect(page.locator('#import-progress')).toHaveJSProperty('max', 2);
+  expect((await snapshot(page))[1]).toHaveLength(1);
+  await page.locator('#import-input').setInputFiles({
+    name: 'nouvel-ajout.txt', mimeType: 'text/plain', buffer: Buffer.from('Notice suivante.')
+  });
+  await expect(page.locator('#scan-progress-text')).toContainText('1/1 fichiers indexés');
+  await page.evaluate(() => { location.hash = '#/importer'; });
+  await expect(page.locator('#import-feedback')).toHaveAttribute('data-state', 'success');
+  await expect(page.locator('#import-feedback-status')).not.toContainText('échec');
+  expect((await snapshot(page))[1]).toHaveLength(2);
+});
+
+test('import : photo conservee avec avertissements sans annoncer un succes complet', async ({ page }) => {
+  await openView(page, 'importer');
+  await page.locator('#import-input').setInputFiles({
+    name: 'photo-abimee.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('not a photo')
+  });
+  await expect(page.locator('#scan-progress-text')).toContainText('Indexation terminée');
+  await page.evaluate(() => { location.hash = '#/importer'; });
+  await expect(page.locator('#import-feedback')).toHaveAttribute('data-state', 'warning');
+  await expect(page.locator('#import-feedback-status')).toContainText('1/1 fichiers indexés');
+  await expect(page.locator('#import-feedback-status')).toContainText('vignette indisponible');
+  await expect(page.locator('#import-feedback-warnings')).toContainText('métadonnées photo');
+  expect((await snapshot(page))[1]).toHaveLength(1);
+});
+
+test('import : interruption entre deux lots garde les compteurs atteints sans annoncer la fin', async ({ page }) => {
+  await openView(page, 'importer');
+  await page.evaluate(async () => {
+    const { BackgroundSyncWorker } = await import('/background-sync.js');
+    const original = BackgroundSyncWorker.prototype.start;
+    BackgroundSyncWorker.prototype.start = function () {
+      BackgroundSyncWorker.prototype.start = original;
+      const report = this.onProgress;
+      this.onProgress = info => {
+        report(info);
+        if (info.status === 'indexing' && info.processed === 5) this.stop();
+      };
+      return original.call(this);
+    };
+  });
+  await page.locator('#import-input').setInputFiles(
+    Array.from({ length: 6 }, (_, index) => ({
+      name: `notice-${index}.txt`, mimeType: 'text/plain', buffer: Buffer.from('Notice filtre.')
+    }))
+  );
+  await expect(page.locator('#scan-progress-text')).toContainText('Indexation interrompue');
+  await page.evaluate(() => { location.hash = '#/importer'; });
+  await expect(page.locator('#import-feedback')).toHaveAttribute('data-state', 'warning');
+  await expect(page.locator('#import-feedback-status')).toContainText('5/6 fichiers traités');
+  await expect(page.locator('#import-feedback-status')).toContainText('5 indexés');
+  await expect(page.locator('#import-progress')).toHaveJSProperty('value', 5);
+  await expect(page.locator('#import-progress')).toHaveJSProperty('max', 6);
+  expect((await snapshot(page))[1]).toHaveLength(5);
 });
 
 test('profil : routes directes, sauvegarde clavier, champs vides et preferences conservees', async ({ page }) => {

@@ -149,14 +149,15 @@ test('la démo est rejouable sans modifier les données existantes', async ({ pa
   await page.locator('#wizard-user-name').fill('Camille');
   await page.locator('#step-1 [data-wizard-next="2"]').click();
   await page.locator('#step-2 [data-wizard-next="3"]').click();
-  await expect(page.locator('#demo-result-heading')).toContainText('Exemple fictif de facture');
+  await expect(page.locator('#demo-intro')).toBeVisible();
+  await page.locator('#demo-start-free').click();
   await page.locator('.demo-examples summary').click();
-  for (const [question, heading] of [['garantie-pompe', 'garantie'], ['photos-membre-fictif-a', 'Photos'], ['facture-piscine', 'facture']]) {
+  for (const [question, heading] of [['garantie-pompe', 'Garantie'], ['photos-ete', 'Un été à la maison'], ['facture-piscine', 'Facture']]) {
     await page.locator(`[data-demo-question="${question}"]`).click();
-    await page.locator('#demo-guide-next').click();
+    await page.locator('#demo-search-form button').click();
     await expect(page.locator('#demo-result-heading')).toContainText(heading);
   }
-  await expect(page.locator('#demo-document-list')).toContainText('exemple fictif');
+  await expect(page.locator('.demo-disclosure')).toContainText('aucune connexion ni écriture réelle');
   expect(await snapshot()).toEqual(before);
   expect(cloudRequests).toBe(initialRequests);
   await page.locator('#finish-onboarding-demo').click();

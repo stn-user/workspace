@@ -84,7 +84,8 @@ export function describeExperimentalResult(match, record, document, sourceAccess
     details.push(`Prise de vue : ${getTimelineDateLabel(photoDate)}`);
   }
 
-  details.push(`Couverture : ${match.coverage === "partial" ? "texte partiellement recherché" : "métadonnées uniquement"}`);
+  const coverageLabel = match.coverage === "partial" ? "texte partiellement recherché" : "métadonnées uniquement";
+  details.push(`Couverture : ${coverageLabel}`);
   details.push(`Dernière vérification de la source : ${record.lastCheck ?? "inconnue"}`);
   details.push(sourceAccess || "Accès actuel à l'original inconnu.");
   details.push(match.sourceId === "onedrive" && typeof document?.oneDriveItemId === "string"
@@ -107,6 +108,8 @@ export function describeExperimentalResult(match, record, document, sourceAccess
   });
   return {
     name: match.name || "Nom inconnu",
+    sourceLabel: sourceName,
+    coverageLabel,
     details,
     reasons,
     canViewCopy: typeof document?.content === "string" && Boolean(document.content.trim())

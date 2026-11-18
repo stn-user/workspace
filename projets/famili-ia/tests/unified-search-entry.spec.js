@@ -84,12 +84,19 @@ for (const viewport of [
       const { put } = await import('/db.js');
       const { createIndexRecord } = await import('/index-record.js');
       const { createPhotoMetadata } = await import('/photo-metadata.js');
+      const { generatePhotoThumbnail } = await import('/photo-thumbnails.js');
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 200;
+      canvas.getContext('2d').fillRect(0, 0, canvas.width, canvas.height);
+      const thumbnailBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
       const photo = {
         id: 'unified-search-photo',
         type: 'Image',
         name: 'Vacances Québec.jpg',
         isLocal: true,
         importedAt: '2024-07-14T10:00:00.000Z',
+        photoThumbnail: await generatePhotoThumbnail(thumbnailBlob),
         photoMetadata: createPhotoMetadata('unified-search-photo', {
           captureDate: {
             raw: '2024:07:14 10:00:00', localDateTime: '2024-07-14T10:00:00',
@@ -129,6 +136,19 @@ for (const viewport of [
     await page.locator('#experimental-index-form .submit-button').click();
     await expect(page.locator('#moments-life-search-status')).toContainText('1 photo trouvée');
     await expect(page.locator('#moments-life-search-results')).toContainText('Vacances Québec.jpg');
+    const thumbnail = page.locator('.moments-life-thumbnail');
+    await thumbnail.scrollIntoViewIfNeeded();
+    await expect.poll(() => thumbnail.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+    const thumbnailBounds = await thumbnail.boundingBox();
+    expect(thumbnailBounds.width).toBeGreaterThanOrEqual(240);
+    expect(thumbnailBounds.height).toBeGreaterThanOrEqual(180);
+    const provenance = page.locator('.moments-life-result .search-result-details');
+    await expect(provenance).not.toHaveAttribute('open', '');
+    await expect(page.locator('.moments-life-result .search-result-origin')).toContainText("accès à l'original non garanti");
+    await provenance.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    await expect(provenance).toHaveAttribute('open', '');
+    await expect(provenance).toContainText('Dernière vérification de la copie : inconnue');
     await expectUsable(page.locator('#view-recherche'));
     await page.locator('#search-filters-panel > summary').click();
     await expectUsable(page.locator('#view-recherche'));
@@ -286,6 +306,9 @@ for (const width of [390, 768, 1280, 1920]) {
       await expect(page.locator('#onboarding-wizard')).toBeHidden();
       await expect(page.locator('#view-accueil')).toHaveAccessibleName('Accueil');
       await expect(page.locator('body')).toHaveClass(/ui-theme/);
+      await expect(page.locator('body')).toHaveClass(/ui-warm/);
+      await expect(page.locator('#dashboard-title')).toHaveText('Bienvenue chez vous');
+      await expect(page.locator('.home-reminders-empty')).toContainText('Aucun rappel actif enregistré');
       await expectUsable(page.locator('#view-accueil'));
       await expect(page.locator('#dashboard-data-note')).toContainText('exemples fictifs');
       await expect(page.locator('#view-accueil [role="search"]')).toHaveCount(0);
@@ -293,6 +316,14 @@ for (const width of [390, 768, 1280, 1920]) {
       const form = await page.getByRole('button', { name: 'Ouvrir la recherche', exact: true }).boundingBox();
       const main = await page.locator('.main-content').boundingBox();
       expect(form.y + form.height).toBeLessThanOrEqual(main.y + main.height);
+      const hierarchy = await page.locator('#view-accueil').evaluate(root => {
+        const hero = root.querySelector('.home-actions-panel');
+        const reminders = root.querySelector('.verify-panel');
+        const inventory = root.querySelector('.home-inventory');
+        return Boolean(hero.compareDocumentPosition(reminders) & Node.DOCUMENT_POSITION_FOLLOWING)
+          && Boolean(reminders.compareDocumentPosition(inventory) & Node.DOCUMENT_POSITION_FOLLOWING);
+      });
+      expect(hierarchy).toBe(true);
       const before = await page.evaluate(async () => {
         const { getAll } = await import('/db.js');
         return Promise.all(['users', 'documents', 'equipment', 'family', 'alerts'].map(getAll));
@@ -306,10 +337,12 @@ for (const width of [390, 768, 1280, 1920]) {
       })).toEqual(before);
       await page.locator('#finish-onboarding-demo').click();
       await page.getByRole('button', { name: 'Ouvrir la recherche', exact: true }).click();
+      await expect(page.locator('body')).toHaveClass(/ui-warm/);
       await expect(page.locator('#experimental-index-query')).toBeFocused();
       await expect(page.locator('#view-recherche [data-open-import]')).toHaveCount(1);
       await page.locator('#view-recherche [data-open-import]').click();
       await expect(page.locator('#import-title')).toBeFocused();
+      await expect(page.locator('body')).toHaveClass(/ui-warm/);
       await expectUsable(page.locator('#view-importer'));
       await page.locator('#return-from-import').click();
       await expect(page.locator('#view-recherche [data-open-import]')).toBeFocused();
@@ -349,6 +382,43 @@ for (const width of [390, 768, 1280, 1920]) {
     await expect(page.locator('.data-file-row')).toHaveCount(3);
   });
 
+  test('accueil chaleureux : rappels enregistrés préservés et accès au foyer sans écriture', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.addInitScript(() => localStorage.setItem('famili-ia-source-choice-complete', 'true'));
+    await openReady(page, 'accueil');
+    await page.evaluate(async () => {
+      const { put } = await import('/db.js');
+      await put('alerts', {
+        id: 'home-personal-reminder',
+        title: '<b>Vérifier le contrat</b>',
+        detail: 'Rappel saisi pour le foyer',
+        status: 'active',
+        dueDate: '2027-06-12'
+      });
+      await put('alerts', {
+        id: 'home-completed-reminder',
+        title: 'Rappel déjà terminé',
+        status: 'completed'
+      });
+    });
+    await openReady(page, 'accueil', true);
+    const stored = await page.evaluate(async () => (await import('/db.js')).getAll('alerts'));
+    await expect(page.locator('.home-reminders-empty')).toHaveCount(0);
+    await expect(page.locator('.verify-panel .verify-row')).toHaveCount(1);
+    await expect(page.locator('.verify-panel')).toContainText('<b>Vérifier le contrat</b>');
+    await expect(page.locator('.verify-panel b')).toHaveCount(0);
+    await expect(page.locator('.verify-panel')).not.toContainText('Rappel déjà terminé');
+    await page.locator('.verify-row').click();
+    await expect(page).toHaveURL(/#\/alertes$/);
+    await page.evaluate(() => { location.hash = '#/accueil'; });
+    await page.getByRole('button', { name: 'Ma maison', exact: true }).click();
+    await expect(page).toHaveURL(/#\/maison$/);
+    await page.evaluate(() => { location.hash = '#/accueil'; });
+    await page.getByRole('button', { name: 'Ma famille', exact: true }).click();
+    await expect(page).toHaveURL(/#\/famille$/);
+    expect(await page.evaluate(async () => (await import('/db.js')).getAll('alerts'))).toEqual(stored);
+  });
+
   test('filtres au clavier, absence de résultat et remise à zéro avec retour du focus', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await openReady(page, 'recherche');
@@ -382,6 +452,47 @@ test('Vos données ne propose plus un raccourci vers une recherche photo distinc
   await initialized;
   await expect(page.getByRole('button', { name: 'Ouvrir la recherche photo' })).toHaveCount(0);
 });
+
+for (const width of [390, 1280]) {
+  test(`recherche chaleureuse : preuve littérale et provenance consultable à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openReady(page, 'recherche');
+    await page.locator('#local-files-input').setInputFiles({
+      name: 'notice-pergola.txt', mimeType: 'text/plain',
+      buffer: Buffer.from('Entretien pergola : <b>nettoyer le filtre</b> tous les mois.')
+    });
+    await expect(page.locator('#scan-progress-text')).toContainText('1/1 fichiers indexés');
+    const snapshot = () => page.evaluate(async () => {
+      const { getAll } = await import('/db.js');
+      return Promise.all(['users', 'documents', 'equipment', 'family', 'alerts'].map(getAll));
+    });
+    const before = await snapshot();
+    const query = page.locator('#experimental-index-query');
+    await query.fill('nettoyer');
+    await query.press('Enter');
+    const result = page.locator('#experimental-index-results .experimental-result');
+    await expect(result).toHaveCount(1);
+    await expect(result.locator('.search-result-proof')).toContainText('Extrait correspondant');
+    await expect(result.locator('mark')).toHaveText('Entretien pergola : <b>nettoyer le filtre</b> tous les mois.');
+    await expect(result.locator('mark b')).toHaveCount(0);
+    await expect(result.locator('.search-result-origin')).toContainText("Local · texte partiellement recherché · accès à l'original non garanti");
+    const provenance = result.locator('.search-result-details');
+    await expect(provenance.locator('.search-evidence')).toBeHidden();
+    await provenance.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    await expect(provenance.locator('.search-evidence')).toBeVisible();
+    await expect(provenance).toContainText('Emplacement enregistré');
+    await expectUsable(page.locator('#view-recherche'));
+    await result.getByRole('button', { name: 'Voir la copie dans Famili-IA', exact: true }).click();
+    await expect(page.locator('#source-dialog')).toContainText('<b>nettoyer le filtre</b>');
+    await page.locator('#close-dialog').click();
+    await query.fill('notice');
+    await query.press('Enter');
+    await expect(result.locator('.search-result-proof')).toContainText('Nom correspondant');
+    await expect(result.locator('mark')).toHaveText('notice-pergola.txt');
+    expect(await snapshot()).toEqual(before);
+  });
+}
 
 test('ajout depuis Recherche : retour, filtres et question conserves, puis import local', async ({ page }) => {
   const errors = [];

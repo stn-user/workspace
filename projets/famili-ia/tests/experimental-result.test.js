@@ -33,6 +33,8 @@ test("résultat Drive : copie distincte, date de modification et accès non gara
     "Session Google Drive déconnectée.");
   assert.equal(result.name, "Facture.pdf");
   assert.equal(result.canViewCopy, true);
+  assert.equal(result.sourceLabel, "Google Drive");
+  assert.equal(result.coverageLabel, "texte partiellement recherché");
   assert.ok(result.details.includes("Type : PDF"));
   assert.ok(result.details.includes("Source : Google Drive"));
   assert.ok(result.details.includes("Modification selon Google Drive : 9 oct. 2026"));
@@ -52,6 +54,7 @@ test("métadonnées absentes, copie manquante et identités distinctes", () => {
   const localResult = describeExperimentalResult(localMatch, localRecord, local);
   const driveResult = describeExperimentalResult(driveMatch, driveRecord, undefined);
   assert.equal(localResult.canViewCopy, false);
+  assert.equal(localResult.coverageLabel, "métadonnées uniquement");
   assert.ok(localResult.details.includes("Emplacement enregistré : Dossier/Facture locale"));
   assert.ok(localResult.details.includes("Date : non disponible"));
   assert.ok(localResult.details.includes("Dernière vérification de la source : inconnue"));

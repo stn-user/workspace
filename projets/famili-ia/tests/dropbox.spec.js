@@ -408,7 +408,7 @@ test("Dropbox : changements soumis à confirmation, comptes distincts, quotas, a
   expect(await checkpoints(page)).toHaveLength(1);
   await page.locator("#close-source-choice").click();
   await page.evaluate(() => { location.hash = "#/vos-donnees"; });
-  await expect(page.locator("#summary-dropbox")).toContainText("4 copie(s)");
+  await expect(page.locator("#summary-dropbox")).toHaveText("4");
   await page.locator("#purge-all-data").click();
   await page.locator("#confirm-purge").click();
   await expect(page.locator("#purge-status")).toContainText("supprimées");
