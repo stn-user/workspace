@@ -196,7 +196,7 @@ test("accepts a photo at the 10 MiB boundary and rejects larger files", async ()
   const atLimit = await extractPhotoMetadata(new Blob([exactLimit]), "fixture-at-limit");
   const overLimit = new Blob([Buffer.concat([exactLimit, Buffer.from([0])])]);
 
-  assert.equal(MAX_PHOTO_FILE_SIZE, 10 * 1024 * 1024);
+  assert.equal(MAX_PHOTO_FILE_SIZE, 20 * 1024 * 1024);
   assert.equal(overLimit.size, MAX_PHOTO_FILE_SIZE + 1);
   assert.equal(atLimit.metadata.captureDate.localDateTime, "2024-05-06T12:30:45");
   await assert.rejects(

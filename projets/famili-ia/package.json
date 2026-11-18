@@ -12,6 +12,8 @@
     "test:onboarding": "playwright test tests/onboarding.spec.js",
     "preview": "vite preview",
     "cap:sync": "npm run build && cap sync",
+    "android:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\build-android-debug.ps1 -CheckOnly",
+    "android:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\build-android-debug.ps1",
     "android:add": "cap add android",
     "android:open": "cap open android",
     "android:run": "npm run cap:sync && cap run android"

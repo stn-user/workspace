@@ -35,5 +35,5 @@
         </provider>
     </application>
 
-    <!-- Network access is intentionally disabled until a cloud connector is implemented. -->
+    <!-- Network permissions are inherited from native dependencies; review the merged manifest before distribution. -->
 </manifest>

@@ -1,4 +1,4 @@
-# Audit initial de l'intelligence produit — Phase 15
+﻿# Audit initial de l'intelligence produit — Phase 15
 
 ## Portée et limites
 
@@ -64,7 +64,7 @@ Mesures à établir : taux d'extraction des métadonnées par format, traitement
 
 ### Décision 15.3.a — sources et accès par plateforme (2 novembre 2026)
 
-L'inspection de `index.html`, `app.js`, `local-files.js`, `capacitor.config.json`, du manifeste Android et des dépendances confirme que l'import photo réel se limite aujourd'hui à une sélection manuelle JPG/JPEG/PNG dans le flux Web. Les contrôles `accept` ne sont pas une validation. L'import vérifie ensuite les extensions, limite une image à 10 Mio et une sélection à cinq fichiers. Le scanner de dossiers accepte davantage d'extensions, mais cela ne signifie pas que ces fichiers sont correctement traités ou que ces formats sont pris en charge dans l'import utilisateur.
+L'inspection de `index.html`, `app.js`, `local-files.js`, `capacitor.config.json`, du manifeste Android et des dépendances confirme que l'import photo réel se limite aujourd'hui à une sélection manuelle JPG/JPEG/PNG dans le flux Web. Les contrôles `accept` ne sont pas une validation. L'import vérifie ensuite les extensions, limitait une image à 10 Mio (désormais 20 Mio) et une sélection à cinq fichiers. Le scanner de dossiers accepte davantage d'extensions, mais cela ne signifie pas que ces fichiers sont correctement traités ou que ces formats sont pris en charge dans l'import utilisateur.
 
 | Plateforme | Capacité actuelle vérifiée | Décision produit pour les photos |
 |---|---|---|

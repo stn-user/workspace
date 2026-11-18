@@ -1,4 +1,4 @@
-# Intégration et accès aux fichiers locaux
+﻿# Intégration et accès aux fichiers locaux
 
 Cette page distingue les capacités réellement présentes des choix à mettre en œuvre. Famili-IA ne doit demander accès qu'aux fichiers explicitement sélectionnés par l'utilisateur ; la sélection d'un fichier ne vaut pas autorisation de parcourir toute sa photothèque.
 
@@ -7,7 +7,7 @@ Cette page distingue les capacités réellement présentes des choix à mettre e
 ### Web
 
 - Les contrôles HTML `input type="file"` permettent une sélection explicite d'un ou plusieurs fichiers. `accept` est une indication pour le sélecteur, pas une validation ; l'application doit toujours contrôler type et taille après sélection.
-- Le flux d'import manuel accepte actuellement JPG/JPEG et PNG pour les images, jusqu'à 10 Mio par fichier, et jusqu'à cinq fichiers par sélection/session. Les documents texte sont limités à 1 Mio et les PDF à 10 Mio. HEIC/HEIF et WebP apparaissent dans le scanner de dossiers, mais ne font pas partie des formats de l'import manuel ni d'un engagement de prise en charge photo.
+- Le flux d'import manuel accepte actuellement JPG/JPEG et PNG pour les images, jusqu'à 20 Mio par fichier, et jusqu'à cinq fichiers par sélection/session. Les documents texte sont limités à 1 Mio et les PDF à 10 Mio. HEIC/HEIF et WebP apparaissent dans le scanner de dossiers, mais ne font pas partie des formats de l'import manuel ni d'un engagement de prise en charge photo.
 - Un contrôle `capture="environment"` propose une capture caméra au navigateur compatible ; il ne garantit ni l'ouverture d'une caméra ni un sélecteur de photothèque uniforme.
 - Le scanner de dossiers Web dépend de `showDirectoryPicker` ou d'une sélection `webkitdirectory`, dont la disponibilité et le comportement dépendent du navigateur. Il ne constitue pas le parcours photo de référence.
 - Le traitement du contenu importé est exécuté côté client. Aucun service worker n'a été trouvé : l'accès hors ligne complet de la version Web n'est donc pas garanti. Après chargement de l'application, une sélection locale peut être lue sans envoyer le fichier à un service Famili-IA, mais cela ne garantit pas que l'application puisse être ouverte hors ligne.
@@ -17,8 +17,62 @@ Cette page distingue les capacités réellement présentes des choix à mettre e
 - Le projet comprend une cible Android et les plugins `@capacitor/filesystem` et `@capacitor/camera`. Le sélecteur photo système est raccordé au parcours d'import : jusqu'à cinq photos JPEG/PNG choisies explicitement sont lues localement puis soumises aux contrôles de taille et au traitement existants. Le bouton n'est visible que sur Android ; aucune permission générale de photothèque n'est demandée par ce parcours.
 - Le code utilise `Filesystem.Directory.Documents` pour explorer des chemins supposés publics. La documentation Capacitor précise que sur Android 11 et ultérieur, ce répertoire ne donne accès qu'aux fichiers créés par l'application. Le manifeste Android actuel ne déclare pas de permission de lecture des médias ou du stockage. Le parcours de scan actuel ne constitue donc pas un accès fiable aux photos de l'utilisateur.
 - Le lecteur importe les plugins Capacitor Filesystem et OCR natifs ; l'OCR de PDF scannés et d'images peut fournir des segments locaux indexables. Ce raccordement n'a pas encore été validé sur appareil et ne change ni les limites d'accès aux fichiers ni la sélection explicite.
-- La sélection photo est couverte par des tests unitaires pour l'annulation, la limite, les formats et les erreurs de lecture. La synchronisation Capacitor réussit, mais aucune compilation Gradle ni validation sur appareil n'a été effectuée : Java, Android SDK et `adb` ne sont pas configurés dans l'environnement courant.
+- La sélection photo est couverte par des tests unitaires pour l'annulation, la limite, les formats et les erreurs de lecture. La synchronisation Capacitor et une compilation Gradle Debug ont réussi sous Windows avec la chaîne locale Java/SDK ; la signature et l'identifiant de l'APK ont été vérifiés. Aucune validation sur appareil n'a encore été effectuée.
 - Les fichiers locaux de l'application peuvent être traités sans serveur, mais l'absence de test hors ligne sur appareil et le cas de fournisseurs médias cloud empêchent de promettre une disponibilité hors ligne universelle.
+
+#### Construire un APK Debug sous Windows
+
+Prérequis : dépendances du projet installées avec `npm ci`, Node.js 22.12 ou ultérieur,
+JDK 21, Android SDK Platform 36 et Build Tools 35.0.0. Les Platform Tools
+fournissent `adb` pour les futurs essais sur appareil ; aucun émulateur n'est requis.
+Les outils et leurs licences doivent être installés séparément ; le script ne les
+installe pas et ne modifie pas le PATH global.
+
+Depuis la racine du dépôt :
+
+```powershell
+npm run android:check
+npm run android:debug
+```
+
+Le script [build-android-debug.ps1](../../scripts/build-android-debug.ps1)
+utilise `JAVA_HOME` et `ANDROID_HOME` (ou `ANDROID_SDK_ROOT`) s'ils sont définis.
+Sinon, il cherche respectivement `%LOCALAPPDATA%\FamiliIA\toolchains\jdk-21` et
+`%LOCALAPPDATA%\FamiliIA\toolchains\android-sdk`. Un chemin explicite invalide ou
+deux chemins SDK contradictoires provoquent une erreur, sans remplacement silencieux.
+`android:check` contrôle les prérequis sans compiler.
+
+`android:debug` construit le Web, synchronise **Android uniquement**, puis exécute
+`gradlew.bat --no-daemon --max-workers=2 :app:assembleDebug`. Le wrapper utilise
+Gradle 8.14.3, avec vérification SHA-256 de sa distribution ; AGP est en version
+8.13.0. Le premier lancement nécessite Internet pour Gradle et ses dépendances.
+Les ressources Web sont embarquées : un `server.url` de développement est refusé.
+La commande contrôle la signature, l'identifiant du paquet, le caractère Debug et
+la présence de la page Web dans l'APK ; elle affiche son chemin, sa taille et son SHA-256.
+Elle n'exécute aucune suite de tests et n'installe rien sur un appareil.
+
+Artefact attendu :
+[`android/app/build/outputs/apk/debug/app-debug.apk`](../../android/app/build/outputs/apk/debug/app-debug.apk).
+La signature Debug locale n'est pas une signature de distribution. Conserver la
+même clé Debug hors dépôt pour mettre à jour une installation d'essai sans devoir
+la désinstaller ; une désinstallation peut effacer ses données locales.
+« Reproductible » désigne ici une procédure réexécutable, pas une identité binaire
+garantie entre machines ou clés de signature différentes.
+
+Deux constructions successives ont réussi avec le même SHA-256 sur cette machine
+(APK de 56 386 030 octets). Le préflight a également refusé un JDK absent, un SDK
+absent et des variables SDK contradictoires. Aucune campagne exhaustive n'a été lancée.
+
+Ce build ne valide ni le démarrage ni les parcours natifs sur appareil.
+Le manifeste **fusionné de l'APK** contient `INTERNET` et `ACCESS_NETWORK_STATE`,
+ajoutées par la dépendance transitive Google DataTransport, même si le manifeste
+source de l'application ne les déclare pas directement. Aucune permission de
+lecture des médias ou du stockage n'y figure. Les dépendances natives, leurs
+échanges réseau et les connecteurs cloud restent à qualifier pour la bêta ;
+ne pas déduire une absence de réseau du seul manifeste source.
+La synchronisation chiffrée multi-appareils n'est pas implémentée. Ces points, les
+essais hors ligne, l'OCR, les permissions et la conservation des données restent
+distincts de la compilation ; iOS nécessite toujours macOS/Xcode.
 
 ### iOS
 

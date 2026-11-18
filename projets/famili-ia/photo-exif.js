@@ -1,6 +1,6 @@
 import { createPhotoMetadata, hashPhotoBytes } from "./photo-metadata.js";
 
-export const MAX_PHOTO_FILE_SIZE = 10 * 1024 * 1024;
+export const MAX_PHOTO_FILE_SIZE = 20 * 1024 * 1024;
 
 const EXIF_TAGS = [
   "DateTimeOriginal",

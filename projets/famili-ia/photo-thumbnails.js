@@ -1,3 +1,5 @@
+import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
+
 export const PHOTO_THUMBNAIL_SCHEMA_VERSION = 1;
 export const PHOTO_THUMBNAIL_MAX_DIMENSION = 320;
 export const PHOTO_THUMBNAIL_MAX_BYTES = 48 * 1024;
@@ -122,8 +124,8 @@ async function createPhotoThumbnail(file) {
     || typeof file.arrayBuffer !== "function") {
     throw new TypeError("La génération d'une vignette nécessite un fichier image local.");
   }
-  if (file.size > 10 * 1024 * 1024) {
-    throw new RangeError("L'image dépasse la limite de 10 Mio pour la génération de vignette.");
+  if (file.size > MAX_PHOTO_FILE_SIZE) {
+    throw new RangeError("L'image dépasse la limite de 20 Mio pour la génération de vignette.");
   }
 
   const decoded = await decodeImage(file);
