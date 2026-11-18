@@ -92,7 +92,7 @@ Le wizard affiche sa progression (« Étape 1 sur 3 · Personnalisation », « �
 
 Depuis le profil, « Visiter les autres vues » lance une visite non modale de Recherche, Maison, Famille, Alertes, Vos données et Importer. Une proposition facultative est également affichée dans la dernière étape de la démo ; la visite peut être quittée sans empêcher de terminer ou de reprendre le wizard.
 
-Le panneau reste visible pendant la navigation, annonce la progression et propose précédent, suivant et quitter. Chaque étape passe par `showView()`, met le titre de la vue en évidence et, à la fin ou à la sortie, revient à la vue et au contrôle de lancement. Une navigation choisie par l'utilisateur ferme la visite sans détourner cette navigation.
+Le panneau reste visible pendant la navigation, annonce la progression et propose précédent, suivant et quitter. Son texte occupe toute la largeur au-dessus des actions, sur PC comme sur mobile, sans colonne latérale étroite. Chaque étape passe par `showView()`, met le titre de la vue en évidence et, à la fin ou à la sortie, revient à la vue et au contrôle de lancement. Une navigation choisie par l'utilisateur ferme la visite sans détourner cette navigation.
 
 La visite est en lecture seule : elle n'active pas les contrôles d'import, ne lance pas de connexion et ne demande pas de permission. Les vues restent les vues réelles de l'application et peuvent donc afficher les données locales déjà présentes ; ce point est annoncé avant et pendant le parcours. La recherche et les sources sont décrites avec leurs limites actuelles, sans promettre une couverture complète.
 

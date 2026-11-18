@@ -5019,8 +5019,9 @@ body.ui-theme.ui-warm {
   transform: translateX(-50%);
   box-sizing: border-box;
   display: flex;
+  flex-direction: column;
   width: min(34rem, calc(100vw - 2rem));
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem;
@@ -5171,6 +5172,8 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }.breadcrum
   min-width: 48px;
   min-height: 48px;
 }
+.unified-search-query .search-dictation-button { flex: 0 0 48px; width: 48px; min-height: 48px; padding: 0; }
+.search-dictation-button[aria-pressed="true"] { background: var(--ui-tint); outline: 3px solid var(--ui-brand); outline-offset: 2px; }
 
 /* Home and search keep results ahead of secondary tools and explanations. */
 .home-header,

@@ -81,6 +81,10 @@ for (const viewport of [
       await expect(page.locator(`[data-view="${step.view}"] h1`)).toHaveClass(/view-tour-highlight/);
       await expect(page.locator(`[data-view="${step.view}"] h1`)).toBeFocused();
       await expect(page.locator('#view-tour')).toContainText('Lecture seule');
+      const copyBox = await panel.locator('.view-tour-copy').boundingBox();
+      const actionsBox = await panel.locator('.view-tour-actions').boundingBox();
+      expect(copyBox.y + copyBox.height).toBeLessThanOrEqual(actionsBox.y);
+      expect(copyBox.width).toBeGreaterThanOrEqual(actionsBox.width - 1);
       if (index < steps.length - 1) await page.locator('#view-tour-next').click();
     }
     await expect(page.locator('#view-tour-next')).toHaveText('Terminer la visite');

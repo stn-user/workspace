@@ -21,6 +21,7 @@ import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.
 import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
 import { getPhotoThumbnailDataUrl } from "./photo-thumbnails.js";
 import { prepareCoverPhoto, validateCoverPhoto } from "./cover-photo.js";
+import { initSearchDictation } from "./search-dictation.js";
 import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline } from "./photo-timeline.js";
 import { getAlertsToNotify, getDaysUntilDate, normalizeAlertDate, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
@@ -659,6 +660,7 @@ let driveSelectionSettled = null;
 let removingSessionFiles = false;
 const form = document.querySelector("#experimental-index-form");
 const input = document.querySelector("#experimental-index-query");
+const stopSearchDictation = initSearchDictation();
 const experimentalIndexForm = form;
 const experimentalIndexQuery = input;
 const experimentalIndexSource = document.querySelector("#experimental-index-source");
@@ -3067,6 +3069,7 @@ function renderPlusBadges() {
 }
 
 function showView(name, { addHistory = true, params = {} } = {}) {
+  stopSearchDictation();
   console.log("showView called for:", name);
   if (!Object.hasOwn(pageTitles, name)) return;
   const currentTourStep = VIEW_TOUR_STEPS[viewTourStepIndex];

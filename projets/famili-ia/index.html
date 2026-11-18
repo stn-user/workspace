@@ -320,6 +320,9 @@
           <label class="ui-label" for="experimental-index-query">Rechercher dans vos sources</label>
           <div class="unified-search-query">
             <input class="ui-input" id="experimental-index-query" name="question" type="search" autocomplete="off" placeholder="Ex. : facture pergola, photos de vacances">
+            <button class="ui-button ui-button--secondary search-dictation-button" id="search-dictation" type="button" aria-label="Dicter la recherche" aria-pressed="false" aria-haspopup="dialog" title="Dicter la recherche">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"></path></svg>
+            </button>
             <button class="ui-button ui-button--primary submit-button" type="submit" aria-label="Lancer la recherche">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="8"></circle>
@@ -329,6 +332,7 @@
           </div>
         </form>
 
+        <p id="search-dictation-status" class="household-note" role="status" aria-live="polite" hidden></p>
         <p class="search-scope-note">Uniquement les fichiers présents dans Famili-IA. Photos : métadonnées et annotations explicites, sans reconnaissance visuelle.</p>
         <details class="ui-card search-disclosure" id="search-filters-panel">
           <summary id="experimental-index-title">Affiner la recherche <span id="search-filter-count"></span></summary>
@@ -1112,6 +1116,19 @@
     </section>
   </dialog>
   <input type="file" id="local-files-input" class="visually-hidden" aria-label="Choisir des fichiers locaux à indexer" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
+
+  <dialog class="ui-dialog" id="search-dictation-dialog" aria-labelledby="search-dictation-title" aria-describedby="search-dictation-privacy search-dictation-availability">
+    <div class="ui-dialog__header">
+      <h2 id="search-dictation-title">Dicter votre recherche</h2>
+      <button class="ui-dialog__close" type="button" id="close-search-dictation" aria-label="Fermer les options de dictée">×</button>
+    </div>
+    <p id="search-dictation-privacy">La dictée utilise le service de votre navigateur. L'audio et la transcription peuvent être envoyés à son fournisseur, selon ses règles de confidentialité et de conservation. Famili-IA n'enregistre pas l'audio. Les mots reconnus sont ajoutés au champ, sans lancer la recherche ; vous pouvez les corriger.</p>
+    <p id="search-dictation-availability" class="household-note"></p>
+    <div class="household-form-actions">
+      <button class="ui-button ui-button--secondary" type="button" id="cancel-search-dictation" autofocus>Annuler</button>
+      <button class="ui-button ui-button--primary" type="button" id="start-search-dictation">Accepter et dicter</button>
+    </div>
+  </dialog>
 
   <dialog class="ui-dialog" id="house-photo-dialog" aria-labelledby="house-photo-title" aria-describedby="house-photo-privacy">
     <div class="ui-dialog__header">
