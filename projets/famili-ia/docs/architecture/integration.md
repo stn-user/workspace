@@ -37,6 +37,27 @@ Le parseur `exifr` extrait désormais en local les seules balises nécessaires (
 
 L'étape 15.3.c a défini le sous-objet versionné `photoMetadata` et ses validateurs/migrations dans `photo-metadata.js`. `state.js` valide ce sous-objet à l'ajout d'un document et migre les enregistrements photo v0 valides lors de leur chargement. L'aperçu d'un document image affiche uniquement son texte extrait, pas l'image binaire ni ses EXIF. Les exports JSON et PDF masquent les coordonnées GPS par défaut ; l'état local reste inchangé. Les fixtures et mesures de 15.3.e sont documentées dans [l'audit de la phase 15](./phase-15-intelligence-audit.md) ; elles couvrent un corpus limité de trois groupes d'appareils, et le profilage mobile reste à réaliser.
 
+## Confirmation locale d'échéance — A4
+
+Recherche et Assistant partagent le parcours de [propositions confirmées](assistant-enrichi.md#a4-local-livré--propositions-et-confirmations-communes).
+Il ne demande aucun accès supplémentaire aux fichiers ou aux sources cloud,
+ne modifie pas les originaux et ne déclenche pas de notification immédiate.
+
+La préparation réutilise les fiches et segments de l'index commun.
+`confirmDocumentDeadline()` dans [state.js](../../state.js) revalide l'identité
+complète, la provenance, la preuve et l'admissibilité, puis sérialise la mutation.
+`putConfirmedDocumentAlert()` dans [db.js](../../db.js) prépare le stockage avant
+une transaction IndexedDB unique couvrant `documents` et `alerts`.
+Les comparaisons d'état persistant avant et dans la transaction empêchent
+d'écraser une modification concurrente ou de recréer une copie supprimée.
+Seul `transaction.oncomplete` autorise la publication en mémoire ; un abandon
+annule toutes les écritures. Les confirmations répétées contrôlent aussi les
+enregistrements persistés avant de renvoyer le rappel existant sans écrire.
+
+Le parcours reste limité aux propositions déterministes actuellement admissibles.
+La correction manuelle historique et la réconciliation automatique des alertes
+gardent leurs entrées distinctes ; A4 ne les transforme pas en transaction globale.
+
 ## Sources et vérification
 
 Capacités du dépôt vérifiées le 2 novembre 2026 (`index.html`, `app.js`, `local-files.js`, `capacitor.config.json`, `android/app/src/main/AndroidManifest.xml`, `package.json`) :

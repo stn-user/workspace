@@ -9,6 +9,11 @@ export function findIndexDeadlines(session, referenceDate, daysToExamine) {
   findDeadlineCandidates([], referenceDate, daysToExamine);
   const records = session.getAllRecords();
   const documents = session.getAllContentDocs();
+  return findDocumentDeadlines(records, documents, referenceDate, daysToExamine);
+}
+
+export function findDocumentDeadlines(records, documents, referenceDate, daysToExamine) {
+  findDeadlineCandidates([], referenceDate, daysToExamine);
   const processed = [];
   const needReview = [];
 

@@ -155,7 +155,7 @@ test.describe('Famili-IA Onboarding & Sync (Phase 13.4 & 13.5)', () => {
     // Étape 0 -> Bienvenue
     const step0 = page.locator('#step-0');
     await expect(step0).not.toHaveAttribute('hidden');
-    await expect(step0.locator('h2')).toContainText('Retrouvez ce qui compte');
+    await expect(step0.locator('h2')).toHaveText("L'essentiel, toujours à portée de main.");
 
     // Clic sur "Découvrir Famili-IA"
     await page.locator('#start-onboarding').click();
@@ -163,7 +163,7 @@ test.describe('Famili-IA Onboarding & Sync (Phase 13.4 & 13.5)', () => {
     // Étape 1 -> Personnalisation
     const step1 = page.locator('#step-1');
     await expect(step1).not.toHaveAttribute('hidden');
-    await expect(step1.locator('h2')).toContainText('Comment pouvons-nous vous appeler');
+    await expect(step1.locator('h2')).toHaveText('Faisons connaissance !');
 
     // Saisie prénom optionnel
     await page.fill('#wizard-user-name', 'Alex');

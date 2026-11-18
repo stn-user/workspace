@@ -11,10 +11,13 @@ graph TD
         E[currentUser, family, homeEquipment, alerts, documents]
     end
 
-    subgraph "Couche Logique [search-utils.js + local-files.js]"
+    subgraph "Couche Logique [index commun et lecture locale]"
         F[search-utils.js - extraction mots-clés / normalisation]
         G[local-files.js - lecture fichiers Capacitor / OCR]
-        H[moteur recherche - concaténation cloud + local]
+        H[index-session.js - instance commune des copies]
+        L[assistant-context.js - sujet, faits et preuves vérifiées]
+        M[document-alert-action.js - propositions et preuves]
+        N[house-photo.js - copie de couverture locale sans analyse]
     end
 
     subgraph "Intégrations Externes [Capacitor / Google Drive]"
@@ -26,9 +29,20 @@ graph TD
     %% Flux de données
     A --> B
     B --> C
-    C -->|user input| F
-    F --> H
-    H --> C
+    C -->|Recherche| H
+    C -->|Assistant personnel| L
+    L -->|intentions et faits littéraux| F
+    L -->|requêtes documentaires| H
+    H -->|candidats, segments, révision| L
+    L -->|réponse ou abstention sourcée| C
+    H -->|résultats Recherche| C
+    C -->|exemples isolés sans fichier| F
+    C -->|Recherche et Assistant : proposition| M
+    H -->|échéances et segments vérifiés| M
+    M -->|confirmation explicite : confirmDocumentDeadline| D
+    D -->|transaction document et alerte, puis résultat| C
+    C -->|choix facultatif et cadrage Maison| N
+    N -->|copie JPEG bornée, confirmation utilisateur| D
 
     %% Flux cloud
     J -->|fichiers sélectionnés| K
@@ -38,6 +52,7 @@ graph TD
     %% État
     D -->|mise à jour| B
     B -->|état courant| D
+    B -->|instantané complet et invalidation des réponses| H
 
     %% Style
     classDef ui fill:#e0f7fa,stroke:#0277bd,stroke-width:2px;
@@ -47,5 +62,5 @@ graph TD
 
     class A,B,C ui;
     class D,E state;
-    class F,G,H logic;
+    class F,G,H,L,M,N logic;
     class I,J,K ext;

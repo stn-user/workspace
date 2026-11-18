@@ -101,6 +101,57 @@ export const remove = async (storeName, id) => {
   });
 };
 
+export async function putConfirmedDocumentAlert(document, alert, expectedDocument, expectedAlert) {
+  const db = await initDB();
+  try {
+    const read = db.transaction(['documents', 'alerts'], 'readonly');
+    const before = await Promise.all([['documents', document.id], ['alerts', alert.id]].map(([store, id]) =>
+      new Promise((resolve, reject) => {
+        const request = read.objectStore(store).get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      })));
+    const decoded = await Promise.all(before.map(record =>
+      record?.iv && record?.data ? decryptData(record) : record));
+    if (JSON.stringify(decoded[0]) !== JSON.stringify(expectedDocument) ||
+        JSON.stringify(decoded[1]) !== JSON.stringify(expectedAlert)) {
+      throw new Error("La copie ou l'alerte enregistrée a changé ; actualisez avant de confirmer.");
+    }
+    const encoded = await Promise.all([document, alert].map(async record => ({
+      ...await encryptData(record), id: record.id
+    })));
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction(['documents', 'alerts'], 'readwrite');
+      let failure;
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(failure || transaction.error || new Error("Confirmation annulée ; aucune écriture conservée."));
+      let checked = 0;
+      ['documents', 'alerts'].forEach((store, index) => {
+        const request = transaction.objectStore(store).get(encoded[index].id);
+        request.onsuccess = () => {
+          if (transaction.error || failure) return;
+          if (JSON.stringify(request.result) !== JSON.stringify(before[index])) {
+            failure = new Error("La copie ou l'alerte a changé pendant la confirmation ; aucune écriture conservée.");
+            transaction.abort();
+            return;
+          }
+          checked += 1;
+          if (checked !== 2) return;
+          try {
+            transaction.objectStore('documents').put(encoded[0]);
+            transaction.objectStore('alerts').put(encoded[1]);
+          } catch (error) {
+            failure = error;
+            transaction.abort();
+          }
+        };
+      });
+    });
+  } finally {
+    db.close();
+  }
+}
+
 // Fonction de purge sécurisée unique et propre
 export const purgeDatabase = async () => {
   const db = await initDB();

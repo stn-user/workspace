@@ -214,7 +214,7 @@ export function getSearchMatch(question, searchableText, hasUploadedDocuments = 
   return { matchedTerms, score: finalScore };
 }
 
-function getExpandedTerms(term) {
+export function getExpandedTerms(term) {
   return [term, ...(localSynonyms.get(term) ?? [])];
 }
 
@@ -240,9 +240,9 @@ function getEvidenceExcerpt(question, lines) {
     ?.line ?? null;
 }
 
-function getProvenance(document) {
+export function getProvenance(document) {
   if (document.dropboxSource) {
-    return "Dropbox · copie enregistrée localement · accès actuel à l'original non vérifié";
+    return `Dropbox · copie enregistrée localement · compte d'origine ${formatOneDriveAccountFingerprint(document.dropboxAccountFingerprint)} · accès actuel à l'original non vérifié`;
   }
   if (document.oneDriveSource) {
     return `OneDrive · copie enregistrée localement · compte d'origine ${formatOneDriveAccountFingerprint(document.oneDriveAccountFingerprint)}`;
@@ -276,6 +276,17 @@ function getSearchConfidence(score, exactFact, ambiguous) {
   return "faible";
 }
 
+export function getQuestionSubjectTerms(question) {
+  const intent = detectQuestionIntent(question);
+  const queryTerms = getQuestionTerms(question);
+  const intentWords = intentTerms[intent] ?? new Set();
+  return queryTerms.filter(term => (
+    !genericSearchTerms.has(term)
+    && !documentTypeTerms.has(term)
+    && !intentWords.has(term)
+  ));
+}
+
 /**
  * Ranks documents locally using explicit metadata, lexical matches, and a small
  * auditable French synonym map. It abstains unless the query names a subject.
@@ -283,12 +294,7 @@ function getSearchConfidence(score, exactFact, ambiguous) {
 export function rankDocuments(question, documents, { limit = 3, strategy = "hybrid" } = {}) {
   const intent = detectQuestionIntent(question);
   const queryTerms = getQuestionTerms(question);
-  const intentWords = intentTerms[intent] ?? new Set();
-  const subjectTerms = queryTerms.filter(term => (
-    !genericSearchTerms.has(term)
-    && !documentTypeTerms.has(term)
-    && !intentWords.has(term)
-  ));
+  const subjectTerms = getQuestionSubjectTerms(question);
   if (subjectTerms.length === 0) return [];
 
   const ranked = documents.map(document => {

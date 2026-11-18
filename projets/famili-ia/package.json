@@ -8,6 +8,7 @@
     "build": "vite build",
     "test": "node --test",
     "benchmark:photo-exif": "node --expose-gc tests/photo-exif-benchmark.js",
+    "benchmark:assistant": "node scripts/evaluate-assistant.js",
     "test:onboarding": "playwright test tests/onboarding.spec.js",
     "preview": "vite preview",
     "cap:sync": "npm run build && cap sync",

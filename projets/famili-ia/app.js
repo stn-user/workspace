@@ -9,8 +9,8 @@ import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
 import {
   initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts,
-  getDocuments, addDocument, confirmDocumentAlert, deleteDocument, calculateAlertType, updateAlert,
-  updateAlertNotificationPreferences, updateUserProfile, getFullState,
+  getDocuments, addDocument, confirmDocumentAlert, confirmDocumentDeadline, deleteDocument, calculateAlertType, updateAlert,
+  updateAlertNotificationPreferences, updateUserProfile, updateHousePhoto, getFullState,
   addFamilyMember, addEquipment, updateEquipment, deleteEquipment, deleteFamilyMember, updateFamilyMember,
   updatePhotoAnnotations, resetState, getDropboxIndexCheckpoint, saveDropboxIndexCheckpoint,
   clearDropboxIndexCheckpoint, clearDropboxIndexCheckpoints
@@ -20,17 +20,19 @@ import { redactPhotoFactLocationsForExport } from "./photo-facts.js";
 import { isPhotoDocument, normalizePhotoAnnotations } from "./photo-annotations.js";
 import { MAX_PHOTO_FILE_SIZE } from "./photo-exif.js";
 import { getPhotoThumbnailDataUrl } from "./photo-thumbnails.js";
+import { prepareHousePhoto, validateHousePhoto } from "./house-photo.js";
 import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline } from "./photo-timeline.js";
 import { getAlertsToNotify, getDaysUntilDate, normalizeAlertDate, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
 import { IndexSession, INDEX_SOURCES } from "./index-session.js";
+import { isAssistantMatchCurrent, prepareAssistantContext } from "./assistant-context.js";
+import { assertDocumentAlertSource, matchesDocumentAlertIdentity, prepareDocumentAlertAction } from "./document-alert-action.js";
 import { createSourceRunStatus, describeSources, sourceRunStatusId } from "./source-status.js";
 import { loadSourceRunStatuses, saveSourceRunStatus } from "./source-status-storage.js";
 import { describeExperimentalResult, summarizePhotoSources } from "./experimental-result.js";
 import { findDocumentDuplicateCandidates } from "./document-deduplication.js";
 import { findIndexDeadlines } from "./index-deadline-search.js";
 import { createUnifiedIndexQuery, isWithinDateRange, mergeUnifiedIndexFilters } from "./unified-index-query.js";
-import { ALERT_CATEGORIES, getAlertLevelForDate } from "./alert-engine.js";
 import { OneDriveAuth } from "./onedrive-auth.js";
 import { scanOneDrive } from "./onedrive-graph.js";
 import {
@@ -650,6 +652,7 @@ function synchronizeStoredPhotoDocuments() {
   }
 }
 const experimentalIndex = new IndexSession();
+const assistantResponseContexts = new Map();
 const invalidContentProvenance = new WeakSet();
 let driveSelectionGeneration = 0;
 let driveSelectionSettled = null;
@@ -934,107 +937,70 @@ function renderExperimentalDeadlines(sourceStatuses) {
 }
 
 function addDeadlineAlertAction(item, candidate) {
-  const document = findExperimentalDocument(candidate.sourceId, candidate.itemId, candidate.accountRef);
-  const matchingStoredDocuments = getDocuments().filter(entry => entry.id === candidate.itemId &&
-    getInventorySource(entry) === candidate.sourceId && getInventoryAccountRef(entry) === candidate.accountRef);
-  const proofLines = candidate.proof.excerpt.split(/\r\n|\n|\r/).map(line => line.trim()).filter(Boolean);
-  if (!document || matchingStoredDocuments.length !== 1 ||
-      getInventorySource(matchingStoredDocuments[0]) !== candidate.sourceId ||
-      typeof document.content !== "string" ||
-      !proofLines.length ||
-      !proofLines.every(proofLine => document.content.split(/\r\n|\n|\r/).some(line => line.trim() === proofLine))) {
-    addTextElement(item, "p", "", "Alerte non disponible : copie persistée ou preuve inchangée introuvable.");
+  const status = item.closest('.assistant-source')
+    ? document.querySelector('#assistant-status') : deadlineStatus;
+  let proposal;
+  try {
+    const copies = getDocuments().filter(entry => entry.id === candidate.itemId);
+    if (copies.length !== 1) throw new Error("Alerte non disponible : copie persistée absente ou ambiguë.");
+    const record = experimentalIndex.getAllRecords().find(entry =>
+      entry.sourceId === candidate.sourceId && entry.accountRef === candidate.accountRef && entry.itemId === candidate.itemId);
+    const content = experimentalIndex.getAllContentDocs().find(entry =>
+      entry.sourceId === candidate.sourceId && entry.accountRef === candidate.accountRef && entry.itemId === candidate.itemId);
+    proposal = prepareDocumentAlertAction(candidate, copies[0], record, content);
+  } catch (error) {
+    addTextElement(item, "p", "household-note", error instanceof Error ? error.message : "Alerte non disponible : préparation impossible.");
     return;
   }
-
-  const storedDocument = matchingStoredDocuments[0];
-  const parsedType = parseDocument(storedDocument.content, storedDocument.name || storedDocument.originalName || "").type;
-  const documentType = ALERT_CATEGORIES.includes(storedDocument.alertType)
-    ? storedDocument.alertType
-    : ALERT_CATEGORIES.includes(parsedType) ? parsedType : null;
-  if (!documentType) {
-    addTextElement(item, "p", "", "Alerte non disponible : catégorie prise en charge non déterminée.");
-    return;
-  }
-  const level = getAlertLevelForDate(candidate.dueDate, documentType);
-  if (level !== "amber" && level !== "red") {
-    addTextElement(item, "p", "", `Alerte non encore admissible pour cette échéance de type ${documentType}.`);
-    return;
-  }
-
   const buttonLabel = candidate.estimated
     ? "Confirmer l’estimation et créer l’alerte"
     : "Confirmer la date et créer l’alerte";
   const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", buttonLabel);
   button.type = "button";
+  let pending = false;
   button.addEventListener("click", async () => {
-    const currentDocuments = getDocuments().filter(entry => entry.id === candidate.itemId &&
-      getInventorySource(entry) === candidate.sourceId && getInventoryAccountRef(entry) === candidate.accountRef);
-    const current = currentDocuments[0];
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const currentProposal = findIndexDeadlines(experimentalIndex, today, 90).candidates
-      .find(entry => entry.sourceId === candidate.sourceId && entry.accountRef === candidate.accountRef &&
-        entry.itemId === candidate.itemId);
-    if (currentDocuments.length !== 1 || !current ||
-        getInventorySource(current) !== candidate.sourceId ||
-        current.content !== document.content ||
-        !current.content ||
-        !proofLines.every(proofLine => current.content.split(/\r\n|\n|\r/).some(line => line.trim() === proofLine)) ||
-        !currentProposal || currentProposal.dueDate !== candidate.dueDate ||
-        currentProposal.estimated !== candidate.estimated ||
-        currentProposal.proof.excerpt !== candidate.proof.excerpt) {
-      deadlineStatus.textContent = "Cette proposition a changé ou sa copie n’est plus disponible ; actualisez et vérifiez-la à nouveau.";
-      refreshExperimentalIndex();
-      return;
-    }
-
-    const confirmedType = ALERT_CATEGORIES.includes(current.alertType)
-      ? current.alertType
-      : parseDocument(current.content, current.name || current.originalName || "").type;
-    const confirmedLevel = getAlertLevelForDate(candidate.dueDate, confirmedType, now);
-    if (!ALERT_CATEGORIES.includes(confirmedType) || (confirmedLevel !== "amber" && confirmedLevel !== "red")) {
-      deadlineStatus.textContent = "Cette date ne remplit plus les conditions du moteur d’alertes ; aucune alerte n’a été créée.";
-      refreshExperimentalIndex();
-      return;
-    }
-    if (!window.confirm(
-      `${candidate.estimated
-        ? `Confirmer l’estimation calculée de l’échéance au ${candidate.dueDate} (${confirmedType}) ?\n\n` +
+    if (pending) return;
+    pending = true;
+    button.disabled = true;
+    let saved = false;
+    try {
+      const current = getDocuments().filter(entry => entry.id === proposal.itemId);
+      if (current.length !== 1) throw new Error("La copie source est absente ou ambiguë.");
+      assertDocumentAlertSource(current[0], proposal);
+      if (!window.confirm(
+        `${candidate.estimated
+        ? `Confirmer l’estimation calculée de l’échéance au ${candidate.dueDate} (${proposal.documentType}) ?\n\n` +
           "Cette date est calculée à partir de la date d’achat et de la durée de garantie. Vérifiez les deux preuves avant de confirmer.\n\n"
-        : `Confirmer l’échéance du ${candidate.dueDate} (${confirmedType}) ?\n\n`}` +
+        : `Confirmer l’échéance du ${candidate.dueDate} (${proposal.documentType}) ?\n\n`}` +
       `Preuve : « ${candidate.proof.excerpt} »\n` +
       `Source : ${sourceName(candidate.sourceId)}\n\n` +
       "Cela enregistre votre confirmation dans Famili-IA et crée une alerte, selon vos préférences de notification. L’original dans la source ne sera pas modifié."
-    )) {
-      deadlineStatus.textContent = "Échéance laissée en proposition ; aucune alerte ni notification n’a été créée.";
-      return;
-    }
-
-    try {
-      const confirmedDocument = {
-        ...current,
-        alertType: confirmedType,
-        expiryDate: candidate.dueDate,
-        expiryDateEvidence: candidate.proof.excerpt,
-        expiryDateSource: "user",
-        alertSourceId: candidate.sourceId
-      };
-      await addDocument(confirmedDocument);
-      await confirmDocumentAlert(confirmedDocument.id);
+      )) {
+        status.textContent = "Échéance laissée en proposition ; aucune alerte ni notification n’a été créée.";
+        return;
+      }
+      const { document: confirmedDocument, alreadyConfirmed } = await confirmDocumentDeadline(proposal);
+      saved = true;
       const uploadedIndex = uploadedDocuments.findIndex(entry =>
-        entry.id === candidate.itemId && getInventorySource(entry) === candidate.sourceId &&
-        getInventoryAccountRef(entry) === candidate.accountRef);
+        matchesDocumentAlertIdentity(entry, proposal));
       if (uploadedIndex !== -1) uploadedDocuments[uploadedIndex] = confirmedDocument;
       const restoreStatus = await experimentalIndex.restoreDocumentContent(confirmedDocument);
       if (restoreStatus !== "verified") {
         throw new Error("La provenance du contenu n’a pas pu être revérifiée après l’enregistrement.");
       }
       refreshExperimentalIndex();
-      deadlineStatus.textContent = "Échéance confirmée et alerte créée ou actualisée dans Famili-IA ; preuve, source et choix utilisateur conservés.";
+      status.textContent = alreadyConfirmed
+        ? "Cette échéance est déjà confirmée ; aucune alerte en double n’a été créée."
+        : "Échéance confirmée et alerte créée ou actualisée dans Famili-IA ; preuve, source et choix utilisateur conservés.";
     } catch (error) {
       console.error("Impossible de confirmer l'échéance et de créer l'alerte.", error);
-      deadlineStatus.textContent = `Échec de l'enregistrement de l'alerte : ${error instanceof Error ? error.message : "erreur non détaillée"}`;
+      if (saved) invalidateAssistantResponses(true);
+      status.textContent = saved
+        ? "Le rappel est enregistré, mais les sources affichées n’ont pas pu être actualisées. Rechargez la page pour les vérifier."
+        : `Échec de l'enregistrement de l'alerte : ${error instanceof Error ? error.message : "erreur non détaillée"}. Vérifiez la proposition avant de réessayer.`;
+    } finally {
+      pending = false;
+      button.disabled = false;
     }
   });
 }
@@ -1043,6 +1009,7 @@ function refreshExperimentalIndex() {
   document.querySelector('#reset-empty-search').hidden = true;
   try {
     experimentalIndex.syncDocuments(uploadedDocuments);
+    invalidateAssistantResponses();
     const sourceStatuses = renderExperimentalSources();
     try {
       renderExperimentalDeadlines(sourceStatuses);
@@ -1213,6 +1180,7 @@ function refreshExperimentalIndex() {
     const invalidCount = uploadedDocuments.filter(doc => invalidContentProvenance.has(doc)).length;
     if (invalidCount) experimentalIndexStatus.textContent += ` Provenance de ${invalidCount} document${invalidCount === 1 ? "" : "s"} invalide : recherche par nom uniquement.`;
   } catch (error) {
+    invalidateAssistantResponses(true);
     experimentalIndexResults.replaceChildren();
     renderUnifiedPhotoResults([], { kind: "error" });
     experimentalSourceStatus.textContent = "État des sources indisponible : l'index n'a pas pu être actualisé.";
@@ -1306,11 +1274,6 @@ function updateModeBanner() {
       sidebarModeCopy.textContent = "Exemples inventés, sans connexion à vos services.";
     }
   }
-}
-
-function findDocuments(question) {
-  const searchableDocuments = uploadedDocuments.length > 0 ? uploadedDocuments : documents;
-  return rankDocuments(question, searchableDocuments);
 }
 
 function addTextElement(parent, tagName, className, text) {
@@ -2626,16 +2589,17 @@ dropboxDisconnectButton.addEventListener("click", () => {
   updateDropboxActions();
   renderExperimentalSources();
 });
+function openImportFrom(button) {
+  importReturnContext = { ...parseHash(), trigger: button };
+  if (importReturnContext.view === "recherche") importReturnContext.params.q = input.value;
+  const back = document.querySelector("#return-from-import");
+  back.textContent = `Retour — ${pageTitles[importReturnContext.view]}`;
+  back.hidden = false;
+  showView("importer");
+  document.querySelector("#import-title").focus();
+}
 document.querySelectorAll("[data-open-import]").forEach(button => {
-  button.addEventListener("click", () => {
-    importReturnContext = { ...parseHash(), trigger: button };
-    if (importReturnContext.view === "recherche") importReturnContext.params.q = input.value;
-    const back = document.querySelector("#return-from-import");
-    back.textContent = `Retour — ${pageTitles[importReturnContext.view]}`;
-    back.hidden = false;
-    showView("importer");
-    document.querySelector("#import-title").focus();
-  });
+  button.addEventListener("click", () => openImportFrom(button));
 });
 document.querySelector("#return-from-import").addEventListener("click", () => {
   const target = importReturnContext;
@@ -2958,7 +2922,7 @@ const VIEW_TOUR_STEPS = [
     view: "famille",
     headingId: "family-title",
     title: "Famille",
-    description: "Cette vue présente l’espace privé et partagé. Les informations affichées peuvent provenir des données déjà présentes sur cet appareil."
+    description: "Cette vue présente les fiches locales de votre cercle familial. Elles ne créent aucun compte ni partage."
   },
   {
     view: "alertes",
@@ -3175,10 +3139,11 @@ function showView(name, { addHistory = true, params = {} } = {}) {
 
   document.title = `${pageTitles[name]} | Famili-IA`;
   const mainContent = document.querySelector('.main-content');
+  const scrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
   if (mainContent) {
-    mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+    mainContent.scrollTo({ top: 0, behavior: scrollBehavior });
   } else {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: scrollBehavior });
   }
 
   initializeViewWithParams(name, params);
@@ -4080,6 +4045,7 @@ function renderAlerts(filter, restoreFocus = false) {
           ${snoozeNotice}
           ${sourceExcerpt}
           ${alert.source === "document" ? `<p class="alert-provenance">Copie locale · accès à l'original non garanti.</p>` : ''}
+          ${sourceDocument?.expiryDateEstimated ? '<p class="household-note">Date estimée à partir de la date d’achat et de la durée de garantie, puis confirmée par vous.</p>' : ''}
           ${reviewMessage ? `<p class="alert-source-review"><strong>Source à vérifier.</strong> ${escapeHtml(reviewMessage)} Notifications suspendues pour cette alerte jusqu'à confirmation.</p>` : ''}
         </div>
         <button class="ui-button ui-button--secondary alert-action" type="button" data-open-view="${escapeHtml(sourceDestination)}" aria-label="${sourceAction} : ${escapeHtml(alert.title)}">${sourceAction}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
@@ -4193,7 +4159,8 @@ function renderAlerts(filter, restoreFocus = false) {
           alertType: alert.documentType || document.alertType || document.type,
           expiryDate: dueDate,
           expiryDateEvidence: `Échéance corrigée manuellement : ${correctedDate}`,
-          expiryDateSource: "user"
+          expiryDateSource: "user",
+          expiryDateEstimated: false
         });
         await confirmDocumentAlert(document.id);
         renderAlerts(filter, true);
@@ -4233,6 +4200,7 @@ loadSavedFamilyState();
  * Initialize house view
  */
 function initHouseView(params = {}) {
+  renderHousePhoto();
   const category = [...document.querySelectorAll('[data-house-category]')]
     .some(tab => tab.dataset.houseCategory === params.filter) ? params.filter : 'tout';
   renderEquipmentList(category);
@@ -4265,6 +4233,155 @@ function initHouseView(params = {}) {
     displayCity.textContent = `${postal} ${city}`.trim();
     displayCity.hidden = !displayCity.textContent;
   }
+}
+
+function setHousePhotoVisual(photo) {
+  const image = document.querySelector('#house-photo');
+  const source = photo?.dataUrl || new URL('./assets/maison/maison-photo.jpg', import.meta.url).href;
+  if (image.src !== source) image.src = source;
+  image.alt = photo ? 'Photo personnelle choisie pour Maison' : "Illustration d'une maison";
+  image.style.objectPosition = `${photo?.positionX ?? 50}% ${photo?.positionY ?? 50}%`;
+  document.querySelector('#house-photo-origin').textContent =
+    photo ? 'Photo personnelle · cet appareil' : "Visuel d'illustration · IA";
+}
+
+function renderHousePhoto(message = '') {
+  let photo = null;
+  try {
+    if (getCurrentUser().housePhoto) photo = validateHousePhoto(getCurrentUser().housePhoto);
+  } catch (error) {
+    console.error('Photo personnelle de Maison invalide :', error);
+    message = "Votre photo ne peut pas être affichée. L'illustration IA est utilisée ; vous pouvez remplacer ou retirer votre photo.";
+  }
+  setHousePhotoVisual(photo);
+  const status = document.querySelector('#house-photo-status');
+  status.textContent = message;
+  status.hidden = !message;
+  return photo;
+}
+
+function initHousePhotoDialog() {
+  const dialog = document.querySelector('#house-photo-dialog');
+  const input = document.querySelector('#house-photo-input');
+  const choose = document.querySelector('#choose-house-photo');
+  const save = document.querySelector('#save-house-photo');
+  const remove = document.querySelector('#remove-house-photo');
+  const cancel = document.querySelector('#cancel-house-photo');
+  const close = document.querySelector('#close-house-photo');
+  const preview = document.querySelector('#house-photo-preview');
+  const status = document.querySelector('#house-photo-dialog-status');
+  const x = document.querySelector('#house-photo-x');
+  const y = document.querySelector('#house-photo-y');
+  let draft = null;
+  let expectedUser = null;
+  let generation = 0;
+  let preparing = false;
+  let saving = false;
+
+  function updateControls() {
+    choose.disabled = remove.disabled = x.disabled = y.disabled = saving || preparing;
+    cancel.disabled = close.disabled = saving;
+    save.disabled = saving || preparing || !draft;
+    document.querySelector('#house-photo-framing').hidden = !draft;
+    if (draft) {
+      if (preview.src !== draft.dataUrl) preview.src = draft.dataUrl;
+      preview.style.objectPosition = `${draft.positionX}% ${draft.positionY}%`;
+      x.value = draft.positionX;
+      y.value = draft.positionY;
+    }
+  }
+
+  document.querySelector('#edit-house-photo').addEventListener('click', () => {
+    draft = renderHousePhoto();
+    expectedUser = getCurrentUser();
+    remove.hidden = !expectedUser.housePhoto;
+    status.textContent = '';
+    const frame = document.querySelector('.property-illustration').getBoundingClientRect();
+    preview.parentElement.style.aspectRatio = `${frame.width} / ${frame.height}`;
+    preview.parentElement.style.width = `${Math.min(480, 240 * frame.width / frame.height)}px`;
+    updateControls();
+    dialog.showModal();
+  });
+  choose.addEventListener('click', () => input.click());
+  close.addEventListener('click', () => dialog.close());
+  cancel.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('cancel', event => { if (saving) event.preventDefault(); });
+  dialog.addEventListener('close', () => {
+    generation += 1;
+    draft = expectedUser = null;
+    preparing = false;
+    input.value = '';
+    preview.removeAttribute('src');
+  });
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const current = ++generation;
+    preparing = true;
+    draft = null;
+    status.textContent = 'Préparation locale de la photo…';
+    updateControls();
+    try {
+      const photo = await prepareHousePhoto(file);
+      if (current !== generation || !dialog.open) return;
+      draft = photo;
+      status.textContent = 'Ajustez le cadrage si besoin, puis enregistrez.';
+    } catch (error) {
+      if (current !== generation || !dialog.open) return;
+      console.error('Impossible de préparer la photo de Maison :', error);
+      status.textContent = error.message;
+    } finally {
+      if (current === generation) {
+        preparing = false;
+        input.value = '';
+        updateControls();
+      }
+    }
+  });
+  for (const slider of [x, y]) slider.addEventListener('input', () => {
+    if (!draft || saving || preparing) return;
+    draft = { ...draft, positionX: Number(x.value), positionY: Number(y.value) };
+    updateControls();
+  });
+  preview.addEventListener('error', () => {
+    if (!dialog.open || !draft) return;
+    console.error("L'aperçu de la photo de Maison est illisible.");
+    draft = null;
+    status.textContent = 'Cette copie est illisible. Choisissez une autre photo ou retirez la copie enregistrée.';
+    updateControls();
+  });
+  document.querySelector('#house-photo').addEventListener('error', event => {
+    const personal = event.currentTarget.src.startsWith('data:');
+    console.error(personal ? 'Photo personnelle de Maison illisible.' : 'Illustration de Maison indisponible.');
+    if (personal) setHousePhotoVisual(null);
+    const notice = document.querySelector('#house-photo-status');
+    notice.hidden = false;
+    notice.textContent = personal
+      ? "Votre photo est illisible. L'illustration IA est affichée ; vous pouvez remplacer ou retirer votre photo."
+      : "L'illustration de Maison est indisponible.";
+  });
+  async function persist(photo, message) {
+    saving = true;
+    status.textContent = 'Enregistrement sur cet appareil…';
+    updateControls();
+    try {
+      await updateHousePhoto(photo, expectedUser);
+    } catch (error) {
+      console.error('Impossible de modifier la photo de Maison :', error);
+      status.textContent = `La modification n'a pas pu être enregistrée : ${error.message}`;
+      return;
+    } finally {
+      saving = false;
+      updateControls();
+    }
+    dialog.close();
+    renderHousePhoto(message);
+  }
+  save.addEventListener('click', () => { if (draft && !saving && !preparing) void persist(draft, 'Photo enregistrée sur cet appareil.'); });
+  remove.addEventListener('click', () => {
+    if (saving || preparing || !confirm("Retirer votre photo de cet appareil et réafficher l'illustration IA ? L'original reste inchangé.")) return;
+    void persist(null, "Photo retirée. L'illustration IA est réaffichée.");
+  });
 }
 
 function getNameInitial(name) {
@@ -5690,6 +5807,7 @@ function initAssistantView() {
       input.value = '';
       status.textContent = 'Réponse affichée dans la conversation.';
     } catch (error) {
+      invalidateAssistantResponses(true);
       console.error("Impossible de préparer la réponse de l'assistant :", error);
       status.textContent = 'La réponse n’a pas pu être préparée. Votre question est conservée ; vous pouvez réessayer.';
     }
@@ -5698,12 +5816,26 @@ function initAssistantView() {
 }
 
 function refreshAssistantContext() {
+  invalidateAssistantResponses();
   const context = document.querySelector('#assistant-context');
   if (!uploadedDocuments.length) {
     context.textContent = 'Mode exemples fictifs : aucun fichier personnel chargé. Les réponses utilisent uniquement les documents de démonstration.';
   } else {
     const counts = countInventorySources(uploadedDocuments);
-    context.textContent = `${counts.total} fichier${counts.total > 1 ? 's' : ''} chargé${counts.total > 1 ? 's' : ''} dans Famili-IA. Réponses locales limitées au texte disponible, pas à tout l'appareil ni au cloud.${counts.demo ? ' Certains fichiers sont des exemples fictifs ; consultez la provenance de chaque source.' : ''}`;
+    context.textContent = `${counts.total} fichier${counts.total > 1 ? 's' : ''} chargé${counts.total > 1 ? 's' : ''} dans Famili-IA. Même index local que Recherche ; réponses limitées au texte vérifié des documents, pas à tout l'appareil ni au cloud. Les filtres de Recherche ne s'appliquent pas ici.${counts.demo ? ' Les exemples fictifs sont exclus des réponses personnelles.' : ''}`;
+  }
+}
+
+function invalidateAssistantResponses(force = false) {
+  for (const [node, response] of assistantResponseContexts) {
+    if (!force && (response.context
+      ? response.context.scope.corpusRevision === experimentalIndex.getRevision() &&
+        response.context.matches.every(match => isAssistantMatchCurrent(match, uploadedDocuments, experimentalIndex))
+      : !uploadedDocuments.length)) continue;
+    node.querySelector('.assistant-response-label').textContent = 'SOURCES À ACTUALISER';
+    node.querySelector('.assistant-answer').textContent = 'Une source a changé ou n’est plus disponible. Posez à nouveau votre question pour actualiser la réponse.';
+    node.querySelectorAll('.assistant-source, .assistant-query').forEach(element => element.remove());
+    assistantResponseContexts.delete(node);
   }
 }
 
@@ -5734,6 +5866,10 @@ function addAIMessage(response, container) {
   const bubble = addTextElement(msgDiv, "div", "chat-bubble", "");
   addTextElement(bubble, "p", "chat-speaker", "Famili-IA");
   addTextElement(bubble, "p", "assistant-response-label", response.label);
+  if (response.context?.query) {
+    addTextElement(bubble, "p", "household-note assistant-query",
+      `Sujet recherché : ${response.context.query}. Périmètre : documents enregistrés, sans les filtres de Recherche.`);
+  }
   const answer = response.status === 'supported' && response.matches[0]?.exactFact
     ? response.matches[0].exactFact : response.answer;
   addTextElement(bubble, "p", "assistant-answer", answer);
@@ -5744,7 +5880,12 @@ function addAIMessage(response, container) {
       const evidence = addTextElement(source, "blockquote", "assistant-evidence", "");
       addTextElement(evidence, "mark", "", match.evidence);
     } else {
-      addTextElement(source, "p", "household-note assistant-proof-missing", "Aucun extrait textuel disponible pour cette source.");
+      const unverified = response.context && typeof match.document.content === 'string' && match.document.content.trim();
+      addTextElement(source, "p", "household-note assistant-proof-missing", match.segments?.length
+        ? "Aucun passage correspondant à la question n'a été repéré dans le texte vérifié."
+        : unverified
+        ? "Le texte de cette copie n'est pas vérifié ; il n'est pas utilisé comme preuve."
+        : "Aucun extrait textuel disponible pour cette source.");
     }
     addTextElement(source, "p", "assistant-source-name", `Source : ${match.document.name}`);
     addTextElement(source, "p", "household-note", match.provenance);
@@ -5753,9 +5894,15 @@ function addAIMessage(response, container) {
       button.type = 'button';
       button.setAttribute('aria-label', `Voir la copie de ${match.document.name}`);
       button.addEventListener('click', () => {
+        if (response.context && !isAssistantMatchCurrent(match, uploadedDocuments, experimentalIndex)) {
+          invalidateAssistantResponses();
+          document.querySelector('#assistant-status').textContent = 'Cette copie n’est plus disponible ou a changé. Relancez une question pour actualiser les sources.';
+          return;
+        }
         const available = uploadedDocuments.length ? uploadedDocuments : documents;
         const current = available.find(document =>
-          document.id === match.document.id && getInventorySource(document) === getInventorySource(match.document));
+          document.id === match.document.id && getInventorySource(document) === getInventorySource(match.document) &&
+          getInventoryAccountRef(document) === getInventoryAccountRef(match.document));
         if (!current || typeof current.content !== 'string' || !current.content.trim()) {
           document.querySelector('#assistant-status').textContent = 'Cette copie n’est plus disponible. Relancez une question pour actualiser les sources.';
           return;
@@ -5767,6 +5914,20 @@ function addAIMessage(response, container) {
       button.type = 'button';
       button.dataset.openView = 'recherche';
     }
+    if (['supported', 'excerpt', 'fact-not-found'].includes(response.status) &&
+        response.context && response.matches.length === 1 && !match.ambiguous && match.segments.length) {
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const candidate = findIndexDeadlines(experimentalIndex, today, 90).candidates
+        .find(entry => matchesDocumentAlertIdentity(match.document, entry));
+      if (candidate) {
+        const action = addTextElement(source, "div", "assistant-alert-action", "");
+        addTextElement(action, "p", "household-note",
+          `${candidate.estimated ? "Échéance estimée" : "Échéance proposée"} : ${candidate.dueDate} · à confirmer.`);
+        addTextElement(action, "blockquote", "assistant-evidence", candidate.proof.excerpt);
+        addDeadlineAlertAction(action, candidate);
+      }
+    }
   }
   if (!response.matches.length) {
     const button = addTextElement(bubble, "button", "ui-button ui-button--secondary assistant-search-action", "Explorer dans Recherche");
@@ -5777,18 +5938,30 @@ function addAIMessage(response, container) {
   nextQuestion.type = 'button';
   nextQuestion.addEventListener('click', () => document.querySelector('#assistant-input').focus());
   container.appendChild(msgDiv);
+  if (response.matches.length) assistantResponseContexts.set(msgDiv, response);
   msgDiv.scrollIntoView({ block: 'nearest' });
 }
 
 /**
  * Get a response from the assistant based on the question
- * Uses document ranking; the unified photo index remains in Recherche.
+ * Personal answers reuse the shared index; fictional fallback remains isolated.
  */
 function getAssistantResponse(question) {
   const trimmed = question.trim();
-  const matches = findDocuments(trimmed);
-  const response = buildSearchResponse(matches);
-  return { ...response, matches: matches.slice(0, 2) };
+  if (!uploadedDocuments.length) {
+    const matches = rankDocuments(trimmed, documents);
+    return { ...buildSearchResponse(matches), matches: matches.slice(0, 2) };
+  }
+  const context = prepareAssistantContext({
+    session: experimentalIndex, question: trimmed, documents: uploadedDocuments
+  });
+  context.scope.sourceStatuses = getSourceStatuses();
+  invalidateAssistantResponses();
+  if (context.status === "clarification" || context.status === "stale") {
+    return { status: context.status, label: 'UNE PRÉCISION EST NÉCESSAIRE',
+      answer: context.clarification, matches: [], context };
+  }
+  return { ...buildSearchResponse(context.matches), matches: context.matches.slice(0, 2), context };
 }
 
 /**
@@ -6231,3 +6404,4 @@ function initResetOnboardingButton() {
 // Initialiser le bouton de réinitialisation de l'onboarding
 initResetOnboardingButton();
 initViewTour();
+initHousePhotoDialog();

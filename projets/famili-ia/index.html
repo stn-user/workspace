@@ -62,7 +62,7 @@
             <svg class="onboarding-logo" viewBox="596 309 252 185" role="img" aria-label="Famili-IA">
               <image href="assets/Logo.svg" width="1440" height="810"></image>
             </svg>
-            <h2 id="step-0-title" tabindex="-1">Retrouvez ce qui compte,<br>où que cela se trouve.</h2>
+            <h2 id="step-0-title" tabindex="-1">L'essentiel, toujours à portée de main.</h2>
             <p>Vos documents et photos réunis dans un même espace de recherche.</p>
             <svg class="onboarding-illustration" viewBox="117 528 576 384" aria-hidden="true" focusable="false">
               <image href="assets/famili-ia-accueil.svg" width="810" height="1440"></image>
@@ -80,9 +80,9 @@
               <span class="onboarding-progress">Étape 1 sur 3 · Personnalisation</span>
             </div>
             <span class="ui-icon onboarding-person-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg></span>
-            <h2 id="step-1-title" tabindex="-1">Comment pouvons-nous vous appeler ?</h2>
+            <h2 id="step-1-title" tabindex="-1">Faisons connaissance !</h2>
             <p>Votre prénom nous permettra de personnaliser votre expérience.</p>
-            <label class="ui-label onboarding-field" for="wizard-user-name">Votre prénom <span>(facultatif)</span></label>
+            <label class="ui-label onboarding-field" for="wizard-user-name">Prénom <span>(facultatif)</span></label>
             <input class="ui-input" type="text" id="wizard-user-name" autocomplete="given-name" placeholder="Votre prénom">
             <button class="ui-button ui-button--primary ui-button--full" type="button" data-wizard-next="2">Continuer <span aria-hidden="true">→</span></button>
             <button class="ui-button ui-button--text" type="button" id="skip-personalization">Passer cette étape</button>
@@ -476,14 +476,16 @@
         </header>
         <article class="ui-card property-card">
           <div class="property-illustration">
-            <img src="assets/maison/maison-photo.jpg" alt="Illustration d'une maison" loading="lazy" class="property-photo">
+            <img src="assets/maison/maison-photo.jpg" alt="Illustration d'une maison" loading="lazy" class="property-photo" id="house-photo">
+            <button class="ui-button ui-button--secondary property-photo-edit" type="button" id="edit-house-photo" aria-haspopup="dialog">Modifier la photo</button>
           </div>
           <div class="property-content">
             <div class="property-copy">
               <p class="eyebrow">LE CARNET DE LA MAISON</p>
               <h2>Un peu moins à garder en tête</h2>
               <p>Retrouvez vos équipements et les papiers qui les accompagnent, à votre rythme.</p>
-              <small>Visuel d'illustration</small>
+              <small id="house-photo-origin">Visuel d'illustration · IA</small>
+              <p id="house-photo-status" class="household-note" role="status" hidden></p>
               <span id="display-address"></span>
               <span id="display-city"></span>
             </div>
@@ -608,14 +610,14 @@
           <details class="assistant-limits">
             <summary>Assistant ou Recherche ?</summary>
             <p>Ici, posez une question précise pour repérer un montant, une date ou une référence dans le texte disponible. Dans Recherche, explorez vos fichiers et vos photos avec les filtres.</p>
-            <p>Traitement local, sans IA distante ni synthèse de plusieurs documents. Les échanges ne sont pas conservés après rechargement. Aucune action automatique n'est exécutée.</p>
+            <p>Traitement local, sans IA distante ni synthèse de plusieurs documents. Une échéance admissible peut être proposée avec sa preuve ; la création du rappel demande votre confirmation explicite et ne modifie pas l’original. Les échanges ne sont pas conservés après rechargement. Aucune action automatique n'est exécutée.</p>
           </details>
         </div>
         <form class="ui-card chat-form" id="assistant-form" aria-describedby="assistant-question-hint assistant-status">
           <label class="ui-label" for="assistant-input">Votre question pour l'assistant</label>
           <p id="assistant-question-hint" class="household-note">Chaque question est indépendante : précisez son sujet, même après une première réponse.</p>
           <div class="assistant-composer">
-            <input class="ui-input" type="text" id="assistant-input" placeholder="Ex. : quand se termine mon contrat ?" autocomplete="off" required>
+            <input class="ui-input" type="text" id="assistant-input" placeholder="Ex. : quand se termine mon contrat habitation ?" autocomplete="off" required>
             <button class="ui-button ui-button--primary" type="submit" aria-label="Envoyer la question"><span>Envoyer</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m21 3-7 18-4-7-7-4zM10 14 21 3"/></svg></button>
           </div>
           <p id="assistant-status" class="household-note" role="status" aria-live="polite"></p>
@@ -884,7 +886,7 @@
             <div class="section-heading"><h2 id="data-management-title">Export et suppression</h2></div>
             <p>Un espace distinct pour emporter vos données ou gérer ce qui reste sur cet appareil.</p>
             <h3>Emporter mes données</h3>
-            <p>Le JSON contient les données applicatives détaillées ; le PDF en donne un bilan chiffré, sans noms de fichiers ni de proches. Ni l'un ni l'autre n'exporte les originaux. Les coordonnées GPS des photos sont exclues par défaut.</p>
+            <p>Le JSON contient les données applicatives détaillées, dont la copie personnelle de Maison si vous en choisissez une ; le PDF en donne un bilan chiffré, sans noms de fichiers ni de proches. Ni l'un ni l'autre n'exporte les originaux. Les coordonnées GPS des photos sont exclues par défaut.</p>
             <div class="data-management-actions">
               <button class="ui-button ui-button--secondary" type="button" id="export-all-data">Exporter mes données (JSON)</button>
               <button class="ui-button ui-button--secondary" type="button" id="export-pdf-data">Exporter le rapport (PDF)</button>
@@ -1110,6 +1112,32 @@
     </section>
   </dialog>
   <input type="file" id="local-files-input" class="visually-hidden" aria-label="Choisir des fichiers locaux à indexer" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
+
+  <dialog class="ui-dialog" id="house-photo-dialog" aria-labelledby="house-photo-title" aria-describedby="house-photo-privacy">
+    <div class="ui-dialog__header">
+      <h2 id="house-photo-title">Photo de la maison</h2>
+      <button class="ui-dialog__close" type="button" id="close-house-photo" aria-label="Fermer le choix de photo">×</button>
+    </div>
+    <div class="household-form">
+      <p class="household-note" id="house-photo-privacy">Une copie allégée reste sur cet appareil, sans analyse ni ajout à Recherche. Les métadonnées d'origine sont retirées ; l'original reste inchangé.</p>
+      <button class="ui-button ui-button--secondary" type="button" id="choose-house-photo">Choisir une photo</button>
+      <input hidden type="file" id="house-photo-input" aria-label="Photo personnelle pour Maison" accept="image/jpeg,image/png,image/webp" aria-describedby="house-photo-formats">
+      <p class="household-note" id="house-photo-formats">JPEG, PNG ou WebP · 10 Mio et 40 mégapixels maximum.</p>
+      <div id="house-photo-framing" hidden>
+        <div class="house-photo-preview"><img id="house-photo-preview" alt="Aperçu du cadrage choisi"></div>
+        <label class="ui-label" for="house-photo-x">Position horizontale</label>
+        <input type="range" id="house-photo-x" min="0" max="100" value="50">
+        <label class="ui-label" for="house-photo-y">Position verticale</label>
+        <input type="range" id="house-photo-y" min="0" max="100" value="50">
+      </div>
+      <p id="house-photo-dialog-status" role="status" aria-live="polite"></p>
+      <button class="ui-button ui-button--text" type="button" id="remove-house-photo" hidden>Retirer ma photo</button>
+      <div class="household-form-actions">
+        <button class="ui-button ui-button--secondary" type="button" id="cancel-house-photo" autofocus>Annuler</button>
+        <button class="ui-button ui-button--primary" type="button" id="save-house-photo" disabled>Enregistrer</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog class="ui-dialog" id="equipment-dialog" aria-labelledby="equipment-dialog-title">
     <div class="ui-dialog__header">

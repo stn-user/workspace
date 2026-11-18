@@ -2,16 +2,20 @@
  * state.js - Gestion de l'état global de l'application Famili-IA avec IndexedDB
  */
 
-import { get, getAll, put, initDB, remove, purgeDatabase } from './db.js';
+import { get, getAll, put, putConfirmedDocumentAlert, initDB, remove, purgeDatabase } from './db.js';
 import { generateAlertForDoc, getAlertLevelForDate, normalizeAlertNotificationPreferences, refreshAlerts } from './alert-engine.js';
 import { createPhotoMetadata, mergePhotoMetadata, normalizePhotoDocument } from './photo-metadata.js';
 import { reconcilePhotoFactSet, removePhotoFactsAndDependents } from './photo-facts.js';
 import { normalizeOptionalBirthDate } from './family-members.js';
+import { validateHousePhoto } from './house-photo.js';
 import { isPhotoDocument, normalizePhotoAnnotations, removePhotoMemberAssociation } from './photo-annotations.js';
 import { createDocumentIndexRecord } from './document-index.js';
 import { migrateDocumentIndexes } from './document-index-migration.js';
 import { restoreContentSegments } from './content-index.js';
-import { getInventorySource } from './data-inventory.js';
+import { getInventoryAccountRef, getInventorySource } from './data-inventory.js';
+import {
+  assertDocumentAlertSource, documentAlertConfirmationSnapshot, prepareDocumentAlertAction
+} from './document-alert-action.js';
 
 export function reconcileDocumentAlerts(existingAlerts, generatedAlerts, documents = null) {
   const generatedById = new Map(generatedAlerts.map(alert => [alert.id, alert]));
@@ -31,6 +35,8 @@ export function reconcileDocumentAlerts(existingAlerts, generatedAlerts, documen
       || (previous.sourceId && copies && previous.sourceId !== getInventorySource(copies[0]))
       || (previous.sourceContentHash && previous.sourceContentHash !== candidate.sourceContentHash)
       || (previous.sourceAccountFingerprint && previous.sourceAccountFingerprint !== candidate.sourceAccountFingerprint)
+      || (previous.sourceAccountRef !== undefined && copies &&
+        previous.sourceAccountRef !== getInventoryAccountRef(copies[0]))
       || (previous.documentType && previous.documentType !== candidate.documentType)) sourceReview = "source-changed";
     return {
       ...previous, source: "document", sourceReview,
@@ -555,6 +561,7 @@ export async function confirmDocumentAlert(documentId) {
   const confirmed = {
     ...previous, ...generated,
     sourceId: getInventorySource(document),
+    sourceAccountRef: getInventoryAccountRef(document),
     sourceReview: null,
     status: previous.status || "active",
     snoozedUntil: previous.snoozedUntil,
@@ -563,6 +570,72 @@ export async function confirmDocumentAlert(documentId) {
   };
   await updateAlert(confirmed);
   return confirmed;
+}
+
+export function confirmDocumentDeadline(proposal) {
+  return serializePhotoMutation(async () => {
+    const copies = state.documents.filter(document => document.id === proposal.itemId);
+    if (copies.length !== 1) throw new Error("La copie source est absente ou ambiguë.");
+    const current = copies[0];
+    assertDocumentAlertSource(current, proposal);
+    const content = await restoreContentSegments(current);
+    if (content.status !== "verified") throw new Error("La preuve de la copie n'est plus vérifiable.");
+    const now = new Date();
+    if (!["amber", "red"].includes(getAlertLevelForDate(proposal.dueDate, proposal.documentType, now))) {
+      throw new Error("Cette date ne remplit plus les conditions du moteur d'alertes.");
+    }
+    const previous = state.alerts.find(alert => alert.id === `alert-${current.id}`);
+    const alreadyConfirmed = current.expiryDateSource === "user" &&
+      current.expiryDate === proposal.dueDate && current.expiryDateEvidence === proposal.proof.excerpt &&
+      current.alertType === proposal.documentType &&
+      previous?.confidence === "confirmed" && !previous.sourceReview &&
+      previous.dueDate === proposal.dueDate && previous.sourceExcerpt === proposal.proof.excerpt &&
+      previous.documentType === proposal.documentType && previous.sourceId === proposal.sourceId &&
+      previous.sourceContentHash === current.contentProvenance.hash &&
+      previous.sourceAccountRef === getInventoryAccountRef(current);
+    if (alreadyConfirmed) {
+      const [storedDocument, storedAlert] = await Promise.all([
+        get('documents', current.id), get('alerts', previous.id)
+      ]);
+      if (JSON.stringify(storedDocument) !== JSON.stringify(current) ||
+          JSON.stringify(storedAlert) !== JSON.stringify(previous)) {
+        throw new Error("La copie ou l'alerte enregistrée a changé ; actualisez avant de confirmer.");
+      }
+      return { document: current, alert: previous, alreadyConfirmed: true };
+    }
+    if (documentAlertConfirmationSnapshot(current) !== proposal.confirmationSnapshot) {
+      throw new Error("Les choix d'échéance ont changé ; vérifiez à nouveau la proposition.");
+    }
+    const record = await createDocumentIndexRecord(current);
+    const checked = prepareDocumentAlertAction(proposal, current, record, {
+      sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId, segments: content.segments
+    }, now);
+    if (checked.documentType !== proposal.documentType) {
+      throw new Error("La catégorie de l'alerte a changé ; vérifiez à nouveau la proposition.");
+    }
+    const document = { ...current, alertType: proposal.documentType,
+      expiryDate: proposal.dueDate, expiryDateEvidence: proposal.proof.excerpt,
+      expiryDateSource: "user", expiryDateEstimated: Boolean(proposal.estimated),
+      alertSourceId: proposal.sourceId };
+    document.indexRecord = await createDocumentIndexRecord(document);
+    const generated = generateAlertForDoc(document, now);
+    if (!generated) throw new Error("L'alerte ne peut pas être créée avec cette copie.");
+    const changedDate = previous?.dueDate !== generated.dueDate;
+    const alert = { ...previous, ...generated, sourceId: proposal.sourceId,
+      sourceAccountRef: getInventoryAccountRef(current), sourceReview: null,
+      status: previous?.status || "active", snoozedUntil: previous?.snoozedUntil,
+      notificationSentFor: changedDate ? undefined : previous?.notificationSentFor,
+      notificationSentAt: changedDate ? undefined : previous?.notificationSentAt };
+    if (state.documents.find(entry => entry.id === current.id) !== current) {
+      throw new Error("La copie a changé pendant la confirmation ; aucune écriture effectuée.");
+    }
+    await putConfirmedDocumentAlert(document, alert, current, previous);
+    state.documents[state.documents.indexOf(current)] = document;
+    const alertIndex = state.alerts.findIndex(entry => entry.id === alert.id);
+    if (alertIndex === -1) state.alerts.push(alert);
+    else state.alerts[alertIndex] = alert;
+    return { document, alert, alreadyConfirmed: false };
+  });
 }
 
 export async function updateAlert(alert) {
@@ -612,6 +685,26 @@ export function updateUserProfile({ name, avatar, address, postalCode, city, pho
       await updatePhotoLocationConsentUnlocked(photoLocationConsent);
     }
     const user = { ...state.currentUser, name, avatar, address, postalCode, city };
+    await put('users', user);
+    state.currentUser = user;
+    return user;
+  });
+}
+
+export function updateHousePhoto(photo, expectedUser) {
+  const validated = photo === null ? null : validateHousePhoto(photo);
+  const copy = validated === null ? null : {
+    schemaVersion: validated.schemaVersion, mimeType: validated.mimeType,
+    width: validated.width, height: validated.height, byteLength: validated.byteLength,
+    dataUrl: validated.dataUrl, positionX: validated.positionX, positionY: validated.positionY
+  };
+  return serializePhotoMutation(async () => {
+    if (state.currentUser !== expectedUser) {
+      throw new Error("Votre espace a changé. Fermez puis rouvrez le choix de photo avant de réessayer.");
+    }
+    const user = { ...state.currentUser };
+    if (copy === null) delete user.housePhoto;
+    else user.housePhoto = copy;
     await put('users', user);
     state.currentUser = user;
     return user;

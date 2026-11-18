@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { stateModuleUrl } from './helpers/app-state.js';
 
 test.beforeEach(async ({ page }) => {
   await page.route('https://**/*', route => route.abort());
@@ -25,8 +26,8 @@ async function expectUsable(panel) {
 test('où sont mes photos : synthèse des copies par source et compte après rechargement', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openReady(page, 'recherche');
-  await page.evaluate(async () => {
-    const { addDocument } = await import('/state.js');
+  await page.evaluate(async stateUrl => {
+    const { addDocument } = await import(stateUrl);
     const { normalizePhotoAnnotations } = await import('/photo-annotations.js');
     const annotations = normalizePhotoAnnotations({ eventTags: ['Mariage'] });
     for (const [id, source] of [
@@ -40,7 +41,7 @@ test('où sont mes photos : synthèse des copies par source et compte après rec
     }
     await addDocument({ id: 'autre-photo', type: 'Image', name: 'autre.jpg', isLocal: true,
       photoAnnotations: normalizePhotoAnnotations({ eventTags: ['Voyage'] }) });
-  });
+  }, await stateModuleUrl(page));
   await openReady(page, 'recherche', true);
   const query = page.locator('#experimental-index-query');
   await query.fill('Où sont mes photos de mon mariage ?');
@@ -353,14 +354,14 @@ for (const width of [390, 768, 1280, 1920]) {
     await page.addInitScript(() => localStorage.setItem('famili-ia-source-choice-complete', 'true'));
     await openReady(page, 'accueil');
     const name = `<b>Alex & ${'Famille'.repeat(16)}</b>`;
-    await page.evaluate(async name => {
-      const { getCurrentUser } = await import('/state.js');
+    await page.evaluate(async ({ name, stateUrl }) => {
+      const { getCurrentUser } = await import(stateUrl);
       const { put } = await import('/db.js');
       await put('users', { ...getCurrentUser(), name });
       for (const [id, type] of [['home-garantie', 'Garantie'], ['home-contrat', 'Contrat'], ['home-photo', 'Image']]) {
         await put('documents', { id, type, name: `${id}.txt`, isLocal: true, content: '' });
       }
-    }, name);
+    }, { name, stateUrl: await stateModuleUrl(page) });
     await openReady(page, 'accueil', true);
     await page.setViewportSize({ width: 390, height: 800 });
     await expect(page.locator('#dashboard-user-name')).toHaveText(name);

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { stateModuleUrl } from './helpers/app-state.js';
 
 for (const width of [390, 768, 1280]) {
   test(`mots-outils et faute expliquée sans modifier la preuve à ${width}px`, async ({ page }) => {
@@ -394,7 +395,7 @@ test('propositions sourcées restaurées sans modifier les alertes', async ({ pa
   const initialized = page.waitForEvent('console', message => message.text().includes('dialogs initialized'));
   await page.reload();
   await initialized;
-  const alertsBefore = await page.evaluate(async () => (await import('/state.js')).getAlerts());
+  const alertsBefore = await page.evaluate(async stateUrl => (await import(stateUrl)).getAlerts(), await stateModuleUrl(page));
   const candidates = page.locator('#experimental-deadline-results li');
   await expect(candidates).toHaveCount(2);
   await expect(candidates.filter({ hasText: 'garantie-local-test.txt' })).toContainText('Source : Local');
@@ -403,7 +404,7 @@ test('propositions sourcées restaurées sans modifier les alertes', async ({ pa
   await expect(page.locator('#experimental-deadline-review-list')).toContainText('ancienne-garantie.txt');
   await page.locator('#search-deadline-panel > summary').click();
   await page.locator('#experimental-deadline-refresh').click();
-  const alertsAfter = await page.evaluate(async () => (await import('/state.js')).getAlerts());
+  const alertsAfter = await page.evaluate(async stateUrl => (await import(stateUrl)).getAlerts(), await stateModuleUrl(page));
   expect(alertsAfter).toEqual(alertsBefore);
   await candidates.first().getByRole('button', { name: 'Voir la copie dans Famili-IA' }).click();
   await expect(page.locator('#source-dialog')).toContainText(`Échéance : ${dueDate}`);

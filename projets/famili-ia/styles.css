@@ -5346,8 +5346,15 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }.breadcrum
 }
 
 .house-view .property-card { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 0; padding: 0; overflow: hidden; background: linear-gradient(120deg, var(--ui-surface), var(--ui-tint)); }
-.house-view .property-illustration { width: 100%; height: 100%; min-height: 260px; border-radius: 0; }
-.house-view .property-photo { width: 100%; height: 100%; min-height: 260px; border-radius: 0; object-fit: cover; }
+.house-view .property-illustration { position: relative; aspect-ratio: 1; width: 100%; height: 100%; min-height: 260px; border-radius: 0; }
+.house-view .property-photo-edit { position: absolute; right: 0.6rem; bottom: 0.6rem; max-width: calc(100% - 1.2rem); background: var(--ui-surface); color: var(--ui-ink); font-size: 0.8rem; }
+.house-photo-preview { min-width: 0; max-width: 100%; margin-inline: auto; overflow: hidden; border-radius: 12px; background: var(--ui-tint); }
+.house-photo-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+#house-photo-dialog .household-note { margin: 0; }
+#house-photo-dialog .household-form { gap: 0.75rem; }
+#house-photo-framing { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 0.4rem; }
+#house-photo-framing input { width: 100%; min-height: 48px; margin: 0; }
+.house-view .property-photo { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 260px; border-radius: 0; object-fit: cover; }
 .house-view .property-content { padding: clamp(1.25rem, 3vw, 2rem); gap: 0.75rem; }
 .house-view .property-copy { gap: 0.5rem; }
 .house-view .property-copy h2 { margin: 0; font-size: clamp(1.4rem, 3vw, 1.9rem); line-height: 1.2; color: var(--ui-ink); }

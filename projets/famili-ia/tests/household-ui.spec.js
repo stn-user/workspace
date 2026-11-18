@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { stateModuleUrl } from './helpers/app-state.js';
 
 async function openHousehold(page, view = 'famille') {
   await page.route('https://**/*', route => route.abort());
@@ -150,9 +151,9 @@ for (const width of [390, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       await page.clock.setFixedTime(new Date('2026-11-18T12:00:00Z'));
       await openHousehold(page, 'maison');
-      await page.evaluate(async () => {
+      await page.evaluate(async stateUrl => {
         const { put } = await import('/db.js');
-        const { getEquipmentDetail } = await import('/state.js');
+        const { getEquipmentDetail } = await import(stateUrl);
         await put('equipment', {
           ...getEquipmentDetail('eq-piscine-pompe'),
           status: '<b>À vérifier</b>',
@@ -171,7 +172,7 @@ for (const width of [390, 1280]) {
           { id: 'rappel-termine', title: 'Rappel terminé', status: 'resolved', docId: 'notice-test' },
           { id: 'rappel-autre', title: 'Rappel sans lien', docId: 'autre-document' }
         ]) await put('alerts', { status: 'active', source: 'manual', ...alert });
-      });
+      }, await stateModuleUrl(page));
       await reloadHousehold(page);
       const snapshot = () => page.evaluate(async () => {
         const { getAll } = await import('/db.js');
@@ -222,10 +223,10 @@ test('membres : ajout, modification, roles, persistance et suppression confirmee
   await page.locator('.edit-member-item[data-id="u1"]').click();
   await page.locator('#member-name-input').fill('Admin fictif');
   await page.locator('#add-member-form [type="submit"]').click();
-  expect(await page.evaluate(async () => {
-    const { getFamilyMembers } = await import('/state.js');
+  expect(await page.evaluate(async stateUrl => {
+    const { getFamilyMembers } = await import(stateUrl);
     return getFamilyMembers().find(member => member.id === 'u1').role;
-  })).toBe('Admin');
+  }, await stateModuleUrl(page))).toBe('Admin');
   await page.locator('#open-add-member-from-manager').click();
   const name = '<Test & Famille> ' + 'Long'.repeat(35);
   await page.locator('#member-name-input').fill(name);
@@ -235,8 +236,8 @@ test('membres : ajout, modification, roles, persistance et suppression confirmee
   await expect(page.locator('#family-members-count')).toHaveText('6 membres');
   await expect(page.locator('#member-list')).toContainText(name);
   await expect(page.locator('#open-add-member-from-manager')).toBeFocused();
-  const memberId = await page.evaluate(async name => {
-    const { getFamilyMembers, addDocument } = await import('/state.js');
+  const memberId = await page.evaluate(async ({ name, stateUrl }) => {
+    const { getFamilyMembers, addDocument } = await import(stateUrl);
     const member = getFamilyMembers().find(item => item.name === name);
     await addDocument({
       id: 'family-photo', name: 'souvenir.jpg', type: 'Image', isLocal: true,
@@ -246,7 +247,7 @@ test('membres : ajout, modification, roles, persistance et suppression confirmee
       }
     });
     return member.id;
-  }, name);
+  }, { name, stateUrl: await stateModuleUrl(page) });
   const row = page.locator('.managed-member').filter({ hasText: name });
   await expectUsable(page.locator('#manage-members-dialog'));
   await row.locator('.edit-member-item').click();
@@ -258,11 +259,11 @@ test('membres : ajout, modification, roles, persistance et suppression confirmee
   await page.locator('#close-manage-members').click();
   await reloadHousehold(page);
   await expect(page.locator('#member-list')).toContainText('Membre fictif');
-  expect(await page.evaluate(async () => {
-    const { getFamilyMembers } = await import('/state.js');
+  expect(await page.evaluate(async stateUrl => {
+    const { getFamilyMembers } = await import(stateUrl);
     const member = getFamilyMembers().find(item => item.name === 'Membre fictif');
     return { role: member.role, access: member.access, birthDate: member.birthDate, avatar: member.avatar };
-  })).toEqual({ role: 'Member', access: 'limited', birthDate: '2015-03-12', avatar: 'M' });
+  }, await stateModuleUrl(page))).toEqual({ role: 'Member', access: 'limited', birthDate: '2015-03-12', avatar: 'M' });
   const photoMembers = () => page.evaluate(async () =>
     (await (await import('/db.js')).getAll('documents')).find(document => document.id === 'family-photo').photoAnnotations.personIds);
   expect(await photoMembers()).toEqual([memberId, 'u2']);
@@ -332,15 +333,15 @@ test('cercle vide : ajout direct, annulation, nom explicite et erreur de stockag
 test('cercle personnel : noms litteraux, avatars existants et metadonnees preserves sans faux droits', async ({ page }) => {
   await openHousehold(page);
   const name = '<Proche & Test> ' + 'Long'.repeat(30);
-  await page.evaluate(async name => {
-    const { getFamilyMembers } = await import('/state.js');
+  await page.evaluate(async ({ name, stateUrl }) => {
+    const { getFamilyMembers } = await import(stateUrl);
     const { put } = await import('/db.js');
     await put('family', {
       ...getFamilyMembers().find(member => member.id === 'u2'),
       name, avatar: '🌿', role: 'CustomRole', access: 'full', birthDate: '2011-06-02', customLabel: 'Repère choisi'
     });
     await put('family', { ...getFamilyMembers().find(member => member.id === 'u3'), name: 'Émile', avatar: '' });
-  }, name);
+  }, { name, stateUrl: await stateModuleUrl(page) });
   await reloadHousehold(page);
   const before = await snapshot(page);
   const card = page.locator('[data-family-member="u2"]');
@@ -441,10 +442,10 @@ test('filtres valides et invalides, historique et raccourcis documentaires', asy
 test('equipement absent : erreur explicite sans fermeture ni faux succes', async ({ page }) => {
   await openHousehold(page, 'detail?id=eq-piscine-pompe');
   await page.locator('#edit-equipment').click();
-  await page.evaluate(async () => {
-    const { deleteEquipment } = await import('/state.js');
+  await page.evaluate(async stateUrl => {
+    const { deleteEquipment } = await import(stateUrl);
     await deleteEquipment('eq-piscine-pompe');
-  });
+  }, await stateModuleUrl(page));
   await page.locator('#equipment-form [type="submit"]').click();
   await expect(page.locator('#equipment-form-status')).toHaveText("Cet équipement n'existe plus.");
   await expect(page.locator('#equipment-dialog')).toBeVisible();

@@ -30,6 +30,7 @@ export class IndexSession {
   #trusted = new WeakMap();
   #verified = new Map();
   #content = [];
+  #revision = 0;
 
   trustExtractedContent(document, segments) {
     if (!document || typeof document !== "object" || Array.isArray(document) ||
@@ -130,10 +131,18 @@ export class IndexSession {
         identityKey(record.sourceId, record.accountRef, record.itemId)
       ).length
         ? "partial" : "metadata" }));
-    this.#content = next.map(record => ({
+    const nextContent = next.map(record => ({
       sourceId: record.sourceId, accountRef: record.accountRef, itemId: record.itemId, name: record.name.value,
       segments: contents.get(record.sourceId).get(identityKey(record.sourceId, record.accountRef, record.itemId))
     }));
+    const contentChanged = nextContent.length !== this.#content.length || nextContent.some((doc, index) => {
+      const previous = this.#content[index];
+      return doc.sourceId !== previous.sourceId || doc.accountRef !== previous.accountRef ||
+        doc.itemId !== previous.itemId || doc.segments.length !== previous.segments.length ||
+        doc.segments.some((segment, position) => segment !== previous.segments[position]);
+    });
+    if (contentChanged || JSON.stringify(next) !== JSON.stringify(this.#records)) this.#revision += 1;
+    this.#content = nextContent;
     this.#records = next;
     this.#trusted = activeTrust;
     for (const [source, entries] of this.#verified) {
@@ -146,6 +155,10 @@ export class IndexSession {
 
   getAllRecords() {
     return reconcileIndex(this.#records, []).map(({ record }) => record);
+  }
+
+  getRevision() {
+    return this.#revision;
   }
 
   getRecordsBySource(sourceId) {
@@ -166,7 +179,9 @@ export class IndexSession {
     if (index < 0) throw new Error("Fiche introuvable");
     const next = this.getAllRecords();
     next[index] = { ...record, coverage: this.#records[index].coverage };
-    this.#records = reconcileIndex(next, []).map(({ record: copy }) => copy);
+    const records = reconcileIndex(next, []).map(({ record: copy }) => copy);
+    if (JSON.stringify(records) !== JSON.stringify(this.#records)) this.#revision += 1;
+    this.#records = records;
   }
 
   search(query, options = {}) {

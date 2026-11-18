@@ -18,7 +18,7 @@ function createHtmlCanvas(width, height) {
   return canvas;
 }
 
-async function decodeImage(file) {
+export async function decodeImage(file) {
   if (typeof globalThis.createImageBitmap === "function") {
     try {
       const bitmap = await globalThis.createImageBitmap(file, { imageOrientation: "from-image" });
@@ -73,7 +73,7 @@ function createCanvas(width, height) {
   throw new Error("La création locale de vignettes nécessite Canvas.");
 }
 
-async function encodeCanvas(canvas, type, quality) {
+export async function encodeCanvas(canvas, type, quality) {
   if (typeof canvas.convertToBlob === "function") {
     return canvas.convertToBlob({ type, quality });
   }
@@ -88,7 +88,7 @@ async function encodeCanvas(canvas, type, quality) {
   throw new Error("L'encodage local des vignettes n'est pas disponible.");
 }
 
-async function toDataUrl(blob) {
+export async function toDataUrl(blob) {
   if (typeof globalThis.btoa !== "function") {
     throw new Error("L'encodage local de la vignette n'est pas disponible.");
   }

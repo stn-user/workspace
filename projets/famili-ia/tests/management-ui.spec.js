@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { appModuleUrl, stateModuleUrl } from './helpers/app-state.js';
 
 async function openView(page, view) {
   await page.route('https://**/*', route => route.abort());
@@ -325,8 +326,8 @@ test('import : photo conservee avec avertissements sans annoncer un succes compl
 
 test('import : interruption entre deux lots garde les compteurs atteints sans annoncer la fin', async ({ page }) => {
   await openView(page, 'importer');
-  await page.evaluate(async () => {
-    const { BackgroundSyncWorker } = await import('/background-sync.js');
+  await page.evaluate(async workerUrl => {
+    const { BackgroundSyncWorker } = await import(workerUrl);
     const original = BackgroundSyncWorker.prototype.start;
     BackgroundSyncWorker.prototype.start = function () {
       BackgroundSyncWorker.prototype.start = original;
@@ -337,7 +338,7 @@ test('import : interruption entre deux lots garde les compteurs atteints sans an
       };
       return original.call(this);
     };
-  });
+  }, await appModuleUrl(page, 'background-sync.js'));
   await page.locator('#import-input').setInputFiles(
     Array.from({ length: 6 }, (_, index) => ({
       name: `notice-${index}.txt`, mimeType: 'text/plain', buffer: Buffer.from('Notice filtre.')
@@ -355,8 +356,8 @@ test('import : interruption entre deux lots garde les compteurs atteints sans an
 
 test('profil : routes directes, sauvegarde clavier, champs vides et preferences conservees', async ({ page }) => {
   await openView(page, 'profil');
-  const initial = await page.evaluate(async () => {
-    const { getCurrentUser } = await import('/state.js');
+  const initial = await page.evaluate(async stateUrl => {
+    const { getCurrentUser } = await import(stateUrl);
     const { put } = await import('/db.js');
     const user = {
       ...getCurrentUser(), avatar: '🌿', customMetadata: { preserved: true },
@@ -366,7 +367,7 @@ test('profil : routes directes, sauvegarde clavier, champs vides et preferences 
     };
     await put('users', user);
     return user;
-  });
+  }, await stateModuleUrl(page));
   await reloadView(page);
   await expect(page.locator('#consent-telemetry, #consent-sharing, #profile-role-readonly, #pref-auto-scan')).toHaveCount(0);
   const name = '<Profil & Test> ' + 'Long'.repeat(30);
@@ -393,10 +394,10 @@ test('profil : routes directes, sauvegarde clavier, champs vides et preferences 
   await page.locator('#consent-photo-gps').uncheck();
   await page.locator('#save-profile').click();
   await expect(page.locator('#profile-save-status')).toHaveText('Préférences enregistrées.');
-  const saved = await page.evaluate(async () => {
-    const { getCurrentUser } = await import('/state.js');
+  const saved = await page.evaluate(async stateUrl => {
+    const { getCurrentUser } = await import(stateUrl);
     return getCurrentUser();
-  });
+  }, await stateModuleUrl(page));
   expect(saved.role).toBe(initial.role);
   expect(saved.preferences).toEqual(initial.preferences);
   expect(saved.privacy.telemetryEnabled).toBe(true);
@@ -453,13 +454,13 @@ test('profil : erreur de stockage annoncee sans perdre la saisie', async ({ page
   await expect(page.locator('#edit-name')).toHaveValue('Profil fictif');
   await expect(page.locator('#consent-photo-gps')).not.toBeChecked();
   expect((await snapshot(page))[0]).toEqual(before[0]);
-  expect(await page.evaluate(async () => (await import('/state.js')).getCurrentUser())).toEqual(before[0][0]);
+  expect(await page.evaluate(async stateUrl => (await import(stateUrl)).getCurrentUser(), await stateModuleUrl(page))).toEqual(before[0][0]);
   await failNextUserWrite();
   await page.locator('#save-profile').click();
   await expect(page.locator('#profile-save-status')).toContainText("n'ont pas pu être enregistrées");
   await expect(page.locator('#edit-name')).toHaveValue('Profil fictif');
   expect((await snapshot(page))[0]).toEqual(before[0]);
-  expect(await page.evaluate(async () => (await import('/state.js')).getCurrentUser())).toEqual(before[0][0]);
+  expect(await page.evaluate(async stateUrl => (await import(stateUrl)).getCurrentUser(), await stateModuleUrl(page))).toEqual(before[0][0]);
   await page.locator('#save-profile').click();
   await expect(page.locator('#profile-save-status')).toHaveText('Préférences enregistrées.');
   await reloadView(page);
@@ -471,8 +472,8 @@ test('profil : retrait GPS partiel signale puis purge persistante sans toucher a
   await page.locator('#consent-photo-gps').check();
   await page.locator('#save-profile').click();
   await expect(page.locator('#profile-save-status')).toHaveText('Préférences enregistrées.');
-  await page.evaluate(async () => {
-    const { addDocument } = await import('/state.js');
+  await page.evaluate(async stateUrl => {
+    const { addDocument } = await import(stateUrl);
     const { createPhotoMetadata } = await import('/photo-metadata.js');
     for (const id of ['gps-first', 'gps-second']) {
       await addDocument({
@@ -484,7 +485,7 @@ test('profil : retrait GPS partiel signale puis purge persistante sans toucher a
         } })
       });
     }
-  });
+  }, await stateModuleUrl(page));
   const before = await snapshot(page);
   expect(before[1].filter(doc => doc.id.startsWith('gps-')).every(doc =>
     doc.photoFacts.facts.some(fact => fact.kind === 'location')

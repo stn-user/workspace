@@ -129,3 +129,19 @@ test("distinguishes missing copies, ambiguous identities and changed proofs with
   }
   assert.equal(reconcileDocumentAlerts([alert], [], [document]).alerts[0].sourceReview, null);
 });
+
+test("keeps the complete account reference of confirmed actions when reconciling Dropbox copies", () => {
+  const document = { id: "dropbox-reminder", dropboxSource: true, dropboxAccountFingerprint: "a".repeat(64),
+    type: "garantie", expiryDate: "2027-01-15", expiryDateEvidence: "Fin de garantie : 2027-01-15" };
+  const alert = { id: "alert-dropbox-reminder", docId: document.id, source: "document",
+    sourceId: "dropbox", sourceAccountRef: "a".repeat(64), sourceAccountFingerprint: null,
+    documentType: "garantie", dueDate: document.expiryDate, sourceExcerpt: document.expiryDateEvidence,
+    status: "ignored", snoozedUntil: "2027-01-10" };
+  assert.equal(reconcileDocumentAlerts([alert], [], [document]).alerts[0].sourceReview, null);
+  const changed = reconcileDocumentAlerts([alert], [], [
+    { ...document, dropboxAccountFingerprint: "b".repeat(64) }
+  ]).alerts[0];
+  assert.equal(changed.sourceReview, "source-changed");
+  assert.equal(changed.status, "ignored");
+  assert.equal(changed.snoozedUntil, "2027-01-10");
+});

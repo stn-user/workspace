@@ -109,9 +109,10 @@ test('focus, prénom facultatif et découverte sans accès aux comptes', async (
   await page.locator('#start-onboarding').focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('#step-1-title')).toBeFocused();
-  await page.getByLabel('Votre prénom (facultatif)').fill('Camille');
+  await expect(page.locator('#step-1-title')).toHaveText('Faisons connaissance !');
+  await page.getByLabel('Prénom (facultatif)', { exact: true }).fill('Camille');
   await expect(page.locator('#step-1 .onboarding-progress')).toHaveText('Étape 1 sur 3 · Personnalisation');
-  await page.getByLabel('Votre prénom (facultatif)').press('Enter');
+  await page.getByLabel('Prénom (facultatif)', { exact: true }).press('Enter');
   await expect(page.locator('#step-2-title')).toBeFocused();
   await expect(page.locator('#step-2 .onboarding-progress')).toHaveText('Étape 2 sur 3 · Choix du parcours');
   await expect(page.locator('#wizard-greeting')).toContainText('Camille');
