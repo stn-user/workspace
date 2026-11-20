@@ -342,6 +342,8 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await page.reload();
     await ready;
     await expect(page.locator('#summary-total')).toHaveText('1');
+    await expect(page.locator('.data-gallery-tile')).toHaveCount(1);
+    await page.locator('[data-inventory-layout="list"]').click();
     await expect(page.locator('.data-badge--index')).toHaveText('Métadonnées seules');
     await expect(page.locator('.data-badge--source')).toHaveText('Fichier local');
     await expectUsablePanel(page.locator('#view-vos-donnees'));
@@ -657,6 +659,20 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     expect(remainingPhotoIds).toHaveLength(23);
   });
 
+  test('un seul filtre actif : choisir un type remplace la catégorie sans bloquer la liste', async ({ page }) => {
+    await openInventory(page);
+    await page.locator('#view-vos-donnees [data-filter-category="Images"]').click();
+    await expect(page.locator('#data-inventory-status')).toHaveText('0 fichier affiché sur 5');
+    await page.locator('#view-vos-donnees [data-filter-type="Facture"]').click();
+    await expect(page).toHaveURL(/#\/vos-donnees\?type=Facture$/);
+    await expect(page.locator('#view-vos-donnees [data-filter-category="Images"]')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#data-inventory-status')).not.toHaveText('0 fichier affiché sur 5');
+    await page.locator('#view-vos-donnees [data-filter-category="Documents"]').click();
+    await expect(page).toHaveURL(/#\/vos-donnees\?category=Documents$/);
+    await expect(page.locator('#view-vos-donnees [data-filter-type="Facture"]')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('.data-file-row').first()).toBeVisible();
+  });
+
   test('reste utilisable sur téléphone, tablette et bureau avec une bibliothèque de 1 000 photos', async ({ page }) => {
     const viewports = [
       { name: 'téléphone étroit', width: 320, height: 740 },
@@ -731,11 +747,20 @@ test.describe('Vue Vos données et recherche unifiée', () => {
     await expect(detailDialog).toBeHidden();
 
     await page.goto('http://localhost:5179/#/vos-donnees');
-    const inventoryPhoto = page.locator('#data-inventory-list .data-file-row')
-      .filter({ hasText: 'vacances-0.jpg' });
+    const gallery = page.locator('#data-inventory-list');
+    await expect(gallery.locator('.data-gallery-tile')).toHaveCount(24);
+    await expect(page.locator('#data-inventory-status')).toHaveText('1000 fichiers affichés sur 1000');
+    const inventoryPhoto = gallery.getByRole('button', { name: 'Voir le détail de vacances-0.jpg' });
     await expect(inventoryPhoto).toHaveCount(1);
-    await expect(inventoryPhoto.getByRole('button', { name: 'Voir le détail de vacances-0.jpg' })).toBeVisible();
-    await inventoryPhoto.getByRole('button', { name: 'Voir le détail de vacances-0.jpg' }).click();
+    await expect(page.locator('#data-inventory-more')).toHaveText('Afficher plus (976 restants)');
+    await page.locator('#data-inventory-more').click();
+    await expect(gallery.locator('.data-gallery-tile')).toHaveCount(48);
+    await page.locator('[data-inventory-layout="list"]').click();
+    await expect(gallery.locator('.data-file-row')).toHaveCount(24);
+    await expect(gallery.locator('.data-gallery-tile')).toHaveCount(0);
+    await page.locator('[data-inventory-layout="gallery"]').click();
+    await expect(inventoryPhoto).toBeVisible();
+    await inventoryPhoto.click();
     await expect(detailDialog).toBeVisible();
     await expect(detailDialog.locator('#photo-detail-image')).toHaveAttribute('src', 'data:image/jpeg;base64,AQID');
     await page.keyboard.press('Escape');

@@ -1,9 +1,12 @@
-﻿console.log("App script loaded");
+console.log("App script loaded");
 import { buildSearchResponse, rankDocuments } from "./search-utils.js";
 import { GoogleDriveClient, prepareDriveDocumentForIndex } from "./google-drive.js";
 import { GoogleDriveSource } from "./google-drive-source.js";
 import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryAccountRef, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
 import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
+import { GoogleNativeAuth } from "./google-native-auth.js";
 import { selectNativePhotoFiles } from "./native-photo-picker.js";
 import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
@@ -35,6 +38,8 @@ import { findDocumentDuplicateCandidates } from "./document-deduplication.js";
 import { findIndexDeadlines } from "./index-deadline-search.js";
 import { createUnifiedIndexQuery, isWithinDateRange, mergeUnifiedIndexFilters } from "./unified-index-query.js";
 import { OneDriveAuth } from "./onedrive-auth.js";
+import { OneDriveNativeAuth } from "./onedrive-native-auth.js";
+import { DropboxNativeAuth } from "./dropbox-native-auth.js";
 import { scanOneDrive } from "./onedrive-graph.js";
 import {
   canRefreshOneDriveCopy, compareOneDriveCopy, describeOneDriveChanges, mergeOneDriveDocumentUpdate,
@@ -589,6 +594,14 @@ const googleDriveConfig = {
 };
 const hasGoogleDriveConfig = Object.values(googleDriveConfig).every((value) => typeof value === "string" && value.trim());
 const isNativePlatform = Capacitor.isNativePlatform();
+const googleAndroidClientId = import.meta.env.VITE_GOOGLE_ANDROID_CLIENT_ID;
+const hasGoogleNativeConfig = isNativePlatform && [googleAndroidClientId, googleDriveConfig.apiKey, googleDriveConfig.appId]
+  .every((value) => typeof value === "string" && value.trim());
+const INVENTORY_PAGE_SIZE = 24;
+let inventoryLayout = 'auto';
+let inventoryVisibleCount = INVENTORY_PAGE_SIZE;
+let inventoryViewKey = '';
+let inventoryFilters = {};
 
 const documents = [
   {
@@ -1239,7 +1252,17 @@ const fileStatus = document.querySelector("#file-status");
 const connectGoogleDriveButton = document.querySelector("#connect-google-drive");
 const disconnectGoogleDriveButton = document.querySelector("#disconnect-google-drive");
 const driveConnectionStatus = document.querySelector("#drive-connection-status");
-const googleDriveClient = hasGoogleDriveConfig && !isNativePlatform ? new GoogleDriveClient({
+const googleDriveClient = hasGoogleNativeConfig ? new GoogleDriveClient({
+  ...googleDriveConfig,
+  clientId: googleAndroidClientId,
+  nativeAuth: new GoogleNativeAuth({
+    clientId: googleAndroidClientId,
+    redirectUri: "fr.familiia.app:/oauth2redirect",
+    browser: Browser,
+    app: CapacitorApp
+  }),
+  getPhotoLocationConsent: () => getCurrentUser().privacy?.photoLocationConsent === true
+}) : hasGoogleDriveConfig && !isNativePlatform ? new GoogleDriveClient({
   ...googleDriveConfig, getPhotoLocationConsent: () => getCurrentUser().privacy?.photoLocationConsent === true
 }) : null;
 const googleDriveSource = googleDriveClient ? new GoogleDriveSource({ client: googleDriveClient, sourceId: INDEX_SOURCES.drive }) : null;
@@ -1751,9 +1774,9 @@ function updateGoogleDriveButton() {
     connectGoogleDriveButton.disabled = !googleDriveReady || driveFileCount >= maxDriveFiles;
   }
   if (googleDriveChoiceDescription) {
-    if (isNativePlatform) {
-      googleDriveChoiceDescription.textContent = "La connexion Google native n'est pas encore disponible dans l'application mobile.";
-    } else if (!hasGoogleDriveConfig) {
+    if (isNativePlatform && !hasGoogleNativeConfig) {
+      googleDriveChoiceDescription.textContent = "La connexion Google n'est pas configurée dans cette version de l'application.";
+    } else if (!isNativePlatform && !hasGoogleDriveConfig) {
       googleDriveChoiceDescription.textContent = "La connexion n'est pas configurée dans cette version web.";
     } else if (!googleDriveReady) {
       googleDriveChoiceDescription.textContent = "Connexion en cours de préparation…";
@@ -1845,7 +1868,7 @@ if (googleDriveClient) {
 } else {
   connectGoogleDriveButton.disabled = true;
   if (isNativePlatform) {
-    setDriveConnectionStatus("Le flux OAuth/Picker configuré ici est réservé au navigateur web ; il ne doit pas être lancé dans la WebView mobile.", "error");
+    setDriveConnectionStatus("Connexion Google non configurée dans cette version de l'application.", "error");
   }
 }
 updateGoogleDriveButton();
@@ -1910,7 +1933,14 @@ function addOneDriveOriginalAction(item, sourceDocument) {
 }
 
 const oneDriveClientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID?.trim();
-const oneDriveAuth = oneDriveClientId && !isNativePlatform ? new OneDriveAuth(oneDriveClientId) : null;
+const oneDriveAuth = !oneDriveClientId ? null : isNativePlatform
+  ? new OneDriveNativeAuth({
+    clientId: oneDriveClientId,
+    redirectUri: "msauth://fr.familiia.app/jWeLWZWhD8dIGXDvgTHayhyudLY%3D",
+    browser: Browser,
+    app: CapacitorApp
+  })
+  : new OneDriveAuth(oneDriveClientId);
 const oneDriveConnectButton = document.querySelector("#connect-onedrive");
 const oneDriveStartButton = document.querySelector("#start-onedrive");
 const oneDriveStopButton = document.querySelector("#stop-onedrive");
@@ -2051,8 +2081,6 @@ if (oneDriveAuth) {
     oneDriveStatus.textContent = `Initialisation Microsoft impossible : ${error.message}`;
     renderExperimentalSources();
   });
-} else if (isNativePlatform) {
-  oneDriveStatus.textContent = "OneDrive est disponible uniquement dans le navigateur web configuré.";
 } else {
   oneDriveStatus.textContent = "OneDrive n'est pas configuré : ajoutez VITE_MICROSOFT_CLIENT_ID à .env.local, puis redémarrez Vite.";
 }
@@ -2227,8 +2255,9 @@ document.querySelectorAll("[data-import-source]").forEach(button => {
 });
 
 const dropboxAppKey = import.meta.env.VITE_DROPBOX_APP_KEY?.trim();
-const dropboxAuth = dropboxAppKey && !isNativePlatform
-  ? new DropboxAuth(dropboxAppKey, new URL("dropbox-redirect.html", document.baseURI).href) : null;
+const dropboxAuth = !dropboxAppKey ? null : isNativePlatform
+  ? new DropboxNativeAuth({ clientId: dropboxAppKey, redirectUri: "fr.familiia.app://oauth/dropbox", browser: Browser, app: CapacitorApp })
+  : new DropboxAuth(dropboxAppKey, new URL("dropbox-redirect.html", document.baseURI).href);
 const dropboxConnectButton = document.querySelector("#connect-dropbox");
 const dropboxStartButton = document.querySelector("#start-dropbox");
 const dropboxResumeButton = document.querySelector("#resume-dropbox");
@@ -2370,8 +2399,7 @@ async function applyDropboxUpdates(candidates) {
 
 dropboxStatus.textContent = dropboxAuth
   ? "Dropbox prêt à être connecté. Aucune indexation n'a démarré."
-  : isNativePlatform ? "Dropbox est disponible uniquement dans le navigateur Web configuré."
-    : "Dropbox n'est pas configuré : ajoutez VITE_DROPBOX_APP_KEY à .env.local, puis redémarrez Vite. Aucun secret client.";
+  : "Dropbox n'est pas configuré : ajoutez VITE_DROPBOX_APP_KEY à .env.local, puis redémarrez Vite. Aucun secret client.";
 updateDropboxActions();
 dropboxConnectButton.addEventListener("click", async () => {
   if (!dropboxAuth || dropboxConnecting || dropboxScanSettled || removingSessionFiles) return;
@@ -4951,6 +4979,37 @@ function renderInventorySourceStatus() {
   }
 }
 
+
+function createInventoryGalleryTile(doc) {
+  const label = doc.name || doc.originalName || 'Photo sans nom';
+  const tile = document.createElement('button');
+  tile.type = 'button';
+  tile.className = 'data-gallery-tile';
+  tile.dataset.documentId = doc.id;
+  tile.setAttribute('aria-label', `Voir le détail de ${label}`);
+  const thumbnailDataUrl = getPhotoThumbnailDataUrl(doc.photoThumbnail);
+  if (thumbnailDataUrl) {
+    const image = document.createElement('img');
+    image.className = 'data-gallery-thumb';
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    image.src = thumbnailDataUrl;
+    tile.append(image);
+  } else {
+    const placeholder = document.createElement('span');
+    placeholder.className = 'data-gallery-thumb data-gallery-thumb--empty';
+    placeholder.textContent = 'Sans aperçu';
+    tile.append(placeholder);
+  }
+  const name = document.createElement('span');
+  name.className = 'data-gallery-name';
+  name.textContent = label;
+  tile.append(name);
+  tile.addEventListener('click', () => openDocumentPreview(doc));
+  return tile;
+}
+
 /**
  * Render data inventory for Vos données view
  * @param {Object} filters - Optional filters: { type, category }
@@ -4980,6 +5039,24 @@ function renderDataInventory(filters = {}) {
   document.querySelector('#data-inventory-status').textContent =
     `${docs.length} fichier${docs.length > 1 ? 's' : ''} affiché${docs.length > 1 ? 's' : ''} sur ${counts.total}`;
 
+  const allPhotos = docs.length > 0 && docs.every(isPhotoDocument);
+  const gallery = inventoryLayout === 'gallery' || (inventoryLayout === 'auto' && allPhotos);
+  const viewKey = `${JSON.stringify(filters)}|${gallery}`;
+  if (viewKey !== inventoryViewKey) {
+    inventoryViewKey = viewKey;
+    inventoryVisibleCount = INVENTORY_PAGE_SIZE;
+  }
+  inventoryFilters = filters;
+  dataList.classList.toggle('data-list--gallery', gallery);
+  document.querySelectorAll('[data-inventory-layout]').forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.inventoryLayout === (gallery ? 'gallery' : 'list')));
+  });
+  const moreButton = document.querySelector('#data-inventory-more');
+  document.querySelector('.data-layout-toggle').hidden = !allDocuments.some(isPhotoDocument);
+  const hiddenCount = Math.max(0, docs.length - inventoryVisibleCount);
+  moreButton.hidden = hiddenCount === 0;
+  moreButton.textContent = `Afficher plus (${hiddenCount} restant${hiddenCount > 1 ? 's' : ''})`;
+
   if (docs.length === 0) {
     dataList.replaceChildren();
     const emptyState = document.createElement('div');
@@ -5004,7 +5081,11 @@ function renderDataInventory(filters = {}) {
   }
 
   dataList.replaceChildren();
-  docs.forEach((doc) => {
+  docs.slice(0, inventoryVisibleCount).forEach((doc) => {
+    if (gallery && isPhotoDocument(doc)) {
+      dataList.append(createInventoryGalleryTile(doc));
+      return;
+    }
     const source = getInventorySource(doc);
     const sourceText = source === 'dropbox'
       ? `Dropbox · compte …${doc.dropboxAccountFingerprint?.slice(0, 16) || "inconnu"}`
@@ -5587,29 +5668,29 @@ function initDataView(filters = {}) {
   if (dataView && !dataView.dataset.filtersInitialized) {
     dataView.dataset.filtersInitialized = 'true';
     dataView.addEventListener('click', (event) => {
+      const layoutButton = event.target.closest('[data-inventory-layout]');
+      if (layoutButton) {
+        inventoryLayout = layoutButton.dataset.inventoryLayout;
+        renderDataInventory(inventoryFilters);
+        return;
+      }
+      if (event.target.closest('#data-inventory-more')) {
+        inventoryVisibleCount += INVENTORY_PAGE_SIZE;
+        renderDataInventory(inventoryFilters);
+        return;
+      }
       const chip = event.target.closest('[data-filter-type], [data-filter-category], [data-filter-clear]');
       if (!chip) return;
 
+      // Un seul filtre actif à la fois : un type et une catégorie combinés donnaient souvent une liste vide.
+      const nextFilters = {};
       const { params: currentFilters } = parseHash();
-      const nextFilters = { ...currentFilters };
 
-      if (chip.hasAttribute('data-filter-clear')) {
-        delete nextFilters.type;
-        delete nextFilters.category;
-      } else if (chip.dataset.filterType) {
-        const selectedType = chip.dataset.filterType;
-        if (selectedType === 'document') {
-          delete nextFilters.type;
-          delete nextFilters.category;
-        } else {
-          nextFilters.type = selectedType;
-        }
-        if (isInventoryDocumentType(nextFilters.category)) delete nextFilters.category;
+      if (chip.dataset.filterType && chip.dataset.filterType !== 'document') {
+        nextFilters.type = chip.dataset.filterType;
       } else if (chip.dataset.filterCategory) {
         const selectedCategory = chip.dataset.filterCategory;
-        if (nextFilters.category?.toLocaleLowerCase('fr') === selectedCategory.toLocaleLowerCase('fr')) {
-          delete nextFilters.category;
-        } else {
+        if (currentFilters.category?.toLocaleLowerCase('fr') !== selectedCategory.toLocaleLowerCase('fr')) {
           nextFilters.category = selectedCategory;
         }
       }

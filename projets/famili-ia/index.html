@@ -880,8 +880,15 @@
               <h2 id="data-inventory-title">Inventaire des fichiers</h2>
               <p id="data-inventory-status" role="status" aria-live="polite" aria-atomic="true"></p>
             </div>
+            <div class="data-layout-toggle" role="group" aria-label="Affichage des fichiers">
+              <button class="ui-button ui-button--secondary chip" type="button" data-inventory-layout="list" aria-pressed="false">Liste</button>
+              <button class="ui-button ui-button--secondary chip" type="button" data-inventory-layout="gallery" aria-pressed="false">Galerie</button>
+            </div>
             <div class="data-list" id="data-inventory-list">
               <!-- Liste des fichiers indexés -->
+            </div>
+            <div class="data-list-footer">
+              <button class="ui-button ui-button--secondary" type="button" id="data-inventory-more" hidden></button>
             </div>
             <p class="data-coverage-note">Cet inventaire ne couvre pas l’ensemble de vos comptes. « Métadonnées seules » signifie que le contenu n’est pas indexé.</p>
           </section>

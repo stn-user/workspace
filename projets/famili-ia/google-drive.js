@@ -170,13 +170,14 @@ async function readBoundedBytes(response, maxSize, fileName) {
 }
 
 export class GoogleDriveClient {
-  constructor({ apiKey, appId, clientId, getPhotoLocationConsent = () => false }) {
+  constructor({ apiKey, appId, clientId, nativeAuth = null, getPhotoLocationConsent = () => false }) {
     if (typeof getPhotoLocationConsent !== "function") {
       throw new TypeError("Le contrôle du consentement GPS doit être une fonction.");
     }
     this.apiKey = apiKey;
     this.appId = appId;
     this.clientId = clientId;
+    this.nativeAuth = nativeAuth;
     this.getPhotoLocationConsent = getPhotoLocationConsent;
     this.accessToken = null;
     this.tokenClient = null;
@@ -184,6 +185,7 @@ export class GoogleDriveClient {
 
   async initialize() {
     await loadGoogleLibraries();
+    if (this.nativeAuth) return;
     this.tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: this.clientId,
       scope: googleDriveScope,
@@ -197,10 +199,32 @@ export class GoogleDriveClient {
     return result.documents;
   }
 
+  async selectAndReadFiles(maxItems) {
+    const selectedFiles = await this.openPicker(maxItems);
+    if (selectedFiles === null) return { status: "cancelled", documents: [] };
+    if (!Array.isArray(selectedFiles)) throw new Error("Réponse Google Picker invalide.");
+    if (selectedFiles.length > maxItems) {
+      throw new Error(`Sélectionnez au plus ${maxItems} fichier${maxItems === 1 ? "" : "s"} pour respecter la limite de la session.`);
+    }
+    const loadedFiles = await Promise.all(selectedFiles.map((file) => this.readSelectedFile(file)));
+    return { status: loadedFiles.length ? "selected" : "empty", documents: loadedFiles };
+  }
+
+  async pickFilesNative(maxItems) {
+    const authorization = await this.nativeAuth.authorize(googleDriveScope);
+    if (authorization.status === "cancelled") return { status: "cancelled", documents: [] };
+    if (authorization.status !== "granted") {
+      throw new Error("L’autorisation minimale Google Drive n’a pas été accordée. Aucun fichier n’a été lu.");
+    }
+    this.accessToken = authorization.accessToken;
+    return this.selectAndReadFiles(maxItems);
+  }
+
   pickFilesDetailed(maxItems) {
-    if (!this.tokenClient || maxItems < 1) {
+    if ((!this.tokenClient && !this.nativeAuth) || maxItems < 1) {
       return Promise.reject(new Error("La connexion Google Drive n’est pas prête ou la limite de fichiers est atteinte."));
     }
+    if (this.nativeAuth) return this.pickFilesNative(maxItems);
 
     return new Promise((resolve, reject) => {
       this.tokenClient.callback = async (tokenResponse) => {
@@ -215,17 +239,7 @@ export class GoogleDriveClient {
 
         this.accessToken = tokenResponse.access_token;
         try {
-          const selectedFiles = await this.openPicker(maxItems);
-          if (selectedFiles === null) {
-            resolve({ status: "cancelled", documents: [] });
-            return;
-          }
-          if (!Array.isArray(selectedFiles)) throw new Error("Réponse Google Picker invalide.");
-          if (selectedFiles.length > maxItems) {
-            throw new Error(`Sélectionnez au plus ${maxItems} fichier${maxItems === 1 ? "" : "s"} pour respecter la limite de la session.`);
-          }
-          const loadedFiles = await Promise.all(selectedFiles.map((file) => this.readSelectedFile(file)));
-          resolve({ status: loadedFiles.length ? "selected" : "empty", documents: loadedFiles });
+          resolve(await this.selectAndReadFiles(maxItems));
         } catch (error) {
           reject(error);
         }
@@ -350,6 +364,11 @@ export class GoogleDriveClient {
     const token = this.accessToken;
     this.accessToken = null;
     if (!token) return Promise.resolve();
+    if (this.nativeAuth) {
+      return this.nativeAuth.revoke(token).catch(() => {
+        throw new Error("Google n’a pas confirmé la révocation. Vous pouvez également retirer Famili-IA depuis les paramètres de sécurité de votre compte Google.");
+      });
+    }
     if (!window.google?.accounts?.oauth2?.revoke) {
       return Promise.reject(new Error("Révocation Google indisponible : la révocation fournisseur n'a pas été confirmée."));
     }
