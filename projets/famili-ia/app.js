@@ -7,6 +7,7 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { GoogleNativeAuth } from "./google-native-auth.js";
+import { nativeFormPost } from "./native-http.js";
 import { selectNativePhotoFiles } from "./native-photo-picker.js";
 import { parseDocument } from "./document-parser.js";
 import { clearFamilyState, loadFamilyState } from "./family-storage.js";
@@ -1259,7 +1260,8 @@ const googleDriveClient = hasGoogleNativeConfig ? new GoogleDriveClient({
     clientId: googleAndroidClientId,
     redirectUri: "fr.familiia.app:/oauth2redirect",
     browser: Browser,
-    app: CapacitorApp
+    app: CapacitorApp,
+    fetchImpl: nativeFormPost
   }),
   getPhotoLocationConsent: () => getCurrentUser().privacy?.photoLocationConsent === true
 }) : hasGoogleDriveConfig && !isNativePlatform ? new GoogleDriveClient({
@@ -1938,7 +1940,8 @@ const oneDriveAuth = !oneDriveClientId ? null : isNativePlatform
     clientId: oneDriveClientId,
     redirectUri: "msauth://fr.familiia.app/jWeLWZWhD8dIGXDvgTHayhyudLY%3D",
     browser: Browser,
-    app: CapacitorApp
+    app: CapacitorApp,
+    fetchImpl: nativeFormPost
   })
   : new OneDriveAuth(oneDriveClientId);
 const oneDriveConnectButton = document.querySelector("#connect-onedrive");
@@ -2256,7 +2259,7 @@ document.querySelectorAll("[data-import-source]").forEach(button => {
 
 const dropboxAppKey = import.meta.env.VITE_DROPBOX_APP_KEY?.trim();
 const dropboxAuth = !dropboxAppKey ? null : isNativePlatform
-  ? new DropboxNativeAuth({ clientId: dropboxAppKey, redirectUri: "fr.familiia.app://oauth/dropbox", browser: Browser, app: CapacitorApp })
+  ? new DropboxNativeAuth({ clientId: dropboxAppKey, redirectUri: "fr.familiia.app://oauth/dropbox", browser: Browser, app: CapacitorApp, fetchImpl: nativeFormPost })
   : new DropboxAuth(dropboxAppKey, new URL("dropbox-redirect.html", document.baseURI).href);
 const dropboxConnectButton = document.querySelector("#connect-dropbox");
 const dropboxStartButton = document.querySelector("#start-dropbox");
