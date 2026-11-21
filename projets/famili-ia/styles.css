@@ -4864,6 +4864,67 @@ body.ui-theme.ui-warm {
   margin: 0.5rem 0;
 }
 
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+  background: var(--ui-page, #ffffff);
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.app-splash.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: min(100%, 440px);
+}
+
+.app-splash-content h2 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1.6rem;
+  line-height: 1.25;
+}
+
+.app-splash-progress {
+  width: min(100%, 320px);
+  height: 6px;
+  margin: 1.25rem 0 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-brand, #245be8) 15%, transparent);
+  overflow: hidden;
+}
+
+.app-splash-progress span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ui-brand, #245be8);
+  animation: app-splash-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes app-splash-slide {
+  0% { transform: translateX(-110%); }
+  55% { transform: translateX(190%); }
+  100% { transform: translateX(190%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-splash { transition: none; }
+  .app-splash-progress span { animation: none; width: 100%; opacity: 0.6; }
+}
+
 .onboarding-page-white .wizard-step .onboarding-privacy {
   display: flex;
   align-items: center;

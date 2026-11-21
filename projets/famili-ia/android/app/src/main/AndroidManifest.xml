@@ -31,6 +31,13 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Retour OAuth Google : schéma = ID client Android inversé -->
+                <data android:scheme="com.googleusercontent.apps.735064887427-86pi4nceo47qtfi5m5c4g9tm6924o4en" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="msauth" android:host="fr.familiia.app" />
             </intent-filter>
 

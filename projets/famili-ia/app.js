@@ -380,6 +380,22 @@ function initOnboardingWizard() {
   manageOnboardingWizardVisibility(); // Rendre le wizard visible
 }
 
+// Écran de garde : visible dès le chargement, retiré quand l'application est prête
+// (avec une durée minimale d'affichage pour éviter un simple clignotement).
+const APP_SPLASH_MIN_MS = 2000;
+const appSplashShownAt = Date.now();
+function dismissAppSplash() {
+  const splash = document.querySelector("#app-splash");
+  if (!splash || splash.classList.contains("is-leaving")) return;
+  const remaining = Math.max(0, APP_SPLASH_MIN_MS - (Date.now() - appSplashShownAt));
+  setTimeout(() => {
+    splash.classList.add("is-leaving");
+    setTimeout(() => splash.remove(), 500);
+  }, remaining);
+}
+// Filet de sécurité : ne jamais rester bloqué sur l'écran de garde.
+setTimeout(dismissAppSplash, 10000);
+
 // Initialisation asynchrone de l'application
 (async () => {
   console.log('[DEBUG] Async init - START');
@@ -452,6 +468,7 @@ function initOnboardingWizard() {
       startBackgroundScan(user.preferences.scanDirectories || []);
     }
     console.log('[DEBUG] Async init - COMPLETE');
+    dismissAppSplash();
   } catch (error) {
     console.error('[DEBUG] Async init - ERROR:', error);
     console.error('[DEBUG] Async init - ERROR stack:', error.stack);
@@ -463,6 +480,7 @@ function initOnboardingWizard() {
     } catch (e2) {
       console.error('[DEBUG] Async init - Fallback onboarding init FAILED:', e2);
     }
+    dismissAppSplash();
   }
 })();
 
@@ -1258,7 +1276,8 @@ const googleDriveClient = hasGoogleNativeConfig ? new GoogleDriveClient({
   clientId: googleAndroidClientId,
   nativeAuth: new GoogleNativeAuth({
     clientId: googleAndroidClientId,
-    redirectUri: "fr.familiia.app:/oauth2redirect",
+    // Google impose un schéma de retour égal à l'ID client inversé pour les clients Android.
+    redirectUri: `com.googleusercontent.apps.${googleAndroidClientId.replace(".apps.googleusercontent.com", "")}:/oauth2redirect`,
     browser: Browser,
     app: CapacitorApp,
     fetchImpl: nativeFormPost
@@ -1935,15 +1954,26 @@ function addOneDriveOriginalAction(item, sourceDocument) {
 }
 
 const oneDriveClientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID?.trim();
-const oneDriveAuth = !oneDriveClientId ? null : isNativePlatform
-  ? new OneDriveNativeAuth({
-    clientId: oneDriveClientId,
-    redirectUri: "msauth://fr.familiia.app/jWeLWZWhD8dIGXDvgTHayhyudLY%3D",
-    browser: Browser,
-    app: CapacitorApp,
-    fetchImpl: nativeFormPost
-  })
-  : new OneDriveAuth(oneDriveClientId);
+let oneDriveInitError = null;
+const oneDriveAuth = (() => {
+  if (!oneDriveClientId) return null;
+  if (isNativePlatform) {
+    return new OneDriveNativeAuth({
+      clientId: oneDriveClientId,
+      redirectUri: "msauth://fr.familiia.app/jWeLWZWhD8dIGXDvgTHayhyudLY%3D",
+      browser: Browser,
+      app: CapacitorApp,
+      fetchImpl: nativeFormPost
+    });
+  }
+  try {
+    return new OneDriveAuth(oneDriveClientId);
+  } catch (error) {
+    // Ex. : crypto.subtle absent hors contexte sécurisé (http sur IP locale) ; ne bloque pas l'app.
+    oneDriveInitError = error;
+    return null;
+  }
+})();
 const oneDriveConnectButton = document.querySelector("#connect-onedrive");
 const oneDriveStartButton = document.querySelector("#start-onedrive");
 const oneDriveStopButton = document.querySelector("#stop-onedrive");
@@ -2084,6 +2114,8 @@ if (oneDriveAuth) {
     oneDriveStatus.textContent = `Initialisation Microsoft impossible : ${error.message}`;
     renderExperimentalSources();
   });
+} else if (oneDriveInitError) {
+  oneDriveStatus.textContent = "OneDrive indisponible ici : ouvrez l'application via https ou http://localhost (connexion sécurisée requise).";
 } else {
   oneDriveStatus.textContent = "OneDrive n'est pas configuré : ajoutez VITE_MICROSOFT_CLIENT_ID à .env.local, puis redémarrez Vite.";
 }
