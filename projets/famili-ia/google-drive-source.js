@@ -18,12 +18,13 @@ export class GoogleDriveSource {
   }
 
   describe() {
+    const native = Boolean(this.#client.nativeAuth);
     return {
       sourceId: this.#sourceId,
       provider: "google-drive",
-      platform: "web",
+      platform: native ? "android" : "web",
       account: "unknown",
-      scope: "drive.file",
+      scope: native ? "drive.readonly" : "drive.file",
       selection: "explicit-one-time",
       selectionState: this.#selectionState,
       revocationState: this.#revocationState,
@@ -31,7 +32,7 @@ export class GoogleDriveSource {
       availability: "unknown",
       lastCheck: null,
       capabilities: {
-        select: true, authorize: false, discover: false, readMetadata: false, readContent: false,
+        select: true, authorize: false, discover: native, readMetadata: false, readContent: false,
         openOriginal: false, getChanges: false, disconnect: false, revoke: true
       }
     };
@@ -93,7 +94,14 @@ export class GoogleDriveSource {
   }
 
   authorize() { throw new Error("Autorisation séparée non prise en charge : utilisez la sélection explicite."); }
-  discover() { throw new Error("Découverte Drive non prise en charge : utilisez la sélection explicite."); }
+  discover(options = {}) {
+    if (!this.#client.nativeAuth) throw new Error("Découverte Drive non prise en charge dans le navigateur : utilisez la sélection explicite.");
+    return this.#client.listNativeFiles({
+      folderId: options.folderId || "root",
+      searchTerm: options.searchTerm || "",
+      pageToken: options.pageToken || null
+    });
+  }
   readMetadata() { throw new Error("Lecture séparée des métadonnées Drive non prise en charge."); }
   readContent() { throw new Error("Lecture séparée du contenu Drive non prise en charge."); }
   openOriginal() { throw new Error("Ouverture de l'original Drive non prise en charge."); }

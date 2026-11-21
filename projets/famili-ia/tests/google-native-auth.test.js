@@ -2,63 +2,60 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { GoogleNativeAuth } from "../google-native-auth.js";
 
-const REDIRECT = "fr.familiia.app:/oauth2redirect";
-const SCOPE = "https://www.googleapis.com/auth/drive.file";
+const SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 
-function setup({ callback, tokenBody = { access_token: "tok", scope: SCOPE }, tokenOk = true }) {
-  const handlers = {};
-  const requests = [];
-  const listener = (name) => (event, fn) => { handlers[event] = fn; return { remove: async () => {} }; };
-  const app = { addListener: async (e, fn) => listener("app")(e, fn) };
-  const browser = {
-    addListener: async (e, fn) => listener("browser")(e, fn),
-    close: async () => {},
-    open: async ({ url }) => {
-      requests.push({ opened: new URL(url) });
-      const state = new URL(url).searchParams.get("state");
-      setTimeout(() => callback({ handlers, state }), 0);
+function setup({ result = { accessToken: "tok", grantedScopes: [SCOPE] }, error = null } = {}) {
+  const calls = [];
+  const authorizationPlugin = {
+    authorize: async (options) => {
+      calls.push({ method: "authorize", options });
+      if (error) throw error;
+      return result;
     }
   };
+  const fetchCalls = [];
   const fetchImpl = async (url, init) => {
-    requests.push({ url, body: new URLSearchParams(init.body) });
-    return { ok: tokenOk, status: tokenOk ? 200 : 400, json: async () => tokenBody };
+    fetchCalls.push({ url, init });
+    return { ok: true };
   };
-  return { auth: new GoogleNativeAuth({ clientId: "cid", redirectUri: REDIRECT, browser, app, fetchImpl }), requests };
+  return {
+    auth: new GoogleNativeAuth({ authorizationPlugin, fetchImpl }),
+    calls,
+    fetchCalls
+  };
 }
 
-test("échange le code PKCE contre un jeton sans secret client", async () => {
-  const { auth, requests } = setup({
-    callback: ({ handlers, state }) => handlers.appUrlOpen({ url: `${REDIRECT}?code=abc&state=${state}` })
-  });
-  const result = await auth.authorize(SCOPE);
-  assert.deepEqual(result, { status: "granted", accessToken: "tok" });
-  const opened = requests[0].opened.searchParams;
-  assert.equal(opened.get("code_challenge_method"), "S256");
-  const exchange = requests[1].body;
-  assert.equal(exchange.get("code"), "abc");
-  assert.ok(exchange.get("code_verifier"));
-  assert.equal(exchange.has("client_secret"), false);
+test("utilise l'autorisation Android Google en lecture seule", async () => {
+  const { auth, calls } = setup();
+  assert.deepEqual(await auth.authorize(SCOPE), { status: "granted", accessToken: "tok" });
+  assert.deepEqual(calls, [{ method: "authorize", options: { scope: SCOPE } }]);
 });
 
-test("refuse une réponse dont le state ne correspond pas", async () => {
-  const { auth } = setup({ callback: ({ handlers }) => handlers.appUrlOpen({ url: `${REDIRECT}?code=abc&state=autre` }) });
-  await assert.rejects(auth.authorize(SCOPE), /inattendue/);
-});
-
-test("access_denied est traité comme une annulation", async () => {
-  const { auth } = setup({ callback: ({ handlers }) => handlers.appUrlOpen({ url: `${REDIRECT}?error=access_denied` }) });
+test("traite l'annulation du dialogue système sans jeton", async () => {
+  const { auth } = setup({ result: { cancelled: true } });
   assert.deepEqual(await auth.authorize(SCOPE), { status: "cancelled" });
 });
 
-test("la fermeture du navigateur sans retour annule", async () => {
-  const { auth } = setup({ callback: ({ handlers }) => handlers.browserFinished() });
-  assert.deepEqual(await auth.authorize(SCOPE), { status: "cancelled" });
+test("accepte le jeton Android même si la liste des scopes est absente", async () => {
+  const { auth } = setup({ result: { accessToken: "tok" } });
+  assert.deepEqual(await auth.authorize(SCOPE), { status: "granted", accessToken: "tok" });
 });
 
-test("signale un périmètre accordé insuffisant", async () => {
-  const { auth } = setup({
-    tokenBody: { access_token: "tok", scope: "openid" },
-    callback: ({ handlers, state }) => handlers.appUrlOpen({ url: `${REDIRECT}?code=abc&state=${state}` })
-  });
-  assert.deepEqual(await auth.authorize(SCOPE), { status: "insufficient-scope" });
+test("fait confiance à la portée imposée par le pont et refuse une réponse sans jeton", async () => {
+  const { auth } = setup({ result: { accessToken: "tok", grantedScopes: ["openid"] } });
+  assert.deepEqual(await auth.authorize(SCOPE), { status: "granted", accessToken: "tok" });
+  const { auth: missingToken } = setup({ result: { grantedScopes: [SCOPE] } });
+  await assert.rejects(missingToken.authorize(SCOPE), /jeton d'accès/);
+});
+
+test("propage les erreurs explicites du pont Android", async () => {
+  const { auth } = setup({ error: new Error("Google Play Services indisponible") });
+  await assert.rejects(auth.authorize(SCOPE), /Google Play Services indisponible/);
+});
+
+test("révoque le jeton via l'endpoint OAuth officiel", async () => {
+  const { auth, fetchCalls } = setup();
+  await auth.revoke("token-value");
+  assert.equal(fetchCalls[0].url, "https://oauth2.googleapis.com/revoke");
+  assert.match(fetchCalls[0].init.body, /token=token-value/);
 });

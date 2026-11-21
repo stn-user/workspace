@@ -41,6 +41,23 @@ test("décrit les limites sans exposer de jeton et retourne des fiches de la sé
   assert.equal(JSON.stringify(source.describe()).includes("Contenu fictif"), false);
 });
 
+test("décrit le parcours Android en lecture seule et délègue sa découverte", async () => {
+  const expected = { files: [{ id: "folder-file" }], nextPageToken: "next" };
+  const client = {
+    ...fakeClient(),
+    nativeAuth: {},
+    async listNativeFiles(options) {
+      assert.deepEqual(options, { folderId: "root", searchTerm: "facture", pageToken: null });
+      return expected;
+    }
+  };
+  const source = new GoogleDriveSource({ client, sourceId: "source" });
+  assert.equal(source.describe().platform, "android");
+  assert.equal(source.describe().scope, "drive.readonly");
+  assert.equal(source.describe().capabilities.discover, true);
+  assert.deepEqual(await source.discover({ searchTerm: "facture" }), expected);
+});
+
 test("sélection vide, erreurs propagées et entrées vérifiées", async () => {
   let action = async () => [];
   const source = new GoogleDriveSource({ client: fakeClient(() => action()), sourceId: "source" });

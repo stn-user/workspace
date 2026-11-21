@@ -1,6 +1,6 @@
 ﻿# Intégration et accès aux fichiers locaux
 
-Cette page distingue les capacités réellement présentes des choix à mettre en œuvre. Famili-IA ne doit demander accès qu'aux fichiers explicitement sélectionnés par l'utilisateur ; la sélection d'un fichier ne vaut pas autorisation de parcourir toute sa photothèque.
+Cette page distingue les capacités réellement présentes des choix à mettre en œuvre. Les accès doivent rester limités à ce qui est nécessaire, être expliqués avant la connexion et ne jamais permettre l'écriture ou la suppression des originaux.
 
 ## Capacités actuelles
 
@@ -15,6 +15,7 @@ Cette page distingue les capacités réellement présentes des choix à mettre e
 ### Android / Capacitor
 
 - Le projet comprend une cible Android et les plugins `@capacitor/filesystem` et `@capacitor/camera`. Le sélecteur photo système est raccordé au parcours d'import : jusqu'à cinq photos JPEG/PNG choisies explicitement sont lues localement puis soumises aux contrôles de taille et au traitement existants. Le bouton n'est visible que sur Android ; aucune permission générale de photothèque n'est demandée par ce parcours.
+- Google Drive conserve le sélecteur officiel et la portée `drive.file` sur le Web. Sur Android, le sélecteur Google ne renvoyant pas correctement le choix à l'application, le parcours utilise l'autorisation Android Google et un navigateur de fichiers construit dans Famili-IA à partir de l'API Drive. Il demande `drive.readonly` (lecture de l'ensemble du Drive), mais Famili-IA n'importe que les fichiers cochés par l'utilisateur ; aucune écriture ni suppression n'est demandée. Cette portée est sensible/restreinte selon les règles Google : compte de test uniquement pour la bêta, statut et exigences de vérification à confirmer avant toute diffusion plus large.
 - Le code utilise `Filesystem.Directory.Documents` pour explorer des chemins supposés publics. La documentation Capacitor précise que sur Android 11 et ultérieur, ce répertoire ne donne accès qu'aux fichiers créés par l'application. Le manifeste Android actuel ne déclare pas de permission de lecture des médias ou du stockage. Le parcours de scan actuel ne constitue donc pas un accès fiable aux photos de l'utilisateur.
 - Le lecteur importe les plugins Capacitor Filesystem et OCR natifs ; l'OCR de PDF scannés et d'images peut fournir des segments locaux indexables. Ce raccordement n'a pas encore été validé sur appareil et ne change ni les limites d'accès aux fichiers ni la sélection explicite.
 - La sélection photo est couverte par des tests unitaires pour l'annulation, la limite, les formats et les erreurs de lecture. La synchronisation Capacitor et une compilation Gradle Debug ont réussi sous Windows avec la chaîne locale Java/SDK ; la signature et l'identifiant de l'APK ont été vérifiés. Aucune validation sur appareil n'a encore été effectuée.

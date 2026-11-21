@@ -18,7 +18,7 @@ Le `INTERNET` du manifeste est aussi nécessaire aux connecteurs Web (WebView) :
 ## Échanges réseau à qualifier
 
 1. **Dépendances natives (ML Kit / DataTransport)** : OCR local, mais télémétrie possible vers les services Google. À qualifier par capture de trafic sur appareil (proxy ou `adb` + journal réseau) : domaines, fréquence, contenu, comportement hors ligne. Contredirait la promesse « données locales » si du contenu document était émis ; à vérifier, non supposé.
-2. **Connecteurs Web (code applicatif)** : `accounts.google.com`, `apis.google.com`, `www.googleapis.com`, `login.microsoftonline.com`, `account.live.com`, `graph.microsoft.com`, `www.dropbox.com`, `api.dropboxapi.com`, `content.dropboxapi.com`. Non réputés natifs ; n'entrent dans la bêta que s'ils sont validés sur appareil (redirections, jetons, stockage).
+2. **Connecteurs cloud** : Google Drive utilise l'autorisation Android Google puis l'API `www.googleapis.com`; le Web conserve `accounts.google.com`, `apis.google.com` et le sélecteur Google. OneDrive contacte `login.microsoftonline.com`, `account.live.com` et `graph.microsoft.com`; Dropbox contacte `www.dropbox.com`, `api.dropboxapi.com` et `content.dropboxapi.com`. Les connecteurs ne sont annoncés qu'après validation sur appareil (connexion, retours, limites d'accès et stockage).
 3. **Compilation** : Gradle contacte Google/Maven Central ; sans effet à l'exécution.
 
 ## Décisions proposées
@@ -28,6 +28,7 @@ Le `INTERNET` du manifeste est aussi nécessaire aux connecteurs Web (WebView) :
 - **Permissions** : minimales ; aucune permission média/stockage. Le parcours `Filesystem.requestPermissions()` / `readdir(Documents)` de `local-files.js` n'est pas un parcours bêta fiable (Android 11+).
 - **Réseau (décidé)** : `INTERNET` conservée, car les connecteurs inclus en ont besoin. Reste à qualifier pendant les essais le trafic ML Kit, surtout pendant l'OCR d'un PDF scanné ; si du contenu de document sort, désactiver la télémétrie ML Kit.
 - **Release** : réexaminer le manifeste fusionné de la variante signée, pas seulement Debug ; supprimer le commentaire « inherited » une fois la décision prise.
+- **Google Drive Android (décision bêta)** : après l'échec du sélecteur Google Web dans la WebView, un navigateur de fichiers intégré à Famili-IA remplace ce sélecteur. Pour le parcourir, l'application demande `drive.readonly`, qui autorise la lecture de tout le Drive ; seuls les fichiers choisis sont importés et aucune écriture/suppression n'est demandée. Utiliser uniquement des comptes testeurs pour la bêta et confirmer les exigences Google de vérification avant toute diffusion plus large. Le Web reste sur `drive.file`.
 
 ## Préparation des essais (tablette et téléphone)
 

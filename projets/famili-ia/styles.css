@@ -4762,6 +4762,86 @@ body.ui-theme.ui-warm {
 .ui-dialog :is(.dialog-meta, .dialog-notice) { color: var(--ui-muted); font-size: 0.85rem; line-height: 1.6; }
 .ui-dialog .dialog-content { padding: 1rem; border-radius: var(--radius-md); background: var(--ui-page); white-space: pre-wrap; line-height: 1.7; }
 .ui-dialog .dialog-notice { display: flex; align-items: flex-start; gap: 0.5rem; }
+.google-drive-picker-dialog {
+  box-sizing: border-box;
+  width: min(680px, calc(100% - 1.5rem));
+  max-width: none;
+  max-height: min(82dvh, 760px);
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  color: var(--ui-ink);
+  box-shadow: var(--shadow-lg);
+}
+.google-drive-picker-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
+.google-drive-picker-header,
+.google-drive-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.google-drive-picker-header h2 { margin: 0; font-size: 1.25rem; }
+.google-drive-picker-close {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ui-ink);
+  font-size: 1.7rem;
+}
+.google-drive-picker-disclosure,
+.google-drive-picker-status { color: var(--ui-muted); font-size: 0.9rem; line-height: 1.45; }
+.google-drive-picker-search { display: flex; gap: 0.5rem; margin: 0.75rem 0; }
+.google-drive-picker-search input {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+.google-drive-picker-navigation { display: flex; align-items: center; gap: 0.65rem; min-height: 2.5rem; }
+.google-drive-picker-back,
+.google-drive-picker-folder {
+  border: 0;
+  background: transparent;
+  color: var(--ui-brand-hover);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+}
+.google-drive-picker-list {
+  max-height: min(42dvh, 380px);
+  min-height: 5rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.google-drive-picker-item { border-top: 1px solid var(--ui-border); }
+.google-drive-picker-file,
+.google-drive-picker-folder {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.55rem 0.25rem;
+  overflow-wrap: anywhere;
+}
+.google-drive-picker-file input { flex: 0 0 auto; width: 20px; height: 20px; }
+.google-drive-picker-file-name { flex: 1; min-width: 0; }
+.google-drive-picker-file small { color: var(--ui-muted); white-space: nowrap; }
+.google-drive-picker-footer { justify-content: flex-end; margin-top: 0.75rem; }
+@media (max-width: 480px) {
+  .google-drive-picker-dialog { width: calc(100% - 1rem); max-height: 86dvh; }
+  .google-drive-picker-search { align-items: stretch; flex-direction: column; }
+  .google-drive-picker-file { gap: 0.5rem; }
+}
 .photo-annotations-dialog form,
 .photo-annotations-dialog .field { display: grid; gap: 0.5rem; min-width: 0; }
 .photo-annotations-dialog form { gap: 1rem; margin-top: 1rem; }

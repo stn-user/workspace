@@ -1275,11 +1275,6 @@ const googleDriveClient = hasGoogleNativeConfig ? new GoogleDriveClient({
   ...googleDriveConfig,
   clientId: googleAndroidClientId,
   nativeAuth: new GoogleNativeAuth({
-    clientId: googleAndroidClientId,
-    // Google impose un schéma de retour égal à l'ID client inversé pour les clients Android.
-    redirectUri: `com.googleusercontent.apps.${googleAndroidClientId.replace(".apps.googleusercontent.com", "")}:/oauth2redirect`,
-    browser: Browser,
-    app: CapacitorApp,
     fetchImpl: nativeFormPost
   }),
   getPhotoLocationConsent: () => getCurrentUser().privacy?.photoLocationConsent === true
@@ -1803,6 +1798,8 @@ function updateGoogleDriveButton() {
       googleDriveChoiceDescription.textContent = "Connexion en cours de préparation…";
     } else if (driveFileCount >= maxDriveFiles) {
       googleDriveChoiceDescription.textContent = `Limite de ${maxDriveFiles} fichiers Google Drive atteinte.`;
+    } else if (isNativePlatform) {
+      googleDriveChoiceDescription.textContent = "Autoriser la lecture seule de votre Drive pour parcourir les fichiers, puis choisir ceux à importer.";
     } else {
       googleDriveChoiceDescription.textContent = "Connecter votre compte puis choisir les fichiers à consulter.";
     }
@@ -1829,12 +1826,16 @@ function openSourceChoices(source) {
   document.querySelector("#onedrive-options").hidden = source === "drive" || source === "dropbox";
   document.querySelector("#dropbox-options").hidden = source !== "dropbox" && Boolean(providerButton);
   document.querySelector("#source-choice-permissions").textContent = source === "drive"
-    ? "Google Drive ne donne accès qu'aux fichiers sélectionnés. Les photos JPEG/PNG sont enregistrées en métadonnées sans télécharger l'image ; le GPS n'est demandé qu'avec votre consentement."
+    ? isNativePlatform
+      ? "Google Drive autorise la lecture de tout le compte pour afficher les dossiers et fichiers. Seuls les fichiers sélectionnés sont importés ; aucune écriture ni suppression n'est demandée."
+      : "Google Drive ne donne accès qu'aux fichiers sélectionnés. Les photos JPEG/PNG sont enregistrées en métadonnées sans télécharger l'image ; le GPS n'est demandé qu'avec votre consentement."
     : source === "dropbox"
       ? "Full Dropbox peut autoriser la lecture de tous les fichiers existants du compte. Aucun droit d'écriture ou de suppression Dropbox n'est demandé. La connexion ne lance pas l'indexation."
       : source === "onedrive"
       ? "OneDrive peut autoriser l'accès à tous les fichiers du compte personnel. La connexion ne lance pas l'indexation."
-      : "Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive et Dropbox peuvent autoriser la lecture de tous les fichiers du compte.";
+      : isNativePlatform
+        ? "Google Drive, OneDrive et Dropbox peuvent autoriser la lecture de tous les fichiers du compte. Pour Google Drive, seuls les fichiers choisis sont importés."
+        : "Google Drive ne donne accès qu'aux fichiers sélectionnés. OneDrive et Dropbox peuvent autoriser la lecture de tous les fichiers du compte.";
   sourceChoiceDialog.showModal();
 }
 
@@ -1875,12 +1876,16 @@ async function loadLocalFiles(files, sourceInput = localFilesInput) {
 }
 
 if (googleDriveClient) {
-  setDriveConnectionStatus("Chargement des bibliothèques Google. Aucun accès aux fichiers n'est demandé avant votre action.", "success", false);
+  setDriveConnectionStatus(isNativePlatform
+    ? "Google Drive prêt. La lecture de votre Drive sera demandée uniquement lorsque vous ouvrirez le navigateur de fichiers."
+    : "Chargement des bibliothèques Google. Aucun accès aux fichiers n'est demandé avant votre action.", "success", false);
   googleDriveClient.initialize().then(() => {
     googleDriveReady = true;
     updateGoogleDriveButton();
     updateModeBanner();
-    setDriveConnectionStatus("Prêt. Choisissez Google Drive pour demander l'accès drive.file et sélectionner vos fichiers dans le sélecteur officiel.", "success", false);
+    setDriveConnectionStatus(isNativePlatform
+      ? "Prêt. Choisissez Google Drive pour autoriser la lecture et parcourir vos fichiers."
+      : "Prêt. Choisissez Google Drive pour demander l'accès drive.file et sélectionner vos fichiers dans le sélecteur officiel.", "success", false);
   }).catch((error) => {
     driveObservation = "error";
     renderExperimentalSources();

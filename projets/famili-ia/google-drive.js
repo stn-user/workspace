@@ -2,6 +2,7 @@ import { createContentProvenance } from "./content-index.js";
 import { createPhotoMetadata, parseProviderExifCaptureDate, providerPhotoLocation } from "./photo-metadata.js";
 
 export const googleDriveScope = "https://www.googleapis.com/auth/drive.file";
+export const googleDriveNativeScope = "https://www.googleapis.com/auth/drive.readonly";
 const extractedPdfSegments = new WeakMap();
 
 export async function prepareDriveDocumentForIndex(document, index) {
@@ -184,8 +185,8 @@ export class GoogleDriveClient {
   }
 
   async initialize() {
-    await loadGoogleLibraries();
     if (this.nativeAuth) return;
+    await loadGoogleLibraries();
     this.tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: this.clientId,
       scope: googleDriveScope,
@@ -211,7 +212,7 @@ export class GoogleDriveClient {
   }
 
   async pickFilesNative(maxItems) {
-    const authorization = await this.nativeAuth.authorize(googleDriveScope);
+    const authorization = await this.nativeAuth.authorize(googleDriveNativeScope);
     if (authorization.status === "cancelled") return { status: "cancelled", documents: [] };
     if (authorization.status !== "granted") {
       throw new Error("L’autorisation minimale Google Drive n’a pas été accordée. Aucun fichier n’a été lu.");
@@ -256,6 +257,7 @@ export class GoogleDriveClient {
   }
 
   openPicker(maxItems) {
+    if (this.nativeAuth) return this.openNativeDrivePicker(maxItems);
     return new Promise((resolve, reject) => {
       const view = new window.google.picker.DocsView(window.google.picker.ViewId.DOCS)
         .setIncludeFolders(false)
@@ -280,6 +282,195 @@ export class GoogleDriveClient {
         .build();
       picker.setVisible(true);
     });
+  }
+
+  openNativeDrivePicker(maxItems) {
+    return new Promise((resolve) => {
+      const dialog = document.createElement("dialog");
+      dialog.className = "google-drive-picker-dialog";
+      dialog.setAttribute("aria-labelledby", "google-drive-picker-title");
+      const create = (tag, className, text) => {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        if (text) element.textContent = text;
+        return element;
+      };
+      const header = create("header", "google-drive-picker-header");
+      const title = create("h2", "", "Choisir dans Google Drive");
+      title.id = "google-drive-picker-title";
+      const closeButton = create("button", "google-drive-picker-close", "×");
+      closeButton.type = "button";
+      closeButton.setAttribute("aria-label", "Fermer sans sélectionner");
+      header.append(title, closeButton);
+
+      const disclosure = create(
+        "p",
+        "google-drive-picker-disclosure",
+        "Famili-IA peut parcourir votre Drive en lecture seule. Seuls les fichiers que vous sélectionnez ici seront importés."
+      );
+      const searchForm = create("form", "google-drive-picker-search");
+      const searchInput = create("input");
+      searchInput.type = "search";
+      searchInput.placeholder = "Rechercher dans tout le Drive";
+      searchInput.setAttribute("aria-label", "Rechercher dans Google Drive");
+      const searchButton = create("button", "ui-button ui-button--secondary", "Rechercher");
+      searchButton.type = "submit";
+      searchForm.append(searchInput, searchButton);
+
+      const navigation = create("nav", "google-drive-picker-navigation");
+      navigation.setAttribute("aria-label", "Emplacement Google Drive");
+      const status = create("p", "google-drive-picker-status", "Chargement des fichiers…");
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
+      const list = create("ul", "google-drive-picker-list");
+      const moreButton = create("button", "ui-button ui-button--secondary", "Afficher plus");
+      moreButton.type = "button";
+      moreButton.hidden = true;
+      const footer = create("footer", "google-drive-picker-footer");
+      const cancelButton = create("button", "ui-button ui-button--secondary", "Annuler");
+      cancelButton.type = "button";
+      const selectButton = create("button", "ui-button ui-button--primary", "Importer la sélection (0)");
+      selectButton.type = "button";
+      selectButton.disabled = true;
+      footer.append(cancelButton, selectButton);
+      dialog.append(header, disclosure, searchForm, navigation, status, list, moreButton, footer);
+      document.body.append(dialog);
+
+      const folderStack = [{ id: "root", name: "Mon Drive" }];
+      const selected = new Map();
+      let nextPageToken = null;
+      let searchTerm = "";
+      let settled = false;
+      let loading = false;
+
+      const finish = (files) => {
+        if (settled) return;
+        settled = true;
+        if (dialog.open) dialog.close();
+        dialog.remove();
+        resolve(files);
+      };
+      const updateSelection = () => {
+        selectButton.textContent = `Importer la sélection (${selected.size})`;
+        selectButton.disabled = selected.size === 0;
+        list.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+          checkbox.disabled = !checkbox.checked && selected.size >= maxItems;
+        });
+      };
+      const renderNavigation = () => {
+        navigation.replaceChildren();
+        if (folderStack.length > 1) {
+          const back = create("button", "google-drive-picker-back", "← Retour");
+          back.type = "button";
+          back.addEventListener("click", () => {
+            folderStack.pop();
+            searchTerm = "";
+            searchInput.value = "";
+            loadPage(false);
+          });
+          navigation.append(back);
+        }
+        navigation.append(create("span", "", folderStack.map((folder) => folder.name).join(" / ")));
+      };
+      const loadPage = async (append) => {
+        if (loading) return;
+        loading = true;
+        moreButton.disabled = true;
+        status.textContent = "Chargement des fichiers…";
+        if (!append) {
+          nextPageToken = null;
+          list.replaceChildren();
+        }
+        renderNavigation();
+        try {
+          const page = await this.listNativeFiles({
+            folderId: folderStack[folderStack.length - 1].id,
+            searchTerm,
+            pageToken: append ? nextPageToken : null
+          });
+          page.files.forEach((file) => {
+            const item = create("li", "google-drive-picker-item");
+            if (file.mimeType === "application/vnd.google-apps.folder") {
+              const folder = create("button", "google-drive-picker-folder", `Dossier : ${file.name}`);
+              folder.type = "button";
+              folder.addEventListener("click", () => {
+                folderStack.push({ id: file.id, name: file.name });
+                searchTerm = "";
+                searchInput.value = "";
+                loadPage(false);
+              });
+              item.append(folder);
+            } else if (getGoogleDriveFileType(file.mimeType)) {
+              const label = create("label", "google-drive-picker-file");
+              const checkbox = create("input");
+              checkbox.type = "checkbox";
+              checkbox.checked = selected.has(file.id);
+              checkbox.disabled = !checkbox.checked && selected.size >= maxItems;
+              checkbox.addEventListener("change", () => {
+                if (checkbox.checked) selected.set(file.id, file);
+                else selected.delete(file.id);
+                updateSelection();
+              });
+              const name = create("span", "google-drive-picker-file-name", file.name);
+              const type = getGoogleDriveFileType(file.mimeType);
+              label.append(checkbox, name, create("small", "", type.type));
+              item.append(label);
+            }
+            if (item.childElementCount) list.append(item);
+          });
+          nextPageToken = page.nextPageToken || null;
+          moreButton.hidden = !nextPageToken;
+          status.textContent = list.childElementCount
+            ? `${selected.size} fichier${selected.size > 1 ? "s" : ""} sélectionné${selected.size > 1 ? "s" : ""}.`
+            : "Aucun fichier compatible dans cet emplacement.";
+        } catch (error) {
+          status.textContent = `Impossible de charger Google Drive : ${error.message}`;
+        } finally {
+          loading = false;
+          moreButton.disabled = false;
+          updateSelection();
+        }
+      };
+
+      searchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        searchTerm = searchInput.value.trim();
+        folderStack.splice(1);
+        loadPage(false);
+      });
+      moreButton.addEventListener("click", () => loadPage(true));
+      closeButton.addEventListener("click", () => finish(null));
+      cancelButton.addEventListener("click", () => finish(null));
+      selectButton.addEventListener("click", () => finish([...selected.values()]));
+      dialog.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        finish(null);
+      });
+      dialog.addEventListener("close", () => {
+        if (!settled) finish(null);
+      });
+      dialog.showModal();
+      loadPage(false);
+    });
+  }
+
+  async listNativeFiles({ folderId, searchTerm, pageToken }) {
+    const escapeQuery = (value) => value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    const query = searchTerm
+      ? `name contains '${escapeQuery(searchTerm)}' and trashed = false`
+      : `'${escapeQuery(folderId)}' in parents and trashed = false`;
+    const url = new URL("https://www.googleapis.com/drive/v3/files");
+    url.searchParams.set("q", query);
+    url.searchParams.set("pageSize", "100");
+    url.searchParams.set("orderBy", "folder,name");
+    url.searchParams.set("fields", "nextPageToken,files(id,name,mimeType,size,modifiedTime)");
+    url.searchParams.set("supportsAllDrives", "true");
+    url.searchParams.set("includeItemsFromAllDrives", "true");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    const response = await this.driveRequest(url, "Impossible de parcourir Google Drive");
+    const page = await response.json();
+    if (!Array.isArray(page?.files)) throw new Error("Liste de fichiers Google Drive invalide.");
+    return page;
   }
 
   async driveRequest(url, description) {
