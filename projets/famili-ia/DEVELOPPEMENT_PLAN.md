@@ -1,6 +1,6 @@
 ﻿# Famili-IA — plan de réalisation jusqu'à la bêta et au lancement
 
-**Plan actif, mis à jour le 18 novembre 2026.** Cette feuille de route est la source de vérité pour les prochaines priorités. Les exigences détaillées et leur historique sont repliés à la fin ; une ancienne case non cochée ne devient pas automatiquement une tâche active. `ROADMAP.md` conserve la vision et les principes produit, pas le calendrier de livraison.
+**Plan actif, mis à jour le 23 novembre 2026.** Cette feuille de route est la source de vérité pour les prochaines priorités. Les exigences détaillées et leur historique sont repliés à la fin ; une ancienne case non cochée ne devient pas automatiquement une tâche active. `ROADMAP.md` conserve la vision et les principes produit, pas le calendrier de livraison.
 
 ## Objectif et promesse produit
 
@@ -191,6 +191,18 @@ La source fournisseur reste l'autorité sur l'original ; l'index Famili-IA est u
 - [ ] Mesurer intérêt et compréhension avec des indicateurs minimaux, transparents et sans contenu personnel ; corriger le message si les testeurs pensent que Famili-IA garantit l'accès à l'ensemble de leurs comptes.
 
 **Sortie :** un dispositif de communication et d'inscription prêt, fidèle à la version et à la politique de confidentialité publiées.
+
+#### Cible complémentaire proposée — application de bureau téléchargeable
+
+Cette piste est à évaluer après les priorités actuelles ; elle ne modifie pas la cible de bêta Android/iOS ni leur calendrier. Une diffusion depuis le site est une option complémentaire, sans marketplace obligatoire, et ne doit être annoncée qu'après validation du build.
+
+- [ ] Décider si une application Windows installable (.exe) répond au besoin ; comparer une enveloppe de bureau (par exemple Tauri ou Electron) à une PWA, qui s'installe depuis le navigateur mais ne fournit pas le même installateur.
+- [ ] Prototyper puis valider le paquetage Windows, l'installation, la mise à jour, la désinstallation et le retour arrière, sans promettre de fonctionnement hors ligne non vérifié.
+- [ ] Vérifier que les fichiers restent sélectionnés explicitement et traités selon les garanties local-first. Définir l'isolation du stockage PC par rapport au navigateur et au mobile, ainsi que les parcours d'export/import ; ne pas supposer de synchronisation entre appareils.
+- [ ] Définir signature et vérification de l'installateur, versions prises en charge, intégrité des téléchargements et procédure de publication ; aucun secret ne doit être embarqué.
+- [ ] Ajouter au site de présentation une page de téléchargement seulement après validation : version, prérequis, signature/empreinte, instructions d'installation et de mise à jour, limites, confidentialité et support. Distinguer clairement les builds de test d'une version publique.
+
+**Sortie :** décision documentée de poursuivre ou différer, puis, si approuvée, installateur et page de téléchargement vérifiés et cohérents avec les capacités réellement disponibles.
 
 ### Lot I — Décision de lancement
 
