@@ -1,0 +1,155 @@
+{
+  "version": "1.0.0",
+  "synthetic": true,
+  "documents": [
+    {
+      "id": "spa-filter-manual",
+      "name": "Notice entretien du spa fictif.txt",
+      "type": "Notice",
+      "keywords": "spa filtre cartouche entretien",
+      "content": "NOTICE FICTIVE — SPA\nRincer la cartouche filtrante tous les dix jours en période d'utilisation."
+    },
+    {
+      "id": "solar-installation-contract",
+      "name": "Contrat photovoltaïque fictif.txt",
+      "type": "Contrat",
+      "keywords": "solaire panneaux photovoltaïque puissance",
+      "content": "CONTRAT FICTIF — INSTALLATION SOLAIRE\nPuissance nominale installée : 4,2 kWc."
+    },
+    {
+      "id": "roof-repair-invoice",
+      "name": "Facture couverture fictive.txt",
+      "type": "Facture",
+      "keywords": "toiture couverture travaux réparation",
+      "content": "FACTURE FICTIVE — TOITURE\nMontant total des travaux : 2 760 euros TTC."
+    },
+    {
+      "id": "garden-shed-warranty",
+      "name": "Garantie abri fictive.txt",
+      "type": "Garantie",
+      "keywords": "abri cabanon jardin garantie",
+      "content": "GARANTIE FICTIVE — ABRI DE JARDIN\nFin de garantie : 30 avril 2102."
+    },
+    {
+      "id": "battery-certificate",
+      "name": "Certificat accumulateur fictif.txt",
+      "type": null,
+      "keywords": "accumulateur batterie couverture",
+      "content": "CERTIFICAT FICTIF — ACCUMULATEUR\nLa couverture de l'accumulateur prend fin le 12 février 2105."
+    },
+    {
+      "id": "washing-machine-invoice",
+      "name": "Facture lave-linge fictive.txt",
+      "type": "Facture",
+      "keywords": "lave-linge machine lavage achat",
+      "content": "FACTURE FICTIVE — LAVE-LINGE\nMontant total : 640 euros TTC."
+    },
+    {
+      "id": "japan-reservation",
+      "name": "Réservation voyage fictive.txt",
+      "type": "Réservation",
+      "keywords": "voyage destination japon séjour",
+      "content": "RÉSERVATION FICTIVE\nDestination prévue : Japon."
+    },
+    {
+      "id": "portal-warranty-copy-a",
+      "name": "Garantie portail copie A fictive.txt",
+      "type": "Garantie",
+      "keywords": "portail garantie fin copie",
+      "content": "COPIE FICTIVE A — PORTAIL\nFin de garantie : 3 mars 2104."
+    },
+    {
+      "id": "portal-warranty-copy-b",
+      "name": "Garantie portail copie B fictive.txt",
+      "type": "Garantie",
+      "keywords": "portail garantie fin copie",
+      "content": "COPIE FICTIVE B — PORTAIL\nFin de garantie : 3 mars 2105."
+    }
+  ],
+  "cases": [
+    {
+      "id": "spa-filter-frequency",
+      "query": "À quel intervalle rincer la cartouche du bain à remous ?",
+      "expectedIds": ["spa-filter-manual"],
+      "expectedStatus": "answered"
+    },
+    {
+      "id": "solar-capacity",
+      "query": "Quelle puissance nominale est indiquée pour l'installation photovoltaïque ?",
+      "expectedIds": ["solar-installation-contract"],
+      "expectedStatus": "answered"
+    },
+    {
+      "id": "roof-invoice-amount",
+      "query": "Quel est le coût des travaux de couverture ?",
+      "expectedIds": ["roof-repair-invoice"],
+      "expectedStatus": "answered"
+    },
+    {
+      "id": "shed-warranty-end",
+      "query": "Quelle est la date d'expiration de la garantie du cabanon ?",
+      "expectedIds": ["garden-shed-warranty"],
+      "expectedStatus": "answered"
+    },
+    {
+      "id": "battery-certificate-end",
+      "query": "Quand prend fin la garantie de l'accumulateur selon son certificat ?",
+      "expectedIds": ["battery-certificate"],
+      "expectedStatus": "answered"
+    },
+    {
+      "id": "washing-machine-amount",
+      "query": "Quel montant a été facturé pour le lave-linge ?",
+      "expectedIds": ["washing-machine-invoice"],
+      "expectedStatus": "answered"
+    },
+    {
+      "id": "japan-trip-destination",
+      "query": "Quelle destination est inscrite sur la réservation de voyage ?",
+      "expectedIds": ["japan-reservation"],
+      "expectedStatus": "answered"
+    },
+    {
+      "id": "portal-warranty-conflict",
+      "query": "Quelle date de fin de garantie du portail est indiquée dans ces copies ?",
+      "expectedIds": ["portal-warranty-copy-a", "portal-warranty-copy-b"],
+      "expectedStatus": "conflict"
+    },
+    {
+      "id": "spa-missing-temperature",
+      "query": "Quelle température maximale la notice du spa recommande-t-elle ?",
+      "expectedIds": ["spa-filter-manual"],
+      "expectedStatus": "abstained"
+    },
+    {
+      "id": "missing-boat-invoice",
+      "query": "Où est la facture de mon voilier ?",
+      "expectedIds": [],
+      "expectedStatus": "abstained"
+    },
+    {
+      "id": "missing-guitar-invoice",
+      "query": "Existe-t-il une facture pour la guitare ?",
+      "expectedIds": [],
+      "expectedStatus": "abstained"
+    },
+    {
+      "id": "missing-drone-reference",
+      "query": "Quelle est la référence du drone familial ?",
+      "expectedIds": [],
+      "expectedStatus": "abstained"
+    },
+    {
+      "id": "missing-refrigerator-warranty",
+      "query": "Quand finit la garantie du réfrigérateur ?",
+      "expectedIds": [],
+      "expectedStatus": "abstained"
+    },
+    {
+      "id": "portal-copy-clarification",
+      "query": "Quelle date dois-je retenir ? Je n'ai pas choisi entre les deux copies de garantie du portail.",
+      "expectedIds": [],
+      "expectedStatus": "clarification"
+    }
+  ]
+}

@@ -67,6 +67,8 @@ test("missing cases and deferred integration are not successful model evaluation
   const empty = await evaluateAssistantRun(corpus, controlRun([]));
   assert.equal(empty.decision, "not-evaluated");
   assert.equal(empty.missing.length, 18);
+  assert.equal(empty.responseDecisions.missing, 18);
+  assert.equal(empty.responseDecisions.decisionGate.passes, false);
   assert.equal(empty.timings.p95Ms, null);
   assert.equal(empty.usage.inputTokens, null);
   const partial = await evaluateAssistantRun(corpus, controlRun([eligible[0]]));
@@ -84,6 +86,8 @@ test("a real citation with a false claim cannot automatically pass semantic revi
   run.observations[0].output.claims[0].text = "Le montant est de 80 000 euros.";
   const report = await evaluateAssistantRun(corpus, run);
   assert.equal(report.structuralPassed, 18);
+  assert.equal(report.responseDecisions.exactDecisionAccuracy, 1);
+  assert.equal(report.responseDecisions.exactNonAnswerDecisionRate, 1);
   assert.equal(report.semanticApproved, 0);
   assert.equal(report.semanticPending, 18);
   assert.equal(report.decision, "review-required");

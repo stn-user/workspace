@@ -505,6 +505,15 @@ function getLabelPriority(line, labels) {
   return labels.findIndex((label) => normalizedLine.includes(label));
 }
 
+export function containsModelDirectedInstruction(line) {
+  if (typeof line !== "string") return false;
+  const mentionsModel = /\b(?:assistant|mod[eè]le|model|IA|AI|intelligence artificielle|ChatGPT|LLM)\b/i.test(line);
+  if (!mentionsModel) return false;
+  const instructionLabel = /\b(?:instruction|consigne|message|note)\b.{0,50}\b(?:assistant|mod[eè]le|model|IA|AI|intelligence artificielle|ChatGPT|LLM)\b/i;
+  const directive = /\b(?:ignore|ignorez|ignorer|réponds|répondez|répondre|annonce|annoncez|annoncer|invente|inventez|inventer|confirme|confirmez|confirmer|remplace|remplacez|remplacer|modifie|modifiez|modifier|change|changez|changer|exécute|execute|effectue|answer|respond|say|invent|confirm|replace|change)\b/i;
+  return instructionLabel.test(line) || directive.test(line);
+}
+
 export function extractExactFact(question, lines) {
   const intent = detectQuestionIntent(question);
   if (!intent) return null;
@@ -513,6 +522,7 @@ export function extractExactFact(question, lines) {
   const contextTerms = getContextTerms(question, intent);
 
   return lines
+    .filter((line) => !containsModelDirectedInstruction(line))
     .map((line) => {
       const labelPriority = getLabelPriority(line, labels);
       if (labelPriority < 0) return null;

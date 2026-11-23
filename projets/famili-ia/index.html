@@ -628,12 +628,17 @@
           <details class="assistant-limits">
             <summary>Assistant ou Recherche ?</summary>
             <p>Ici, posez une question précise pour repérer un montant, une date ou une référence dans le texte disponible. Dans Recherche, explorez vos fichiers et vos photos avec les filtres.</p>
-            <p>Traitement local, sans IA distante ni synthèse de plusieurs documents. Une échéance admissible peut être proposée avec sa preuve ; la création du rappel demande votre confirmation explicite et ne modifie pas l’original. Les échanges ne sont pas conservés après rechargement. Aucune action automatique n'est exécutée.</p>
+            <p>Sans Qwen, l’assistant utilise les règles locales existantes. Si l’option Qwen est activée, la question et jusqu’à deux faits exacts déjà extraits de passages vérifiés sont envoyés à Ollama sur ce PC pour une réponse expérimentale. Le modèle ne déclenche aucune action ; une échéance admissible demande toujours votre confirmation. Les échanges ne sont pas conservés après rechargement.</p>
           </details>
         </div>
-        <form class="ui-card chat-form" id="assistant-form" aria-describedby="assistant-question-hint assistant-status">
+        <form class="ui-card chat-form" id="assistant-form" aria-describedby="assistant-question-hint assistant-qwen-disclosure assistant-status">
           <label class="ui-label" for="assistant-input">Votre question pour l'assistant</label>
           <p id="assistant-question-hint" class="household-note">Chaque question est indépendante : précisez son sujet, même après une première réponse.</p>
+          <label class="assistant-qwen-toggle" for="assistant-use-qwen">
+            <input type="checkbox" id="assistant-use-qwen">
+            <span>Utiliser Qwen 3 local (expérimental)</span>
+          </label>
+          <p id="assistant-qwen-disclosure" class="household-note">Désactivé par défaut. Si activé, seuls la question et jusqu’à deux faits exacts extraits localement de passages vérifiés sont envoyés à Ollama sur ce PC ; aucune requête n’est envoyée sans fait exact pertinent. Non disponible dans l’application mobile.</p>
           <div class="assistant-composer">
             <input class="ui-input" type="text" id="assistant-input" placeholder="Ex. : quand se termine mon contrat habitation ?" autocomplete="off" required>
             <button class="ui-button ui-button--primary" type="submit" aria-label="Envoyer la question"><span>Envoyer</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m21 3-7 18-4-7-7-4zM10 14 21 3"/></svg></button>

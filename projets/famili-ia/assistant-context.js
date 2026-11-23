@@ -2,7 +2,8 @@ import { getInventoryAccountRef, getInventorySource } from "./data-inventory.js"
 import { describeExperimentalResult } from "./experimental-result.js";
 import { isPhotoDocument } from "./photo-annotations.js";
 import {
-  detectQuestionIntent, extractExactFact, getExpandedTerms, getProvenance, getQuestionSubjectTerms
+  containsModelDirectedInstruction, detectQuestionIntent, extractExactFact, getExpandedTerms, getProvenance,
+  getQuestionSubjectTerms
 } from "./search-utils.js";
 
 function documentKey(document) {
@@ -86,7 +87,8 @@ export function prepareAssistantContext({ session, question, documents, sourceSt
     const lines = segments.flatMap(segment => segment.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
     const exactFact = extractExactFact(question, lines);
     const excerpt = match.reasons.find(reason => reason.location === "content")?.proof?.excerpt;
-    const evidence = exactFact || (excerpt && segments.some(segment => segment.includes(excerpt)) ? excerpt : null);
+    const evidence = exactFact || (excerpt && !containsModelDirectedInstruction(excerpt) &&
+      segments.some(segment => segment.includes(excerpt)) ? excerpt : null);
     const access = sourceStatuses.find(status =>
       status.sourceId === match.sourceId && status.accountRef === match.accountRef)?.access;
     const description = describeExperimentalResult(match, record, document, access);
@@ -114,4 +116,25 @@ export function prepareAssistantContext({ session, question, documents, sourceSt
   // Select factual evidence for the answer without introducing a document ranker.
   context.matches = [...facts, ...context.matches.filter(match => !match.exactFact)];
   return context;
+}
+
+export function prepareLocalQwenEvidence(response) {
+  if (!response || !Array.isArray(response.matches)) {
+    throw new TypeError("Réponse locale invalide pour la préparation des faits Qwen.");
+  }
+  if (!response.context) return [];
+  if (!Array.isArray(response.context.matches)) {
+    throw new TypeError("Contexte local invalide pour la préparation des faits Qwen.");
+  }
+  if (response.context.status !== "ready" || response.status !== "supported" ||
+      response.context.matches.some(match => match.ambiguous)) return [];
+  return response.matches
+    .filter(match => match && typeof match.exactFact === "string" && match.exactFact.trim() && !match.ambiguous)
+    .slice(0, 2)
+    .map((match, index) => ({
+      id: `evidence-${index + 1}`,
+      text: match.exactFact,
+      verified: true,
+      match
+    }));
 }

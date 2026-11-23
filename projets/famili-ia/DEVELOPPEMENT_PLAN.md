@@ -1,3 +1,169 @@
+﻿# Famili-IA — feuille de route révisée
+
+**Plan actif, mis à jour le 23 novembre 2026.** Cette feuille de route remplace les priorités précédentes, conservées plus bas à titre historique. Elle intègre l'IA locale pour améliorer la recherche documentaire, l'analyse et les alertes ; la reconnaissance faciale reste une possibilité à décider, et non une exigence déjà approuvée du MVP.
+
+Les cases `[x]` indiquent un travail réalisé ou une capacité existante (les confirmations utilisateur sont signalées) ; `[ ]` signifie qu'il reste à faire ou à vérifier.
+
+## Vision produit cible
+
+**Toute votre mémoire familiale. Une seule porte d'entrée.**
+
+Famili-IA vise à retrouver documents, photos et souvenirs à partir des informations réellement disponibles : texte, métadonnées, scènes éventuellement analysées et personnes identifiées explicitement par la famille. Les résultats devront présenter leurs sources, leurs incertitudes et les limites de couverture. Aucun résultat ne garantit que toutes les photos ou tous les documents ont été indexés.
+
+L'IA et l'analyse photographique locales sont une cible du MVP, pas une capacité actuelle. Les connecteurs cloud existants restent des accès explicites aux fournisseurs : « IA locale » ne signifie pas que l'ensemble de l'application ou les sources connectées fonctionnent hors ligne.
+
+## État actuel vérifié
+
+- [x] Le socle Web en JavaScript/HTML/CSS, la cible Android Capacitor et une version de débogage existent. L'utilisateur confirme disposer d'une version debug ; l'APK n'est pas présente dans `android/app/build/outputs/apk/debug/` dans l'espace de travail au moment de cette mise à jour.
+- [x] La recherche locale de documents, l'import local existant et l'index photo par métadonnées sont déjà présents ; ils ne comprennent pas la recherche sémantique ou l'analyse visuelle par les nouveaux modèles.
+- [x] Qwen3:8b et EmbeddingGemma sont installés localement selon confirmation utilisateur ; Ollama répond sur l'API locale, mais les modèles ne sont pas raccordés au code.
+- [x] Essais de fumée synthétiques réussis : génération Qwen3:8b et embeddings EmbeddingGemma. Une campagne Qwen complète est toutefois rejetée ; la première mesure de recherche EmbeddingGemma est prometteuse mais trop limitée pour conclure. Aucun modèle n'est intégré à l'application.
+- [ ] La reconnaissance faciale et les autres traitements de vision ne sont pas implémentés. Android existe ; la cible iOS et ses validations restent à réaliser. Aucun traitement photo par IA ne doit être réputé disponible sur mobile.
+- [ ] Préserver le stockage local et les mécanismes actuels pendant la décision d'architecture et les migrations éventuelles.
+
+## Principes de conception et conditions préalables
+
+- Distinguer détection d'un visage, comparaison/regroupement et identification par un membre de la famille. Une ressemblance ne constitue jamais une identité confirmée ; les groupes doivent être corrigeables, séparables, fusionnables et supprimables.
+- L'analyse faciale est facultative, déclenchée et contrôlée par l'utilisateur. Avant toute collecte ou production de gabarits, examiner les obligations applicables, les consentements, la protection des mineurs et la nécessité d'une analyse d'impact avec des personnes compétentes. Le traitement local ne suffit pas à conclure qu'une fonctionnalité est conforme.
+- N'activer aucune reconnaissance faciale dans un produit distribuable avant une décision formelle de poursuite, une revue vie privée/juridique et des critères mesurables de qualité. Les tests commencent avec des données synthétiques ; l'usage de photos personnelles de test exige une décision explicite et un traitement local maîtrisé.
+- Photos, miniatures, métadonnées et gabarits sont des catégories distinctes avec des règles propres d'accès, conservation, export et suppression. Les originaux ne sont ni modifiés ni supprimés. La protection des gabarits, la gestion des clés et la suppression vérifiable doivent être conçues avant le stockage biométrique.
+- Aucun document, photo, requête ou gabarit n'est transmis à un service externe pour l'analyse sans décision et information explicites. Aucun modèle ou service distant n'est présumé opérationnel.
+- Ne pas figer un chemin tel que `D:\\Famili-IA` dans le code ou les consignes utilisateur ; choisir le stockage selon le système, documenter son emplacement et préserver les parcours d'export/restauration.
+
+## Nouvelle feuille de route
+
+### Phase 0 — Cadrer le MVP, les risques et les critères
+
+- [x] Orientation confirmée par l'utilisateur : évaluer un pipeline hybride où EmbeddingGemma retrouve des passages textuels et Qwen3 formule éventuellement une réponse à partir de ces preuves. C'est une hypothèse à mesurer, pas une intégration approuvée ; les photos nécessitent en plus une voie visuelle distincte.
+- [ ] Définir les usages prioritaires, les plateformes de première livraison et la frontière entre capacités existantes, expérimentales et prévues.
+- [ ] Décider le périmètre biométrique et ses conditions d'activation après revue de confidentialité, réglementation applicable, consentement et risques liés aux photos de mineurs.
+- [x] Seuils Go/No-Go des prochaines campagnes approuvés par l'utilisateur : top-1 ≥ 90 % et rappel@3 ≥ 95 % sur les requêtes avec cible ; 100 % d'abstention correcte en cas d'absence, d'ambiguïté ou de fait manquant ; aucune affirmation factuelle non étayée et citations exactes, vérifiées puis relues indépendamment. Rapporter séparément chaque modalité. Ces seuils ne qualifient pas le corpus actuel et ne s'appliquent pas rétroactivement aux essais exploratoires.
+
+**Livrable :** décision documentée sur le périmètre MVP et critères mesurables. Aucune reconnaissance faciale n'est activée par cette seule feuille de route.
+
+### Phase 1 — Évaluer les moteurs locaux
+
+- [x] Installer localement Qwen3:8b et EmbeddingGemma (confirmé par l'utilisateur le 23 novembre 2026).
+- [x] Vérifier Ollama 0.40.17 et les modèles via son API locale : `qwen3:8b` (Qwen3, 8.2B, Q4_K_M, environ 5.2 GB) et `embeddinggemma:latest` (famille Gemma 3, 307.58M, BF16, environ 621 MB, capacité `embedding`). Modèle supplémentaire détecté : `qwen3-code:latest`, hors périmètre de ces essais.
+- [x] Tester Qwen3 avec un prompt fictif : réponse `TEST_OK` obtenue avec `think=false`. Un premier essai limité à 20 tokens sans ce réglage n'a produit aucun texte visible ; le mode de raisonnement et le budget de sortie devront donc être calibrés.
+- [x] Tester EmbeddingGemma avec des phrases fictives : deux vecteurs finis de 768 dimensions. Sur une comparaison jouet en français, la requête chauffage était plus proche du texte de facture (cosinus 0,5488) que d'une recette sans rapport (0,0335). Ce résultat n'est pas une mesure de qualité de recherche.
+- [x] Vérifier le matériel de test : NVIDIA GeForce RTX 5070 Laptop GPU (8 151 MiB annoncés) et 31,3 GB de mémoire système. Ces informations ne suffisent pas à fixer les performances ni les prérequis matériels du produit.
+- [x] Tests limités à des requêtes et textes synthétiques ; aucun document ni photo personnel n'a été transmis au modèle.
+- [x] Vérifier l'accès local et les origines CORS : API Ollama accessible sur `127.0.0.1:11434`, écoute observée sur l'adresse loopback ; pré-vol accepté pour les origines Vite testées (`localhost:5173`, `127.0.0.1:5173`) et refusé pour `capacitor://localhost`.
+- [x] Première campagne Qwen3 à chaud sur les 18 cas du protocole A2 : p95 3 647 ms, 11/18 sorties structurellement conformes, 7/18 échecs (citations invalides ou statuts incorrects) ; décision du protocole : `rejected`. Le cas d'instruction hostile présente dans un document a été repris dans la réponse. Aucune approbation sémantique ou readiness production.
+- [x] Campagne locale distincte de 40 décisions de réponse sur le corpus synthétique A3 exécutée le 23 novembre 2026 ; détails et échecs par catégorie consignés en Phase 5. Cette campagne à schéma contraint ne remplace pas la relecture structurelle, factuelle et sémantique A2, ni ne qualifie Qwen.
+- [ ] Vérifier les licences, conditions d'utilisation/redistribution, prompts recommandés et dépendances des versions exactes avant sélection produit.
+- [ ] Évaluer les modèles de détection, de comparaison/regroupement facial et de recherche image-texte. Vérifier licences du code et des poids, redistribution commerciale, taille, dépendances, fonctionnement hors ligne et plateformes compatibles.
+- [ ] Mesurer latence, mémoire et qualité sur des corpus synthétiques indépendants par modalité selon les seuils approuvés en Phase 0. Pour la génération Qwen, réutiliser aussi le protocole A2 (18/18 conformes, relecture sémantique indépendante et p95 strictement inférieur à 15 s) ; les essais ponctuels ne qualifient ni la recherche réelle ni les performances soutenues.
+- [ ] Pour Qwen, ne relancer les campagnes complètes (au moins trois à chaud et une à froid) qu'après décision sur les défauts observés et versionnement explicite des réglages/protocole ; conserver une relecture sémantique indépendante. Les six scénarios d'intégration restent non exécutés.
+- [ ] N'utiliser aucune photo personnelle ou aucun service distant pour ces essais sans autorisation explicite.
+
+**Livrable :** comparaison reproductible des candidats et décision de retenir, différer ou abandonner chaque moteur.
+
+### Phase 2 — Décider l'évolution de l'architecture
+
+- [x] Le socle applicatif existe en version Web/Android debug ; ce jalon ne signifie pas que les modèles locaux sont intégrés.
+- [ ] Comparer l'évolution progressive de l'application JavaScript actuelle à une migration vers React, TypeScript et Vite, proposés dans la nouvelle architecture.
+- [ ] Prototyper les interfaces `AIProvider` et `VisionProvider` seulement si elles simplifient réellement l'isolation des moteurs et le remplacement des modèles.
+- [ ] Spécifier les rôles du pipeline hybride : recherche lexicale/métadonnées et EmbeddingGemma pour les candidats ; preuves et filtres vérifiés avant toute réponse ; Qwen3 comme générateur facultatif et contraint, jamais comme source de vérité ni substitut à l'index. Conserver le moteur déterministe et l'abstention en repli.
+- [ ] Séparer les modalités : EmbeddingGemma et `qwen3:8b` actuellement installés sont des modèles texte, pas des analyseurs de pixels. Pour le contenu visuel des photos, sélectionner et mesurer séparément un modèle local de vision ou image-texte ; les annotations textuelles peuvent être évaluées dans le pipeline textuel.
+- [ ] Définir la migration des données existantes, la compatibilité Web/Capacitor, les tests de non-régression et le retour arrière avant toute réécriture importante.
+- [ ] Décider du chemin d'accès au runtime local pour Web/desktop/mobile. Le pré-vol `capacitor://localhost` est refusé par la configuration CORS testée et `127.0.0.1` sur un téléphone désignerait le téléphone, pas le PC ; ne pas exposer Ollama au réseau local ni élargir les origines sans revue dédiée.
+
+**Livrable :** décision d'architecture et plan de migration. La cible React/TypeScript reste proposée jusqu'à validation ; ne pas réécrire le socle par anticipation.
+
+### Phase 3 — Fiabiliser l'import et le stockage local
+
+- [x] Le socle d'import local, la recherche documentaire et l'index photo par métadonnées existent déjà ; leurs limites et formats pris en charge restent ceux documentés dans l'application.
+- [ ] Auditer puis étendre prudemment l'import explicite aux seuls formats décidés ; extraire uniquement les métadonnées disponibles et sourcées.
+- [ ] Vérifier le stockage des originaux, miniatures, déduplication et index, et concevoir séparément les données dérivées des modèles.
+- [ ] Définir versionnement, recalcul, export et suppression des embeddings ; ne pas les persister avant d'avoir défini leur protection et leur cycle de vie.
+- [ ] Préserver export/restauration, erreurs explicites, suppression confirmée et règles d'accès par source ; ne pas déduire une couverture complète.
+
+**Livrable :** bibliothèque locale testable, sans perte des données utilisateur ni modification des originaux.
+
+### Phase 4 — Construire l'intelligence photographique facultative
+
+- [ ] Après décision en Phase 0, commencer par la détection, qui repère un visage sans l'identifier ; traiter comparaison et regroupement comme étapes distinctes.
+- [ ] Présenter les regroupements comme des suggestions à confirmer. Permettre l'attribution manuelle d'un nom, la correction, la fusion, la séparation et la suppression.
+- [ ] Maintenir l'analyse sur l'appareil, protéger les gabarits au repos et vérifier leur effacement ainsi que celui des données dérivées lors d'une suppression confirmée.
+
+**Livrable :** uniquement le palier autorisé et validé par les critères de qualité, de confidentialité et de suppression ; aucun nom n'est inféré automatiquement.
+
+### Phase 5 — Étendre la recherche documentaire et photo
+
+- [x] La recherche textuelle documentaire et la recherche photo par métadonnées existent déjà, avec les limites de couverture documentées.
+- [x] Première mesure exploratoire, sans préfixes de tâche, sur 7 documents et 9 requêtes : top-1 correct sur 6/6 cibles uniques, rappel@3 1,00 et MRR 1,00. Les scores sans résultat (0,4613 et 0,3779) chevauchaient le score positif minimal (0,4562) ; ce petit essai est conservé comme historique, pas comme mesure représentative.
+- [x] Corpus synthétique élargi à 17 documents et 34 requêtes, avec cibles multiples, faits absents, confusions de type et requêtes sans document pertinent. Comparaison reproductible disponible avec `npm run benchmark:search-embeddings` ; les textes et inférences restent locaux sur `127.0.0.1`.
+- [x] Comparaison avec les préfixes de recherche recommandés dans la [fiche officielle EmbeddingGemma](https://ai.google.dev/gemma/docs/embeddinggemma/model_card) : lexicale top-1 70,8 % / rappel@3 73,1 % ; métadonnées 66,7 % / 69,2 % ; hybride 75,0 % / 76,9 % ; EmbeddingGemma 95,8 % / 100 %. Le MRR est respectivement 0,708 / 0,667 / 0,750 / 0,979.
+- [x] Sur les 10 requêtes sans cible, la recherche hybride s'abstient strictement dans 10/10 cas, contre 0/10 pour le classement brut des embeddings. Les scores EmbeddingGemma se recouvrent (meilleur score négatif 0,4951 ; plus faible meilleur score positif 0,4065 ; marge -0,0885) : aucun seuil global sûr n'est justifié. Les réponses factuelles du modèle ne sont pas évaluées ; l'unique requête groupée de 51 vecteurs a pris 5,7 s et ne constitue pas une mesure de latence stabilisée.
+- [x] Prototyper et évaluer une stratégie expérimentale d'abstention hybride ; elle reste un outil de benchmark non intégré, sans réponse générée ni validation de production.
+- [x] Analyse A2 (16 documents, 14 requêtes) : séparer les cas de récupération de la demande de clarification, qui ne constitue pas un cas « sans preuve ». Les deux cas d'abstention sans passage vérifié n'ont aucun document candidat fourni ; leur abstention est structurelle et ne mesure pas la capacité à rejeter un faux positif. Les types manquants dans les métadonnées sont désormais traités comme inconnus, pas comme incompatibles ; un type explicitement connu et différent reste rejeté. Après cette correction, le prototype atteint top-1 100 % et rappel@3 85,7 % ; il échoue encore au rappel@3 ≥ 95 %. L'abstention sur absence n'est pas mesurable sur ces cas. EmbeddingGemma brut atteint top-1 et rappel@3 100 % sur les preuves attendues. La génération n'est pas évaluée.
+- [x] Contrôle synthétique A3 créé séparément après la correction (9 documents, 14 requêtes ; 13 cas de récupération, une clarification exclue) : le prototype atteint top-1 100 %, rappel@3 100 % et abstention de candidats 100 % sur les quatre cas sans preuve. EmbeddingGemma brut a top-1/rappel@3 à 100 %, mais 0 % d'abstention sur ces cas. Ce petit corpus ne qualifie pas le prototype ; les réponses, ambiguïtés et abstentions factuelles restent à valider avec un évaluateur de réponse.
+- [ ] Pour les PDF numériques, évaluer les embeddings sur le texte extrait par page en préservant preuve et provenance. Séparer les PDF scannés : leur OCR mobile reste expérimental, et l'OCR n'est pas disponible dans la démo Web.
+- [ ] Pour les photos, conserver le périmètre actuel de recherche par métadonnées et annotations. EmbeddingGemma peut indexer du texte vérifié (annotations, mots-clés ou légendes disponibles), mais pas les pixels ; n'annoncer de recherche visuelle qu'après sélection et validation d'un modèle local adapté.
+- [ ] Évaluer puis intégrer EmbeddingGemma pour la recherche sémantique seulement après validation locale, mesures de qualité et décision d'architecture.
+- [ ] Définir le format d'entrée requête/document et les consignes adaptées à la version retenue ; le test jouet ne justifie pas encore un réglage de production.
+- [ ] Combiner texte, métadonnées vérifiées et résultats photo réellement indexés ; ajouter recherche par personne uniquement après décision biométrique et identifications explicitement confirmées.
+- [ ] Envisager recherche par contenu visuel et événements après mesure indépendante ; conserver preuves, provenance, incertitudes et limites de couverture.
+
+**Livrable :** recherche transversale bornée aux éléments effectivement importés et aux moteurs validés.
+
+### Phase 6 — Faire évoluer l'assistant local
+
+- [x] Un assistant fondé sur l'index et les preuves locales existe ; il ne s'agit pas d'une intégration à Qwen.
+- [x] Préparer un corpus indépendant de 40 décisions de réponse A3 (8 cas par classe : réponse étayée, fait manquant, absence de preuve pertinente, ambiguïté et conflit) et un évaluateur qui publie matrice de confusion, exactitude par classe et réponses non étayées. L'export omet les étiquettes attendues.
+- [x] Première campagne locale Qwen3:8b sur ces 40 cas, une réponse par cas, sans reprise automatique : 40/40 sorties, 0 indisponible. Réglages : température 0,2, `top_p` 0,9, `num_predict` 1024, `think: false`, schéma de réponse A2 ; digest `500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41`, Ollama 0.40.17. Exactitude de statut 75 % ; exactitude des décisions non-réponse 68,75 % ; taux de non-réponse sûre 93,75 % ; 2 réponses affirmatives non étayées parmi les 8 cas sans preuve pertinente. Résultats par classe : réponse étayée 8/8, fait manquant 8/8, absence de preuve 6/8, ambiguïté 0/8 en statut exact (7 `abstained`, 1 `conflict` au lieu de `clarification`), conflits 8/8. Latence moyenne 2 363 ms, p95 3 270 ms ; compteurs Ollama 13 462 tokens d'entrée et 5 330 de sortie. Le seuil échoue ; citations, exactitude factuelle et résistance à l'injection n'ont pas été évaluées. Les sorties fictives brutes sont conservées hors dépôt.
+- [x] Inspection locale des 40 sorties : JSON valide dans 40/40 cas, 54 affirmations, citations littérales présentes dans leurs pièces vérifiées (54/54), aucune citation sans source ou non littérale. Cette vérification ne prouve pas l'étayage sémantique. Une relecture des questions, affirmations et passages relève des affirmations erronées/trompeuses dans 7 cas : `no-evidence-05`, `no-evidence-08`, `fact-missing-01`, `ambiguous-03`, `ambiguous-06`, `ambiguous-07`, `ambiguous-08`. `no-evidence-04` ajoute aussi un fait hors sujet. Le statut attendu de `ambiguous-04` doit être arbitré, car une réponse `conflict` est défendable. Cette inspection initiale n'est pas une revue humaine indépendante.
+- [x] Décision produit du 23 novembre 2026 : poursuivre une intégration locale progressive sans confondre prototype et qualification.
+- [x] Décision utilisateur du 23 novembre 2026 : conserver Qwen3:8b pour cette phase et améliorer d'abord les résultats, sans passer à Qwen3:14b.
+- [x] Raccorder un prototype Qwen3:8b local au parcours d'assistant sur PC : opt-in, limité aux passages vérifiés déjà sélectionnés, sans transmission à un service distant ni action automatique. Cette intégration expérimentale ne corrige pas et ne qualifie pas le modèle.
+- [x] Première itération des consignes sur 7 cas de développement synthétiques A2 compatibles avec le parcours Qwen, sans utiliser A3 : les statuts étaient corrects au premier passage, mais le calcul de date n'était pas fiable et l'injection documentaire a entraîné des réponses variables. Les calculs sont maintenant explicitement hors périmètre ; une abstention affiche un message local fixe. Cela ne démontre pas la résistance aux injections.
+- [x] Deuxième relecture interne des sorties A3 : les affirmations non étayées déjà repérées sont confirmées ; `conflicting-03` ajoute aussi « confirmé » sans que cette confirmation figure dans les passages. Cette relecture par le même assistant n'est pas indépendante.
+- [ ] Faire arbitrer les annotations A3, notamment `ambiguous-04`, par une personne distincte de l'auteur des cas et des analyses précédentes. Ne pas modifier le jeu A3 déjà consulté.
+- [x] Créer et exécuter une fois le contrôle synthétique A4, distinct d'A2/A3, avec le prompt Qwen version `1.0.0` et sans étiquettes transmises : 40/40 sorties, 77,5 % d'accord exact des statuts, 71,875 % d'exactitude des non-réponses, 81,25 % de non-réponses sûres, 6 cas attendus en non-réponse classés `answered` (métrique de statut, pas six jugements sémantiques) et une citation invalide. Échec du seuil ; A4 est désormais consulté et ne doit pas servir au réglage.
+- [x] Première itération sur un jeu de développement synthétique neuf D1 (16 cas, sans étiquettes transmises) : avec Qwen3:8b, l'accord exact des statuts passe de 9/16 avec le prompt `1.0.0` à 11/16 avec `1.1.0`, notamment grâce à 2/3 cas ambigus correctement clarifiés. Les 3/3 cas sans preuve restent toutefois des réponses `answered` fondées sur des consignes injectées ; un cas factuel mêlé à une consigne est aussi classé `conflict` et sa citation de consigne échoue au contrôle. D1 est un jeu de réglage consulté, pas un contrôle indépendant ; aucun résultat ne qualifie Qwen.
+- [x] Après décision utilisateur, ajouter une barrière déterministe : exclure des faits et preuves affichés les lignes explicitement adressées à un modèle/assistant et contenant des marqueurs de consigne ; n'envoyer à Qwen que des faits exacts extraits des passages vérifiés. Sans fait unique admissible ou en cas d'ambiguïté, garder la réponse déterministe. Tests synthétiques de ligne injectée, de fait légitime adjacent et d'entrée Qwen. Ce filtre lexical reste incomplet et ne prouve pas une résistance générale.
+- [x] Préparer un processus local d'arbitrage indépendant des annotations A3 : paquet aveugle avec identifiants opaques, clé de correspondance privée, attestation et rapport de désaccords. L'outil ne modifie pas A3 et n'exécute aucun modèle.
+- [ ] Corriger sur un nouveau jeu de développement les échecs révélés par A4, puis préparer un contrôle indépendant A5 avant toute qualification. Le contrôle A4 ne valide pas le modèle.
+- [ ] Étudier RAG et usage d'embeddings ; transmettre seulement les passages vérifiés strictement nécessaires, sans snapshots complets de documents, identifiants de compte ou secrets. Toute affirmation doit citer des éléments consultables, distinguer faits/hypothèses et pouvoir s'abstenir.
+- [ ] Évaluer l'aide du modèle à la détection d'échéances à partir de preuves vérifiées ; conserver la confirmation explicite, les protections contre les doublons et les règles existantes avant toute écriture ou notification.
+- [ ] Garder séparés assistant conversationnel et moteur de vision ; Qwen ne réalise pas la reconnaissance faciale.
+
+**Livrable :** assistant facultatif fondé sur les sources locales réellement indexées, sans capacité générative présentée avant validation.
+
+### Phase 7 — Valider sécurité, confidentialité et qualité du MVP
+
+- [x] Des tests ciblés existent pour des parcours actuels d'import, recherche et métadonnées photo ; ils ne valident pas les modèles nouvellement installés.
+- [ ] Tester import et recherche sur un corpus synthétique contrôlé (dont une campagne de 500 photos si le budget de performance le permet), sans perte d'éléments ni données personnelles dans les fixtures.
+- [ ] Mesurer détection et regroupement selon les métriques définies en Phase 0, y compris faux rapprochements, abstentions, angles, éclairages, photos de groupe et changements d'âge. Publier limites et seuils ; aucune identité n'est déduite des résultats de test.
+- [ ] Vérifier le fonctionnement réseau coupé, l'absence de transmission d'images/gabarits, le chiffrement et la suppression effective des données dérivées, les exports/restaurations, performances et erreurs.
+- [ ] Réaliser les revues sécurité, confidentialité et juridiques avant toute bêta biométrique ; les validations sur navigateur ne remplacent pas les essais sur appareils cibles.
+
+**Livrable :** décision de lancement limitée aux fonctions ayant satisfait leurs critères et leurs validations sur appareils.
+
+### Phase 8 — Préparer distribution et modèle économique
+
+- [ ] Pour une édition de bureau Windows, évaluer Tauri, Electron ou un compagnon local selon accès aux fichiers, isolation, taille, maintenance, mises à jour et capacités des machines. Aucun choix n'est fait par cette feuille de route.
+- [ ] Prévoir sur le site de présentation une page de téléchargement seulement après validation de l'installateur, avec versions, prérequis, signature/empreinte, instructions, limites, confidentialité, mises à jour et support. Le téléchargement direct depuis le site n'exige pas de marketplace.
+- [ ] Étudier la commercialisation et les connecteurs/synchronisation séparément. Ne pas élargir permissions, synchronisation ou chiffrement sans décision dédiée et critères de validation ; aucune promesse de paiement ou de partage familial n'est arrêtée.
+
+**Livrable :** décision Go/No-Go commerciale et, si elle est approuvée, distribution vérifiable et cohérente avec les capacités réellement validées.
+
+### Phase 9 — Évolutions après validation du MVP
+
+- [ ] Évaluer chronologie, albums, recherche par événements, photos similaires, lieux/objets et mémoire familiale enrichie selon leur valeur mesurée, leurs licences et leurs risques.
+- [ ] Préserver les fondations de confidentialité, de contrôle utilisateur, de provenance, d'export et de suppression pour chaque évolution.
+
+**Priorité de reprise :** le paquet local d'arbitrage aveugle A3 est prêt ; faire arbitrer les annotations par une personne distincte, puis travailler les défauts observés sur un jeu de développement distinct d'A2/A3/A4 avant de créer A5. A4 échoue nettement sur l'ambiguïté et contient une réponse affirmative à une consigne hostile fictive ; sa citation littérale ne rend pas cette réponse étayée. Conserver la recherche actuelle et différer son amélioration sémantique. Le prototype demeure expérimental : ni les résultats A3 ni A4 ne qualifient Qwen. Tout nouvel essai doit garder le protocole versionné, les passages minimaux, les sorties brutes locales et une relecture indépendante. La détection d'alertes par modèle et la reconnaissance faciale restent non validées ; aucune photo personnelle ne sera utilisée sans autorisation explicite.
+
+---
+
+<details>
+<summary>Feuille de route précédente — archivée le 23 novembre 2026</summary>
+
+> Le contenu ci-dessous est conservé comme photographie historique du plan précédent. Ses statuts, priorités et cases à cocher décrivent cette ancienne version et ne deviennent pas automatiquement des tâches actives.
+
 ﻿# Famili-IA — plan de réalisation jusqu'à la bêta et au lancement
 
 **Plan actif, mis à jour le 23 novembre 2026.** Cette feuille de route est la source de vérité pour les prochaines priorités. Les exigences détaillées et leur historique sont repliés à la fin ; une ancienne case non cochée ne devient pas automatiquement une tâche active. `ROADMAP.md` conserve la vision et les principes produit, pas le calendrier de livraison.
@@ -399,6 +565,7 @@ L'objectif est d'améliorer la visibilité, la gestion et la compréhension des 
     - [✓] ✅ 14.3.a (14.6) : Suppression confirmée des données applicatives en IndexedDB et du foyer personnalisé en localStorage ; les scans actifs sont arrêtés et les fichiers sources restent intacts.
     - [✓] ✅ 14.3.b (14.7) : Filtres de type/provenance partagés avec la recherche unifiée et compatibilité des filtres d'inventaire/anciens liens vérifiée.
 
+    </details>
     </details>
 
     <details>
@@ -922,4 +1089,5 @@ La progression et les dépendances figurent dans le [plan d'action opérationnel
 ## 🛠 Framework des Skills - Implémentation Structurée
 ...
 
+</details>
 </details>

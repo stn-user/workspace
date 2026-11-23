@@ -30,7 +30,10 @@ import { getPhotoTimelineDateInfo, getTimelineDateLabel, groupPhotosForTimeline 
 import { getAlertsToNotify, getDaysUntilDate, normalizeAlertDate, normalizeAlertNotificationPreferences } from "./alert-engine.js";
 import { BackgroundSyncWorker } from "./background-sync.js";
 import { IndexSession, INDEX_SOURCES } from "./index-session.js";
-import { isAssistantMatchCurrent, prepareAssistantContext } from "./assistant-context.js";
+import {
+  isAssistantMatchCurrent, prepareAssistantContext, prepareLocalQwenEvidence
+} from "./assistant-context.js";
+import { generateLocalQwenAnswer, LocalQwenError } from "./assistant-local-qwen.js";
 import { assertDocumentAlertSource, matchesDocumentAlertIdentity, prepareDocumentAlertAction } from "./document-alert-action.js";
 import { createSourceRunStatus, describeSources, sourceRunStatusId } from "./source-status.js";
 import { loadSourceRunStatuses, saveSourceRunStatus } from "./source-status-storage.js";
@@ -5969,10 +5972,17 @@ function initAssistantView() {
   const form = document.querySelector('#assistant-form');
   const input = document.querySelector('#assistant-input');
   const chatContainer = document.querySelector('#assistant-chat');
+  const qwenToggle = document.querySelector('#assistant-use-qwen');
+  const qwenDisclosure = document.querySelector('#assistant-qwen-disclosure');
+  const submitButton = form?.querySelector('button[type="submit"]');
   const suggestionChips = document.querySelectorAll('.assistant-suggestion-chip');
 
   if (!form || !input || !chatContainer) return;
   refreshAssistantContext();
+  if (isNativePlatform && qwenToggle) {
+    qwenToggle.disabled = true;
+    qwenDisclosure.textContent = 'Qwen local est disponible uniquement dans le navigateur sur PC ; il n’est pas raccordé à l’application mobile.';
+  }
 
   // Handle suggestion chips
   suggestionChips.forEach(chip => {
@@ -5985,8 +5995,10 @@ function initAssistantView() {
     });
   });
 
-  form.addEventListener('submit', (e) => {
+  let isSubmitting = false;
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const question = input.value.trim();
     const status = document.querySelector('#assistant-status');
     if (!question) {
@@ -5997,15 +6009,48 @@ function initAssistantView() {
 
     try {
       refreshAssistantContext();
-      const aiResponse = getAssistantResponse(question);
+      let aiResponse = getAssistantResponse(question);
+      let statusMessage = 'Réponse affichée dans la conversation.';
+      if (qwenToggle?.checked) {
+        const evidence = prepareLocalQwenEvidence(aiResponse);
+        if (isNativePlatform) {
+          statusMessage = 'Qwen local n’a pas été appelé : cette fonction est disponible uniquement sur PC.';
+        } else if (!evidence.length) {
+          const ambiguous = aiResponse.status === "ambiguous" ||
+            aiResponse.context?.status === "clarification" ||
+            aiResponse.context?.matches?.some(match => match.ambiguous);
+          statusMessage = ambiguous
+            ? 'Qwen local n’a pas été appelé : la recherche locale a détecté plusieurs réponses ou sujets possibles.'
+            : 'Qwen local n’a pas été appelé : aucun fait exact pertinent n’a été extrait des passages locaux.';
+        } else {
+          isSubmitting = true;
+          input.disabled = true;
+          qwenToggle.disabled = true;
+          if (submitButton) submitButton.disabled = true;
+          status.textContent = 'Qwen local expérimental en cours : seuls la question et jusqu’à deux faits exacts extraits des passages vérifiés seront envoyés à Ollama sur ce PC.';
+          const generated = await generateLocalQwenAnswer({ question, evidence });
+          if (!isAssistantContextCurrent(aiResponse.context)) {
+            throw new LocalQwenError('Une source a changé pendant la génération. Relancez la question pour actualiser les preuves.');
+          }
+          aiResponse = withLocalQwenAnswer(aiResponse, evidence, generated);
+          statusMessage = 'Réponse expérimentale Qwen affichée. Vérifiez les citations et les passages source avant toute décision.';
+        }
+      }
       addUserMessage(question, chatContainer);
       addAIMessage(aiResponse, chatContainer);
       input.value = '';
-      status.textContent = 'Réponse affichée dans la conversation.';
+      status.textContent = statusMessage;
     } catch (error) {
       invalidateAssistantResponses(true);
       console.error("Impossible de préparer la réponse de l'assistant :", error);
-      status.textContent = 'La réponse n’a pas pu être préparée. Votre question est conservée ; vous pouvez réessayer.';
+      status.textContent = error instanceof LocalQwenError
+        ? `Qwen local n’a pas répondu : ${error.message} Votre question est conservée ; vous pouvez réessayer.`
+        : 'La réponse n’a pas pu être préparée. Votre question est conservée ; vous pouvez réessayer.';
+    } finally {
+      isSubmitting = false;
+      input.disabled = false;
+      if (qwenToggle && !isNativePlatform) qwenToggle.disabled = false;
+      if (submitButton) submitButton.disabled = false;
     }
     input.focus({ preventScroll: true });
   });
@@ -6066,12 +6111,21 @@ function addAIMessage(response, container) {
     addTextElement(bubble, "p", "household-note assistant-query",
       `Sujet recherché : ${response.context.query}. Périmètre : documents enregistrés, sans les filtres de Recherche.`);
   }
-  const answer = response.status === 'supported' && response.matches[0]?.exactFact
-    ? response.matches[0].exactFact : response.answer;
+  const answer = response.modelAnswer?.displayText ??
+    (response.status === 'supported' && response.matches[0]?.exactFact
+      ? response.matches[0].exactFact : response.answer);
   addTextElement(bubble, "p", "assistant-answer", answer);
   for (const match of response.matches) {
     const source = addTextElement(bubble, "div", "assistant-source", "");
-    if (match.evidence) {
+    if (response.modelAnswer) {
+      addTextElement(source, "p", "assistant-proof-label", match.modelQuotes?.length
+        ? "Citation de Qwen · passage littéral à vérifier"
+        : "Passage fourni à Qwen · non cité dans sa réponse");
+      for (const quote of match.modelQuotes?.length ? match.modelQuotes : [match.evidence].filter(Boolean)) {
+        const evidence = addTextElement(source, "blockquote", "assistant-evidence", "");
+        addTextElement(evidence, "mark", "", quote);
+      }
+    } else if (match.evidence) {
       addTextElement(source, "p", "assistant-proof-label", match.exactFact ? "Passage du document" : "Passage rapproché · à vérifier");
       const evidence = addTextElement(source, "blockquote", "assistant-evidence", "");
       addTextElement(evidence, "mark", "", match.evidence);
@@ -6110,7 +6164,7 @@ function addAIMessage(response, container) {
       button.type = 'button';
       button.dataset.openView = 'recherche';
     }
-    if (['supported', 'excerpt', 'fact-not-found'].includes(response.status) &&
+    if (!response.modelAnswer && ['supported', 'excerpt', 'fact-not-found'].includes(response.status) &&
         response.context && response.matches.length === 1 && !match.ambiguous && match.segments.length) {
       const now = new Date();
       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -6158,6 +6212,45 @@ function getAssistantResponse(question) {
       answer: context.clarification, matches: [], context };
   }
   return { ...buildSearchResponse(context.matches), matches: context.matches.slice(0, 2), context };
+}
+
+function withLocalQwenAnswer(response, evidence, generated) {
+  const displayClaims = generated.status === "abstained" ? [] : generated.claims;
+  const quotesByEvidence = new Map(evidence.map(item => [item.id, new Set()]));
+  for (const claim of displayClaims) {
+    for (const citation of claim.citations) {
+      quotesByEvidence.get(citation.evidenceId)?.add(citation.quote);
+    }
+  }
+  const statusLabels = {
+    answered: "RÉPONSE QWEN LOCALE · EXPÉRIMENTALE",
+    abstained: "QWEN LOCAL · ABSTENTION À VÉRIFIER",
+    clarification: "QWEN LOCAL · PRÉCISION DEMANDÉE",
+    conflict: "QWEN LOCAL · CONFLIT À VÉRIFIER"
+  };
+  return {
+    ...response,
+    label: statusLabels[generated.status],
+    matches: evidence.map(item => ({
+      ...item.match,
+      evidence: item.text,
+      modelQuotes: [...quotesByEvidence.get(item.id)]
+    })),
+    modelAnswer: {
+      ...generated,
+      claims: displayClaims,
+      displayText: generated.status === "abstained"
+        ? "Les passages vérifiés sélectionnés ne suffisent pas à répondre."
+        : displayClaims.length
+          ? displayClaims.map(claim => claim.text).join("\n")
+          : generated.answer
+    }
+  };
+}
+
+function isAssistantContextCurrent(context) {
+  return Boolean(context && context.scope.corpusRevision === experimentalIndex.getRevision() &&
+    context.matches.every(match => isAssistantMatchCurrent(match, uploadedDocuments, experimentalIndex)));
 }
 
 /**

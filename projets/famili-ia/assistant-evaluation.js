@@ -1,5 +1,6 @@
 import { createIndexRecord } from "./index-record.js";
 import { hashPhotoBytes } from "./photo-metadata.js";
+import { evaluateAssistantResponseDecisions } from "./assistant-response-evaluation.js";
 
 export const ASSISTANT_PROTOCOL_VERSION = "1.0.0";
 const groupCounts = { reading: 6, synthesis: 4, context: 4, identity: 4, lifecycle: 4, actions: 2 };
@@ -228,6 +229,12 @@ export async function evaluateAssistantRun(corpus, run, review = null) {
   const p95Ms = times.length ? times[Math.ceil(times.length * 0.95) - 1] : null;
   const withUsage = run.observations.filter(observation => observation.usage !== undefined);
   const allUsage = withUsage.length > 0 && withUsage.length === run.observations.length;
+  const responseDecisions = evaluateAssistantResponseDecisions(
+    [...entries.values()].map(entry => ({
+      caseId: entry.id, expectedStatus: entry.expected.status, category: entry.group
+    })),
+    run.observations
+  );
   return {
     candidate: { ...run.candidate }, settings: { ...run.settings }, runId: run.runId, runFingerprint,
     corpusVersion: corpus.version, eligible: entries.size, submitted: rows.length, missing,
@@ -242,6 +249,7 @@ export async function evaluateAssistantRun(corpus, run, review = null) {
     usage: { reportedCases: withUsage.length,
       inputTokens: allUsage ? withUsage.reduce((sum, item) => sum + item.usage.inputTokens, 0) : null,
       outputTokens: allUsage ? withUsage.reduce((sum, item) => sum + item.usage.outputTokens, 0) : null },
+    responseDecisions,
     integration: { executed: 0, notRun: corpus.cases.filter(entry => entry.kind === "integration").map(entry => entry.id) },
     productionReady: false, cases: rows
   };

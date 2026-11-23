@@ -2983,6 +2983,8 @@ body.ui-theme.ui-warm {
 .assistant-view :is(.chat-container, .chat-form, .assistant-ideas) { border-radius: var(--ui-card-radius); background: var(--ui-surface); }
 .assistant-view .chat-form { background: linear-gradient(120deg, var(--ui-surface), var(--ui-tint)); }
 .assistant-view .chat-form .household-note { margin: 0; font-size: 0.8rem; line-height: 1.5; }
+.assistant-qwen-toggle { display: flex; align-items: center; gap: 0.5rem; min-height: 48px; color: var(--ui-ink); font-weight: 600; cursor: pointer; }
+.assistant-qwen-toggle input { flex: 0 0 48px; }
 .assistant-view .chat-message.ai .chat-bubble { background: var(--ui-surface); border-radius: 20px; }
 .assistant-view .chat-message:first-child.ai .chat-bubble { background: var(--ui-tint); }
 .assistant-view .chat-message .chat-avatar.ui-icon { color: var(--ui-accent); background: var(--ui-accent-tint); border-radius: 12px; }
