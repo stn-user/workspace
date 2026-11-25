@@ -217,6 +217,13 @@ test("A3 review CLI exports an opaque blind packet and reports disagreements wit
     assert.equal(JSON.parse(accepted.stdout).agreementCount, 40);
     assert.equal(JSON.parse(accepted.stdout).corpusModified, false);
 
+    await writeFile(reviewPath, JSON.stringify(reviewed.review));
+    const detachedReview = invoke("evaluate", keyPath, reviewPath);
+    assert.equal(detachedReview.status, 0, detachedReview.stderr);
+    assert.equal(JSON.parse(detachedReview.stdout).agreementCount, 40);
+    assert.equal(JSON.parse(detachedReview.stdout).packetContentVerified, false);
+    assert.equal(JSON.parse(detachedReview.stdout).packetBinding, "opaque-case-ids-only");
+
     reviewed.review.assessments[0].status = reviewed.review.assessments[0].status === "answered"
       ? "abstained" : "answered";
     await writeFile(reviewPath, JSON.stringify(reviewed));

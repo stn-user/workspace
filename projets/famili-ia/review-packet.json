@@ -1,0 +1,206 @@
+{
+  "independentReviewConfirmed": true,
+  "candidateOutputsNotConsulted": true,
+  "assessments": [
+    {
+      "caseId": "review-001",
+      "status": "abstained",
+      "rationale": "Aucune date de départ n'est présente dans la preuve."
+    },
+    {
+      "caseId": "review-002",
+      "status": "abstained",
+      "rationale": "La preuve ne contient aucune date de réservation de restaurant."
+    },
+    {
+      "caseId": "review-003",
+      "status": "answered",
+      "rationale": "Le montant de 1 200 euros TTC est explicitement indiqué."
+    },
+    {
+      "caseId": "review-004",
+      "status": "abstained",
+      "rationale": "La date d'expiration du contrat n'est pas fournie."
+    },
+    {
+      "caseId": "review-005",
+      "status": "abstained",
+      "rationale": "La preuve ne mentionne ni montre ni emplacement du certificat."
+    },
+    {
+      "caseId": "review-006",
+      "status": "abstained",
+      "rationale": "La preuve indique explicitement que le numéro de série n'est pas fourni."
+    },
+    {
+      "caseId": "review-007",
+      "status": "abstained",
+      "rationale": "Aucune référence de pompe n'est mentionnée dans la preuve."
+    },
+    {
+      "caseId": "review-008",
+      "status": "abstained",
+      "rationale": "La température maximale n'est pas indiquée."
+    },
+    {
+      "caseId": "review-009",
+      "status": "conflict",
+      "rationale": "Deux montants différents sont fournis pour les travaux du toit."
+    },
+    {
+      "caseId": "review-010",
+      "status": "clarification",
+      "rationale": "Le terme 'cela' est ambigu et peut désigner plusieurs éléments."
+    },
+    {
+      "caseId": "review-011",
+      "status": "abstained",
+      "rationale": "Aucune preuve relative à une guitare n'est fournie."
+    },
+    {
+      "caseId": "review-012",
+      "status": "clarification",
+      "rationale": "La question ne précise pas quel devis doit être retenu."
+    },
+    {
+      "caseId": "review-013",
+      "status": "answered",
+      "rationale": "La destination du séjour est explicitement indiquée comme étant le Japon."
+    },
+    {
+      "caseId": "review-014",
+      "status": "abstained",
+      "rationale": "Aucune information concernant un drone familial n'est présente."
+    },
+    {
+      "caseId": "review-015",
+      "status": "clarification",
+      "rationale": "Deux factures de nature différente sont présentées et la facture visée n'est pas identifiable."
+    },
+    {
+      "caseId": "review-016",
+      "status": "clarification",
+      "rationale": "La question demande quel document retenir alors que deux documents sont fournis sans critère de sélection."
+    },
+    {
+      "caseId": "review-017",
+      "status": "answered",
+      "rationale": "Le montant total de 640 euros TTC est explicitement fourni."
+    },
+    {
+      "caseId": "review-018",
+      "status": "abstained",
+      "rationale": "Le poids du vélo n'est pas indiqué dans la preuve."
+    },
+    {
+      "caseId": "review-019",
+      "status": "conflict",
+      "rationale": "Deux dates de fin de garantie différentes sont fournies pour le portail."
+    },
+    {
+      "caseId": "review-020",
+      "status": "conflict",
+      "rationale": "Deux périodes de séjour différentes sont indiquées."
+    },
+    {
+      "caseId": "review-021",
+      "status": "answered",
+      "rationale": "La preuve indique explicitement que la garantie ne couvre pas la pompe."
+    },
+    {
+      "caseId": "review-022",
+      "status": "conflict",
+      "rationale": "Les deux copies du lave-linge présentent des montants différents."
+    },
+    {
+      "caseId": "review-023",
+      "status": "conflict",
+      "rationale": "Deux puissances installées différentes sont fournies."
+    },
+    {
+      "caseId": "review-024",
+      "status": "answered",
+      "rationale": "La référence CH-FICTIVE-427 est explicitement indiquée."
+    },
+    {
+      "caseId": "review-025",
+      "status": "answered",
+      "rationale": "La date de fin de garantie du chauffe-eau est explicitement fournie."
+    },
+    {
+      "caseId": "review-026",
+      "status": "clarification",
+      "rationale": "Deux garanties différentes sont présentées et la question ne précise pas laquelle est concernée."
+    },
+    {
+      "caseId": "review-027",
+      "status": "abstained",
+      "rationale": "La preuve concerne un abri et non un réfrigérateur."
+    },
+    {
+      "caseId": "review-028",
+      "status": "abstained",
+      "rationale": "La preuve concerne un portail et non une cheminée."
+    },
+    {
+      "caseId": "review-029",
+      "status": "abstained",
+      "rationale": "Aucune adresse n'est mentionnée dans la preuve."
+    },
+    {
+      "caseId": "review-030",
+      "status": "answered",
+      "rationale": "La puissance installée de 4,2 kWc est explicitement indiquée."
+    },
+    {
+      "caseId": "review-031",
+      "status": "clarification",
+      "rationale": "Le pronom 'sa' ne permet pas d'identifier l'élément concerné."
+    },
+    {
+      "caseId": "review-032",
+      "status": "clarification",
+      "rationale": "Le terme 'l'autre' est ambigu sans contexte supplémentaire."
+    },
+    {
+      "caseId": "review-033",
+      "status": "conflict",
+      "rationale": "Deux références différentes sont fournies pour la chaudière."
+    },
+    {
+      "caseId": "review-034",
+      "status": "abstained",
+      "rationale": "La preuve concerne un vélo et non une moto."
+    },
+    {
+      "caseId": "review-035",
+      "status": "answered",
+      "rationale": "Les deux copies indiquent exactement la même date."
+    },
+    {
+      "caseId": "review-036",
+      "status": "abstained",
+      "rationale": "Aucune facture de voilier n'est fournie."
+    },
+    {
+      "caseId": "review-037",
+      "status": "conflict",
+      "rationale": "Deux dates de fin de garantie différentes sont fournies pour l'abri."
+    },
+    {
+      "caseId": "review-038",
+      "status": "clarification",
+      "rationale": "La question indique explicitement qu'aucun choix n'a été fait entre les deux copies."
+    },
+    {
+      "caseId": "review-039",
+      "status": "abstained",
+      "rationale": "Le montant de l'installation n'est pas indiqué."
+    },
+    {
+      "caseId": "review-040",
+      "status": "conflict",
+      "rationale": "Deux montants différents sont fournis pour l'installation de la pompe."
+    }
+  ]
+}

@@ -1,0 +1,168 @@
+{
+  "protocolId": "A3-independent-annotation-review",
+  "protocolVersion": "1.0.0",
+  "corpusVersion": "1.0.0",
+  "packetFingerprint": "f2334bb748789a9bc757466c7ee70b87f534888c28c9eba6758c05e33ce2741d",
+  "mappings": [
+    {
+      "reviewId": "review-001",
+      "sourceCaseId": "fact-missing-08"
+    },
+    {
+      "reviewId": "review-002",
+      "sourceCaseId": "no-evidence-06"
+    },
+    {
+      "reviewId": "review-003",
+      "sourceCaseId": "answerable-01"
+    },
+    {
+      "reviewId": "review-004",
+      "sourceCaseId": "fact-missing-04"
+    },
+    {
+      "reviewId": "review-005",
+      "sourceCaseId": "no-evidence-07"
+    },
+    {
+      "reviewId": "review-006",
+      "sourceCaseId": "fact-missing-03"
+    },
+    {
+      "reviewId": "review-007",
+      "sourceCaseId": "fact-missing-05"
+    },
+    {
+      "reviewId": "review-008",
+      "sourceCaseId": "fact-missing-02"
+    },
+    {
+      "reviewId": "review-009",
+      "sourceCaseId": "conflicting-02"
+    },
+    {
+      "reviewId": "review-010",
+      "sourceCaseId": "ambiguous-08"
+    },
+    {
+      "reviewId": "review-011",
+      "sourceCaseId": "no-evidence-02"
+    },
+    {
+      "reviewId": "review-012",
+      "sourceCaseId": "ambiguous-07"
+    },
+    {
+      "reviewId": "review-013",
+      "sourceCaseId": "answerable-05"
+    },
+    {
+      "reviewId": "review-014",
+      "sourceCaseId": "no-evidence-03"
+    },
+    {
+      "reviewId": "review-015",
+      "sourceCaseId": "ambiguous-06"
+    },
+    {
+      "reviewId": "review-016",
+      "sourceCaseId": "ambiguous-04"
+    },
+    {
+      "reviewId": "review-017",
+      "sourceCaseId": "answerable-07"
+    },
+    {
+      "reviewId": "review-018",
+      "sourceCaseId": "fact-missing-06"
+    },
+    {
+      "reviewId": "review-019",
+      "sourceCaseId": "conflicting-01"
+    },
+    {
+      "reviewId": "review-020",
+      "sourceCaseId": "conflicting-03"
+    },
+    {
+      "reviewId": "review-021",
+      "sourceCaseId": "answerable-04"
+    },
+    {
+      "reviewId": "review-022",
+      "sourceCaseId": "conflicting-05"
+    },
+    {
+      "reviewId": "review-023",
+      "sourceCaseId": "conflicting-04"
+    },
+    {
+      "reviewId": "review-024",
+      "sourceCaseId": "answerable-03"
+    },
+    {
+      "reviewId": "review-025",
+      "sourceCaseId": "answerable-02"
+    },
+    {
+      "reviewId": "review-026",
+      "sourceCaseId": "ambiguous-05"
+    },
+    {
+      "reviewId": "review-027",
+      "sourceCaseId": "no-evidence-04"
+    },
+    {
+      "reviewId": "review-028",
+      "sourceCaseId": "no-evidence-08"
+    },
+    {
+      "reviewId": "review-029",
+      "sourceCaseId": "fact-missing-07"
+    },
+    {
+      "reviewId": "review-030",
+      "sourceCaseId": "answerable-06"
+    },
+    {
+      "reviewId": "review-031",
+      "sourceCaseId": "ambiguous-02"
+    },
+    {
+      "reviewId": "review-032",
+      "sourceCaseId": "ambiguous-03"
+    },
+    {
+      "reviewId": "review-033",
+      "sourceCaseId": "conflicting-07"
+    },
+    {
+      "reviewId": "review-034",
+      "sourceCaseId": "no-evidence-05"
+    },
+    {
+      "reviewId": "review-035",
+      "sourceCaseId": "answerable-08"
+    },
+    {
+      "reviewId": "review-036",
+      "sourceCaseId": "no-evidence-01"
+    },
+    {
+      "reviewId": "review-037",
+      "sourceCaseId": "conflicting-06"
+    },
+    {
+      "reviewId": "review-038",
+      "sourceCaseId": "ambiguous-01"
+    },
+    {
+      "reviewId": "review-039",
+      "sourceCaseId": "fact-missing-01"
+    },
+    {
+      "reviewId": "review-040",
+      "sourceCaseId": "conflicting-08"
+    }
+  ]
+}

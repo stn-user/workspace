@@ -508,10 +508,24 @@ function getLabelPriority(line, labels) {
 export function containsModelDirectedInstruction(line) {
   if (typeof line !== "string") return false;
   const mentionsModel = /\b(?:assistant|mod[eè]le|model|IA|AI|intelligence artificielle|ChatGPT|LLM)\b/i.test(line);
-  if (!mentionsModel) return false;
   const instructionLabel = /\b(?:instruction|consigne|message|note)\b.{0,50}\b(?:assistant|mod[eè]le|model|IA|AI|intelligence artificielle|ChatGPT|LLM)\b/i;
   const directive = /\b(?:ignore|ignorez|ignorer|réponds|répondez|répondre|annonce|annoncez|annoncer|invente|inventez|inventer|confirme|confirmez|confirmer|remplace|remplacez|remplacer|modifie|modifiez|modifier|change|changez|changer|exécute|execute|effectue|answer|respond|say|invent|confirm|replace|change)\b/i;
-  return instructionLabel.test(line) || directive.test(line);
+  const modelTargetLabel = /\b(?:pour|à destination de|destiné à)\s+(?:le\s+|l')?(?:assistant|mod[eè]le|model|IA|AI|ChatGPT|LLM)\s*[:,]/i;
+  const overrideDirective = /\b(?:ignore|ignorez|ignorer|oublie|oubliez|oublier)\b.{0,60}\b(?:(?:les?|toutes?\s+les?)\s+(?:instructions?|consignes?|preuves?|éléments?|informations?)\s+(?:précédents?|précédentes?|antérieurs?|antérieures?)|(?:previous|preceding|prior)\s+(?:instructions?|evidence|information)|above\s+(?:instructions?|evidence))\b/i;
+  return (mentionsModel && (instructionLabel.test(line) || directive.test(line))) ||
+    modelTargetLabel.test(line) || overrideDirective.test(line);
+}
+
+function explicitlyMissingFactValue(line, intent) {
+  const absence = /(?:n'est pas|ne\s+\w+\s+pas|pas|non|aucun(?:e)?|absent(?:e)?|inconnu(?:e)?)\b.{0,35}\b(?:indique|renseigne|fourni|communique|mentionne|precise|present|disponible)?\b/;
+  return line.split(/[.!?;\n]/).some(sentence => {
+    const normalizedSentence = normalizeText(sentence).replace(/[’]/g, "'");
+    return (factLabels[intent] ?? []).some(label => {
+      const position = normalizedSentence.indexOf(label);
+      if (position < 0) return false;
+      return absence.test(normalizedSentence.slice(position + label.length, position + label.length + 60));
+    });
+  });
 }
 
 export function extractExactFact(question, lines) {
@@ -526,6 +540,7 @@ export function extractExactFact(question, lines) {
     .map((line) => {
       const labelPriority = getLabelPriority(line, labels);
       if (labelPriority < 0) return null;
+      if (explicitlyMissingFactValue(line, intent)) return null;
 
       const normalizedLine = normalizeText(line);
       const contextMatches = contextTerms.filter((term) => normalizedLine.includes(term)).length;

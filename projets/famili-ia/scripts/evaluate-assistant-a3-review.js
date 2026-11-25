@@ -99,21 +99,29 @@ function readJson(path, label) {
   });
 }
 
-function validateReview(review, key) {
+function validateReview(document, key) {
+  const isFullPacket = isObject(document) && isObject(document.review);
+  const submittedReview = isFullPacket ? document.review : document;
   if (!isObject(key) || key.protocolId !== protocolId || key.protocolVersion !== protocolVersion ||
       key.corpusVersion !== assistantResponseHoldout.version || !Array.isArray(key.mappings) ||
-      key.mappings.length !== assistantResponseHoldout.cases.length ||
-      !isObject(review) || review.protocolId !== protocolId ||
-      review.protocolVersion !== protocolVersion || review.corpusVersion !== key.corpusVersion ||
-      review.packetFingerprint !== key.packetFingerprint || !isObject(review.review) ||
-      review.review.independentReviewConfirmed !== true ||
-      review.review.candidateOutputsNotConsulted !== true ||
-      !Array.isArray(review.review.assessments)) {
+      key.mappings.length !== assistantResponseHoldout.cases.length || !isObject(document) ||
+      !isObject(submittedReview) ||
+      (document.protocolId !== undefined && document.protocolId !== protocolId) ||
+      (document.protocolVersion !== undefined && document.protocolVersion !== protocolVersion) ||
+      (document.corpusVersion !== undefined && document.corpusVersion !== assistantResponseHoldout.version) ||
+      (document.packetFingerprint !== undefined && document.packetFingerprint !== key.packetFingerprint) ||
+      submittedReview.independentReviewConfirmed !== true ||
+      submittedReview.candidateOutputsNotConsulted !== true ||
+      !Array.isArray(submittedReview.assessments)) {
     throw new TypeError("Le paquet ou l'attestation de revue indépendante est invalide.");
   }
-  const { packetFingerprint, review: submittedReview, ...packetContent } = review;
-  if (hashJson(packetContent) !== packetFingerprint) {
-    throw new TypeError("Le contenu du paquet a changé depuis son export.");
+  if (isFullPacket) {
+    const { packetFingerprint, review: ignoredReview, ...packetContent } = document;
+    if (packetFingerprint !== key.packetFingerprint || document.protocolId !== protocolId ||
+        document.protocolVersion !== protocolVersion || document.corpusVersion !== key.corpusVersion ||
+        hashJson(packetContent) !== packetFingerprint) {
+      throw new TypeError("Le contenu du paquet a changé depuis son export.");
+    }
   }
   const mappingByReviewId = new Map();
   const sourceIds = new Set();
@@ -159,7 +167,13 @@ function validateReview(review, key) {
   }
   return {
     protocolId,
-    packetFingerprint,
+    packetFingerprint: key.packetFingerprint,
+    packetContentVerified: isFullPacket,
+    packetBinding: isFullPacket
+      ? "full-packet-fingerprint-verified"
+      : document.packetFingerprint === key.packetFingerprint
+        ? "fingerprint-declared-with-form-only"
+        : "opaque-case-ids-only",
     reviewedCases: seenReviewIds.size,
     agreementCount: seenReviewIds.size - disagreements.length,
     disagreementCount: disagreements.length,
