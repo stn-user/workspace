@@ -14,7 +14,7 @@ import { clearFamilyState, loadFamilyState } from "./family-storage.js";
 import {
   initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts,
   getDocuments, addDocument, confirmDocumentAlert, confirmDocumentDeadline, deleteDocument, calculateAlertType, updateAlert,
-  updateAlertNotificationPreferences, updateUserProfile, updateHousePhoto, getFullState,
+  updateAlertNotificationPreferences, updateUserProfile, getFullState,
   addFamilyMember, addEquipment, updateEquipment, updateEquipmentPhoto, deleteEquipment, deleteFamilyMember, updateFamilyMember,
   updatePhotoAnnotations, resetState, getDropboxIndexCheckpoint, saveDropboxIndexCheckpoint,
   clearDropboxIndexCheckpoint, clearDropboxIndexCheckpoints
@@ -728,7 +728,6 @@ const searchQwenPanel = document.querySelector("#search-qwen-panel");
 const searchQwenStatus = document.querySelector("#search-qwen-status");
 const searchQwenAnswer = document.querySelector("#search-qwen-answer");
 const searchQwenCancelButton = document.querySelector("#search-cancel-qwen");
-const experimentalSourceStatus = document.querySelector("#experimental-source-status");
 const deadlineStatus = document.querySelector("#experimental-deadline-status");
 const deadlineResults = document.querySelector("#experimental-deadline-results");
 const deadlineReview = document.querySelector("#experimental-deadline-review");
@@ -841,24 +840,6 @@ function getSourceStatuses() {
 
 function renderExperimentalSources() {
   const statuses = getSourceStatuses();
-  experimentalSourceStatus.replaceChildren();
-  if (sourceRunStorageErrors.size) {
-    const warning = document.createElement("li");
-    warning.textContent = "Les états de couverture et de fraîcheur n'ont pas pu être lus ou enregistrés sur cet appareil.";
-    experimentalSourceStatus.appendChild(warning);
-  }
-  for (const status of statuses) {
-    const item = document.createElement("li");
-    const name = sourceName(status.sourceId);
-    const accountContext = status.sourceId === "onedrive" && oneDriveAccountFingerprint
-      ? ` Compte actuellement connecté (empreinte locale) : ${formatOneDriveAccountFingerprint(oneDriveAccountFingerprint)}.`
-      : "";
-    const indexedAccount = status.run?.accountRef
-      ? ` Le dernier parcours concerne l'empreinte de compte …${status.run.accountRef.slice(0, 16)}.`
-      : "";
-    item.textContent = `${name} : ${status.message} ${status.access} ${status.scope}${accountContext}${indexedAccount} ${status.freshness}`;
-    experimentalSourceStatus.appendChild(item);
-  }
   deadlineResults.querySelectorAll("[data-deadline-source]").forEach(element => {
     const source = statuses.find(status => status.sourceId === element.dataset.deadlineSource);
     element.textContent = source?.access || "Accès actuel à l'original inconnu.";
@@ -1047,6 +1028,9 @@ function addDeadlineAlertAction(item, candidate) {
         throw new Error("La provenance du contenu n’a pas pu être revérifiée après l’enregistrement.");
       }
       refreshExperimentalIndex();
+      if (activeView === 'alertes') {
+        renderAlerts(document.querySelector('.alert-filter-tab[aria-pressed="true"]')?.dataset.filter ?? 'à-traiter');
+      }
       status.textContent = alreadyConfirmed
         ? "Cette échéance est déjà confirmée ; aucune alerte en double n’a été créée."
         : "Échéance confirmée et alerte créée ou actualisée dans Famili-IA ; preuve, source et choix utilisateur conservés.";
@@ -1088,7 +1072,6 @@ function refreshExperimentalIndex() {
     const selectedFilters = getExperimentalIndexFilters();
     const selectedFilterCount = Object.keys(selectedFilters).length + Number(contractsOnly());
     document.querySelector('#search-filter-count').textContent = selectedFilterCount ? `(${selectedFilterCount})` : '';
-    document.querySelector('#search-start').hidden = Boolean(experimentalQuery.trim() || selectedFilterCount);
     if (!experimentalQuery.trim() && !selectedFilterCount) {
       renderUnifiedPhotoResults([], { kind: "empty" });
       experimentalIndexStatus.textContent = "";
@@ -1149,13 +1132,21 @@ function refreshExperimentalIndex() {
         entry.accountRef === (match.accountRef ?? null) && entry.itemId === match.itemId);
       const sourceAccess = sourceStatuses.find(status => status.sourceId === match.sourceId)?.access;
       const result = describeExperimentalResult(match, record, sourceDocument, sourceAccess);
-      item.className = "experimental-result";
-      addTextElement(item, "span", "prisme-mobile result-kind", sourceDocument?.type || "Document");
+      item.className = "experimental-result prisme-result";
+      const typeBadge = addTextElement(item, "span", "prisme-mobile ui-badge result-kind", sourceDocument?.type || "Document");
+      const typeIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      typeIcon.setAttribute("viewBox", "0 0 24 24");
+      typeIcon.setAttribute("aria-hidden", "true");
+      typeIcon.classList.add("prisme-icon");
+      const typePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      typePath.setAttribute("d", "M5 2h9l5 5v15H5zM14 2v6h5M8 13h8M8 17h6");
+      typeIcon.append(typePath);
+      typeBadge.prepend(typeIcon);
       addTextElement(item, "h3", "experimental-result-name", result.name);
-      addTextElement(item, "p", "search-result-origin", `${result.sourceLabel} · ${result.coverageLabel} · accès à l'original non garanti`);
+      addTextElement(item, "p", "search-result-origin prisme-meta", `${result.sourceLabel} · ${result.coverageLabel} · accès à l'original non garanti`);
       const evidence = match.reasons.find(reason => reason.location === "content") ?? match.reasons[0];
       if (evidence) {
-        const proof = addTextElement(item, "blockquote", "search-result-proof", "");
+        const proof = addTextElement(item, "blockquote", "search-result-proof prisme-proof", "");
         const label = evidence.location === "content" ? "Extrait correspondant"
           : evidence.location === "name" ? "Nom correspondant" : "Indice correspondant";
         addTextElement(proof, "p", "search-proof-label", label);
@@ -1165,13 +1156,18 @@ function refreshExperimentalIndex() {
           addTextElement(proof, "p", "", "Correspondance approchée ; le texte de la preuve est conservé.");
         }
       }
-      const provenance = addTextElement(item, "details", "search-result-details", "");
-      addTextElement(provenance, "summary", "", "Provenance et détails");
-      for (const detail of result.details) addTextElement(provenance, "p", "", detail);
-      for (const reason of result.reasons) addTextElement(provenance, "p", "search-evidence", reason);
       if (result.canViewCopy) {
-        const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir la copie dans Famili-IA");
+        const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir la copie");
         button.type = "button";
+        button.setAttribute("aria-label", "Voir la copie dans Famili-IA");
+        const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        arrow.setAttribute("viewBox", "0 0 24 24");
+        arrow.setAttribute("aria-hidden", "true");
+        arrow.classList.add("prisme-icon");
+        const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        arrowPath.setAttribute("d", "M4 12h15m-6-6 6 6-6 6");
+        arrow.append(arrowPath);
+        button.append(arrow);
         button.addEventListener("click", () => {
           const current = findExperimentalDocument(match.sourceId, match.itemId, match.accountRef);
           if (!current || typeof current.content !== "string" || !current.content.trim()) {
@@ -1182,8 +1178,12 @@ function refreshExperimentalIndex() {
           openSource(current);
         });
       } else {
-        addTextElement(item, "p", "", "Copie textuelle indisponible dans Famili-IA.");
+        addTextElement(item, "p", "search-copy-unavailable", "Copie textuelle indisponible dans Famili-IA.");
       }
+      const provenance = addTextElement(item, "details", "search-result-details", "");
+      addTextElement(provenance, "summary", "", "Provenance et détails");
+      for (const detail of result.details) addTextElement(provenance, "p", "", detail);
+      for (const reason of result.reasons) addTextElement(provenance, "p", "search-evidence", reason);
       if (match.sourceId === "onedrive") addOneDriveOriginalAction(item, sourceDocument);
       if (sourceDocument && isPhotoDocument(sourceDocument)) {
         const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir le détail de la photo");
@@ -1231,7 +1231,7 @@ function refreshExperimentalIndex() {
       experimentalIndexResults.appendChild(group);
     }
     experimentalIndexStatus.textContent = matches.length
-      ? `${matches.length} résultat${matches.length === 1 ? "" : "s"} dans les fichiers présents dans Famili-IA.`
+      ? `${matches.length} résultat${matches.length === 1 ? "" : "s"}`
       : "Aucun résultat pour le moment. Essayez d'autres mots ou ajoutez un fichier ; certains textes ne sont pas disponibles et d'autres fichiers peuvent exister dans les sources.";
     document.querySelector('#reset-empty-search').hidden = matches.length > 0;
     if (request.kind === "photo" && request.explanations?.length) {
@@ -1247,7 +1247,6 @@ function refreshExperimentalIndex() {
     invalidateAssistantResponses(true);
     experimentalIndexResults.replaceChildren();
     renderUnifiedPhotoResults([], { kind: "error" });
-    experimentalSourceStatus.textContent = "État des sources indisponible : l'index n'a pas pu être actualisé.";
     const reason = error instanceof Error ? error.message : "Erreur non détaillée";
     experimentalIndexStatus.textContent = `Recherche expérimentale indisponible : ${reason}`;
     deadlineResults.replaceChildren();
@@ -3691,14 +3690,9 @@ function renderEquipmentList(category = 'tout') {
   if (equipment.length === 0) {
     const hasEquipment = getEquipmentByCategory().length > 0;
     equipmentList.innerHTML = '';
-    document.querySelector('#equipment-empty-title').textContent = hasEquipment
-      ? 'Encore aucun équipement dans cette catégorie' : 'Votre carnet commence ici';
-    document.querySelector('#equipment-empty-description').textContent = hasEquipment
-      ? 'Vos autres équipements vous attendent dans le carnet.'
-      : 'Ajoutez votre premier équipement pour retrouver ses informations ici.';
-    document.querySelector('#show-all-equipment').hidden = !hasEquipment;
-    document.querySelector('#add-first-equipment').hidden = hasEquipment;
-    equipmentEmpty.hidden = false;
+    document.querySelector('#equipment-empty-title').textContent = 'Encore aucun équipement dans cette catégorie';
+    document.querySelector('#equipment-empty-description').textContent = 'Vos autres équipements vous attendent dans le carnet.';
+    equipmentEmpty.hidden = !hasEquipment;
     return;
   }
 
@@ -3785,13 +3779,7 @@ function renderAccueilDashboard() {
   document.querySelector('#dashboard-date').textContent = `${todayLabel.charAt(0).toLocaleUpperCase('fr-FR')}${todayLabel.slice(1)}`;
   document.querySelector('#dashboard-greeting').textContent = hasPersonalName ? 'Bonjour ' : 'Aujourd’hui';
   document.querySelector('#dashboard-user-name').textContent = hasPersonalName ? user.name : '';
-  document.querySelector('#home-file-count').textContent = inventory.length;
-  document.querySelector('#home-warranty-count').textContent = filterInventoryDocuments(inventory, { type: 'Garantie' }).length;
-  document.querySelector('#home-contract-count').textContent = filterInventoryDocuments(inventory, { type: 'Contrat' }).length;
-  const exampleCount = countInventorySources(inventory).demo;
-  document.querySelector('#dashboard-data-note').textContent = exampleCount
-    ? `${exampleCount} exemple${exampleCount > 1 ? 's' : ''} fictif${exampleCount > 1 ? 's' : ''} inclus. Les exemples ne sont pas vos fichiers personnels et ne sont pas recherchés dans l'index.`
-    : `${inventory.length} fichier${inventory.length > 1 ? 's' : ''} enregistré${inventory.length > 1 ? 's' : ''} dans Famili-IA. Ces compteurs ne garantissent pas la validité des contrats ou garanties.`;
+
 
   const recentDocuments = [...inventory]
     .filter(file => typeof file.id === 'string' && file.id.length > 0)
@@ -4250,7 +4238,7 @@ function renderAlerts(filter, restoreFocus = false) {
     const hasDocuments = getDocuments().length > 0;
     const emptyTitle = alerts.length === 0 ? 'Vos prochains rappels commencent ici' : 'Aucun rappel dans cette catégorie';
     const emptyMessage = alerts.length === 0
-      ? 'Confirmez une échéance proposée dans Recherche pour la retrouver ici. Seuls les rappels enregistrés apparaissent dans cette liste.'
+      ? 'Confirmez une échéance dans « Échéances proposées », sous la liste, pour la retrouver ici. Seuls les rappels enregistrés apparaissent dans cette liste.'
       : 'Les autres catégories restent disponibles. Cette liste ne couvre que vos rappels enregistrés.';
     const emptyDestination = nextTab ? `alertes?filter=${encodeURIComponent(nextTab.dataset.filter)}`
       : hasDocuments ? 'recherche' : 'importer';
@@ -4317,10 +4305,13 @@ function renderAlerts(filter, restoreFocus = false) {
 
     const dueDay = dueDateIso ? String(Number(dueDateIso.slice(8, 10))) : "";
     const dueMonth = dueDateIso
+      ? new Date(`${dueDateIso}T00:00:00`).toLocaleDateString("fr-FR", { month: "long" })
+      : "";
+    const dueMonthShort = dueDateIso
       ? new Date(`${dueDateIso}T00:00:00`).toLocaleDateString("fr-FR", { month: "short" }).replace(".", "")
       : "";
     const dateTile = dueDateIso
-      ? `<div class="alert-date-tile" aria-hidden="true"><strong>${dueDay}</strong><span>${escapeHtml(dueMonth)}</span></div>`
+      ? `<div class="alert-date-tile" aria-hidden="true"><strong>${dueDay}</strong><span><i class="month-long">${escapeHtml(dueMonth)}</i><i class="month-short">${escapeHtml(dueMonthShort)}</i></span></div>`
       : "";
 
     return `
@@ -4342,6 +4333,7 @@ function renderAlerts(filter, restoreFocus = false) {
           </div>
           <p>${escapeHtml(alert.detail)}</p>
           ${snoozeNotice}
+          ${sourceExcerpt || alert.source === "document" ? '<h4 class="prisme-mobile alert-source-title">Document source</h4>' : ''}
           ${sourceExcerpt}
           ${alert.source === "document" ? `<p class="alert-provenance">Copie locale · accès à l'original non garanti.</p>` : ''}
           ${sourceDocument?.expiryDateEstimated ? '<p class="household-note">Date estimée à partir de la date d’achat et de la durée de garantie, puis confirmée par vous.</p>' : ''}
@@ -4523,10 +4515,20 @@ function initHouseView(params = {}) {
       ? categoryFilters.dataset.mobileExpanded === 'true'
       : true;
   }
-  const familyCount = getFamilyMembers().length;
+  const familyMembers = getFamilyMembers();
+  const familyCount = familyMembers.length;
   document.querySelector('#house-family-count').textContent = familyCount
     ? `${familyCount} fiche${familyCount > 1 ? 's' : ''} sur cet appareil`
     : 'Aucune fiche sur cet appareil';
+  const avatars = document.querySelector('#house-family-avatars');
+  avatars.fallbackIcon ??= avatars.firstElementChild;
+  avatars.replaceChildren(...(familyCount
+    ? familyMembers.slice(0, 3).map(member => {
+      const initial = document.createElement('i');
+      initial.textContent = member.avatar || getNameInitial(member.name || '');
+      return initial;
+    })
+    : [avatars.fallbackIcon]));
   renderEquipmentList(category);
   initCategoryTabs();
 
@@ -4536,7 +4538,6 @@ function initHouseView(params = {}) {
       openEquipmentForm();
     };
   }
-  document.querySelector('#add-first-equipment').onclick = () => openEquipmentForm();
   document.querySelector('#show-all-equipment').onclick = () => {
     showView('maison');
     const categoryFilters = document.querySelector('#house-category-filters');
@@ -4562,29 +4563,12 @@ function initHouseView(params = {}) {
   }
 }
 
-function setHousePhotoVisual(photo) {
+function renderHousePhoto() {
   const image = document.querySelector('#house-photo');
-  const source = photo?.dataUrl || new URL('./assets/maison/maison-photo.jpg', import.meta.url).href;
+  const source = new URL('./assets/maison/maison-photo.jpg', import.meta.url).href;
   if (image.src !== source) image.src = source;
-  image.alt = photo ? 'Photo personnelle choisie pour Maison' : "Illustration d'une maison";
-  image.style.objectPosition = `${photo?.positionX ?? 50}% ${photo?.positionY ?? 50}%`;
-  document.querySelector('#house-photo-origin').textContent =
-    photo ? 'Photo personnelle · cet appareil' : "Visuel d'illustration · IA";
-}
-
-function renderHousePhoto(message = '') {
-  let photo = null;
-  try {
-    if (getCurrentUser().housePhoto) photo = validateCoverPhoto(getCurrentUser().housePhoto);
-  } catch (error) {
-    console.error('Photo personnelle de Maison invalide :', error);
-    message = "Votre photo ne peut pas être affichée. L'illustration IA est utilisée ; vous pouvez remplacer ou retirer votre photo.";
-  }
-  setHousePhotoVisual(photo);
-  const status = document.querySelector('#house-photo-status');
-  status.textContent = message;
-  status.hidden = !message;
-  return photo;
+  image.alt = "Illustration d'une maison";
+  document.querySelector('#house-photo-origin').textContent = "Visuel d'illustration · IA";
 }
 
 function initCoverPhotoDialog() {
@@ -4619,21 +4603,20 @@ function initCoverPhotoDialog() {
     }
   }
 
-  function open(equipment = null) {
+  function open(equipment) {
     equipmentTarget = equipment;
-    draft = equipment ? getEquipmentCover(equipment).photo : renderHousePhoto();
+    draft = getEquipmentCover(equipment).photo;
     expectedUser = getCurrentUser();
-    remove.hidden = !(equipment ? equipment.coverPhoto : expectedUser.housePhoto);
-    document.querySelector('#house-photo-title').textContent = equipment ? "Photo de l'équipement" : 'Photo de la maison';
-    input.setAttribute('aria-label', equipment ? "Photo personnelle pour cet équipement" : 'Photo personnelle pour Maison');
+    remove.hidden = !equipment.coverPhoto;
+    document.querySelector('#house-photo-title').textContent = "Photo de l'équipement";
+    input.setAttribute('aria-label', "Photo personnelle pour cet équipement");
     status.textContent = '';
-    const frame = document.querySelector(equipment ? '.equipment-cover-frame' : '.property-illustration').getBoundingClientRect();
+    const frame = document.querySelector('.equipment-cover-frame').getBoundingClientRect();
     preview.parentElement.style.aspectRatio = `${frame.width} / ${frame.height}`;
     preview.parentElement.style.width = `${Math.min(480, 240 * frame.width / frame.height)}px`;
     updateControls();
     dialog.showModal();
   }
-  document.querySelector('#edit-house-photo').addEventListener('click', () => open());
   document.addEventListener('click', event => {
     const button = event.target.closest('[data-edit-equipment-photo]');
     if (!button) return;
@@ -4693,15 +4676,11 @@ function initCoverPhotoDialog() {
     status.textContent = 'Cette copie est illisible. Choisissez une autre photo ou retirez la copie enregistrée.';
     updateControls();
   });
-  document.querySelector('#house-photo').addEventListener('error', event => {
-    const personal = event.currentTarget.src.startsWith('data:');
-    console.error(personal ? 'Photo personnelle de Maison illisible.' : 'Illustration de Maison indisponible.');
-    if (personal) setHousePhotoVisual(null);
+  document.querySelector('#house-photo').addEventListener('error', () => {
+    console.error('Illustration de Maison indisponible.');
     const notice = document.querySelector('#house-photo-status');
     notice.hidden = false;
-    notice.textContent = personal
-      ? "Votre photo est illisible. L'illustration IA est affichée ; vous pouvez remplacer ou retirer votre photo."
-      : "L'illustration de Maison est indisponible.";
+    notice.textContent = "L'illustration de Maison est indisponible.";
   });
   async function persist(photo, message) {
     const target = equipmentTarget;
@@ -4709,8 +4688,7 @@ function initCoverPhotoDialog() {
     status.textContent = 'Enregistrement sur cet appareil…';
     updateControls();
     try {
-      if (target) await updateEquipmentPhoto(photo, target, expectedUser);
-      else await updateHousePhoto(photo, expectedUser);
+      await updateEquipmentPhoto(photo, target, expectedUser);
     } catch (error) {
       console.error('Impossible de modifier la photo de couverture :', error);
       status.textContent = `La modification n'a pas pu être enregistrée : ${error.message}`;
@@ -4720,20 +4698,17 @@ function initCoverPhotoDialog() {
       updateControls();
     }
     dialog.close();
-    if (target) {
-      initHouseView(parseHash().params);
-      if (activeView === 'detail') {
-        initEquipmentDetailView(parseHash().params.id);
-        document.querySelector('[data-edit-equipment-photo]')?.focus();
-      }
-      showDemoNotice(message);
-    } else renderHousePhoto(message);
+    initHouseView(parseHash().params);
+    if (activeView === 'detail') {
+      initEquipmentDetailView(parseHash().params.id);
+      document.querySelector('[data-edit-equipment-photo]')?.focus();
+    }
+    showDemoNotice(message);
   }
   save.addEventListener('click', () => { if (draft && !saving && !preparing) void persist(draft, 'Photo enregistrée sur cet appareil.'); });
   remove.addEventListener('click', () => {
-    const fallback = equipmentTarget ? 'le visuel par défaut' : "l'illustration IA";
-    if (saving || preparing || !confirm(`Retirer votre photo de cet appareil et réafficher ${fallback} ? L'original reste inchangé.`)) return;
-    void persist(null, equipmentTarget ? 'Photo retirée. Le visuel par défaut est réaffiché.' : "Photo retirée. L'illustration IA est réaffichée.");
+    if (saving || preparing || !confirm("Retirer votre photo de cet appareil et réafficher le visuel par défaut ? L'original reste inchangé.")) return;
+    void persist(null, 'Photo retirée. Le visuel par défaut est réaffiché.');
   });
 }
 

@@ -300,22 +300,6 @@
           </div>
           <div class="home-recent-list" id="home-recent-documents"></div>
         </section>
-
-        <section class="home-inventory" aria-labelledby="home-inventory-title">
-        <div class="home-section-heading">
-          <h2 id="home-inventory-title">Vos fichiers, en quelques repères</h2>
-          <p class="household-note" id="dashboard-data-note"></p>
-        </div>
-        <div class="stats-grid home-stats" aria-label="Résumé des fichiers visibles">
-          <button class="ui-button ui-button--secondary stat-card" type="button" data-open-view="vos-donnees"><span class="ui-icon stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg></span><span class="stat-copy"><span>Fichiers visibles</span><strong id="home-file-count">0</strong></span><span class="stat-arrow" aria-hidden="true">›</span></button>
-          <button class="ui-button ui-button--secondary stat-card" type="button" data-open-view="vos-donnees?type=Garantie"><span class="ui-icon stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span class="stat-copy"><span>Garanties</span><strong id="home-warranty-count">0</strong></span><span class="stat-arrow" aria-hidden="true">›</span></button>
-          <button class="ui-button ui-button--secondary stat-card" type="button" data-open-view="vos-donnees?type=Contrat"><span class="ui-icon stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6v20h14V8zM14 2v6h6M8 13h8m-8 4h6"/></svg></span><span class="stat-copy"><span>Contrats</span><strong id="home-contract-count">0</strong></span><span class="stat-arrow" aria-hidden="true">›</span></button>
-        </div>
-        </section>
-        <aside class="home-demo-invitation" aria-label="Découvrir avec la démo">
-          <p>Besoin d’un premier aperçu ? <span>Suivez une histoire, sans utiliser vos fichiers.</span></p>
-          <button class="ui-button ui-button--text" type="button" data-replay-demo>Revoir la démo <span aria-hidden="true">→</span></button>
-        </aside>
       </section>
 
       <!-- Progress bar -->
@@ -359,12 +343,12 @@
         </form>
 
         <p id="search-dictation-status" class="household-note" role="status" aria-live="polite" hidden></p>
-        <button type="button" class="prisme-mobile search-contract-filter" id="search-contract-filter" aria-pressed="false">
+        <div class="search-mobile-filters">
+          <button type="button" class="prisme-mobile search-contract-filter" id="search-contract-filter" aria-pressed="false">
           <svg class="prisme-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h8m5 0h5M3 17h3m5 0h10M11 4v6M7 14v6"/></svg><span>Filtrer par contrat</span>
-        </button>
-        <p class="search-scope-note">Copies sur cet appareil. Accès aux originaux non vérifié. Photos : métadonnées et annotations explicites, sans reconnaissance visuelle.</p>
+          </button>
         <details class="ui-card search-disclosure" id="search-filters-panel">
-          <summary id="experimental-index-title">Affiner la recherche <span id="search-filter-count"></span></summary>
+          <summary id="experimental-index-title">Filtres <span id="search-filter-count"></span></summary>
           <div class="search-disclosure-content">
             <fieldset class="search-filter-options">
               <legend>Affiner les résultats</legend>
@@ -418,6 +402,8 @@
           </div>
           </div>
         </details>
+        </div>
+        <p class="search-scope-note">Copies sur cet appareil. Accès aux originaux non vérifié. Photos : métadonnées et annotations explicites, sans reconnaissance visuelle.</p>
         <section class="search-results-panel" aria-label="Résultats de la recherche">
           <p id="experimental-index-status" role="status" aria-live="polite"></p>
           <section class="ui-card search-qwen-panel" id="search-qwen-panel" aria-labelledby="search-qwen-title" hidden>
@@ -426,11 +412,6 @@
             <div id="search-qwen-answer"></div>
             <button class="ui-button ui-button--secondary" type="button" id="search-cancel-qwen" hidden>Annuler la génération Qwen</button>
           </section>
-          <div class="ui-card search-start" id="search-start">
-            <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg></span>
-            <h2>Quelques mots suffisent pour commencer</h2>
-            <p>Un nom, un sujet, un lieu annoté… Pour commencer, choisissez « Ajouter des fichiers ».</p>
-          </div>
           <button class="ui-button ui-button--secondary" type="button" id="reset-empty-search" hidden>Effacer la recherche et les filtres</button>
           <ul id="experimental-index-results" aria-label="Résultats multi-sources"></ul>
           <section class="ui-card moments-life-search" id="moments-life-search" aria-labelledby="moments-life-title" hidden>
@@ -475,34 +456,6 @@
         </section>
 
         <button type="button" class="prisme-mobile mobile-assistant" data-open-view="assistant">Assistant documentaire <span aria-hidden="true">›</span></button>
-        <details class="ui-card search-disclosure" id="search-source-panel">
-          <summary>Sources et limites de la recherche</summary>
-          <div class="search-disclosure-content">
-          <p>La recherche porte uniquement sur les fichiers présents dans Famili-IA sur cet appareil et les contenus dont la provenance a été vérifiée. Les fiches sont persistées localement et le moteur est reconstruit en mémoire ; les parcours ne couvrent pas exhaustivement l'appareil ni les comptes. Les états de parcours connus sont conservés localement, sans synchronisation chiffrée entre appareils dans cette version. L'accès aux originaux n'est pas vérifié.</p>
-          <ul id="experimental-source-status" aria-label="État des sources" aria-live="polite"></ul>
-          </div>
-        </details>
-        <details class="ui-card search-disclosure" id="search-deadline-panel">
-          <summary id="experimental-deadline-title">Échéances proposées — expérimental</summary>
-          <div class="search-disclosure-content">
-          <p>Du jour aux 90 prochains jours inclus, à partir des textes extraits fiables déjà présents dans Famili-IA. Les dates explicites et les estimations de garantie sont distinguées ; une estimation basée sur une date d'achat et une durée explicites doit être confirmée. Aucune proposition ne crée d'alerte sans votre confirmation.</p>
-          <p>Les sources peuvent être incomplètes ou périmées ; l'accès actuel aux originaux n'est pas vérifié. L'absence de proposition ne prouve pas l'absence d'échéance.</p>
-          <button type="button" class="ui-button ui-button--secondary" id="experimental-deadline-refresh">Actualiser les propositions</button>
-          <p id="experimental-deadline-status" role="status" aria-live="polite"></p>
-          <ul id="experimental-deadline-results" aria-label="Échéances proposées"></ul>
-          <details id="experimental-deadline-review">
-            <summary>Documents à vérifier</summary>
-            <ul id="experimental-deadline-review-list"></ul>
-          </details>
-          </div>
-        </details>
-
-        <!-- Protection -->
-        <div class="security-notice search-security">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <p>Les fichiers et contenus choisis sont traités localement ; des données peuvent être conservées dans le stockage de ce navigateur. Rien n'est envoyé à un serveur Famili-IA par ce parcours.</p>
-        </div>
-
       </section>
 
       <section class="view house-view ui-prisme ui-prisme--inline" id="view-maison" data-view="maison" aria-labelledby="house-title" hidden>
@@ -516,11 +469,10 @@
         <article class="ui-card property-card">
           <div class="property-illustration">
             <img src="assets/maison/maison-photo.jpg" alt="Illustration d'une maison" loading="lazy" class="property-photo" id="house-photo">
-            <button class="ui-button ui-button--secondary property-photo-edit" type="button" id="edit-house-photo" aria-label="Modifier la photo" aria-haspopup="dialog"><svg class="property-photo-edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/><path d="M15 5l4 4"/></svg><span class="property-photo-edit-label">Modifier la photo</span></button>
           </div>
           <div class="property-content">
+            <small class="property-kicker prisme-mobile">Carnet de maison</small>
             <div class="property-copy">
-              <small class="property-kicker prisme-mobile">Carnet de maison</small>
               <h2><span class="prisme-desktop">Le carnet de la maison</span><span class="prisme-mobile">La maison</span></h2>
               <small id="house-photo-origin">Visuel d'illustration · IA</small>
               <p id="house-photo-status" class="household-note" role="status" hidden></p>
@@ -550,15 +502,14 @@
             <!-- Equipment list will be populated dynamically by app.js -->
           </div>
           <div class="empty-state" id="equipment-empty" hidden role="status">
-            <h3 id="equipment-empty-title">Votre carnet commence ici</h3>
-            <p id="equipment-empty-description">Ajoutez votre premier équipement pour retrouver ses informations ici.</p>
-            <button class="ui-button ui-button--primary" type="button" id="add-first-equipment">Ajouter mon premier équipement</button>
+            <h3 id="equipment-empty-title">Encore aucun équipement dans cette catégorie</h3>
+            <p id="equipment-empty-description">Vos autres équipements vous attendent dans le carnet.</p>
             <button class="ui-button ui-button--secondary" type="button" id="show-all-equipment">Voir tous les équipements</button>
           </div>
         </section>
         <nav class="prisme-mobile foyer-links" aria-label="Dans mon foyer">
-          <h2>Famille</h2><button class="prisme-row ui-button" type="button" data-open-view="famille"><span class="prisme-row-copy"><strong>Mon cercle</strong><small id="house-family-count"></small></span><span aria-hidden="true">›</span></button>
-          <h2>Mon espace</h2><button class="prisme-row ui-button" type="button" data-open-view="plus"><span class="prisme-row-copy"><strong>Fichiers et réglages</strong><small>Inventaire, profil, confidentialité</small></span><span aria-hidden="true">›</span></button>
+          <h2>Famille</h2><button class="prisme-row ui-button" type="button" data-open-view="famille"><span class="prisme-row-visual prisme-avatars" id="house-family-avatars" aria-hidden="true"><svg class="prisme-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2m4-13v6m-3-3h6"/></svg></span><span class="prisme-row-copy"><strong>Mon cercle</strong><small id="house-family-count"></small></span><span aria-hidden="true">›</span></button>
+          <h2>Mon espace</h2><button class="prisme-row ui-button" type="button" data-open-view="plus"><span class="prisme-row-visual" aria-hidden="true"><svg class="prisme-icon" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v12H3z"/></svg></span><span class="prisme-row-copy"><strong>Fichiers et réglages</strong><small>Inventaire, profil, confidentialité</small></span><span aria-hidden="true">›</span></button>
         </nav>
       </section>
 
@@ -623,6 +574,20 @@
         <div class="alert-list" id="alert-list" aria-label="Alertes">
           <!-- Alertes seront générées dynamiquement par app.js -->
         </div>
+        <details class="ui-card search-disclosure" id="search-deadline-panel">
+          <summary id="experimental-deadline-title">Échéances proposées — expérimental</summary>
+          <div class="search-disclosure-content">
+          <p>Du jour aux 90 prochains jours inclus, à partir des textes extraits fiables déjà présents dans Famili-IA. Les dates explicites et les estimations de garantie sont distinguées ; une estimation basée sur une date d'achat et une durée explicites doit être confirmée. Aucune proposition ne crée d'alerte sans votre confirmation.</p>
+          <p>Les sources peuvent être incomplètes ou périmées ; l'accès actuel aux originaux n'est pas vérifié. L'absence de proposition ne prouve pas l'absence d'échéance.</p>
+          <button type="button" class="ui-button ui-button--secondary" id="experimental-deadline-refresh">Actualiser les propositions</button>
+          <p id="experimental-deadline-status" role="status" aria-live="polite"></p>
+          <ul id="experimental-deadline-results" aria-label="Échéances proposées"></ul>
+          <details id="experimental-deadline-review">
+            <summary>Documents à vérifier</summary>
+            <ul id="experimental-deadline-review-list"></ul>
+          </details>
+          </div>
+        </details>
         <p class="alerts-footnote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Vos rappels et leurs réglages restent sur cet appareil.</p>
       </section>
 
@@ -893,6 +858,11 @@
             <p>Un parcours terminé ne garantit ni l'accès actuel aux originaux ni l'actualisation des copies.</p>
           </details>
         </section>
+
+        <aside class="home-demo-invitation" aria-label="Découvrir avec la démo">
+          <p>Besoin d’un premier aperçu ? <span>Suivez une histoire, sans utiliser vos fichiers.</span></p>
+          <button class="ui-button ui-button--text" type="button" data-replay-demo>Revoir la démo <span aria-hidden="true">→</span></button>
+        </aside>
 
         <div class="data-filters ui-card">
           <h2 class="data-filters-heading visually-hidden">Affiner l’inventaire</h2>

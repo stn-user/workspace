@@ -715,21 +715,6 @@ export function updateUserProfile({ name, avatar, address, postalCode, city, pho
   });
 }
 
-export function updateHousePhoto(photo, expectedUser) {
-  const copy = photo === null ? null : validateCoverPhoto(photo);
-  return serializePhotoMutation(async () => {
-    if (state.currentUser !== expectedUser) {
-      throw new Error("Votre espace a changé. Fermez puis rouvrez le choix de photo avant de réessayer.");
-    }
-    const user = { ...state.currentUser };
-    if (copy === null) delete user.housePhoto;
-    else user.housePhoto = copy;
-    await put('users', user);
-    state.currentUser = user;
-    return user;
-  });
-}
-
 async function updatePhotoLocationConsentUnlocked(enabled) {
   const photoLocationConsent = enabled === true;
   if (photoLocationConsent) {

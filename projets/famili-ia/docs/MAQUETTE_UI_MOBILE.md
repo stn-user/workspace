@@ -98,7 +98,7 @@ Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour r
   - Mots-outils et élisions usuelles sont ignorés dans les termes recherchés. Une faute simple sur un mot alphabétique de 6 à 32 lettres peut correspondre ; la raison indique « correspondance approchée » et les termes normalisés, sans modifier la saisie ni l'extrait. Chiffres, références alphanumériques, mots courts et filtres ne sont pas approximés. Les mots-outils seuls ne renvoient pas tous les fichiers.
   - Copie disponible → aperçu local existant, sans prétendre ouvrir l'original. Les photos conservent détail, annotations, regroupement, pagination et sélection/suppression confirmée.
   - « Effacer les filtres » conserve la question ; le bouton d'état vide efface aussi la question. Le focus revient au champ et l'état initial explique comment commencer.
-  - « Sources et limites de la recherche » → état réel des sources et limites de couverture/fraîcheur ; « Échéances proposées — expérimental » → preuves et confirmation explicite existante avant création d'alerte.
+  - « Sources et limites de la recherche » → supprimé de Recherche (l'état et la couverture des sources restent dans « Vos données » ; la note de portée reste sous les filtres) ; « Échéances proposées — expérimental » → déplacé dans Rappels, avec preuves et confirmation explicite existante avant création d'alerte.
   - Validation lexicale : 25 scénarios navigateur passent, dont trois nouveaux parcours à 390, 768 et 1280 px ; preuve littérale, explication d'une faute, filtre source et rechargement vérifiés avec un TXT fictif. La précision et le rappel atteignent 100 % sur les seuls 20 cas du petit corpus annoté, pas sur tout le français. 53 tests Node ciblés et compilation réussis ; appareils physiques et lecteur d'écran non revalidés.
   - Validation de l'harmonisation du lot D : 38 scénarios navigateur, 7 tests Node ciblés et build réussis. Les quatre largeurs 390/768/1280/1920 px couvrent les cibles de 48 px, l'absence de débordement et des vignettes décodées d'au moins 240 × 180 px. Détails au clavier, preuves littérales et stockage inchangé vérifiés ; contrastes des vues à 390/1280 px, inspection visuelle des cartes et mouvement réduit contrôlés. Appareils physiques, lecteur d'écran et comptes fournisseurs réels non revalidés.
 
@@ -138,7 +138,7 @@ Retour : bouton retour natif/hash (`#/plus` pousse l'historique, bouton retour r
   - Équipement → **Détail équipement**, avec identifiant dans l'URL.
   - « Ajouter un équipement » → formulaire partagé (nom, catégorie, statut), fermeture par bouton ou Échap avec retour du focus.
   - Filtres → `aria-pressed`, URL, rechargement et historique cohérents ; filtre inconnu affiché comme « Tout ».
-  - Carnet vide → invitation « Votre carnet commence ici » et bouton « Ajouter mon premier équipement » vers le formulaire existant. Une catégorie vide dans un carnet renseigné propose « Voir tous les équipements », avec retour du focus sur « Tout ». L'ajout reste disponible dans l'en-tête.
+  - Carnet vide → aucune carte d'invitation : l'ajout passe par le bouton de l'en-tête. Une catégorie vide dans un carnet renseigné propose « Voir tous les équipements », avec retour du focus sur « Tout ».
   - « Modifier dans le profil » → **Profil**, qui conserve pour l'instant sa palette précédente.
 
 ### 5. Détail équipement (sous-vue)

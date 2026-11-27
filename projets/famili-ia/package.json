@@ -18,7 +18,6 @@
     "benchmark:assistant-qwen-a5": "node scripts/evaluate-assistant-qwen-a5.js",
     "benchmark:assistant-a2-campaign": "node scripts/run-assistant-a2-campaign.js",
     "benchmark:search-embeddings": "node scripts/evaluate-search-embeddings.js",
-    "test:onboarding": "playwright test tests/onboarding.spec.js",
     "preview": "vite preview",
     "cap:sync": "npm run build && cap sync",
     "android:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\build-android-debug.ps1 -CheckOnly",
