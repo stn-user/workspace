@@ -33,7 +33,9 @@ import { IndexSession, INDEX_SOURCES } from "./index-session.js";
 import {
   isAssistantMatchCurrent, prepareAssistantContext, prepareLocalQwenEvidence
 } from "./assistant-context.js";
-import { generateLocalQwenAnswer, LocalQwenError } from "./assistant-local-qwen.js";
+import {
+  generateLocalQwenAnswer, LocalQwenError, LOCAL_QWEN_LIMITS
+} from "./assistant-local-qwen.js";
 import { assertDocumentAlertSource, matchesDocumentAlertIdentity, prepareDocumentAlertAction } from "./document-alert-action.js";
 import { createSourceRunStatus, describeSources, sourceRunStatusId } from "./source-status.js";
 import { loadSourceRunStatuses, saveSourceRunStatus } from "./source-status-storage.js";
@@ -689,6 +691,7 @@ function synchronizeStoredPhotoDocuments() {
 }
 const experimentalIndex = new IndexSession();
 const assistantResponseContexts = new Map();
+let assistantQwenRequest = null;
 const invalidContentProvenance = new WeakSet();
 let driveSelectionGeneration = 0;
 let driveSelectionSettled = null;
@@ -698,6 +701,17 @@ const input = document.querySelector("#experimental-index-query");
 const stopSearchDictation = initSearchDictation();
 const experimentalIndexForm = form;
 const experimentalIndexQuery = input;
+const contractFilter = document.querySelector('#search-contract-filter');
+function contractsOnly() {
+  return contractFilter.getAttribute('aria-pressed') === 'true';
+}
+function setContractsOnly(active) {
+  contractFilter.setAttribute('aria-pressed', String(active));
+  contractFilter.querySelector('span').textContent = active ? 'Contrats uniquement ×' : 'Filtrer par contrat';
+}
+function isContract(document) {
+  return document && getInventoryTypeKey(document) === 'contrat';
+}
 const experimentalIndexSource = document.querySelector("#experimental-index-source");
 const experimentalIndexType = document.querySelector("#experimental-index-type");
 const experimentalIndexCoverage = document.querySelector("#experimental-index-coverage");
@@ -708,12 +722,19 @@ const experimentalIndexPerson = document.querySelector("#experimental-index-pers
 const experimentalIndexPlace = document.querySelector("#experimental-index-place");
 const experimentalIndexStatus = document.querySelector("#experimental-index-status");
 const experimentalIndexResults = document.querySelector("#experimental-index-results");
+const searchQwenToggle = document.querySelector("#search-use-qwen");
+const searchQwenDisclosure = document.querySelector("#search-qwen-disclosure");
+const searchQwenPanel = document.querySelector("#search-qwen-panel");
+const searchQwenStatus = document.querySelector("#search-qwen-status");
+const searchQwenAnswer = document.querySelector("#search-qwen-answer");
+const searchQwenCancelButton = document.querySelector("#search-cancel-qwen");
 const experimentalSourceStatus = document.querySelector("#experimental-source-status");
 const deadlineStatus = document.querySelector("#experimental-deadline-status");
 const deadlineResults = document.querySelector("#experimental-deadline-results");
 const deadlineReview = document.querySelector("#experimental-deadline-review");
 const deadlineReviewList = document.querySelector("#experimental-deadline-review-list");
 let experimentalQuery = "";
+let searchQwenRequest = null;
 let driveObservation = "unknown";
 let localImportFailed = false;
 let oneDriveObservation = "unknown";
@@ -1046,6 +1067,10 @@ function refreshExperimentalIndex() {
   document.querySelector('#reset-empty-search').hidden = true;
   try {
     experimentalIndex.syncDocuments(uploadedDocuments);
+    if (searchQwenRequest &&
+        searchQwenRequest.context.scope.corpusRevision !== experimentalIndex.getRevision()) {
+      abortSearchQwenRequest();
+    }
     invalidateAssistantResponses();
     const sourceStatuses = renderExperimentalSources();
     try {
@@ -1061,10 +1086,10 @@ function refreshExperimentalIndex() {
     const records = experimentalIndex.getAllRecords();
     refreshExperimentalFacets(records);
     const selectedFilters = getExperimentalIndexFilters();
-    const selectedFilterCount = Object.keys(selectedFilters).length;
+    const selectedFilterCount = Object.keys(selectedFilters).length + Number(contractsOnly());
     document.querySelector('#search-filter-count').textContent = selectedFilterCount ? `(${selectedFilterCount})` : '';
     document.querySelector('#search-start').hidden = Boolean(experimentalQuery.trim() || selectedFilterCount);
-    if (!experimentalQuery.trim() && Object.keys(selectedFilters).length === 0) {
+    if (!experimentalQuery.trim() && !selectedFilterCount) {
       renderUnifiedPhotoResults([], { kind: "empty" });
       experimentalIndexStatus.textContent = "";
       return;
@@ -1086,11 +1111,12 @@ function refreshExperimentalIndex() {
       experimentalIndexStatus.textContent = "Les filtres interprétés et les filtres choisis se contredisent. Modifiez l'un d'eux puis relancez la recherche.";
       return;
     }
-    let matches = experimentalIndex.search(request.query, filters);
+    let matches = experimentalIndex.search(request.query, contractsOnly() && !filters.type ? { ...filters, type: 'document' } : filters);
     const matchKey = ({ sourceId, accountRef, itemId }) => JSON.stringify([sourceId, accountRef ?? null, itemId]);
     const documentsByMatch = new Map(matches.map(match =>
       [matchKey(match), findExperimentalDocument(match.sourceId, match.itemId, match.accountRef)]
     ));
+    if (contractsOnly()) matches = matches.filter(match => isContract(documentsByMatch.get(matchKey(match))));
     if (request.importDateRange) {
       matches = matches.filter(match => isWithinDateRange(
         documentsByMatch.get(matchKey(match))?.importedAt,
@@ -1124,6 +1150,7 @@ function refreshExperimentalIndex() {
       const sourceAccess = sourceStatuses.find(status => status.sourceId === match.sourceId)?.access;
       const result = describeExperimentalResult(match, record, sourceDocument, sourceAccess);
       item.className = "experimental-result";
+      addTextElement(item, "span", "prisme-mobile result-kind", sourceDocument?.type || "Document");
       addTextElement(item, "h3", "experimental-result-name", result.name);
       addTextElement(item, "p", "search-result-origin", `${result.sourceLabel} · ${result.coverageLabel} · accès à l'original non garanti`);
       const evidence = match.reasons.find(reason => reason.location === "content") ?? match.reasons[0];
@@ -1233,7 +1260,10 @@ function refreshExperimentalIndex() {
 document.querySelector("#experimental-deadline-refresh").addEventListener("click", refreshExperimentalIndex);
 
 function resetSearchFilters(clearQuery = false) {
-  for (const control of document.querySelectorAll('#search-filters-panel select, #search-filters-panel input')) {
+  setContractsOnly(false);
+  abortSearchQwenRequest();
+  clearLocalQwenSearchResponse();
+  for (const control of document.querySelectorAll('.search-filter-options select, .search-filter-options input')) {
     control.value = '';
   }
   if (clearQuery) {
@@ -1246,12 +1276,31 @@ function resetSearchFilters(clearQuery = false) {
 
 document.querySelector('#reset-search-filters').addEventListener('click', () => resetSearchFilters());
 document.querySelector('#reset-empty-search').addEventListener('click', () => resetSearchFilters(true));
-
-experimentalIndexForm.addEventListener("submit", (event) => {
-  event.preventDefault();
+contractFilter.addEventListener('click', () => {
+  abortSearchQwenRequest();
+  clearLocalQwenSearchResponse();
+  setContractsOnly(!contractsOnly());
   experimentalQuery = experimentalIndexQuery.value;
   refreshExperimentalIndex();
 });
+
+experimentalIndexForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  abortSearchQwenRequest();
+  clearLocalQwenSearchResponse();
+  experimentalQuery = experimentalIndexQuery.value;
+  refreshExperimentalIndex();
+  if (searchQwenToggle?.checked) void runLocalQwenSearchAnswer(experimentalQuery);
+});
+experimentalIndexForm.addEventListener("change", () => {
+  abortSearchQwenRequest();
+  clearLocalQwenSearchResponse();
+});
+experimentalIndexQuery.addEventListener("input", () => {
+  abortSearchQwenRequest();
+  clearLocalQwenSearchResponse();
+});
+searchQwenCancelButton?.addEventListener("click", abortSearchQwenRequest);
 const maxDriveFiles = 50;
 const maxTextFileSize = 1024 * 1024;
 const maxPdfFileSize = 10 * 1024 * 1024;
@@ -2939,12 +2988,46 @@ sourceDialog.addEventListener("click", (event) => {
 
 const views = [...document.querySelectorAll("[data-view]")];
 const navigationButtons = [...document.querySelectorAll("[data-nav]")];
+const mobileLayout = window.matchMedia('(max-width: 1024px)');
+const searchOptions = document.querySelector('.mobile-search-options');
+const desktopQueryHint = experimentalIndexQuery.placeholder;
+function arrangeSearchTools() {
+  const mobile = mobileLayout.matches;
+  experimentalIndexQuery.placeholder = mobile ? 'Nom, date, référence…' : desktopQueryHint;
+  const scope = document.querySelector('.search-scope-note');
+  if (mobile) {
+    document.querySelector('#search-filters-panel .search-disclosure-content').append(searchOptions);
+    document.querySelector('.mobile-assistant').before(scope);
+  } else {
+    experimentalIndexForm.append(searchOptions);
+    document.querySelector('#search-filters-panel').before(scope);
+  }
+  searchOptions.open = !mobile;
+  if (!mobile && contractsOnly()) {
+    setContractsOnly(false);
+    abortSearchQwenRequest();
+    clearLocalQwenSearchResponse();
+    refreshExperimentalIndex();
+  }
+}
+arrangeSearchTools();
+mobileLayout.addEventListener('change', arrangeSearchTools);
+searchQwenToggle.addEventListener('change', () => {
+  if (!experimentalIndexForm.contains(searchQwenToggle)) {
+    abortSearchQwenRequest();
+    clearLocalQwenSearchResponse();
+  }
+});
+const moreAlertFilters = document.querySelector('.mobile-alert-more');
+moreAlertFilters.addEventListener('click', () => {
+  moreAlertFilters.setAttribute('aria-expanded', String(moreAlertFilters.getAttribute('aria-expanded') !== 'true'));
+});
 const pageTitles = {
   accueil: "Accueil",
   recherche: "Recherche",
-  maison: "Maison",
+  maison: "Foyer",
   famille: "Famille",
-  alertes: "Alertes",
+  alertes: "Rappels",
   detail: "Détail équipement",
   assistant: "Assistant IA",
   importer: "Importer",
@@ -2964,15 +3047,12 @@ let activeView = (() => {
 })();
 
 /**
- * Section de la barre basse (mobile) pour chaque vue.
- * Les sous-vues restent rattachées à leur section d'origine :
- * - detail → maison (le fil d'Ariane ramène vers Maison)
- * - vues secondaires (alertes, famille, assistant, profil, vos-donnees) → plus
+ * Section mobile de rattachement pour les vues qui ne sont pas des destinations principales.
  */
 const NAV_SECTION_OF = {
   detail: "maison",
-  famille: "plus",
-  alertes: "plus",
+  famille: "maison",
+  importer: "plus",
   assistant: "plus",
   profil: "plus",
   "vos-donnees": "plus"
@@ -2988,7 +3068,7 @@ const VIEW_TOUR_STEPS = [
   {
     view: "maison",
     headingId: "house-title",
-    title: "Maison",
+    title: "Foyer",
     description: "Retrouvez ici les biens et équipements du foyer. La visite ne modifie aucun élément."
   },
   {
@@ -3000,7 +3080,7 @@ const VIEW_TOUR_STEPS = [
   {
     view: "alertes",
     headingId: "alerts-title",
-    title: "Alertes",
+    title: "Rappels",
     description: "Consultez les rappels et échéances. Aucune alerte n’est créée ni modifiée pendant la visite."
   },
   {
@@ -3143,6 +3223,8 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   stopSearchDictation();
   console.log("showView called for:", name);
   if (!Object.hasOwn(pageTitles, name)) return;
+  if (name !== "assistant") abortAssistantQwenRequest();
+  if (name !== "recherche") abortSearchQwenRequest();
   const currentTourStep = VIEW_TOUR_STEPS[viewTourStepIndex];
   if (viewTourActive && !viewTourNavigating && name !== currentTourStep?.view) {
     finishViewTour({ restoreView: false, restoreFocus: false });
@@ -3210,6 +3292,11 @@ function showView(name, { addHistory = true, params = {} } = {}) {
     if (isActive) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
+  const mobileMoreButton = document.querySelector(".mobile-more-button");
+  if (mobileMoreButton) {
+    if (bottomNavSection === "plus") mobileMoreButton.setAttribute("aria-current", "page");
+    else mobileMoreButton.removeAttribute("aria-current");
+  }
 
   document.title = `${pageTitles[name]} | Famili-IA`;
   const mainContent = document.querySelector('.main-content');
@@ -3585,6 +3672,14 @@ function renderEquipmentList(category = 'tout') {
   if (!equipmentList || !equipmentEmpty) return;
 
   const equipment = getEquipmentByCategory(category);
+  const selectedCategory = [...document.querySelectorAll('[data-house-category]')]
+    .find(tab => tab.dataset.houseCategory === category);
+  const filterSummary = document.querySelector('#house-category-filter-summary');
+  if (filterSummary) {
+    filterSummary.textContent = category === 'tout'
+      ? 'Filtrer par catégorie'
+      : `Catégorie : ${selectedCategory?.textContent.trim() || category}`;
+  }
   document.querySelectorAll('[data-house-category]').forEach(tab => {
     const selected = tab.dataset.houseCategory === category;
     tab.classList.toggle('is-selected', selected);
@@ -3669,10 +3764,26 @@ document.querySelector("#mark-alerts-read").addEventListener("click", (event) =>
 function renderAccueilDashboard() {
   const user = getCurrentUser();
   const alerts = getAlerts().filter(alert => !alert.status || alert.status === 'active');
+  const next = alerts.map(alert => ({ alert, date: normalizeAlertDate(alert.dueDate) }))
+    .filter(({ alert, date }) => date && getDaysUntilDate(date, new Date()) >= 0
+      && !(getDaysUntilDate(alert.snoozedUntil, new Date()) > 0))
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  const featured = document.querySelector('#home-featured-reminder');
+  featured.querySelector('strong').textContent = next?.alert.title || 'Aucune échéance à venir';
+  featured.querySelector('span').textContent = next
+    ? `${new Date(`${next.date}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} · ${next.alert.source === 'document' ? '' : documents.some(doc => doc.id === next.alert.docId) ? 'Exemple fictif · ' : 'Source non renseignée · '}Voir les rappels →`
+    : 'Consulter mes rappels enregistrés →';
+  featured.dataset.openView = 'alertes?filter=actifs';
   const inventory = mergeInventoryDocuments(uploadedDocuments.length === 0 ? documents : [], uploadedDocuments);
 
   const hasPersonalName = Boolean(user.name && user.name !== 'Mon espace');
-  document.querySelector('#dashboard-greeting').textContent = hasPersonalName ? 'Bonjour ' : 'Bienvenue chez vous';
+  const todayLabel = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  }).format(new Date());
+  document.querySelector('#dashboard-date').textContent = `${todayLabel.charAt(0).toLocaleUpperCase('fr-FR')}${todayLabel.slice(1)}`;
+  document.querySelector('#dashboard-greeting').textContent = hasPersonalName ? 'Bonjour ' : 'Aujourd’hui';
   document.querySelector('#dashboard-user-name').textContent = hasPersonalName ? user.name : '';
   document.querySelector('#home-file-count').textContent = inventory.length;
   document.querySelector('#home-warranty-count').textContent = filterInventoryDocuments(inventory, { type: 'Garantie' }).length;
@@ -3682,30 +3793,81 @@ function renderAccueilDashboard() {
     ? `${exampleCount} exemple${exampleCount > 1 ? 's' : ''} fictif${exampleCount > 1 ? 's' : ''} inclus. Les exemples ne sont pas vos fichiers personnels et ne sont pas recherchés dans l'index.`
     : `${inventory.length} fichier${inventory.length > 1 ? 's' : ''} enregistré${inventory.length > 1 ? 's' : ''} dans Famili-IA. Ces compteurs ne garantissent pas la validité des contrats ou garanties.`;
 
-  // Update "Vos prochaines échéances" section with event delegation
+  const recentDocuments = [...inventory]
+    .filter(file => typeof file.id === 'string' && file.id.length > 0)
+    .sort((first, second) => {
+      const firstDate = Date.parse(first.importedAt || '');
+      const secondDate = Date.parse(second.importedAt || '');
+      const firstHasDate = Number.isFinite(firstDate);
+      const secondHasDate = Number.isFinite(secondDate);
+      if (firstHasDate && secondHasDate) return secondDate - firstDate;
+      if (firstHasDate) return -1;
+      if (secondHasDate) return 1;
+      return 0;
+    })
+    .slice(0, 3);
+  const sourceLabels = {
+    local: 'Sur cet appareil',
+    drive: 'Google Drive',
+    onedrive: 'OneDrive',
+    dropbox: 'Dropbox',
+    demo: 'Exemple fictif'
+  };
+  const recentDocumentsPanel = document.querySelector('#home-recent-documents');
+  recentDocumentsPanel.innerHTML = recentDocuments.length
+    ? recentDocuments.map(file => {
+      const fileName = file.name || file.originalName || 'Fichier sans nom';
+      const fileType = String(file.type || 'Type non renseigné');
+      const source = sourceLabels[getInventorySource(file)] || 'Source non renseignée';
+      return `
+        <button class="home-file-row" type="button" data-open-view="vos-donnees?docId=${escapeHtml(encodeURIComponent(file.id))}" aria-label="Afficher le détail de ${escapeHtml(fileName)}">
+          <span class="home-file-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7M8 14h8m-8 4h6"/></svg></span>
+          <span class="home-file-copy"><strong>${escapeHtml(fileName)}</strong><small>${escapeHtml(fileType)} · ${escapeHtml(source)}</small></span>
+          <span class="stat-arrow" aria-hidden="true">›</span>
+        </button>
+      `;
+    }).join('')
+    : `<div class="home-files-empty"><p>Aucun fichier visible pour le moment.</p><button class="ui-button ui-button--secondary" type="button" data-open-import>Ajouter des fichiers</button></div>`;
+
   const verifyPanel = document.querySelector('#view-accueil .verify-panel');
   if (verifyPanel) {
     verifyPanel.innerHTML = `
       <div class="section-heading">
         <h2 id="verify-title">Vos rappels</h2>
-        <button class="ui-button ui-button--text" type="button" data-open-view="alertes">Toutes les alertes</button>
+        <button class="ui-button ui-button--text" type="button" data-open-view="alertes">Voir tout</button>
       </div>
       ${alerts.length ? '' : `<div class="home-reminders-empty">
         <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3v4m8-4v4M4 10h16"/><rect x="4" y="5" width="16" height="16" rx="3"/><path d="m9 15 2 2 4-4"/></svg></span>
-        <div><h3>Un peu de place pour souffler</h3><p>Aucun rappel actif enregistré pour le moment.</p></div>
+        <div><h3>Aucune échéance enregistrée</h3><p>Vos rappels apparaîtront ici.</p></div>
       </div>`}
       <p class="household-note">${alerts.length ? 'Vos rappels enregistrés, y compris ceux reportés. Leurs dates et leurs sources sont consultables dans Alertes.' : 'Seuls les rappels enregistrés sont affichés ici ; toutes vos échéances ne sont pas forcément couvertes.'}</p>
-      ${alerts.slice(0, 3).map(alert => `
-        <button class="verify-row" type="button" data-open-view="alertes">
-          <span class="ui-icon row-icon" aria-hidden="true">${getAlertIcon(calculateAlertType(alert.dueDate, alert.type, alert.documentType))}</span>
+      ${alerts.slice(0, 3).map(alert => {
+        const dueDateIso = normalizeAlertDate(alert.dueDate);
+        const dueDate = dueDateIso ? new Date(`${dueDateIso}T00:00:00`).toLocaleDateString('fr-FR') : '';
+        const hasDateTile = Boolean(dueDateIso);
+        const dueDay = dueDateIso ? String(Number(dueDateIso.slice(8, 10))) : '';
+        const dueMonth = dueDateIso
+          ? new Date(`${dueDateIso}T00:00:00`).toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')
+          : '';
+        const dateLabel = dueDateIso
+          ? `Échéance : <time datetime="${dueDateIso}">${escapeHtml(dueDate)}</time>`
+          : alert.dueDate ? 'Date à vérifier' : 'Date non renseignée';
+        const dateTile = dueDateIso
+          ? `<span class="alert-date-tile home-reminder-date" aria-hidden="true"><strong>${dueDay}</strong><span>${escapeHtml(dueMonth)}</span></span>`
+          : `<span class="ui-icon row-icon" aria-hidden="true">${getAlertIcon(calculateAlertType(alert.dueDate, alert.type, alert.documentType))}</span>`;
+        return `
+        <button class="verify-row${hasDateTile ? ' has-date' : ''}" type="button" data-open-view="alertes">
+          ${dateTile}
           <span class="row-copy">
             <strong>${escapeHtml(alert.title)}</strong>
             <small>${escapeHtml(alert.detail)}</small>
+            <small class="home-reminder-date-label">${dateLabel}</small>
             ${alert.source !== 'document' ? `<small>${documents.some(document => document.id === alert.docId) ? 'Exemple fictif' : 'Source non renseignée'}</small>` : ''}
           </span>
           <span class="stat-arrow" aria-hidden="true">›</span>
         </button>
-      `).join('')}
+      `;
+      }).join('')}
     `;
   }
 
@@ -3999,7 +4161,8 @@ function initAlertsView(params = {}) {
   });
 
   const initialFilter = [...tabs].some(tab => tab.dataset.filter === params?.filter)
-    ? params.filter : 'à-traiter';
+    ? params.filter : mobileLayout.matches ? 'actifs' : 'à-traiter';
+  moreAlertFilters.setAttribute('aria-expanded', String(!['actifs', 'terminés'].includes(initialFilter)));
   renderAlerts(initialFilter);
 }
 
@@ -4020,7 +4183,9 @@ function renderAlerts(filter, restoreFocus = false) {
   const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const snoozedAlerts = activeAlerts.filter(alert => alert.snoozedUntil && alert.snoozedUntil > todayIso);
   const actionableAlerts = activeAlerts.filter(alert => !snoozedAlerts.includes(alert));
-  const filteredAlerts = filter === "historique"
+  const filteredAlerts = filter === 'actifs' ? [...activeAlerts]
+    : filter === 'terminés' ? alerts.filter(alert => alert.status === 'resolved')
+    : filter === "historique"
     ? alerts.filter(alert => alert.status !== "active")
     : filter === "reportées"
       ? snoozedAlerts
@@ -4044,7 +4209,9 @@ function renderAlerts(filter, restoreFocus = false) {
     const f = tab.dataset.filter;
     tab.classList.toggle('is-selected', f === filter);
     tab.setAttribute('aria-pressed', String(f === filter));
-    const count = (f === "historique"
+    const count = (f === 'actifs' ? activeAlerts
+      : f === 'terminés' ? alerts.filter(alert => alert.status === 'resolved')
+      : f === "historique"
       ? alerts.filter(a => a.status !== "active")
       : f === "reportées"
         ? snoozedAlerts
@@ -4060,6 +4227,8 @@ function renderAlerts(filter, restoreFocus = false) {
   const selectedTab = document.querySelector('.alert-filter-tab[aria-pressed="true"]');
   const filterLabel = selectedTab.firstChild.textContent.trim().toLocaleLowerCase('fr');
   const periodTitles = {
+    'actifs': 'Rappels en cours',
+    'terminés': 'Rappels terminés',
     'à-traiter': 'À traiter en premier',
     'à-anticiper': 'À anticiper sereinement',
     'à-surveiller': 'Pour garder le fil',
@@ -4076,7 +4245,8 @@ function renderAlerts(filter, restoreFocus = false) {
 
   if (filteredAlerts.length === 0) {
     const nextTab = [...document.querySelectorAll('.alert-filter-tab')].find(tab =>
-      tab !== selectedTab && Number(tab.querySelector('.alert-badge').textContent) > 0);
+      tab !== selectedTab && (mobileLayout.matches || !tab.classList.contains('prisme-mobile'))
+      && Number(tab.querySelector('.alert-badge').textContent) > 0);
     const hasDocuments = getDocuments().length > 0;
     const emptyTitle = alerts.length === 0 ? 'Vos prochains rappels commencent ici' : 'Aucun rappel dans cette catégorie';
     const emptyMessage = alerts.length === 0
@@ -4145,12 +4315,21 @@ function renderAlerts(filter, restoreFocus = false) {
     const sourceAction = sourceDocument ? 'Voir la copie' : 'Voir mes fichiers';
     const sourceDestination = sourceDocument ? `vos-donnees?docId=${encodeURIComponent(alert.docId)}` : 'vos-donnees';
 
+    const dueDay = dueDateIso ? String(Number(dueDateIso.slice(8, 10))) : "";
+    const dueMonth = dueDateIso
+      ? new Date(`${dueDateIso}T00:00:00`).toLocaleDateString("fr-FR", { month: "short" }).replace(".", "")
+      : "";
+    const dateTile = dueDateIso
+      ? `<div class="alert-date-tile" aria-hidden="true"><strong>${dueDay}</strong><span>${escapeHtml(dueMonth)}</span></div>`
+      : "";
+
     return `
       <li class="alert-timeline-item">
-      <article class="ui-card alert-card ${escapeHtml(alert.type)}${isSnoozed ? " is-snoozed" : ""}" data-alert-card data-alert-id="${escapeHtml(alert.id)}">
+      <article class="ui-card alert-card ${escapeHtml(alert.type)}${isSnoozed ? " is-snoozed" : ""}${dateTile ? " has-date-tile" : ""}" data-alert-card data-alert-id="${escapeHtml(alert.id)}">
         <div class="ui-icon alert-icon" aria-hidden="true">
           ${iconSvg}
         </div>
+        ${dateTile}
         <div class="alert-content">
           <div class="alert-header">
             <h3>${escapeHtml(alert.title)}</h3>
@@ -4323,6 +4502,31 @@ function initHouseView(params = {}) {
   renderHousePhoto();
   const category = [...document.querySelectorAll('[data-house-category]')]
     .some(tab => tab.dataset.houseCategory === params.filter) ? params.filter : 'tout';
+  const categoryFilters = document.querySelector('#house-category-filters');
+  if (categoryFilters) {
+    if (!categoryFilters.dataset.responsiveBound) {
+      categoryFilters.dataset.mobileExpanded = String(category !== 'tout');
+      categoryFilters.dataset.responsiveBound = 'true';
+      categoryFilters.addEventListener('toggle', () => {
+        if (window.matchMedia('(max-width: 1024px)').matches) {
+          categoryFilters.dataset.mobileExpanded = String(categoryFilters.open);
+        }
+      });
+      window.addEventListener('resize', () => {
+        categoryFilters.open = window.matchMedia('(max-width: 1024px)').matches
+          ? categoryFilters.dataset.mobileExpanded === 'true'
+          : true;
+      }, { passive: true });
+    }
+    if (category !== 'tout') categoryFilters.dataset.mobileExpanded = 'true';
+    categoryFilters.open = window.matchMedia('(max-width: 1024px)').matches
+      ? categoryFilters.dataset.mobileExpanded === 'true'
+      : true;
+  }
+  const familyCount = getFamilyMembers().length;
+  document.querySelector('#house-family-count').textContent = familyCount
+    ? `${familyCount} fiche${familyCount > 1 ? 's' : ''} sur cet appareil`
+    : 'Aucune fiche sur cet appareil';
   renderEquipmentList(category);
   initCategoryTabs();
 
@@ -4335,6 +4539,9 @@ function initHouseView(params = {}) {
   document.querySelector('#add-first-equipment').onclick = () => openEquipmentForm();
   document.querySelector('#show-all-equipment').onclick = () => {
     showView('maison');
+    const categoryFilters = document.querySelector('#house-category-filters');
+    categoryFilters.open = true;
+    categoryFilters.dataset.mobileExpanded = 'true';
     document.querySelector('[data-house-category="tout"]').focus();
   };
 
@@ -5001,6 +5208,7 @@ initHouseView();
 initFamilyView();
 initProfileHandlers();
 initImportView();
+initLocalQwenSearch();
 initAssistantView();
 
 function renderInventorySourceStatus() {
@@ -5968,21 +6176,169 @@ async function generatePDF(data) {
 /**
  * Initialize Assistant IA view
  */
+function clearLocalQwenSearchResponse() {
+  if (!searchQwenPanel) return;
+  searchQwenPanel.hidden = true;
+  searchQwenStatus.textContent = "";
+  searchQwenAnswer.replaceChildren();
+  searchQwenCancelButton.hidden = true;
+}
+
+function abortSearchQwenRequest() {
+  searchQwenRequest?.controller.abort();
+}
+
+function initLocalQwenSearch() {
+  if (!searchQwenToggle || !searchQwenDisclosure) return;
+  const isMobileBrowser = navigator.userAgentData?.mobile === true ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!isNativePlatform && !isMobileBrowser) return;
+  searchQwenToggle.disabled = true;
+  searchQwenDisclosure.textContent = isNativePlatform
+    ? "Qwen local est disponible uniquement dans le navigateur sur PC ; il n’est pas raccordé à l’application mobile."
+    : "Qwen local est disponible uniquement dans le navigateur sur PC ; il n’est pas disponible dans un navigateur mobile.";
+}
+
+function renderLocalQwenSearchAnswer(evidence, generated) {
+  const statusLabels = {
+    answered: "Réponse expérimentale Qwen · vérifiez les extraits avant toute décision.",
+    abstained: "Les extraits vérifiés sélectionnés ne suffisent pas à répondre.",
+    clarification: "Précisez le document ou le sujet recherché, puis relancez la recherche.",
+    conflict: "Des extraits vérifiés se contredisent ; vérifiez les sources avant toute décision."
+  };
+  searchQwenPanel.hidden = false;
+  searchQwenStatus.textContent = statusLabels[generated.status];
+  searchQwenAnswer.replaceChildren();
+  if (generated.status === "abstained" || generated.status === "clarification") return;
+  const evidenceById = new Map(evidence.map(item => [item.id, item]));
+  for (const claim of generated.claims) {
+    addTextElement(searchQwenAnswer, "p", "search-qwen-claim", claim.text);
+    for (const citation of claim.citations) {
+      const item = evidenceById.get(citation.evidenceId);
+      if (!item) throw new LocalQwenError("Une citation de Qwen ne correspond à aucun extrait transmis.");
+      const source = addTextElement(searchQwenAnswer, "div", "search-qwen-source", "");
+      addTextElement(source, "blockquote", "search-qwen-quote", citation.quote);
+      addTextElement(source, "p", "search-result-origin",
+        `Source : ${item.match.document.name} · ${item.match.provenance}`);
+    }
+  }
+}
+
+async function runLocalQwenSearchAnswer(question) {
+  const query = question.trim();
+  searchQwenPanel.hidden = false;
+  const isMobileBrowser = navigator.userAgentData?.mobile === true ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isNativePlatform || isMobileBrowser) {
+    searchQwenStatus.textContent = "Qwen local n’a pas été appelé : cette fonction est disponible uniquement dans le navigateur sur PC.";
+    return;
+  }
+  if (!query) {
+    searchQwenStatus.textContent = "Qwen local n’a pas été appelé : saisissez une recherche textuelle.";
+    return;
+  }
+  if (Array.from(query).length > LOCAL_QWEN_LIMITS.questionCharacters) {
+    searchQwenStatus.textContent = `Qwen local n’a pas été appelé : la question dépasse la limite de ${LOCAL_QWEN_LIMITS.questionCharacters} caractères. Les résultats locaux restent affichés.`;
+    return;
+  }
+  const request = getUnifiedIndexSearchRequest(query);
+  if (request.kind === "clarification" || request.profileMismatch) {
+    searchQwenStatus.textContent = request.profileMismatch
+      ? "Qwen local n’a pas été appelé : vérifiez le profil ou reformulez la recherche."
+      : getPhotoQueryClarification(request.clarificationReason);
+    return;
+  }
+  if (!request.query.trim()) {
+    searchQwenStatus.textContent = "Qwen local n’a pas été appelé : cette recherche ne fournit aucun extrait textuel à vérifier.";
+    return;
+  }
+  const filters = mergeUnifiedIndexFilters(request.filters, getExperimentalIndexFilters());
+  if (!filters) {
+    searchQwenStatus.textContent = "Qwen local n’a pas été appelé : les filtres choisis et interprétés se contredisent.";
+    return;
+  }
+  const context = prepareAssistantContext({
+    session: experimentalIndex,
+    question: request.query,
+    documents: uploadedDocuments,
+    sourceStatuses: getSourceStatuses(),
+    filters
+  });
+  if (request.importDateRange) {
+    context.matches = context.matches.filter(match =>
+      isWithinDateRange(match.document.importedAt, request.importDateRange));
+    if (!context.matches.length) context.status = "no-evidence";
+  }
+  if (contractsOnly()) {
+    context.matches = context.matches.filter(match => isContract(match.document));
+    if (!context.matches.length) context.status = "no-evidence";
+  }
+  const response = { ...buildSearchResponse(context.matches), matches: context.matches, context };
+  const evidence = prepareLocalQwenEvidence(response, { allowVerifiedExcerpts: true });
+  if (!evidence.length) {
+    searchQwenStatus.textContent = context.status === "clarification" || context.matches.some(match => match.ambiguous)
+      ? "Qwen local n’a pas été appelé : plusieurs sources ou sujets exigent une précision."
+      : "Qwen local n’a pas été appelé : aucun extrait textuel vérifié et admissible ne correspond à cette recherche. Les résultats locaux restent affichés.";
+    return;
+  }
+  const controller = new AbortController();
+  const currentRequest = { controller, context, query };
+  searchQwenRequest = currentRequest;
+  searchQwenStatus.textContent = `Qwen local expérimental prépare une réponse à partir de ${evidence.length} extrait(s) vérifié(s) sur ce PC.`;
+  searchQwenCancelButton.hidden = false;
+  try {
+    const generated = await generateLocalQwenAnswer({ question: query, evidence, signal: controller.signal });
+    if (activeView !== "recherche" || !searchQwenToggle.checked ||
+        searchQwenRequest !== currentRequest || experimentalIndexQuery.value.trim() !== query ||
+        !isAssistantContextCurrent(context)) {
+      if (activeView === "recherche") {
+        searchQwenStatus.textContent = "La recherche ou ses sources ont changé ; la réponse Qwen périmée n’a pas été affichée.";
+      }
+      return;
+    }
+    renderLocalQwenSearchAnswer(evidence, generated);
+  } catch (error) {
+    if (controller.signal.aborted) {
+      searchQwenStatus.textContent = isAssistantContextCurrent(currentRequest.context)
+        ? "Recherche Qwen annulée. Les résultats locaux restent affichés."
+        : "La recherche ou ses sources ont changé ; la réponse Qwen périmée n’a pas été affichée.";
+    } else {
+      console.error("Impossible de préparer la réponse Qwen depuis Recherche :", error);
+      searchQwenStatus.textContent = error instanceof LocalQwenError
+        ? `Qwen local n’a pas répondu : ${error.message}`
+        : "La réponse Qwen n’a pas pu être préparée ; les résultats locaux restent affichés.";
+    }
+  } finally {
+    if (searchQwenRequest === currentRequest) searchQwenRequest = null;
+    searchQwenCancelButton.hidden = true;
+  }
+}
+
 function initAssistantView() {
   const form = document.querySelector('#assistant-form');
   const input = document.querySelector('#assistant-input');
   const chatContainer = document.querySelector('#assistant-chat');
   const qwenToggle = document.querySelector('#assistant-use-qwen');
   const qwenDisclosure = document.querySelector('#assistant-qwen-disclosure');
+  const qwenCancelButton = document.querySelector('#assistant-cancel-qwen');
   const submitButton = form?.querySelector('button[type="submit"]');
   const suggestionChips = document.querySelectorAll('.assistant-suggestion-chip');
+  const isMobileBrowser = navigator.userAgentData?.mobile === true ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const canUseLocalQwen = !isNativePlatform && !isMobileBrowser;
 
   if (!form || !input || !chatContainer) return;
   refreshAssistantContext();
-  if (isNativePlatform && qwenToggle) {
+  if (!canUseLocalQwen && qwenToggle) {
     qwenToggle.disabled = true;
-    qwenDisclosure.textContent = 'Qwen local est disponible uniquement dans le navigateur sur PC ; il n’est pas raccordé à l’application mobile.';
+    qwenDisclosure.textContent = isNativePlatform
+      ? 'Qwen local est disponible uniquement dans le navigateur sur PC ; il n’est pas raccordé à l’application mobile.'
+      : 'Qwen local est disponible uniquement dans le navigateur sur PC ; il n’est pas disponible dans un navigateur mobile.';
   }
+  qwenCancelButton?.addEventListener('click', abortAssistantQwenRequest);
 
   // Handle suggestion chips
   suggestionChips.forEach(chip => {
@@ -6007,33 +6363,43 @@ function initAssistantView() {
       return;
     }
 
+    let qwenController = null;
     try {
       refreshAssistantContext();
       let aiResponse = getAssistantResponse(question);
       let statusMessage = 'Réponse affichée dans la conversation.';
       if (qwenToggle?.checked) {
-        const evidence = prepareLocalQwenEvidence(aiResponse);
-        if (isNativePlatform) {
+        if (!canUseLocalQwen) {
           statusMessage = 'Qwen local n’a pas été appelé : cette fonction est disponible uniquement sur PC.';
-        } else if (!evidence.length) {
-          const ambiguous = aiResponse.status === "ambiguous" ||
-            aiResponse.context?.status === "clarification" ||
-            aiResponse.context?.matches?.some(match => match.ambiguous);
-          statusMessage = ambiguous
-            ? 'Qwen local n’a pas été appelé : la recherche locale a détecté plusieurs réponses ou sujets possibles.'
-            : 'Qwen local n’a pas été appelé : aucun fait exact pertinent n’a été extrait des passages locaux.';
+        } else if (Array.from(question).length > LOCAL_QWEN_LIMITS.questionCharacters) {
+          statusMessage = `Qwen local n’a pas été appelé : la question dépasse la limite de ${LOCAL_QWEN_LIMITS.questionCharacters} caractères.`;
         } else {
-          isSubmitting = true;
-          input.disabled = true;
-          qwenToggle.disabled = true;
-          if (submitButton) submitButton.disabled = true;
-          status.textContent = 'Qwen local expérimental en cours : seuls la question et jusqu’à deux faits exacts extraits des passages vérifiés seront envoyés à Ollama sur ce PC.';
-          const generated = await generateLocalQwenAnswer({ question, evidence });
-          if (!isAssistantContextCurrent(aiResponse.context)) {
-            throw new LocalQwenError('Une source a changé pendant la génération. Relancez la question pour actualiser les preuves.');
+          const evidence = prepareLocalQwenEvidence(aiResponse, { allowVerifiedExcerpts: true });
+          if (!evidence.length) {
+            const ambiguous = aiResponse.status === "ambiguous" ||
+              aiResponse.context?.status === "clarification" ||
+              aiResponse.context?.matches?.some(match => match.ambiguous);
+            statusMessage = ambiguous
+              ? 'Qwen local n’a pas été appelé : la recherche locale a détecté plusieurs réponses ou sujets possibles.'
+              : aiResponse.context?.matches?.some(match => typeof match.exactFact === "string" && match.exactFact.trim())
+              ? 'Qwen local n’a pas été appelé : aucun passage vérifié admissible ne peut être envoyé sans transmettre le document complet ou dépasser les limites.'
+              : 'Qwen local n’a pas été appelé : aucun extrait textuel vérifié et pertinent n’a été trouvé.';
+          } else {
+            isSubmitting = true;
+            input.disabled = true;
+            qwenToggle.disabled = true;
+            if (submitButton) submitButton.disabled = true;
+            if (qwenCancelButton) qwenCancelButton.hidden = false;
+            qwenController = new AbortController();
+            assistantQwenRequest = { controller: qwenController, context: aiResponse.context };
+            status.textContent = `Qwen local expérimental en cours : seuls la question et jusqu’à ${LOCAL_QWEN_LIMITS.evidencePassages} extraits vérifiés seront envoyés à Ollama sur ce PC.`;
+            const generated = await generateLocalQwenAnswer({ question, evidence, signal: qwenController.signal });
+            if (!isAssistantContextCurrent(aiResponse.context)) {
+              throw new LocalQwenError('Une source a changé pendant la génération. Relancez la question pour actualiser les preuves.');
+            }
+            aiResponse = withLocalQwenAnswer(aiResponse, evidence, generated);
+            statusMessage = 'Réponse expérimentale Qwen affichée. Vérifiez les citations et les passages source avant toute décision.';
           }
-          aiResponse = withLocalQwenAnswer(aiResponse, evidence, generated);
-          statusMessage = 'Réponse expérimentale Qwen affichée. Vérifiez les citations et les passages source avant toute décision.';
         }
       }
       addUserMessage(question, chatContainer);
@@ -6041,16 +6407,26 @@ function initAssistantView() {
       input.value = '';
       status.textContent = statusMessage;
     } catch (error) {
-      invalidateAssistantResponses(true);
-      console.error("Impossible de préparer la réponse de l'assistant :", error);
-      status.textContent = error instanceof LocalQwenError
-        ? `Qwen local n’a pas répondu : ${error.message} Votre question est conservée ; vous pouvez réessayer.`
-        : 'La réponse n’a pas pu être préparée. Votre question est conservée ; vous pouvez réessayer.';
+      const requestContext = assistantQwenRequest?.context;
+      if (requestContext && !isAssistantContextCurrent(requestContext)) {
+        invalidateAssistantResponses();
+        status.textContent = 'Une source a changé pendant la génération. La réponse périmée n’a pas été affichée ; votre question est conservée. Relancez-la pour actualiser les preuves.';
+      } else if (qwenController?.signal.aborted) {
+        status.textContent = 'Génération Qwen annulée. Votre question est conservée ; vous pouvez la modifier ou réessayer.';
+      } else {
+        invalidateAssistantResponses(true);
+        console.error("Impossible de préparer la réponse de l'assistant :", error);
+        status.textContent = error instanceof LocalQwenError
+          ? `Qwen local n’a pas répondu : ${error.message} Votre question est conservée ; vous pouvez réessayer.`
+          : 'La réponse n’a pas pu être préparée. Votre question est conservée ; vous pouvez réessayer.';
+      }
     } finally {
       isSubmitting = false;
       input.disabled = false;
-      if (qwenToggle && !isNativePlatform) qwenToggle.disabled = false;
+      if (qwenToggle && canUseLocalQwen) qwenToggle.disabled = false;
       if (submitButton) submitButton.disabled = false;
+      if (qwenCancelButton) qwenCancelButton.hidden = true;
+      if (assistantQwenRequest?.controller === qwenController) assistantQwenRequest = null;
     }
     input.focus({ preventScroll: true });
   });
@@ -6068,6 +6444,9 @@ function refreshAssistantContext() {
 }
 
 function invalidateAssistantResponses(force = false) {
+  if (assistantQwenRequest && !isAssistantContextCurrent(assistantQwenRequest.context)) {
+    abortAssistantQwenRequest();
+  }
   for (const [node, response] of assistantResponseContexts) {
     if (!force && (response.context
       ? response.context.scope.corpusRevision === experimentalIndex.getRevision() &&
@@ -6078,6 +6457,10 @@ function invalidateAssistantResponses(force = false) {
     node.querySelectorAll('.assistant-source, .assistant-query').forEach(element => element.remove());
     assistantResponseContexts.delete(node);
   }
+}
+
+function abortAssistantQwenRequest() {
+  assistantQwenRequest?.controller.abort();
 }
 
 /**
@@ -6121,7 +6504,9 @@ function addAIMessage(response, container) {
       addTextElement(source, "p", "assistant-proof-label", match.modelQuotes?.length
         ? "Citation de Qwen · passage littéral à vérifier"
         : "Passage fourni à Qwen · non cité dans sa réponse");
-      for (const quote of match.modelQuotes?.length ? match.modelQuotes : [match.evidence].filter(Boolean)) {
+      const excerpts = match.modelQuotes?.length ? match.modelQuotes
+        : match.evidenceTexts?.length ? match.evidenceTexts : [match.evidence].filter(Boolean);
+      for (const quote of excerpts) {
         const evidence = addTextElement(source, "blockquote", "assistant-evidence", "");
         addTextElement(evidence, "mark", "", quote);
       }
@@ -6217,9 +6602,26 @@ function getAssistantResponse(question) {
 function withLocalQwenAnswer(response, evidence, generated) {
   const displayClaims = generated.status === "abstained" ? [] : generated.claims;
   const quotesByEvidence = new Map(evidence.map(item => [item.id, new Set()]));
+  const matchesByIdentity = new Map();
   for (const claim of displayClaims) {
     for (const citation of claim.citations) {
       quotesByEvidence.get(citation.evidenceId)?.add(citation.quote);
+    }
+  }
+  for (const item of evidence) {
+    const key = JSON.stringify([item.match.sourceId, item.match.accountRef, item.match.itemId]);
+    if (!matchesByIdentity.has(key)) {
+      matchesByIdentity.set(key, {
+        ...item.match,
+        evidence: item.text,
+        evidenceTexts: [],
+        modelQuotes: []
+      });
+    }
+    const match = matchesByIdentity.get(key);
+    if (!match.evidenceTexts.includes(item.text)) match.evidenceTexts.push(item.text);
+    for (const quote of quotesByEvidence.get(item.id) || []) {
+      if (!match.modelQuotes.includes(quote)) match.modelQuotes.push(quote);
     }
   }
   const statusLabels = {
@@ -6231,19 +6633,17 @@ function withLocalQwenAnswer(response, evidence, generated) {
   return {
     ...response,
     label: statusLabels[generated.status],
-    matches: evidence.map(item => ({
-      ...item.match,
-      evidence: item.text,
-      modelQuotes: [...quotesByEvidence.get(item.id)]
-    })),
+    matches: [...matchesByIdentity.values()],
     modelAnswer: {
       ...generated,
       claims: displayClaims,
       displayText: generated.status === "abstained"
         ? "Les passages vérifiés sélectionnés ne suffisent pas à répondre."
-        : displayClaims.length
+        : generated.status === "clarification"
+          ? "Plusieurs sujets peuvent correspondre. Précisez le document ou le sujet recherché."
+          : displayClaims.length
           ? displayClaims.map(claim => claim.text).join("\n")
-          : generated.answer
+          : "Qwen n’a pas fourni de réponse vérifiable."
     }
   };
 }

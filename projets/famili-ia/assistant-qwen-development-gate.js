@@ -117,7 +117,7 @@ export function prepareAssistantQwenDevelopmentCase(entry) {
   const documents = entry.input.evidence.map(item => ({
     id: item.id,
     name: item.name,
-    content: item.text,
+    content: `Document fictif\n${item.text}`,
     isLocal: true
   }));
   const session = new IndexSession();

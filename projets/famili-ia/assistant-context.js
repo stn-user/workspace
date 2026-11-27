@@ -1,6 +1,7 @@
 import { getInventoryAccountRef, getInventorySource } from "./data-inventory.js";
 import { describeExperimentalResult } from "./experimental-result.js";
 import { isPhotoDocument } from "./photo-annotations.js";
+import { LOCAL_QWEN_LIMITS } from "./assistant-local-qwen.js";
 import {
   containsModelDirectedInstruction, detectQuestionIntent, extractExactFact, getExpandedTerms, getProvenance,
   getQuestionSubjectTerms
@@ -118,7 +119,7 @@ export function prepareAssistantContext({ session, question, documents, sourceSt
   return context;
 }
 
-export function prepareLocalQwenEvidence(response) {
+export function prepareLocalQwenEvidence(response, { allowVerifiedExcerpts = false } = {}) {
   if (!response || !Array.isArray(response.matches)) {
     throw new TypeError("Réponse locale invalide pour la préparation des faits Qwen.");
   }
@@ -126,15 +127,30 @@ export function prepareLocalQwenEvidence(response) {
   if (!Array.isArray(response.context.matches)) {
     throw new TypeError("Contexte local invalide pour la préparation des faits Qwen.");
   }
-  if (response.context.status !== "ready" || response.status !== "supported" ||
+  const allowedStatuses = allowVerifiedExcerpts
+    ? ["supported", "excerpt", "fact-not-found"] : ["supported"];
+  if (response.context.status !== "ready" || !allowedStatuses.includes(response.status) ||
       response.context.matches.some(match => match.ambiguous)) return [];
-  return response.matches
-    .filter(match => match && typeof match.exactFact === "string" && match.exactFact.trim() && !match.ambiguous)
-    .slice(0, 2)
-    .map((match, index) => ({
-      id: `evidence-${index + 1}`,
-      text: match.exactFact,
-      verified: true,
-      match
-    }));
+  const selected = [];
+  const seen = new Set();
+  let totalCharacters = 0;
+  for (const match of response.context.matches) {
+    if (!match || match.ambiguous || !Array.isArray(match.segments)) continue;
+    const candidate = allowVerifiedExcerpts ? match.exactFact || match.evidence : match.exactFact;
+    if (typeof candidate !== "string" || !candidate.trim()) continue;
+    const text = candidate.trim();
+    const textLength = Array.from(text).length;
+    const documentText = typeof match.document?.content === "string" ? match.document.content.trim() : null;
+    const identity = JSON.stringify([match.sourceId, match.accountRef, match.itemId, text]);
+    if (seen.has(identity) || documentText === text ||
+        containsModelDirectedInstruction(text) ||
+        !match.segments.some(segment => segment.includes(text)) ||
+        textLength > LOCAL_QWEN_LIMITS.evidenceCharacters ||
+        totalCharacters + textLength > LOCAL_QWEN_LIMITS.totalEvidenceCharacters) continue;
+    seen.add(identity);
+    selected.push({ id: `evidence-${selected.length + 1}`, text, verified: true, match });
+    totalCharacters += textLength;
+    if (selected.length === LOCAL_QWEN_LIMITS.evidencePassages) return selected;
+  }
+  return selected;
 }

@@ -1,8 +1,8 @@
 # Famili-IA — plan opérationnel restant
 
-**Plan actif, révisé le 25 novembre 2026.** Il remplace la feuille de route active précédente, archivée à l'identique dans [DEVELOPPEMENT_PLAN_old.md](./DEVELOPPEMENT_PLAN_old.md). L'archive conserve les décisions, validations et cases cochées historiques ; elle ne constitue pas le plan d'exécution courant.
+**Plan actif, révisé le 27 novembre 2026.** Il remplace la feuille de route active précédente, archivée à l'identique dans [DEVELOPPEMENT_PLAN_old.md](./DEVELOPPEMENT_PLAN_old.md). L'archive conserve les décisions, validations et cases cochées historiques ; elle ne constitue pas le plan d'exécution courant.
 
-Ce plan détaille les six chantiers demandés : terminer et cadrer l'intégration applicative de Qwen3:8b, simplifier les pages, ajouter une navigation par glissement sur mobile, simplifier l'indexation sans dépasser les autorisations, revoir les alertes familiales, puis décider et mettre en œuvre un modèle économique. Les capacités et états décrits ci-dessous sont le point de départ constaté, pas une promesse de livraison.
+Ce plan détaille les six chantiers demandés : terminer et cadrer l'intégration applicative de Qwen3:8b, rendre les pages plus intuitives et y intégrer progressivement la direction graphique Prisme, ajouter une navigation par glissement sur mobile, simplifier l'indexation sans dépasser les autorisations, revoir les alertes familiales, puis décider et mettre en œuvre un modèle économique. Les capacités et états décrits ci-dessous sont le point de départ constaté, pas une promesse de livraison.
 
 Une case ne peut être cochée qu'après réalisation du parcours complet, exécution des vérifications indiquées, documentation des résultats et revue des changements. Un test simulé n'est pas une validation sur un compte fournisseur ou un appareil réel.
 
@@ -21,6 +21,7 @@ Une case ne peut être cochée qu'après réalisation du parcours complet, exéc
 - Ne pas demander d'accès global aux fichiers. Un scan automatique éventuel ne couvre que le périmètre précisément choisi et accordé par l'utilisateur, et seulement les formats réellement pris en charge.
 - Ne pas élargir permissions, authentification, chiffrement, synchronisation, migrations, partage ou suppression sans une mission explicite, une décision documentée et des critères de validation adaptés. Ne jamais supprimer les originaux de l'utilisateur.
 - Respecter les conventions d'interface de [CLAUDE.md](./CLAUDE.md), notamment les composants et tokens existants, les états d'erreur, les preuves/provenances utiles et une aide compacte placée au point d'action plutôt qu'en paragraphes répétés.
+- Pour la refonte graphique, suivre le [guide d'adoption Prisme](./docs/guide/prisme.md) et ses [compositions interactives](./docs/guide/prisme.html) : adoption par vue, composants `ui-*` réutilisés, pas de nouveau thème global ni de remplacement implicite de la navigation.
 - Pour chaque lot Cline, appliquer le [guide de mission et de contrôle](./docs/guide/developpement-assiste.md), lire les fichiers concernés et vérifier l'état Git avant modification. Protéger les modifications préexistantes, suivre un périmètre borné et livrer code, tests et documentation ensemble.
 - La configuration souhaitée de Cline est décrite dans [`.clinerules`](../../.clinerules/execution-commandes.md) : Plan = OmniRoute / NVIDIA Poolside Laguna XS ; Act = Ollama local / `qwen3:14B`. Ce routage concerne Cline seulement ; il ne modifie pas le modèle applicatif Qwen3:8b.
 - Ne pas installer de dépendance, modifier la configuration d'un fournisseur, créer de compte, effectuer un achat ou créer un commit sans autorisation adaptée.
@@ -29,7 +30,7 @@ Une case ne peut être cochée qu'après réalisation du parcours complet, exéc
 
 1. Vérifier la configuration et le protocole de travail Cline, puis prendre une base de tests/documentation.
 2. Stabiliser le parcours existant de Qwen3:8b sans changer le prompt sans preuve.
-3. Simplifier les contenus des vues par lots ; en parallèle, cadrer puis implémenter les gestes de navigation après validation du parcours cible.
+3. Intégrer progressivement Prisme et simplifier les vues par lots, en commençant par une tuile de l'Accueil ; en parallèle, cadrer puis implémenter les gestes de navigation après validation du parcours cible.
 4. Étudier l'accès automatique à un dossier autorisé avant tout changement de permission ou scan natif.
 5. Décider si le partage des alertes est local au même appareil ou entre comptes/appareils ; n'implémenter le second qu'après décision d'architecture.
 6. Choisir les offres et canaux de vente après estimation des coûts et retours utilisateur ; le paiement vient en dernier, après approbation explicite.
@@ -39,52 +40,61 @@ Les étapes de recherche et de décision peuvent avancer en parallèle. Aucun ch
 
 ---
 
-## Chantier 1 — Finaliser le parcours applicatif Qwen3:8b
+## Chantier 1 — Étendre l'usage applicatif Qwen3:8b
 
-**Objectif :** terminer et documenter l'intégration locale existante sans la présenter comme qualifiée tant que les contrôles de qualité ne le permettent pas. Le choix Cline `qwen3:14B` n'autorise pas à remplacer le modèle de l'application.
+**Objectif :** rendre Qwen3:8b utilisable, en local et sur opt-in, depuis Recherche et l'Assistant pour répondre à des questions fondées sur les documents présents dans Famili-IA. La qualification globale est une décision séparée : elle ne bloque pas une mise en œuvre expérimentale et ne doit pas être annoncée sans preuves suffisantes. Le choix Cline `qwen3:14B` ne remplace pas le modèle applicatif.
 
 ### Étapes à réaliser
 
-- [ ] **1.1 — Figer le périmètre applicatif :** confirmer les plateformes prises en charge (actuellement navigateur sur ordinateur), le caractère opt-in, les réglages, le modèle, le prompt `1.1.0`, les limites de contexte et les erreurs visibles. Séparer explicitement ce périmètre de Cline.
-- [ ] **1.2 — Vérifier l'intégration de bout en bout :** parcourir question, index commun, sélection de preuves vérifiées, barrière locale, appel à `127.0.0.1:11434`, validation stricte de la sortie et affichage des citations. Préserver la réponse déterministe lorsqu'aucun fait exact admissible n'existe.
-- [ ] **1.3 — Vérifier les cas de sécurité et d'état :** absence de preuve, fait manquant, ambiguïté, conflit, instruction hostile dans un document, citation invalide, modèle indisponible, annulation et modification du document pendant la génération. Une sortie invalide ou obsolète ne doit jamais être affichée comme une réussite.
-- [ ] **1.4 — Décider du statut produit :** conserver l'étiquette expérimentale tant que la décision de qualification n'est pas étayée. Pour une qualification globale, définir une campagne versionnée nouvelle et indépendante ; ne pas réutiliser A2/A2.2, A5 ou D1/D2/D3 pour régler le prompt. Si une nouvelle modification du prompt est envisagée, créer d'abord un nouveau jeu de développement distinct, puis un nouveau contrôle après gel du prompt.
-- [ ] **1.5 — Trancher le déploiement mobile séparément :** ne pas appeler Ollama sur le téléphone via `127.0.0.1`, ne pas ouvrir Ollama au réseau local et ne pas élargir CORS. Une cible mobile exige une architecture et une revue dédiées avant toute implémentation.
+- [x] **1.1 — Fixer le périmètre d'usage :** navigateur sur ordinateur, Ollama sur `127.0.0.1:11434`, modèle `qwen3:8b`, prompt `1.1.0`, opt-in distinct depuis Recherche et l'Assistant, questions limitées à 500 caractères et jusqu'à huit extraits vérifiés (1 024 caractères par extrait, 8 192 au total). Pas de connaissances générales, de document complet, de nom de fichier ou d'historique transmis.
+- [x] **1.2 — Intégrer Qwen à Recherche :** conserver l'index local et ses filtres pour choisir les résultats ; sur soumission explicite et opt-in, permettre une réponse Qwen à partir des seuls extraits vérifiés correspondants. Ne pas présenter cette étape comme une recherche sémantique ou un reclassement du corpus.
+- [x] **1.3 — Élargir l'usage dans l'Assistant :** autoriser des questions documentaires plus générales et des réponses synthétisées à partir de plusieurs extraits et sources locales vérifiés, même sans extraction préalable d'un fait unique. Conserver les citations littérales, la provenance, l'abstention en absence de preuve et l'invalidation des réponses périmées.
+- [x] **1.4 — Vérifier les cas de sécurité et d'état :** absence de preuve textuelle, fait manquant, ambiguïté, conflit, instruction hostile dans un document, citation invalide, modèle indisponible, annulation et modification du document pendant la génération. Une sortie invalide ou obsolète ne doit jamais être affichée comme une réussite.
+- [x] **1.5 — Séparer mise en œuvre et qualification :** conserver l'étiquette expérimentale. La qualification globale exige un protocole versionné, des seuils de qualité, une revue sémantique indépendante reliée aux sorties exactes et des limites publiées. A2.2 demeure rejetée jusqu'à une nouvelle décision/version qui satisfait ses critères ; A5 et D3 ne sont pas des qualifications globales.
+- [x] **1.6 — Trancher le déploiement mobile séparément :** ne pas appeler Ollama sur le téléphone via `127.0.0.1`, ne pas ouvrir Ollama au réseau local et ne pas élargir CORS. Une cible mobile exige une architecture et une revue dédiées avant toute implémentation.
 
 **Critères de sortie :**
 
-- Seuls les faits exacts, vérifiés et strictement nécessaires sont transmis ; jamais un document complet ni l'historique de conversation.
-- Aucun appel modèle si la barrière détermine absence de fait admissible, ambiguïté ou conflit.
-- Chaque affirmation affichée passe le schéma et la validation de citations littérales ; la provenance visible correspond aux preuves transmises.
-- Les réponses tardives, annulées, non citées ou liées à un instantané périmé sont écartées avec une erreur ou un état explicite, jamais un repli silencieux.
+- Seuls la question et des extraits de texte vérifiés, issus du contexte local retenu, sont transmis ; jamais un document complet, un nom de fichier ou l'historique.
+- Recherche conserve son index et ses filtres déterministes ; Qwen ne reçoit que les preuves des résultats correspondant à la recherche et aux filtres actifs.
+- Aucun appel modèle sans extrait vérifié admissible, en cas d'ambiguïté ou de conflit ; les résultats déterministes restent visibles si Qwen est désactivé ou échoue.
+- Chaque affirmation affichée passe le schéma et la validation de citations littérales ; les preuves et sources correspondantes restent visibles.
+- Les réponses tardives, annulées, non citées ou liées à un instantané périmé sont écartées avec un état explicite.
 - Aucun réseau externe n'est utilisé par le parcours local et aucune action ne peut être exécutée sur la seule instruction du modèle.
-- Un éventuel statut « qualifié » exige un protocole versionné, les seuils de qualité applicables, une revue sémantique indépendante reliée aux sorties exactes et des limites publiées. A2.2 demeure rejetée jusqu'à ce qu'une nouvelle décision/version satisfasse ses critères ; les contrôles réussis A5/D3 ne l'annulent pas.
+- Un éventuel statut « qualifié » reste distinct de l'usage expérimental et doit satisfaire les exigences de revue indépendante. La qualification n'est pas un préalable à la livraison de cet usage expérimental.
 
-**Tests et preuves à fournir :** tests unitaires de validation/barrière ; tests navigateur sur refus, opt-in, erreur, annulation et invalidation ; campagne entièrement synthétique ; vérification réseau local ; rapport brut conservé hors dépôt si nécessaire. Pour chaque commande, noter son résultat réel et ne pas confondre test applicatif et qualification du modèle.
+**Tests et preuves à fournir :** tests unitaires de validation/barrière et de sélection de plusieurs extraits ; tests navigateur pour Recherche et Assistant, opt-in, refus, erreur, annulation et invalidation ; vérification avec données fictives et réseau local uniquement. Noter les résultats réels sans confondre test applicatif et qualification du modèle.
+
+### Validation de l'intégration — 27 novembre 2026
+
+- `node --test tests/assistant-local-qwen.test.js tests/search-quality.test.js tests/assistant-qwen-development-gate.test.js` : 30/30 réussis.
+- `npx playwright test tests/assistant-ui.spec.js tests/search-qwen.spec.js --grep "Qwen"` : 14/14 réussis ; inclut opt-in, refus, annulation, citations, injections et modification d'une source pendant une génération dans les deux parcours. Le premier passage a échoué sur une attente de résultat local devenue invalide après modification de la preuve ; l'assertion a été corrigée pour vérifier l'état réel « Aucun résultat », puis les 14 tests ont réussi. Le contrôle initial de l'opt-in Assistant a aussi été rejoué seul : 1/1 réussi.
+- `npm run build` : réussi.
+- Smoke Chromium vers Ollama local `qwen3:8b`, avec une facture synthétique uniquement : 2 appels à `/api/chat`, preuve littérale visible dans Recherche et l'Assistant, aucun appel HTTPS observé. Une première tentative de smoke n'a pas produit de résultat à cause de l'encodage du script PowerShell et d'une requête fixture mal ciblée ; le smoke corrigé a réussi.
+- Ces résultats valident le branchement expérimental et ses barrières, pas la qualité sémantique générale du modèle. La qualification globale reste ouverte et A2.2 reste rejetée.
 
 ---
 
-## Chantier 2 — Rendre les pages plus intuitives et moins verbeuses
+## Chantier 2 — Rendre les pages intuitives et intégrer la direction graphique Prisme
 
-**Objectif :** réduire les blocs explicatifs répétitifs et rendre l'action principale, l'état et la suite à donner compréhensibles rapidement, sans cacher les limites nécessaires.
+**Objectif :** faire évoluer progressivement les vues actives vers la direction graphique Prisme, tout en rendant leur action principale, leur état et la suite à donner plus immédiatement compréhensibles. Réduire les explications répétitives, sans cacher les informations nécessaires aux décisions, à la confidentialité, à la provenance ou à la sécurité. À la demande explicite de l'utilisateur, les quatre destinations de la maquette deviennent le parcours mobile principal : Accueil, Recherche, Foyer (route Maison) et Rappels (route Alertes). La navigation desktop et les routes métier restent en place ; les autres destinations restent accessibles depuis Plus.
 
 ### Étapes à réaliser
 
-- [ ] **2.1 — Inventorier les vues et leur texte :** établir un état initial par page (Accueil, Recherche, Assistant, Importer, Alertes, Famille, Maison, détails, Profil, Vos données et autres vues actives) : titre, action principale, aides répétées, avertissements, informations de provenance et états vide/erreur.
-- [ ] **2.2 — Distinguer essentiel et répétitif :** conserver près de l'action les permissions, le consentement, les erreurs, les limites d'accès/couverture, les preuves, la confirmation et les conséquences de suppression ; supprimer uniquement les répétitions ou textes qui ne servent pas à une décision.
-- [ ] **2.3 — Définir avec l'utilisateur la cible de simplification par lot :** consigner le nombre de mots/blocs avant et après et le résultat attendu avant de modifier une vue. Ne pas réduire le texte en remplaçant les libellés par des icônes ou des infobulles permanentes.
-- [ ] **2.4 — Prototyper puis livrer par petits groupes cohérents :** commencer par les vues présentant le plus de texte redondant, réutiliser les composants UI existants et maintenir les liens d'aide accessibles sur demande.
-- [ ] **2.5 — Faire valider les parcours :** vérifier qu'un utilisateur comprend l'action principale, les états et les limites sans aide extérieure ; relever les incompréhensions et corriger avant de cocher le lot.
-
-**Critères de sortie :**
-
-- Un relevé avant/après existe pour chaque vue modifiée ; chaque bloc conservé a une raison liée à l'action, à la sécurité, à une limite ou à un état.
+- [ ] **2.1 — Établir l'état initial des vues :** pour Accueil, Recherche, Assistant, Importer, Alertes, Famille, Maison, détails, Profil, Vos données et les autres vues actives, relever titre, action, hiérarchie visuelle, composants, texte répété, provenance, limites et états vide/chargement/erreur/succès/action requise. Capturer les vues retenues avant toute modification. *Avancement : premier relevé et captures de dix vues à 390 px dans l'[inventaire](./docs/guide/chantier-2-inventaire.md) ; fiches de détail et états non nominaux restent à inventorier. Lot 1 (tuile Accueil) livré techniquement : −16,8 % de mots à 390 px, tests ciblés et build réussis. Lot 2 (Recherche) : −24 % à l'état vide, −14 % avec un résultat, 29 tests ciblés et build réussis. Lot 3 (Assistant) : −23 % à l'état initial, −15 % après une réponse, tests ciblés et build réussis. Lot 4 (Maison et Famille) : environ −36 % et −28 % à l'état vide, tests ciblés et build réussis. Lot 5 (Alertes) : tuile date corail, surtitre/sous-titre retirés, 20 tests ciblés et build réussis. Lot 6 (Importer et Vos données) : −13 % et −12 % de mots visibles, permissions et limites conservées, 33 tests ciblés et build réussis. Lot 7 (Profil, Plus et fiche de détail) : −25 % et −13 %, 33 tests ciblés et build réussis. Toutes les vues actives ont reçu Prisme ; validation utilisateur en attente pour les sept lots ; aucune case cochée.*- [ ] **2.2 — Définir le langage visuel et son raccordement :** utiliser la galerie Prisme et le guide d'intégration pour faire correspondre les compositions aux composants et tokens `ui-*` existants. Charger les styles Prisme de façon locale à la vue ; ne pas recolorer le `body` ni créer un système de composants concurrent. Le réagencement mobile convenu conserve les routes et fonctions métier existantes.
+- [ ] **2.3 — Fixer l'ordre et les objectifs des lots :** commencer par une tuile d'Accueil reliée à une action existante, puis proposer les lots cohérents suivants (preuve Recherche/Assistant, Foyer/Maison, Rappels/Alertes). Avant chaque lot, convenir avec l'utilisateur des vues concernées et du résultat attendu ; mesurer les mots/blocs avant et après. Les quatre onglets sont désormais le parcours mobile convenu ; la navigation desktop reste distincte.
+- [ ] **2.4 — Simplifier sans supprimer l'information utile :** garder près de l'action les permissions, le consentement, les erreurs, les limites d'accès et de couverture, les preuves/provenances, confirmations et conséquences de suppression. Ne retirer que les répétitions sans utilité décisionnelle ; conserver des libellés visibles, sans substituer des icônes ou infobulles permanentes au texte.
+- [ ] **2.5 — Intégrer par petits lots réversibles :** appliquer les composants Prisme aux vues ciblées en conservant les mécanismes, données et états métier existants. Réorganiser la navigation mobile conformément au choix explicite de l'utilisateur sans supprimer les routes ; les autres vues restent accessibles depuis Plus. Respecter les illustrations comme décor (jamais une photo personnelle), les couleurs d'état sémantiques, le mouvement réduit, les tokens et les dialogues de production.
+- [ ] **2.6 — Valider chaque lot avant de poursuivre :** comparer les captures avant/après et vérifier la compréhension de l'action, des états et des limites ; consigner les incompréhensions et corrections, puis obtenir la validation utilisateur du parcours. Ne pas généraliser à d'autres vues avant cette validation.**Critères de sortie :**
+- Chaque vue modifiée possède un relevé avant/après de sa hiérarchie, ses composants et son nombre de mots/blocs ; les éléments conservés servent à l'action, à la sécurité, à une limite ou à un état.
+- Les styles Prisme sont isolés aux vues retenues et réutilisent les tokens et composants de production ; aucune régression globale ni changement involontaire de routes, destinations ou fonctions n'est introduit.
 - Aucune information requise pour le consentement, la provenance, la couverture, une erreur ou une action destructive n'a été supprimée ou reléguée dans une infobulle.
 - Le parcours principal de chaque vue reste réalisable au clavier et sur petit écran ; le contenu reste accessible au lecteur d'écran et les cibles tactiles respectent les règles du projet.
 - Les états vide, chargement, erreur, succès et action requise restent distincts et véridiques.
-- La validation utilisateur ou le test de compréhension prévu pour le lot est consigné ; une simple réduction du nombre de mots ne suffit pas.
+- Les illustrations restent identifiables comme décoratives et ne suggèrent pas de données ou de capacités absentes ; les couleurs n'encodent pas seules un statut.
+- La validation utilisateur ou le test de compréhension prévu pour chaque lot est consigné ; une simple réduction du nombre de mots ou une ressemblance à la maquette ne suffit pas.
 
-**Tests et preuves à fournir :** tests Playwright pertinents par vue, audit d'accessibilité ciblé, vérification responsive et captures avant/après pour les vues touchées ; tests existants de navigation simple et d'accessibilité à adapter au lieu d'ajouter un second système d'interface.
+**Tests et preuves à fournir :** tests Playwright pertinents par vue, audit d'accessibilité ciblé, vérification responsive et captures avant/après pour les vues touchées ; tests existants de navigation simple et d'accessibilité à adapter au lieu d'ajouter un second système d'interface. Exécuter uniquement les tests structurants du lot ; consigner toute vérification non exécutée. Le test de la galerie Prisme ne valide pas à lui seul l'intégration aux vues applicatives.
 
 ---
 

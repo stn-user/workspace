@@ -2,6 +2,12 @@ const endpoint = "http://127.0.0.1:11434/api/chat";
 export const LOCAL_QWEN_MODEL = "qwen3:8b";
 export const LOCAL_QWEN_PROMPT_VERSION = "1.1.0";
 export const LOCAL_QWEN_OPTIONS = Object.freeze({ temperature: 0.2, top_p: 0.9, num_predict: 1024 });
+export const LOCAL_QWEN_LIMITS = Object.freeze({
+  questionCharacters: 500,
+  evidencePassages: 8,
+  evidenceCharacters: 1024,
+  totalEvidenceCharacters: 8192
+});
 
 const statuses = ["answered", "abstained", "clarification", "conflict"];
 const instructions = `Vous êtes l'assistant documentaire local de Famili-IA. Répondez en français.
@@ -68,15 +74,28 @@ function hasText(value) {
   return typeof value === "string" && Boolean(value.trim());
 }
 
+function characterCount(value) {
+  return Array.from(value).length;
+}
+
 function validateEvidence(evidence) {
-  if (!Array.isArray(evidence) || evidence.length < 1 || evidence.length > 2) {
-    throw new TypeError("Qwen local exige un ou deux passages vérifiés au maximum.");
+  if (!Array.isArray(evidence) || evidence.length < 1 || evidence.length > LOCAL_QWEN_LIMITS.evidencePassages) {
+    throw new TypeError(`Qwen local exige de un à ${LOCAL_QWEN_LIMITS.evidencePassages} passages vérifiés.`);
   }
   const ids = new Set();
+  let totalCharacters = 0;
   for (const item of evidence) {
     if (!isObject(item) || !hasText(item.id) || ids.has(item.id) ||
         item.verified !== true || !hasText(item.text)) {
       throw new TypeError("Un passage fourni à Qwen local est invalide ou non vérifié.");
+    }
+    const textLength = characterCount(item.text);
+    if (textLength > LOCAL_QWEN_LIMITS.evidenceCharacters) {
+      throw new TypeError(`Un extrait fourni à Qwen local dépasse la limite de ${LOCAL_QWEN_LIMITS.evidenceCharacters} caractères.`);
+    }
+    totalCharacters += textLength;
+    if (totalCharacters > LOCAL_QWEN_LIMITS.totalEvidenceCharacters) {
+      throw new TypeError(`Les extraits fournis à Qwen local dépassent la limite totale de ${LOCAL_QWEN_LIMITS.totalEvidenceCharacters} caractères.`);
     }
     ids.add(item.id);
   }
@@ -123,6 +142,9 @@ export function validateLocalQwenOutput(rawOutput, evidence) {
 
 export async function requestLocalQwenRawOutput({ question, evidence, signal } = {}) {
   if (!hasText(question)) throw new TypeError("Une question est requise pour Qwen local.");
+  if (characterCount(question) > LOCAL_QWEN_LIMITS.questionCharacters) {
+    throw new TypeError(`La question dépasse la limite de ${LOCAL_QWEN_LIMITS.questionCharacters} caractères pour Qwen local.`);
+  }
   validateEvidence(evidence);
   const controller = new AbortController();
   let timedOut = false;

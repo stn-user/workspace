@@ -40,7 +40,7 @@ test("refuse les citations inventées, les affirmations sans citation et les con
   assert.throws(() => validateLocalQwenOutput(unsupportedConflict, evidence), /deux passages distincts/);
 });
 
-test("limite l'appel à deux passages vérifiés et applique le schéma local Qwen", async () => {
+test("limite l'appel à huit passages vérifiés et applique le schéma local Qwen", async () => {
   const originalFetch = globalThis.fetch;
   let request;
   globalThis.fetch = async (url, options) => {
@@ -114,7 +114,73 @@ test("signale explicitement l'indisponibilité du modèle Ollama local", async (
   }
 });
 
-test("ne transmet pas de passage non vérifié ou de lot supérieur à deux pièces", async () => {
+test("annule explicitement une requête locale quand son signal est interrompu", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, { signal }) => new Promise((_resolve, reject) => {
+    signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+  });
+  const controller = new AbortController();
+  try {
+    const pending = generateLocalQwenAnswer({
+      question: "Question fictive",
+      evidence,
+      signal: controller.signal
+    });
+    controller.abort();
+    await assert.rejects(pending, /demande à Qwen local a été annulée/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("refuse les questions et les faits qui dépassent les limites de contexte locales", async () => {
+  await assert.rejects(
+    generateLocalQwenAnswer({
+      question: "q".repeat(501),
+      evidence
+    }),
+    /dépasse la limite de 500 caractères/
+  );
+  await assert.rejects(
+    generateLocalQwenAnswer({
+      question: "Question fictive",
+      evidence: [{ ...evidence[0], text: "x".repeat(1025) }]
+    }),
+    /dépasse la limite de 1024 caractères/
+  );
+});
+
+test("accepte les limites inclusives de question et de passage", async () => {
+  const originalFetch = globalThis.fetch;
+  const boundaryEvidence = [{
+    ...evidence[0],
+    text: `${evidence[0].text}${" ".repeat(1024 - evidence[0].text.length)}`
+  }];
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ message: { role: "assistant", content: JSON.stringify(answer) } })
+  });
+  try {
+    const result = await generateLocalQwenAnswer({
+      question: "q".repeat(500),
+      evidence: boundaryEvidence
+    });
+    assert.equal(result.status, "answered");
+    const eightPassages = Array.from({ length: 8 }, (_, index) => ({
+      ...evidence[0],
+      id: `evidence-${index + 1}`
+    }));
+    assert.equal((await generateLocalQwenAnswer({
+      question: "Question fictive",
+      evidence: eightPassages
+    })).status, "answered");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("ne transmet pas de passage non vérifié ou de lot supérieur à huit extraits", async () => {
   await assert.rejects(
     generateLocalQwenAnswer({
       question: "Question fictive",
@@ -125,8 +191,11 @@ test("ne transmet pas de passage non vérifié ou de lot supérieur à deux piè
   await assert.rejects(
     generateLocalQwenAnswer({
       question: "Question fictive",
-      evidence: [...evidence, { ...evidence[0], id: "evidence-2" }, { ...evidence[0], id: "evidence-3" }]
+      evidence: [...evidence, ...Array.from({ length: 8 }, (_, index) => ({
+        ...evidence[0],
+        id: `evidence-${index + 2}`
+      }))]
     }),
-    /un ou deux passages vérifiés/
+    /de un à 8 passages vérifiés/
   );
 });

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { stateModuleUrl } from './helpers/app-state.js';
+import { gateLocalQwenResponse } from './helpers/qwen-route.js';
 
 async function openAssistant(page) {
   await page.route('https://**/*', route => route.abort());
@@ -88,7 +89,7 @@ for (const width of [390, 768, 1280, 1920]) {
     await expect(copy).toBeFocused();
     await expectUsable(page.locator('#view-assistant'));
     await page.locator('.assistant-limits > summary').click();
-    await expect(page.locator('.assistant-limits')).toContainText('faits exacts déjà extraits');
+    await expect(page.locator('.assistant-limits')).toContainText('huit extraits vérifiés');
     await expectUsable(page.locator('#view-assistant'));
     await page.locator('#assistant-form').scrollIntoViewIfNeeded();
     const scroll = await page.evaluate(() => {
@@ -377,7 +378,9 @@ test("Qwen opt-in local : n'envoie que le fait exact extrait et affiche ses cita
     });
   });
 
-  await page.locator('#assistant-use-qwen').check();
+  const qwenToggle = page.locator('#assistant-use-qwen');
+  await expect(qwenToggle).not.toBeChecked();
+  await qwenToggle.check();
   await page.locator('#assistant-input').fill('Quel montant ai-je payé pour la piscine ?');
   await page.locator('#assistant-input').press('Enter');
   const response = page.locator('.chat-message.ai').last();
@@ -400,6 +403,200 @@ test("Qwen opt-in local : n'envoie que le fait exact extrait et affiche ses cita
   expect(JSON.stringify(modelInput)).not.toContain('FACTURE PISCINE FICTIVE');
   expect(JSON.stringify(modelInput)).not.toContain('Facture piscine fictive.txt');
   expect(JSON.stringify(modelInput)).not.toContain('assistant-qwen-local');
+});
+
+test("Qwen Assistant répond à une question générale à partir de plusieurs extraits locaux vérifiés", async ({ page }) => {
+  await openAssistant(page);
+  await seedDocuments(page, [
+    {
+      id: 'assistant-qwen-broad-visits',
+      name: 'Piscine visites fictives.txt',
+      content: 'Dossier piscine fictif\nLes visites locales sont notées chaque semaine dans le carnet de suivi.\nAnnexe de démonstration destinée aux tests locaux.'
+    },
+    {
+      id: 'assistant-qwen-broad-work',
+      name: 'Piscine travaux fictifs.txt',
+      content: 'Dossier piscine fictif\nLes travaux sont contrôlés après chaque visite par le responsable du site.\nAnnexe de démonstration destinée aux tests locaux.'
+    },
+    {
+      id: 'assistant-qwen-broad-care',
+      name: 'Piscine entretien fictif.txt',
+      content: 'Dossier piscine fictif\nL’entretien est prévu au printemps selon le calendrier affiché.\nAnnexe de démonstration destinée aux tests locaux.'
+    }
+  ]);
+  const origin = new URL(page.url()).origin;
+  const calls = [];
+  await page.route('http://127.0.0.1:11434/**', async route => {
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: {
+          'access-control-allow-origin': origin,
+          'access-control-allow-methods': 'POST, OPTIONS',
+          'access-control-allow-headers': 'content-type'
+        }
+      });
+      return;
+    }
+    const body = JSON.parse(route.request().postData());
+    const input = JSON.parse(body.messages[1].content);
+    calls.push(input);
+    await route.fulfill({
+      status: 200,
+      headers: { 'access-control-allow-origin': origin, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        message: {
+          role: 'assistant',
+          content: JSON.stringify({
+            status: 'answered',
+            answer: 'Les extraits documentent plusieurs sujets.',
+            claims: input.evidence.map(item => ({
+              text: item.text,
+              citations: [{ evidenceId: item.id, quote: item.text }]
+            }))
+          })
+        }
+      })
+    });
+  });
+
+  await page.locator('#assistant-use-qwen').check();
+  await page.locator('#assistant-input').fill('piscine');
+  await page.locator('#assistant-input').press('Enter');
+  const response = page.locator('.chat-message.ai').last();
+  await expect(response.locator('.assistant-response-label')).toContainText('QWEN LOCAL');
+  await expect(response.locator('.assistant-source')).toHaveCount(3);
+  await expect(response.locator('.assistant-evidence mark')).toHaveCount(3);
+  expect(calls).toHaveLength(1);
+  expect(calls[0].evidence).toHaveLength(3);
+  expect(calls[0].evidence.every(item => item.verified)).toBe(true);
+  expect(JSON.stringify(calls[0])).not.toContain('Piscine visites fictives.txt');
+  expect(JSON.stringify(calls[0])).not.toContain('assistant-qwen-broad-visits');
+});
+
+test("Qwen mobile web : option désactivée et appel bloqué", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15'
+    });
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: 'MacIntel' });
+    Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 5 });
+  });
+  await openAssistant(page);
+  await seedDocuments(page, [{
+    id: 'assistant-qwen-mobile',
+    name: 'Facture piscine fictive.txt',
+    content: 'Montant total : 321 euros TTC'
+  }]);
+  const qwenToggle = page.locator('#assistant-use-qwen');
+  await expect(qwenToggle).toBeDisabled();
+  await expect(page.locator('#assistant-qwen-disclosure')).toContainText('navigateur mobile');
+
+  let modelCalled = false;
+  page.on('request', request => {
+    if (request.url().startsWith('http://127.0.0.1:11434/')) modelCalled = true;
+  });
+  await qwenToggle.evaluate(element => {
+    element.disabled = false;
+    element.checked = true;
+  });
+  await page.locator('#assistant-input').fill('Quel montant ai-je payé pour la piscine ?');
+  await page.locator('#assistant-input').press('Enter');
+  await expect(page.locator('#assistant-status')).toContainText('disponible uniquement sur PC');
+  expect(modelCalled).toBe(false);
+});
+
+test("Qwen local : refuse d'envoyer un fait qui constitue le document entier", async ({ page }) => {
+  await openAssistant(page);
+  await seedDocuments(page, [{
+    id: 'assistant-qwen-whole-document',
+    name: 'Facture piscine fictive.txt',
+    content: 'Montant total : 321 euros TTC'
+  }]);
+  let modelCalled = false;
+  page.on('request', request => {
+    if (request.url().startsWith('http://127.0.0.1:11434/')) modelCalled = true;
+  });
+  await page.locator('#assistant-use-qwen').check();
+  await page.locator('#assistant-input').fill('Quel montant ai-je payé pour la piscine ?');
+  await page.locator('#assistant-input').press('Enter');
+  await expect(page.locator('#assistant-status')).toContainText('sans transmettre le document complet');
+  await expect(page.locator('.chat-message.ai').last().locator('.assistant-answer')).toHaveText('Montant total : 321 euros TTC');
+  expect(modelCalled).toBe(false);
+});
+
+test("Qwen local : la génération peut être annulée sans afficher de réponse", async ({ page }) => {
+  await openAssistant(page);
+  await seedDocuments(page, [{
+    id: 'assistant-qwen-cancel',
+    name: 'Facture piscine fictive.txt',
+    content: 'Facture piscine fictive\nMontant total : 321 euros TTC'
+  }]);
+  const origin = new URL(page.url()).origin;
+  await page.route('http://127.0.0.1:11434/**', async route => {
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: {
+          'access-control-allow-origin': origin,
+          'access-control-allow-methods': 'POST, OPTIONS',
+          'access-control-allow-headers': 'content-type'
+        }
+      });
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 250));
+    await route.fulfill({
+      status: 200,
+      headers: { 'access-control-allow-origin': origin, 'content-type': 'application/json' },
+      body: JSON.stringify({ message: { role: 'assistant', content: '{}' } })
+    });
+  });
+
+  await page.locator('#assistant-use-qwen').check();
+  const input = page.locator('#assistant-input');
+  await input.fill('Quel montant ai-je payé pour la piscine ?');
+  await input.press('Enter');
+  const cancelButton = page.locator('#assistant-cancel-qwen');
+  await expect(cancelButton).toBeVisible();
+  await cancelButton.click();
+  await expect(page.locator('#assistant-status')).toContainText('Génération Qwen annulée');
+  await expect(input).toHaveValue('Quel montant ai-je payé pour la piscine ?');
+  await expect(page.locator('.chat-message')).toHaveCount(1);
+  await expect(cancelButton).toBeHidden();
+});
+
+test("Qwen Assistant écarte une réponse si un document change pendant la génération", async ({ page }) => {
+  await openAssistant(page);
+  await seedDocuments(page, [{
+    id: 'assistant-qwen-stale',
+    name: 'Facture piscine fictive.txt',
+    content: 'FACTURE PISCINE FICTIVE\nMontant total : 321 euros TTC\nDossier de demonstration pour tests Famili-IA uniquement.'
+  }]);
+
+  const response = await gateLocalQwenResponse(page);
+  const input = page.locator('#assistant-input');
+  await page.locator('#assistant-use-qwen').check();
+  await input.fill('Quel est le montant de la piscine ?');
+  await input.press('Enter');
+  await response.requestStarted;
+  await page.evaluate(async () => {
+    const { getDocuments } = await import('/state.js');
+    const { put } = await import('/db.js');
+    const { createContentProvenance } = await import('/content-index.js');
+    const document = getDocuments().find(entry => entry.id === 'assistant-qwen-stale');
+    if (!document) throw new Error('Fixture de test introuvable.');
+    document.content = 'FACTURE PISCINE FICTIVE\nMontant total : 999 euros TTC\nDossier de demonstration pour tests Famili-IA uniquement.';
+    document.contentProvenance = await createContentProvenance(document, [document.content], 'local-text');
+    await put('documents', document);
+    window.document.querySelector('#experimental-deadline-refresh').click();
+  });
+  await response.release();
+
+  await expect(page.locator('#assistant-status')).toContainText('Une source a changé pendant la génération');
+  await expect(input).toHaveValue('Quel est le montant de la piscine ?');
+  await expect(page.locator('.chat-message')).toHaveCount(1);
 });
 
 test("Qwen local : une réponse d'abstention ne reprend pas un ordre injecté par le document", async ({ page }) => {
@@ -448,7 +645,7 @@ test("Qwen local : une réponse d'abstention ne reprend pas un ordre injecté pa
 
 test('Qwen local : refuse une citation non littérale sans repli silencieux', async ({ page }) => {
   await openAssistant(page);
-  await seedDocuments(page, [{ id: 'assistant-qwen-invalid', name: 'Facture piscine.txt', content: 'Montant total : 321 euros TTC' }]);
+  await seedDocuments(page, [{ id: 'assistant-qwen-invalid', name: 'Facture piscine.txt', content: 'Facture piscine fictive\nMontant total : 321 euros TTC' }]);
   const origin = new URL(page.url()).origin;
   await page.route('http://127.0.0.1:11434/**', async route => {
     if (route.request().method() === 'OPTIONS') {
@@ -499,7 +696,7 @@ test("Qwen local : n'est pas appelé quand le moteur local n'extrait aucun fait 
   await page.locator('#assistant-use-qwen').check();
   await page.locator('#assistant-input').fill('Quel montant ai-je payé pour la piscine ?');
   await page.locator('#assistant-input').press('Enter');
-  await expect(page.locator('#assistant-status')).toContainText('aucun fait exact pertinent');
+  await expect(page.locator('#assistant-status')).toContainText('aucun extrait textuel vérifié et pertinent');
   await expect(page.locator('.chat-message.ai').last()).toContainText('preuve suffisante');
   expect(modelCalled).toBe(false);
 });
@@ -519,7 +716,7 @@ test("Qwen local : une consigne injectée prise pour un montant est filtrée du 
   await page.locator('#assistant-input').fill('Combien coûte le trajet Aurora ?');
   await page.locator('#assistant-input').press('Enter');
   const response = page.locator('.chat-message.ai').last();
-  await expect(page.locator('#assistant-status')).toContainText('aucun fait exact pertinent');
+  await expect(page.locator('#assistant-status')).toContainText('aucun extrait textuel vérifié et pertinent');
   await expect(response).toContainText('preuve suffisante');
   await expect(response.locator('.assistant-answer')).not.toContainText('250 euros');
   await expect(response.locator('.assistant-evidence mark')).toHaveCount(0);

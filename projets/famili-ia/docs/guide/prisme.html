@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prisme · Atelier Famili-IA</title>
+  <link rel="stylesheet" href="../../styles.css">
+  <link rel="stylesheet" href="../../assets/prisme/prisme.css">
+  <style>
+    body { background: #13182c; padding: clamp(.65rem, 3vw, 3rem); }
+    main { max-width: 72rem; margin: auto; border-radius: 24px; padding: clamp(.85rem, 3vw, 2.5rem); }
+    .samples { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); }
+    .sample { display: grid; align-content: start; gap: .75rem; min-width: 0; }
+    .sample > h2 { margin-bottom: 0; }
+    .sample h3, .sample p { margin-block: .4rem; }
+    .prisme-nav { max-width: 32rem; }
+    .samples + section { margin-top: 2rem; }
+  </style>
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <defs>
+    <symbol id="home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10h-6v-6H9v6H3z"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></symbol>
+    <symbol id="foyer-icon" viewBox="0 0 24 24"><path d="m2 11 7-6 7 6v9H3v-9m10-5 3-3 6 6v10h-3"/></symbol>
+    <symbol id="bell" viewBox="0 0 24 24"><path d="m4 17 2-4v-3a6 6 0 0 1 12 0v3l2 4H4zm6 3q2 2 4 0"/></symbol>
+  </defs>
+</svg>
+<main class="ui-prisme">
+  <span class="ui-badge">Atelier · données fictives</span>
+  <h1 class="prisme-title">Prisme.</h1>
+  <nav class="prisme-nav" aria-label="Compositions">
+    <a href="#accueil"><svg class="prisme-icon" aria-hidden="true"><use href="#home"/></svg>Accueil</a>
+    <a href="#recherche"><svg class="prisme-icon" aria-hidden="true"><use href="#search"/></svg>Recherche</a>
+    <a href="#foyer"><svg class="prisme-icon" aria-hidden="true"><use href="#foyer-icon"/></svg>Foyer</a>
+    <a href="#rappels"><svg class="prisme-icon" aria-hidden="true"><use href="#bell"/></svg>Rappels</a>
+  </nav>
+  <div class="samples">
+    <section class="sample" aria-labelledby="accueil">
+      <h2 id="accueil" tabindex="-1">Accueil</h2>
+      <article class="prisme-feature"><div><small>À la une</small><h3>Votre prochaine échéance</h3><span>Contrat habitation</span></div></article>
+      <div class="prisme-tiles">
+        <a class="ui-button prisme-tile" href="#recherche"><svg class="prisme-icon" aria-hidden="true"><use href="#search"/></svg>Rechercher</a>
+        <a class="ui-button prisme-tile prisme-tile--mint" href="#rappels"><svg class="prisme-icon" aria-hidden="true"><use href="#bell"/></svg>Mes rappels</a>
+      </div>
+    </section>
+    <section class="sample" aria-labelledby="recherche">
+      <h2 id="recherche" tabindex="-1">Recherche</h2>
+      <label class="ui-label" for="question">Dans mes documents</label>
+      <input class="ui-input" id="question" type="search" placeholder="Exemple de champ, sans recherche">
+      <article class="ui-card prisme-result">
+        <span class="ui-badge">Texte indexé</span><h3>Contrat habitation</h3>
+        <blockquote class="prisme-proof">La prochaine échéance est fixée au 12 juin.</blockquote>
+        <p class="prisme-meta">Source : contrat fictif · copie locale</p>
+        <details><summary>Détails de la preuve</summary>Extrait de la copie indexée. Accès à l’original non vérifié.</details>
+      </article>
+    </section>
+    <section class="sample" aria-labelledby="foyer">
+      <h2 id="foyer" tabindex="-1">Foyer</h2>
+      <article class="prisme-feature prisme-feature--foyer"><div><small>Illustration</small><h3>La maison</h3><span>Mon espace familial</span></div></article>
+      <button class="ui-button prisme-row" id="open-sheet" type="button"><svg class="prisme-icon" aria-hidden="true"><use href="#home"/></svg><span>Fiche du foyer<small class="prisme-meta">Consulter l’exemple</small></span></button>
+      <dialog class="ui-dialog" aria-labelledby="sheet-title">
+        <div class="ui-dialog__header"><h2 id="sheet-title">Fiche du foyer</h2></div>
+        <p>Maison de démonstration. Aucune donnée personnelle chargée.</p>
+        <form method="dialog"><button class="ui-button ui-button--primary">Fermer</button></form>
+      </dialog>
+    </section>
+    <section class="sample" aria-labelledby="rappels">
+      <h2 id="rappels" tabindex="-1">Rappels</h2>
+      <div class="prisme-segments" role="group" aria-label="Filtrer les rappels">
+        <label><input type="radio" name="filtre" value="ouverts" checked>À venir</label>
+        <label><input type="radio" name="filtre" value="clos">Terminés</label>
+      </div>
+      <article class="prisme-feature prisme-feature--rappel"><div><time datetime="2027-06-12"><strong class="prisme-date">12</strong> juin 2027</time><h3>Contrat habitation</h3></div></article>
+      <p class="ui-card" id="empty" hidden>Aucun rappel terminé dans cet exemple.</p>
+    </section>
+  </div>
+  <section aria-labelledby="states">
+    <h2 id="states">États et actions</h2>
+    <div class="samples">
+      <div class="ui-card"><h3>Chargement</h3><p>Lecture de la copie en cours…</p><button class="ui-button ui-button--primary" disabled>Chargement…</button></div>
+      <div class="ui-card"><h3>Action requise</h3><p>Source à vérifier avant de confirmer le rappel.</p><a class="ui-button ui-button--secondary" href="#recherche">Voir la preuve</a></div>
+      <div class="ui-card"><h3>Erreur</h3><p>La copie n’a pas pu être lue. Aucun rappel créé.</p></div>
+      <div class="ui-card"><h3>Succès</h3><p>Rappel enregistré dans cet exemple.</p></div>
+    </div>
+  </section>
+</main>
+<script>
+  function markLocation() {
+    for (const link of document.querySelectorAll('.prisme-nav a')) {
+      if (link.hash === (location.hash || '#accueil')) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    }
+  }
+  markLocation();
+  window.addEventListener('hashchange', markLocation);
+  document.querySelector('#open-sheet').addEventListener('click', () => document.querySelector('dialog').showModal());
+  document.querySelector('.prisme-segments').addEventListener('change', event => {
+    const closed = event.target.value === 'clos';
+    document.querySelector('.prisme-feature--rappel').hidden = closed;
+    document.querySelector('#empty').hidden = !closed;
+  });
+</script>
+</body>
+</html>

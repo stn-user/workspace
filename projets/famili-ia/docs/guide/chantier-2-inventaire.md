@@ -1,0 +1,132 @@
+# Chantier 2 — inventaire initial des vues (étape 2.1)
+
+Relevé du 27 novembre 2026 : Chromium, **390 × 844 px**, données de démonstration, réseau HTTPS bloqué, sans fichier personnel. Les mots sont ceux du texte visible dans la vue (titres, libellés et aides) ; les « textes longs » sont des paragraphes de six mots ou plus. Les captures « avant » sont conservées hors dépôt.
+
+| Vue | Mots | Contrôles visibles | Textes longs | Hauteur (px) | Action principale constatée |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Accueil | 155 | 9 | 8 | 1 553 | Ouvrir la recherche / ajouter des fichiers |
+| Recherche | 573 | 19 | 9 | 1 250 | Poser une question |
+| Assistant | 249 | 9 | 8 | 862 | Poser une question documentaire |
+| Importer | 264 | 13 | 13 | 2 400 | Choisir une source |
+| Alertes | 75 | 8 | 3 | 624 | Consulter les rappels actifs |
+| Famille | 107 | 8 | 5 | 1 397 | Consulter/ajouter un membre |
+| Maison | 91 | 12 | 4 | 1 050 | Consulter les équipements |
+| Profil | 145 | 12 | 5 | 1 448 | Modifier identité, adresse, GPS |
+| Vos données | 534 | 19 | 17 | 2 409 | Comprendre les sources et la couverture |
+| Plus | 53 | 5 | 0 | 746 | Accéder aux destinations |
+
+## Constats
+
+**Recherche mobile — ajustement Prisme :** champ compact, filtre « Contrats uniquement » réversible et carte avec type, provenance et preuve issue de l’index. Le filtre utilise le type enregistré, pas une déduction à partir du nom. Les options de réponse restent accessibles sous « Affiner la recherche ». La validation visuelle du chantier reste ouverte.
+
+- **Plus de texte :** Recherche (573 mots), Vos données (534) et Importer (264) concentrent l'essentiel de la lecture. Sur Vos données et Importer, la page dépasse deux hauteurs d'écran.
+- **Répétitions probables :** le périmètre « fichiers présents dans Famili-IA », la mention des exemples fictifs, la confidentialité du dossier/connexion, les limites de couverture et le fonctionnement de Qwen sont répétés dans plusieurs blocs de Recherche, Assistant, Importer et Vos données.
+- **À conserver près de l'action :** consentement et portée de Qwen, accès choisi aux sources, mention que les originaux restent en place, couverture inconnue/incomplète, provenance et limites d'accès. Ils pourront être raccourcis, mais ni retirés ni déplacés vers une infobulle permanente.
+- **Accueil :** 155 mots et 1,8 écran. La première carte combine slogan, aide et deux actions ; les rappels, le foyer et la démonstration suivent. C'est un bon premier lot pour tester Prisme avec une seule tuile.
+
+## Lot 1 — Accueil (27 novembre 2026)
+
+La carte d'introduction (`.home-actions-panel`) est devenue une tuile Prisme `ui-prisme ui-prisme--inline` / `prisme-feature--action`. Titre « Retrouvez l'essentiel », une courte phrase, « Ouvrir la recherche » (`data-open-view="recherche"`) et « Ajouter des fichiers » (`data-open-import`) : mécanismes, routes et libellés d'action inchangés. L'ancien slogan, son surtitre et son paragraphe d'aide sont retirés ; l'illustration d'origine, masquée sur mobile, est remplacée par le décor Prisme. Le rappel de couverture des rappels reste affiché.
+
+| Mesure à 390 px | Avant | Après |
+| --- | ---: | ---: |
+| Mots visibles de l'Accueil | 155 | **129 (−16,8 %)** |
+| Contrôles visibles | 9 | 9 |
+| Hauteur du contenu | 1 553 px | 1 466 px |
+
+Vérifié : débordement horizontal absent à 320 et 390 px ; accueil (4 largeurs), accessibilité de l'Accueil (4 largeurs), galerie Prisme et build réussis. Reste à faire : validation de la compréhension du parcours par l'utilisateur.
+
+## Lot 2 — Recherche (27 novembre 2026)
+
+La vue Recherche est placée dans une portée `ui-prisme ui-prisme--inline` (champ lilas, bouton de lancement bleu nuit, résultat sur carte lilas avec preuve encadrée). Mécanismes, identifiants, filtres, Qwen opt-in, provenance (« Provenance et détails ») et accès aux copies sont inchangés. Retirés : surtitre et sous-titre du titre ; ne sont plus répétés dans l'aide Qwen que les plafonds numériques (la mention d'envoi limité à huit extraits, jamais le document complet ni l'historique, et l'indisponibilité mobile restent visibles) ; l'état vide est raccourci. Le périmètre de recherche (fichiers présents, photos sans reconnaissance visuelle) reste affiché.
+
+| Mesure à 390 px (texte visible, panneaux repliés exclus) | Avant | Après |
+| --- | ---: | ---: |
+| Recherche, état vide | 155 | **118 (−24 %)** |
+| Recherche avec un résultat fictif | 168 | **144 (−14 %)** |
+
+Le relevé du tableau initial comptait aussi le contenu des panneaux repliés : le chiffre de 573 mots pour Recherche était surestimé ; la valeur visible de départ est 155. Les valeurs des autres vues devront être remesurées avec ce décompte avant leur lot.
+
+Vérifié : aucun débordement horizontal ; 29 tests ciblés (Recherche, Qwen Recherche, accessibilité Accueil/Recherche à quatre largeurs, Prisme) et build réussis. Reste à faire : validation utilisateur sur le parcours réel.
+
+## Lot 3 — Assistant (27 novembre 2026)
+
+La vue Assistant est placée dans la même portée `ui-prisme ui-prisme--inline` : formulaire lilas, bouton d'envoi bleu nuit, bulle utilisateur bleu nuit, message d'accueil menthe, source citée sur carte lilas avec passage encadré. Mécanismes, Qwen opt-in, annulation, contexte, « Assistant ou Recherche ? », idées de questions et confirmations d'action sont inchangés. Retirés : surtitre et sous-titre ; dans l'aide Qwen, seuls les plafonds numériques par extrait et au total (la limite de 500 caractères, les huit extraits, l'absence du document complet et de l'historique et l'indisponibilité mobile restent) ; le message d'accueil est raccourci. Les mentions de périmètre et de source générées dans les réponses sont conservées.
+
+| Mesure à 390 px (texte visible, panneaux repliés exclus) | Avant | Après |
+| --- | ---: | ---: |
+| Assistant, état initial | 144 | **111 (−23 %)** |
+| Assistant après une question documentaire fictive | 213 | **180 (−15 %)** |
+
+Vérifié : aucun débordement horizontal ; tests Assistant (dont Qwen), accessibilité de l'Assistant et galerie Prisme, puis build réussis. Le test « assistant et aperçu du scan » échouait déjà avant ce lot : il attendait encore l'ancienne formulation « faits exacts déjà extraits » de l'aide, mise à jour avec le chantier 1 ; l'assertion attend désormais « huit extraits vérifiés ». Reste à faire : validation utilisateur.
+
+## Lot 4 — Foyer : Maison et Famille (27 novembre 2026)
+
+Maison et Famille sont placées dans la portée `ui-prisme ui-prisme--inline`. La fiche de la maison reprend le fond menthe de la maquette tout en conservant sa photo, son bouton « Modifier la photo », la mention « Visuel d'illustration · IA » et « Modifier dans le profil » ; la sélection de catégorie passe en bleu nuit et les accents de Famille suivent les couleurs Prisme. Retirés : surtitres et sous-titres, l'eyebrow et la phrase d'aide de la fiche de la maison, la phrase d'accès direct aux catégories d'inventaire et une partie de l'aide des souvenirs. Conservés : la note sur les illustrations IA (les cartes n'affichent que « Illustration IA »), « Ces fiches restent sur cet appareil. Aucun compte ni partage n'est créé » et les états vides. Aucune permission, donnée ou route n'est modifiée.
+
+| Mesure à 390 px (texte visible, panneaux repliés exclus) | Avant | Après |
+| --- | ---: | ---: |
+| Maison, état vide | 91 | **≈ 58 (−36 %)** : 45 mesurés, plus 13 mots de la note rétablie après test |
+| Famille, état vide | 107 | **77 (−28 %)** |
+
+Vérifié : aucun débordement horizontal ; 26 tests ciblés (Foyer, photo d'équipement, accessibilité Maison/Famille, Prisme) puis le test Foyer rejoué après rétablissement de la note, et build réussis. Un premier passage a échoué parce que j'avais retiré la note sur les illustrations IA, requise par le test ; elle a été rétablie. Les états avec équipements ou proches enregistrés n'ont pas été capturés dans ce lot. Reste à faire : validation utilisateur.
+
+## Lot 5 — Rappels (Alertes) (27 novembre 2026)
+
+La vue Alertes est placée dans la portée `ui-prisme ui-prisme--inline`. Filtre sélectionné en bleu nuit ; chaque rappel **daté** affiche sa date sur une tuile corail (jour + mois, décorative, `aria-hidden`) à la place de l'icône ; la carte est blanche et son état reste écrit (« À traiter », « À anticiper », « À surveiller », « Reportée »…), la couleur n'étant jamais le seul signal. Un rappel sans date valide garde son icône et son texte « Date non renseignée » / « Date à vérifier ». Le texte « Échéance : jj/mm/aaaa », la preuve, la provenance, les avis de source à vérifier, les réglages, les actions de report/ignorer/terminer et « Gérer cette alerte » sont inchangés ; seuls surtitre et sous-titre sont retirés (13 mots). Aucune donnée, seuil ou notification n'est modifié.
+
+Mesure à 390 px : état sans rappel 75 → 57 mots hors éléments décoratifs (relevé initial et final avec méthodes de décompte proches mais non strictement identiques) ; avec deux rappels fictifs, 81 mots visibles pour 976 px de hauteur.
+
+Vérifié : aucun débordement ; 20 tests ciblés (alertes complètes, accessibilité Alertes à quatre largeurs, Prisme) et build réussis. Reste à faire : validation utilisateur.
+
+## Lot 6 — Importer et Vos données (27 novembre 2026)
+
+Les deux vues sont placées dans la portée `ui-prisme ui-prisme--inline` : zone « Sur cet appareil » sur fond menthe, pastilles d'étapes et filtres sélectionnés en bleu nuit, bandeau de confiance de Vos données sur fond lilas. Retirés : surtitres et sous-titres, l'introduction « Un espace distinct… » de l'export, et deux phrases répétées dans « Sources, contrôle et limites » (la couverture et « Métadonnées seules » restent affichées sous l'inventaire). Raccourcis : l'indication de retour d'Importer et la phrase de suivi local. **Conservés tels quels :** la mention « Vos originaux restent à leur emplacement », les permissions et limites de Google Drive, OneDrive et Dropbox, « Traitement local. Les originaux ne sont ni déplacés ni supprimés », les formats et limites, les confirmations de suppression, l'export et la révocation des accès. Aucune permission, source ni donnée n'est modifiée.
+
+| Mesure à 390 px (texte visible, panneaux repliés exclus) | Avant | Après |
+| --- | ---: | ---: |
+| Importer | 217 | **188 (−13 %)** |
+| Vos données (exemples intégrés) | 310 | **273 (−12 %)** |
+
+Vérifié : aucun débordement ; 33 tests ciblés (inventaire de Vos données, ajout depuis Recherche, accessibilité Importer/Vos données à quatre largeurs, Prisme) et build réussis. Ces deux vues restent longues (environ deux écrans et demi) : une réduction plus forte demanderait de déplacer ou de condenser des informations de permission ou de couverture, ce qui relève d'une décision séparée. Reste à faire : validation utilisateur.
+
+## Lot 7 — Profil, Plus et fiche de détail (27 novembre 2026)
+
+Profil, Plus et la fiche de détail d'un équipement sont placés dans la portée `ui-prisme ui-prisme--inline` : pastille d'avatar corail, icônes de Plus sur menthe. Retirés : surtitres et sous-titres, ainsi que deux phrases d'aide de Profil (« Retrouvez les actions utiles… », « Une aide à rejouer… »). Le surtitre de la fiche de détail est retiré ; sa description, renseignée dynamiquement (état vide ou équipement), est conservée. **Conservés :** le choix de localisation GPS et son explication, la précision « Ce choix ne connecte aucun service et ne crée aucun partage », l'adresse facultative, les libellés descriptifs des destinations de Plus. Aucun réglage, donnée ni route n'est modifié.
+
+| Mesure à 390 px (texte visible, panneaux repliés exclus) | Avant | Après |
+| --- | ---: | ---: |
+| Profil | 128 | **96 (−25 %)** |
+| Plus | 53 | **46 (−13 %)** |
+
+Vérifié : aucun débordement ; 33 tests ciblés (Profil, Plus, fiche équipement, photo d'équipement, visite guidée, accessibilité Profil/Plus à quatre largeurs, Prisme) et build réussis. La fiche de détail n'a pas été mesurée en mots (contenu dynamique).
+
+## Bilan des lots 1 à 7
+
+Les onze vues actives (Accueil, Recherche, Assistant, Maison, Famille, Alertes, Importer, Vos données, Profil, Plus et la fiche de détail) ont reçu le langage Prisme et une réduction du texte répété. À l'issue de ces lots, la navigation et les routes n'avaient pas encore été réorganisées ; le choix utilisateur et son réalignement mobile sont consignés ci-dessous. Les validations restent des tests ciblés par lot, pas la suite complète. Restent ouverts : validation utilisateur du parcours sur téléphone, états non nominaux (erreur, chargement) à inventorier, captures avant/après à consigner pour chaque vue.
+
+## Réalignement du parcours mobile
+
+À la demande explicite de l'utilisateur, le parcours mobile principal reprend les quatre destinations de la maquette : Accueil, Recherche, Foyer (route `maison`) et Rappels (route `alertes`). La navigation desktop et les routes métier ne changent pas. Le menu Plus garde Famille, Assistant, Profil et Vos données ; Importer y est également accessible, en plus des raccourcis d'ajout existants.
+
+L'Accueil utilise les rappels et fichiers réellement disponibles sur l'appareil : dates validées sur tuile corail, état vide explicite, provenance affichée pour chaque fichier, exemples marqués fictifs. Les fichiers datés sont triés du plus récent au plus ancien ; les éléments sans date restent après eux sans date inventée. Aucun contenu de démonstration de la maquette n'est repris comme donnée réelle.
+
+Vérifié : build réussi ; 9 tests Playwright ciblés réussis (navigation mobile, accueil et visite guidée à quatre largeurs, galerie Prisme) ; aperçu navigateur des quatre destinations à 390 × 844 px. Les captures n'ont pas été archivées. La validation utilisateur du parcours reste requise avant de considérer le chantier 2 terminé.
+
+## Lot 8 — Mon foyer (27 novembre 2026)
+
+La vue mobile reprend la composition Foyer de la maquette : carte menthe « Carnet de maison / La maison », libellé de couverture toujours lié à la vraie illustration ou photo locale, puis équipements compacts, Famille et Mon espace. L’action photo reste accessible par un bouton caméra de 48 px ; « Modifier dans le profil » reste disponible. Les filtres d’équipement sont repliés derrière « Filtrer par catégorie » sur mobile, ouverts sur ordinateur, et leur état reste accessible après une modification. Les lignes conservent le statut saisi et le nombre de documents associés ; la note identifie les illustrations IA. Le compteur Famille est calculé depuis les fiches présentes sur cet appareil, sans partage implicite.
+
+Vérifié avec des données entièrement fictives : 64 mots visibles dans la vue à 390 × 844 px avec un équipement et deux fiches Famille, sans débordement horizontal. Les contrôles, filtres/historique, état vide, fiches et raccourcis ont passé 13 tests Playwright ciblés ; `npm run build` a réussi. Le serveur Vite est disponible sur le réseau Wi-Fi local pendant cette session. Cette capture ne remplace pas l’essai sur le téléphone réel ni la validation visuelle de l’utilisateur.
+
+## Limites de ce relevé
+
+Sur mobile, « Retrouver un fichier » mène à Recherche, puis « Assistant documentaire » à l’Assistant. La carte « À la une » présente la prochaine échéance active datée non reportée, ou son état vide. Dans Foyer, « Mon cercle » et « Fichiers et réglages » mènent à Famille et Plus. Dans Rappels, « À venir » regroupe les rappels actifs et « Terminés » les rappels résolus ; les rappels ignorés restent dans les autres filtres. Sur ordinateur, les vues restent indépendantes de cette présentation mobile.
+
+Ce relevé ne couvre pas encore les fiches de détail ni les parcours avec résultats, erreur, chargement ou succès pour chaque vue. Il ne valide aucune compréhension utilisateur. L'étape 2.1 reste donc ouverte tant que ces états ne sont pas inventoriés.
+
+## Proposition de premier lot — Accueil (à valider avant implémentation)
+
+- **Périmètre :** seule la carte d'introduction de l'Accueil devient une tuile Prisme ; les actions « Ouvrir la recherche » et « Ajouter des fichiers » conservent leurs mécanismes existants. Navigation, routes et autres vues inchangées.
+- **Objectif textuel :** remplacer le slogan et l'aide par un titre court et la seule phrase nécessaire à l'action ; viser **au moins 15 % de mots en moins sur l'Accueil** sans supprimer le rappel de couverture des alertes.
+- **Preuves :** captures avant/après, test Playwright ciblé de l'Accueil, vérification 320/390 px et clavier, puis validation du parcours par l'utilisateur.

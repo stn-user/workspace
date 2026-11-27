@@ -346,7 +346,12 @@ test("assistant keeps a separate factual line and ignores an adjacent model-dire
 
 test("assistant keeps a requested fact when another fact is explicitly absent later on the line", () => {
   const content = "Prisme Lyra : montant total de calibration 317 euros. La date de fin n'est pas renseignée.";
-  const document = { id: "calibration-prisme-lyra", name: "Calibration prisme Lyra.txt", isLocal: true, content };
+  const document = {
+    id: "calibration-prisme-lyra",
+    name: "Calibration prisme Lyra.txt",
+    isLocal: true,
+    content: `Calibration prisme Lyra\n${content}`
+  };
   const question = "Combien coûte la calibration du prisme Lyra ?";
   const context = prepareAssistantContext({
     session: assistantSession([document]), documents: [document], question
@@ -356,4 +361,107 @@ test("assistant keeps a requested fact when another fact is explicitly absent la
   assert.equal(response.status, "supported");
   assert.deepEqual(prepareLocalQwenEvidence({ ...response, matches: context.matches, context })
     .map(item => item.text), [content]);
+});
+
+test("Qwen excludes an entire short document and overlong exact facts", () => {
+  const wholeDocument = {
+    id: "qwen-whole-document",
+    name: "Facture piscine.txt",
+    isLocal: true,
+    content: "Montant total : 321 euros TTC"
+  };
+  const wholeContext = prepareAssistantContext({
+    session: assistantSession([wholeDocument]),
+    documents: [wholeDocument],
+    question: "Quel est le montant de la piscine ?"
+  });
+  const wholeResponse = {
+    ...buildSearchResponse(wholeContext.matches),
+    matches: wholeContext.matches,
+    context: wholeContext
+  };
+  assert.deepEqual(prepareLocalQwenEvidence(wholeResponse), []);
+
+  const excerptDocument = {
+    id: "qwen-document-with-excerpt",
+    name: "Facture piscine.txt",
+    isLocal: true,
+    content: "Facture fictive\nMontant total : 321 euros TTC"
+  };
+  const excerptContext = prepareAssistantContext({
+    session: assistantSession([excerptDocument]),
+    documents: [excerptDocument],
+    question: "Quel est le montant de la piscine ?"
+  });
+  const excerptResponse = {
+    ...buildSearchResponse(excerptContext.matches),
+    matches: excerptContext.matches,
+    context: excerptContext
+  };
+  assert.deepEqual(prepareLocalQwenEvidence(excerptResponse).map(item => item.text),
+    ["Montant total : 321 euros TTC"]);
+
+  const longFact = `Montant total : 321 euros TTC ${"détail ".repeat(160)}`;
+  const longDocument = {
+    id: "qwen-overlong-fact",
+    name: "Facture piscine.txt",
+    isLocal: true,
+    content: `Facture fictive\n${longFact}`
+  };
+  const longContext = prepareAssistantContext({
+    session: assistantSession([longDocument]),
+    documents: [longDocument],
+    question: "Quel est le montant de la piscine ?"
+  });
+  const longResponse = {
+    ...buildSearchResponse(longContext.matches),
+    matches: longContext.matches,
+    context: longContext
+  };
+  assert.ok(longContext.matches[0].exactFact.length > 1024);
+  assert.deepEqual(prepareLocalQwenEvidence(longResponse), []);
+});
+
+test("Qwen receives up to eight verified passages across matching documents", () => {
+  const documents = Array.from({ length: 9 }, (_, index) => ({
+    id: `qwen-multi-source-${index}`,
+    name: `Contrat habitation fictif ${index}.txt`,
+    isLocal: true,
+    content: `Contrat habitation fictif ${index}\nMontant cotisation : 321 euros TTC`
+  }));
+  const context = prepareAssistantContext({
+    session: assistantSession(documents),
+    documents,
+    question: "Quel est le montant de la cotisation habitation ?"
+  });
+  const response = {
+    ...buildSearchResponse(context.matches),
+    matches: context.matches,
+    context
+  };
+  const evidence = prepareLocalQwenEvidence(response, { allowVerifiedExcerpts: true });
+  assert.equal(evidence.length, 8);
+  assert.ok(evidence.every(item => item.verified && item.text === "Montant cotisation : 321 euros TTC"));
+});
+
+test("Qwen can answer a broad document question from a verified excerpt without an exact-fact extraction", () => {
+  const document = {
+    id: "qwen-broad-document-question",
+    name: "Dossier piscine fictif.txt",
+    isLocal: true,
+    content: "Dossier piscine fictif\nLes dates de visite sont consignées dans le calendrier annexe.\nDocument de démonstration sans données réelles."
+  };
+  const context = prepareAssistantContext({
+    session: assistantSession([document]),
+    documents: [document],
+    question: "piscine"
+  });
+  const response = {
+    ...buildSearchResponse(context.matches),
+    matches: context.matches,
+    context
+  };
+  assert.equal(context.matches[0].exactFact, null);
+  assert.ok(context.matches[0].evidence);
+  assert.equal(prepareLocalQwenEvidence(response, { allowVerifiedExcerpts: true }).length, 1);
 });

@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test';
 
 const steps = [
   { view: 'recherche', title: 'Recherche' },
-  { view: 'maison', title: 'Maison' },
+  { view: 'maison', title: 'Foyer' },
   { view: 'famille', title: 'Famille' },
-  { view: 'alertes', title: 'Alertes' },
+  { view: 'alertes', title: 'Rappels' },
   { view: 'vos-donnees', title: 'Vos données' },
   { view: 'importer', title: 'Importer' }
 ];
@@ -68,7 +68,7 @@ for (const viewport of [
 
     await page.locator('#view-tour-next').focus();
     await page.keyboard.press('Enter');
-    await expect(page.locator('#view-tour-progress')).toHaveText('Étape 2 sur 6 · Maison');
+    await expect(page.locator('#view-tour-progress')).toHaveText('Étape 2 sur 6 · Foyer');
     await expect(page.locator('#house-title')).toBeFocused();
     await page.locator('#view-tour-prev').click();
     await expect(page.locator('#view-tour-progress')).toHaveText('Étape 1 sur 6 · Recherche');

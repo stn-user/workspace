@@ -156,6 +156,48 @@ for (const width of [390, 768, 1280, 1920]) {
   });
 }
 
+test('navigation mobile : quatre destinations principales et accès aux autres vues depuis Plus', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem('famili-ia-source-choice-complete', 'true'));
+  await openView(page, 'accueil');
+
+  const tabs = page.locator('.bottom-nav .nav-item');
+  await expect(tabs).toHaveCount(4);
+  await expectUsable(page.locator('.bottom-nav'));
+  await expectUsable(page.locator('.topbar'));
+  for (const [view, label] of [['accueil', 'Accueil'], ['recherche', 'Recherche'], ['maison', 'Foyer'], ['alertes', 'Rappels']]) {
+    const tab = page.locator(`.bottom-nav [data-nav="${view}"]`);
+    await expect(tab).toHaveText(label);
+    await tab.click();
+    await expect(page.locator(`#view-${view}`)).toBeVisible();
+    await expect(tab).toHaveAttribute('aria-current', 'page');
+  }
+
+  const more = page.getByRole('button', { name: 'Ouvrir Plus', exact: true });
+  await expect(page.getByRole('button', { name: /^À venir/ })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: /^Terminés/ }).click();
+  await expect(page.locator('#alert-period-title')).toHaveText('Rappels terminés');
+  await page.locator('.bottom-nav [data-nav="accueil"]').click();
+  await page.getByRole('button', { name: 'Retrouver un fichier' }).click();
+  await page.getByRole('button', { name: 'Assistant documentaire' }).click();
+  await expect(page.locator('#view-assistant')).toBeVisible();
+  await page.locator('.bottom-nav [data-nav="maison"]').click();
+  await page.getByRole('button', { name: 'Mon cercle' }).click();
+  await expect(page.locator('#view-famille')).toBeVisible();
+  await expect(more).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ouvrir mon profil', exact: true })).toBeHidden();
+  await more.click();
+  await expect(page.locator('#view-plus')).toBeVisible();
+  await expect(more).toHaveAttribute('aria-current', 'page');
+  await page.locator('#view-plus [data-nav="famille"]').click();
+  await expect(page.locator('#view-famille')).toBeVisible();
+  await expect(page.locator('.bottom-nav [data-nav="maison"]')).toHaveAttribute('aria-current', 'page');
+  await more.click();
+  await page.locator('#view-plus [data-nav="importer"]').click();
+  await expect(page.locator('#view-importer')).toBeVisible();
+  await expect(more).toHaveAttribute('aria-current', 'page');
+});
+
 test('saisie manuelle : annuler sans ecriture, enregistrer, retrouver et recharger', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 480 });
   let external = 0;

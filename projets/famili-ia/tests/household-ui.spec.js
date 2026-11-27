@@ -35,6 +35,14 @@ async function reloadHousehold(page) {
   await ready;
 }
 
+async function openHouseCategoryFilters(page) {
+  const filters = page.locator('#house-category-filters');
+  if (!(await filters.evaluate(element => element.open))) {
+    await filters.locator('summary').click();
+  }
+  await expect(filters).toHaveJSProperty('open', true);
+}
+
 async function snapshot(page) {
   return page.evaluate(async () => {
     const { getAll } = await import('/db.js');
@@ -83,6 +91,9 @@ for (const width of [390, 768, 1280, 1920]) {
     await expect(page.locator('#house-title')).toBeVisible();
     await expect(page.locator('body')).toHaveClass(/ui-warm/);
     await expectUsable(page.locator('#view-maison'));
+    await expect(page.locator('#house-family-count')).toHaveText('5 fiches sur cet appareil');
+    await expect(page.locator('#equipment-title')).toHaveText('Équipements');
+    await expect(page.locator('#house-category-filters')).toHaveJSProperty('open', width > 1024);
     const housePhoto = page.locator('.property-photo');
     await expect(housePhoto).toBeVisible();
     expect(await housePhoto.evaluate(async image => {
@@ -408,6 +419,7 @@ test('equipements : filtres, modification sans perte de documents et ajout persi
   await page.locator('#eq-status-input').fill('A verifier');
   await expectUsable(page.locator('#equipment-dialog'));
   await page.locator('#equipment-form [type="submit"]').click();
+  await openHouseCategoryFilters(page);
   await page.locator('[data-house-category="volets"]').click();
   await reloadHousehold(page);
   await expect(page.locator('.equipment-row')).toHaveCount(1);
@@ -426,6 +438,7 @@ test('filtres valides et invalides, historique et raccourcis documentaires', asy
   await openHousehold(page, 'maison?filter=inconnu');
   await expect(page.locator('[data-house-category="tout"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.equipment-row')).toHaveCount(4);
+  await openHouseCategoryFilters(page);
   await page.locator('[data-house-category="pompe"]').click();
   await page.locator('[data-house-category="assurance"]').click();
   await page.goBack();

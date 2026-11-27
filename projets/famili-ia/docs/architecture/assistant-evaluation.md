@@ -92,31 +92,72 @@ qualifie pas Qwen. Les contrôles unitaires de l'évaluateur restent synthétiqu
 pas des résultats de modèle. Toute correction doit être réglée sur des cas de
 développement différents, puis vérifiée sur un nouveau contrôle indépendant.
 
-## Prototype Qwen local dans l'Assistant
+## Qwen local dans Recherche et l'Assistant
 
-Le mode **Qwen 3 local (expérimental)** est désactivé par défaut et n'est
-disponible que dans le navigateur sur PC. Quand l'utilisateur l'active et envoie
-une question, l'application appelle `http://127.0.0.1:11434/api/chat` avec
-`qwen3:8b`. Le corps contient la question et au plus deux passages vérifiés déjà
-convertis en faits exacts par `prepareAssistantContext()` ; il n'inclut ni le document
-entier, ni son nom, ni l'historique ou les identifiants internes. Aucun appel n'est fait
-sans fait exact admissible, lorsque le résultat local est ambigu ou que le fait demandé manque.
-L'application mobile ne transmet rien à l'adresse loopback du téléphone.
+Qwen3:8b est proposé en mode **expérimental**, désactivé par défaut et uniquement
+dans un navigateur de bureau. Recherche et l'Assistant ont chacun leur opt-in ;
+l'application native et les navigateurs mobiles, y compris iPadOS en mode bureau,
+gardent l'option désactivée. Les appels vont à
+`http://127.0.0.1:11434/api/chat`. Recherche conserve l'index local et ses filtres
+pour choisir les résultats ; sur soumission explicite, Qwen peut répondre depuis
+les extraits vérifiés de ces seuls résultats. Il ne modifie pas le classement, ne
+recherche pas dans le corpus complet et n'active pas une recherche sémantique.
+L'Assistant utilise `prepareAssistantContext()` sur l'instantané complet et
+l'instance `IndexSession` commune ; une extraction préalable d'un fait unique
+n'est plus nécessaire si un extrait vérifié pertinent existe.
+
+Le corps envoyé contient la question et jusqu'à huit extraits vérifiés, un extrait
+de 1 024 caractères au plus et 8 192 caractères au total. Il n'inclut ni le document
+entier, ni les noms de fichier, ni l'historique ou les identifiants internes. Les
+questions sont limitées à 500 caractères. Un extrait qui correspond au document
+complet, qui contient une instruction adressée au modèle, qui n'est plus prouvé
+littéralement dans un segment vérifié, ou qui dépasse les limites est exclu sans
+troncature. Aucun appel n'est fait en absence d'extrait admissible, d'ambiguïté ou
+de conflit. Le modèle ne reçoit pas d'autorisation d'utiliser ses connaissances
+générales. L'application mobile ne transmet rien à l'adresse loopback du téléphone.
 
 La réponse doit respecter le schéma `status`, `answer`, `claims`. Chaque
-affirmation visible doit avoir une citation littérale présente dans les seuls
-passages envoyés ; les preuves et noms de source restent affichés. Ce contrôle
-vérifie la structure et la présence littérale, pas la véracité sémantique de
-l'affirmation. La réponse est marquée expérimentale, les actions ne sont jamais
-déclenchées par le modèle, et une erreur réseau, CORS, modèle manquant, format ou
-citation invalide est annoncée sans repli silencieux. Le mode déterministe
-existant reste utilisé lorsque l'option est désactivée.
+affirmation affichée doit avoir une citation littérale présente dans les seuls
+extraits envoyés ; les preuves et noms de source correspondants restent affichés.
+Ce contrôle vérifie la structure et la présence littérale, pas la véracité
+sémantique de l'affirmation. Les réponses et leurs citations restent signalées
+comme expérimentales ; les actions ne sont jamais déclenchées par le modèle. Une
+erreur réseau, CORS, modèle manquant, format ou citation invalide est annoncée sans
+repli silencieux. Le mode déterministe et les résultats locaux restent visibles
+lorsque l'option est désactivée ou que Qwen ne répond pas. Les générations sont
+annulables depuis l'interface et invalidées lors d'une navigation, d'un changement
+de recherche ou d'une modification détectée de leur contexte ; le délai maximal
+est de 120 secondes. L'annulation conserve la recherche ou la question et n'affiche
+pas de réponse Qwen. Les erreurs et limites indiquent explicitement si Qwen n'a pas
+été appelé.
 
 Ollama doit être démarré localement et autoriser l'origine exacte de l'application
 dans `OLLAMA_ORIGINS`. Les origines Vite `http://localhost:5173` et
 `http://127.0.0.1:5173` ont été préalablement vérifiées ; toute autre origine
 nécessite un contrôle distinct. Cette intégration et ses tests synthétiques ne
-qualifient pas le modèle pour une diffusion générale.
+qualifient pas le modèle pour une diffusion générale ; la qualification reste une
+étape séparée, qui n'est pas un préalable à l'utilisation expérimentale.
+
+### Validation de l'intégration — 27 novembre 2026
+
+Les contrôles ciblés totalisent 30/30 tests Node, 14/14 tests Playwright Qwen,
+un rejeu isolé réussi du contrôle d'opt-in Assistant et un build de production
+réussi. Deux nouveaux tests navigateur modifient une fixture pendant l'inférence :
+Recherche n'affiche pas la réponse périmée et actualise l'état des résultats
+locaux ; l'Assistant écarte la réponse, conserve la question et annonce que la
+source a changé.
+
+La première exécution des nouveaux tests a révélé une attente incorrecte sur la
+présence de l'ancien résultat après modification de sa preuve ; l'index affichait
+correctement zéro résultat. L'assertion a été ajustée à cet état réel, puis la
+suite ciblée complète a réussi. Le premier smoke manuel a également été relancé
+après correction de l'encodage PowerShell et du ciblage de la fixture.
+
+Un smoke Chromium vers Ollama local `qwen3:8b`, alimenté par une facture
+synthétique, a produit une citation vérifiée dans Recherche et dans l'Assistant
+avec deux appels loopback et aucun appel HTTPS. Ces preuves confirment les
+parcours et les barrières de l'application uniquement ; elles ne qualifient pas
+la qualité sémantique de Qwen. A2.2 reste rejetée.
 
 ## Première itération de consignes Qwen
 

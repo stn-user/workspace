@@ -68,6 +68,37 @@ test('où sont mes photos : synthèse des copies par source et compte après rec
   await expect(page.locator('#moments-life-search-status')).toContainText('sources non indexées ne sont pas couvertes');
 });
 
+test('Recherche mobile : le filtre contrat respecte la requête et se retire sans la perdre', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openReady(page, 'recherche');
+  await page.evaluate(async stateUrl => {
+    const { addDocument } = await import(stateUrl);
+    for (const [type, subject] of [['Contrat', 'habitation'], ['Facture', 'habitation'], ['Contrat', 'vélo']]) {
+      await addDocument({ id: `${type}-${subject}`, type, name: `${type} ${subject} fictif`, isLocal: true });
+    }
+  }, await stateModuleUrl(page));
+  await openReady(page, 'recherche', true);
+  const query = page.locator('#experimental-index-query');
+  const filter = page.locator('#search-contract-filter');
+  const results = page.locator('#experimental-index-results .experimental-result');
+  await expect(query).toBeEmpty();
+  await filter.click();
+  await expect(results).toHaveCount(2);
+  await query.fill('habitation');
+  await query.press('Enter');
+  await expect(results).toHaveCount(1);
+  await expect(results.locator('.result-kind')).toHaveText('Contrat');
+  await expect(results.locator('mark')).toContainText('habitation');
+  await expect(page.locator('#experimental-index-status')).toContainText('1 résultat');
+  await expectUsable(page.locator('#view-recherche'));
+  await expect(page.locator('#app-splash')).toBeHidden();
+  await page.locator('#view-recherche .household-header').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('recherche-mobile.png') });
+  await filter.click();
+  await expect(query).toHaveValue('habitation');
+  await expect(results).toHaveCount(2);
+});
+
 for (const viewport of [
   { width: 390, height: 844 },
   { width: 768, height: 1024 },
@@ -308,13 +339,17 @@ for (const width of [390, 768, 1280, 1920]) {
       await expect(page.locator('#view-accueil')).toHaveAccessibleName('Accueil');
       await expect(page.locator('body')).toHaveClass(/ui-theme/);
       await expect(page.locator('body')).toHaveClass(/ui-warm/);
-      await expect(page.locator('#dashboard-title')).toHaveText('Bienvenue chez vous');
-      await expect(page.locator('.home-reminders-empty')).toContainText('Aucun rappel actif enregistré');
+      await expect(page.locator('#dashboard-title')).toHaveText('Aujourd’hui');
+      await expect(page.locator(width <= 1024 ? '#home-featured-reminder' : '.home-reminders-empty')).toContainText('Aucune échéance');
       await expectUsable(page.locator('#view-accueil'));
       await expect(page.locator('#dashboard-data-note')).toContainText('exemples fictifs');
+      await expect(page.locator('.home-actions-panel')).toHaveClass(/ui-prisme/);
+      await expect(page.locator('#home-actions-title')).toHaveText('Retrouvez l’essentiel');
+      await expect(page.locator('.home-shortcuts [data-open-import]')).toHaveAccessibleName('Ajouter des fichiers');
       await expect(page.locator('#view-accueil [role="search"]')).toHaveCount(0);
       await expect(page.locator('.fab-add-document')).toHaveCount(0);
-      const form = await page.getByRole('button', { name: 'Ouvrir la recherche', exact: true }).boundingBox();
+      const searchEntry = page.getByRole('button', { name: width <= 1024 ? 'Retrouver un fichier' : 'Ouvrir la recherche', exact: true });
+      const form = await searchEntry.boundingBox();
       const main = await page.locator('.main-content').boundingBox();
       expect(form.y + form.height).toBeLessThanOrEqual(main.y + main.height);
       const hierarchy = await page.locator('#view-accueil').evaluate(root => {
@@ -337,7 +372,7 @@ for (const width of [390, 768, 1280, 1920]) {
         return Promise.all(['users', 'documents', 'equipment', 'family', 'alerts'].map(getAll));
       })).toEqual(before);
       await page.locator('#finish-onboarding-demo').click();
-      await page.getByRole('button', { name: 'Ouvrir la recherche', exact: true }).click();
+      await searchEntry.click();
       await expect(page.locator('body')).toHaveClass(/ui-warm/);
       await expect(page.locator('#experimental-index-query')).toBeFocused();
       await expect(page.locator('#view-recherche [data-open-import]')).toHaveCount(1);
@@ -358,8 +393,12 @@ for (const width of [390, 768, 1280, 1920]) {
       const { getCurrentUser } = await import(stateUrl);
       const { put } = await import('/db.js');
       await put('users', { ...getCurrentUser(), name });
-      for (const [id, type] of [['home-garantie', 'Garantie'], ['home-contrat', 'Contrat'], ['home-photo', 'Image']]) {
-        await put('documents', { id, type, name: `${id}.txt`, isLocal: true, content: '' });
+      for (const [id, type, importedAt] of [
+        ['home-garantie', 'Garantie', '2024-01-01T10:00:00.000Z'],
+        ['home-contrat', 'Contrat', '2025-01-01T10:00:00.000Z'],
+        ['home-photo', 'Image', null]
+      ]) {
+        await put('documents', { id, type, name: `${id}.txt`, isLocal: true, content: '', importedAt });
       }
     }, { name, stateUrl: await stateModuleUrl(page) });
     await openReady(page, 'accueil', true);
@@ -371,6 +410,11 @@ for (const width of [390, 768, 1280, 1920]) {
     await expect(page.locator('#home-warranty-count')).toHaveText('1');
     await expect(page.locator('#home-contract-count')).toHaveText('1');
     await expect(page.locator('#dashboard-data-note')).toContainText('3 fichiers enregistrés');
+    await expect(page.locator('#home-recent-documents .home-file-row')).toHaveCount(3);
+    await expect(page.locator('#home-recent-documents')).toContainText('home-garantie.txt');
+    await expect(page.locator('#home-recent-documents')).toContainText('Sur cet appareil');
+    await expect(page.locator('#home-recent-documents .home-file-row').first()).toContainText('home-contrat.txt');
+    await expect(page.locator('#home-recent-documents .home-file-row').last()).toContainText('home-photo.txt');
     await page.locator('.stat-card').filter({ has: page.locator('#home-warranty-count') }).click();
     await expect(page.locator('.data-file-row')).toHaveCount(1);
     await expect(page.locator('.data-file-row')).toContainText('home-garantie.txt');
@@ -409,13 +453,17 @@ for (const width of [390, 768, 1280, 1920]) {
     await expect(page.locator('.verify-panel')).toContainText('<b>Vérifier le contrat</b>');
     await expect(page.locator('.verify-panel b')).toHaveCount(0);
     await expect(page.locator('.verify-panel')).not.toContainText('Rappel déjà terminé');
-    await page.locator('.verify-row').click();
-    await expect(page).toHaveURL(/#\/alertes$/);
+    await expect(page.locator('.home-reminder-date strong')).toHaveText('12');
+    await expect(page.locator('.home-reminder-date-label time')).toHaveAttribute('datetime', '2027-06-12');
+    await expect(page.locator('#home-featured-reminder')).toContainText('<b>Vérifier le contrat</b>');
+    await page.locator('#home-featured-reminder').click();
+    await expect(page).toHaveURL(/#\/alertes\?filter=actifs$/);
     await page.evaluate(() => { location.hash = '#/accueil'; });
-    await page.getByRole('button', { name: 'Ma maison', exact: true }).click();
+    await page.locator('#view-accueil .home-shortcuts [data-open-view="maison"]').click();
     await expect(page).toHaveURL(/#\/maison$/);
     await page.evaluate(() => { location.hash = '#/accueil'; });
-    await page.getByRole('button', { name: 'Ma famille', exact: true }).click();
+    await page.getByRole('button', { name: 'Ouvrir Plus', exact: true }).click();
+    await page.locator('#view-plus [data-nav="famille"]').click();
     await expect(page).toHaveURL(/#\/famille$/);
     expect(await page.evaluate(async () => (await import('/db.js')).getAll('alerts'))).toEqual(stored);
   });
