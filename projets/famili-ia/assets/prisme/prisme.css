@@ -247,7 +247,7 @@
   }
   .mobile-more-button[aria-current="page"] { background: #cdf3dd; color: #192342; }
   .bottom-nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: center;
     background: #192342;
     border: 0;

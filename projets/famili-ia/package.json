@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "node --test",
+    "test:e2e": "playwright test",
     "benchmark:photo-exif": "node --expose-gc tests/photo-exif-benchmark.js",
     "benchmark:assistant": "node scripts/evaluate-assistant.js",
     "benchmark:assistant-decisions": "node scripts/evaluate-assistant-decisions.js",

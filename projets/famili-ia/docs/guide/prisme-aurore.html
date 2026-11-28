@@ -577,6 +577,9 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
 .dock button .i{transition:transform .45s cubic-bezier(.34,1.56,.64,1)}
 .dock button[aria-current=page]{color:var(--on-pastel)}
 .dock button[aria-current=page] .i{transform:translateY(-2px) scale(1.12)}
+.dock{--slots:5;grid-template-columns:repeat(var(--slots),minmax(0,1fr))}
+.dock .ind{width:calc((100% - 12px)/var(--slots))}
+.dock:not(:has([aria-current=page])) .ind{visibility:hidden}
 .dock .dot{position:absolute;top:10px;right:calc(50% - 20px);width:9px;height:9px;border-radius:50%;background:#ff7a9b;border:2px solid var(--bg1)}
 
 /* logo animé */
@@ -605,9 +608,13 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
 [data-preview=web] .device-wrap{container-type:inline-size}
 [data-preview=web] .phone{width:min(390px,100%);height:800px;max-width:100%}
 .search-facets{display:none}
-[data-preview=web] .phone:has(.web-home.on,.web-search.on){width:100%;height:clamp(530px,calc(100dvh - 224px),800px);border-radius:28px}
+[data-preview=web] .phone:has(.web-home.on,.web-search.on,.web-settings.on){width:100%;height:clamp(530px,calc(100dvh - 224px),800px);border-radius:28px}
 @container (min-width:640px){
-  .phone:has(.web-home.on,.web-search.on) .app-head{padding:18px 26px;mask:none}
+  .dock{--slots:4}
+  .dock .mobile-data{display:none}
+  .dock:has(.mobile-data[aria-current=page]) .ind{visibility:hidden}
+  .phone:has(.web-home.on,.web-search.on,.web-settings.on) .app-head{padding:18px 26px;mask:none}
+  .web-settings{padding-inline:max(26px,calc((100% - 620px)/2))}
   .web-search{padding:84px clamp(18px,2.4cqw,38px) 100px}
   .search-workspace{display:grid;grid-template-columns:clamp(162px,23%,240px) minmax(0,1fr);gap:clamp(12px,2cqw,26px);align-items:start;margin-top:18px}
   .search-facets{display:block;padding:16px;border:1px solid var(--stroke);border-radius:24px;background:var(--glass);backdrop-filter:blur(16px)}
@@ -626,11 +633,11 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
   .web-home .tiles{grid-column:2;grid-template-columns:1fr;margin:0}
   .web-home .tile{min-height:88px;flex-direction:row;align-items:center;justify-content:flex-start;gap:12px}
   .web-home .row{margin-bottom:6px}
-  .phone:has(.web-home.on,.web-search.on) .dock{width:360px;left:50%;right:auto;translate:-50% 0}
-  [data-nav=rail] :is(.web-home,.web-search){left:110px;padding-bottom:24px}
-  [data-nav=rail] .phone:has(.web-home.on,.web-search.on) .dock{width:92px;height:auto;left:12px;top:86px;bottom:auto;translate:none;grid-template-columns:1fr;grid-auto-rows:66px}
-  [data-nav=rail] .phone:has(.web-home.on,.web-search.on) .ind{display:none}
-  [data-nav=rail] .phone:has(.web-home.on,.web-search.on) .dock [aria-current=page]{background:var(--nav-ind)}
+  .phone:has(.web-home.on,.web-search.on,.web-settings.on) .dock{width:360px;left:50%;right:auto;translate:-50% 0}
+  [data-nav=rail] :is(.web-home,.web-search,.web-settings){left:110px;padding-bottom:24px}
+  [data-nav=rail] .phone:has(.web-home.on,.web-search.on,.web-settings.on) .dock{width:92px;height:auto;left:12px;top:86px;bottom:auto;translate:none;grid-template-columns:1fr;grid-auto-rows:66px}
+  [data-nav=rail] .phone:has(.web-home.on,.web-search.on,.web-settings.on) .ind{display:none}
+  [data-nav=rail] .phone:has(.web-home.on,.web-search.on,.web-settings.on) .dock [aria-current=page]{background:var(--nav-ind)}
 }
 @media(max-width:1040px){
   [data-preview=web] .stage{grid-template-columns:minmax(0,1fr)}
@@ -675,6 +682,7 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v12m-5-5 5 5 5-5M5 17v4h14v-4"/></symbol>
   <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16v4m-2-2h4"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9m4 0h3M4 17h3m4 0h9M13 4v6M7 14v6"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="m9 4 1-2h4l1 2 2 1 2 .2 2 3.5-1.2 1.8v3l1.2 1.8-2 3.5-2 .2-2 1-1 2h-4l-1-2-2-1-2-.2-2-3.5 1.2-1.8v-3L3 8.7l2-3.5L7 5z"/><circle cx="12" cy="12" r="3.3"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v5.5c0 5-3.4 8.2-8 9.5-4.6-1.3-8-4.5-8-9.5V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 19c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></symbol>
@@ -746,22 +754,20 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
         <li>Essayez : choisir « Volets » (catégorie vide) ou ajouter un équipement.</li>
       </ul>
     </section>
-    <section class="panel" data-for="7" hidden aria-label="Notes Plus">
-      <h2>Plus · mis à jour</h2>
+    <section class="panel" data-for="7" hidden aria-label="Notes Paramètres">
+      <h2>Paramètres</h2>
       <ul class="list">
-        <li>Ouvert par le bouton « ⋯ » de l’en-tête (qui passe en menthe) ; un second appui revient à l’écran précédent.</li>
-        <li>La carte du haut ouvre « Profil et famille » : plus de ligne Famille séparée.</li>
+        <li>La roue dentée, à côté du thème, ouvre les paramètres. Un second appui revient à la vue précédente.</li>
+        <li>« Vos données » se trouve dans Rappels et dans la navigation mobile.</li>
         <li>Apparence Clair / Sombre / Système en contrôle segmenté.</li>
-        <li>« Revoir la démo » est dans la section Aide : c’est le seul point d’entrée pour rejouer la découverte (le lien a quitté le profil).</li>
+        <li>Aide permet de revoir la démo. La rubrique Offres illustre la monétisation, sans achat.</li>
       </ul>
-    </section>
-    <section class="panel" data-for="8" hidden aria-label="Notes Profil et famille">
-      <h2>Profil et famille · fusionnés</h2>
+      <h3>Profil et famille</h3>
       <ul class="list">
-        <li>Un seul écran : identité (nom, adresse facultative), puis « Mon cercle » avec les membres, puis la localisation des photos.</li>
+        <li>Le raccourci de Mon foyer ouvre directement la rubrique dans Paramètres. Le menu web ne duplique pas cette destination.</li>
         <li>Ajouter, renommer ou supprimer une fiche par feuille de verre ; la suppression est confirmée et ne touche ni photos ni fichiers.</li>
         <li>Rappel permanent : fiches locales, aucun compte, invitation ni partage.</li>
-        <li>Le nom enregistré met à jour l’initiale, la carte de Plus et le « Bonjour » de l’Accueil ; le cercle alimente la ligne « Mon cercle » du Foyer.</li>
+        <li>Le nom enregistré met à jour l’initiale et le « Bonjour » de l’Accueil ; le cercle reste accessible depuis Foyer.</li>
         <li>Essayez : ajouter « Camille », renommer, supprimer, puis changer votre nom.</li>
       </ul>
     </section>
@@ -771,7 +777,7 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
         <li>Plein écran, sans dock : sphères de verre en arrière-plan, logo animé, points de progression qui s’étirent, « Passer » toujours disponible.</li>
         <li>Parcours « Mon espace » : accueil → choix → prénom (aperçu en direct) → sources → prêt. Aucune source n’est connectée ici : seule l’intention est notée.</li>
         <li>Parcours « Exemple » : question, preuve citée, aperçu de rappel — tout est fictif, rien n’est créé ni importé.</li>
-        <li>« Revoir la démo » (Plus ou Vos données) rejoue seulement la démo et revient où vous étiez.</li>
+        <li>« Revoir la démo » (Paramètres ou Vos données) rejoue seulement la démo et revient où vous étiez.</li>
         <li>À la fin de la démo, un bandeau « exemples fictifs » propose de créer son espace.</li>
         <li>Essayez : les deux parcours, la touche retour, « Passer ».</li>
       </ul>
@@ -830,7 +836,7 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
         <div class="brand"><svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#logo-b"/></svg><span>Famili-<span class="grad">IA</span></span></div>
         <div class="head-actions">
           <button class="round theme" id="theme" aria-pressed="false" aria-label="Basculer entre mode clair et mode sombre"><svg class="i sun"><use href="#i-sun"/></svg><svg class="i moon"><use href="#i-moon"/></svg></button>
-          <button class="round" id="morebtn" aria-label="Ouvrir Plus" aria-pressed="false"><svg class="i"><use href="#i-dots"/></svg></button>
+          <button class="round" id="app-settings" aria-label="Paramètres" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg></button>
         </div>
       </div>
 
@@ -906,7 +912,7 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
         <p class="note"><svg class="i"><use href="#i-shield"/></svg>Illustrations IA par défaut, pas des photos de vos équipements. Le statut est une saisie de votre part, pas un diagnostic.</p>
 
         <div class="section">Famille</div>
-        <button class="row" data-go="8" id="house-circle"><span class="avs" id="house-avs" aria-hidden="true"></span><div><b>Mon cercle</b><small id="house-fcount"></small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <button class="row" id="house-circle" aria-controls="profile-settings"><span class="avs" id="house-avs" aria-hidden="true"></span><div><b>Profil et famille</b><small id="house-fcount"></small></div><svg class="i"><use href="#i-go"/></svg></button>
         <div class="section">Mon espace</div>
         <button class="row"><span class="ic lilac"><svg class="i"><use href="#i-folder"/></svg></span><div><b>Fichiers et réglages</b><small>Inventaire, profil, confidentialité</small></div><svg class="i"><use href="#i-go"/></svg></button>
       </section>
@@ -932,6 +938,7 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
           <div id="pcards"></div>
         </details>
         <p class="note"><svg class="i"><use href="#i-shield"/></svg>Vos rappels et leurs réglages restent sur cet appareil.</p>
+        <button class="row" data-go="6"><span class="ic mint"><svg class="i"><use href="#i-folder"/></svg></span><div><b>Vos données</b><small>Consulter les fichiers de cet appareil</small></div><svg class="i"><use href="#i-go"/></svg></button>
       </section>
 
       <!-- Assistant -->
@@ -1036,31 +1043,13 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
         </div>
       </section>
 
-      <!-- Plus -->
-      <section class="screen menu" data-screen="7" aria-label="Plus">
-        <p class="eyebrow mono">Espace local</p>
-        <h1 class="title">Plus</h1>
-        <button class="me" data-go="8"><span class="av" id="me-av" aria-hidden="true">A</span><div><b id="me-name">Alice (exemple)</b><small id="me-sub">Profil et famille · 2 fiches dans votre cercle</small></div><svg class="i"><use href="#i-go"/></svg></button>
-        <button class="assistant" data-go="4"><span class="sp"><svg class="i"><use href="#i-spark"/></svg></span><b>Assistant documentaire</b><svg class="i"><use href="#i-go"/></svg></button>
-        <div class="section">Mon espace</div>
-        <button class="row" data-go="5"><span class="ic sky" style="background:var(--sky)"><svg class="i"><use href="#i-up"/></svg></span><div><b>Importer</b><small>Appareil, Drive, OneDrive, Dropbox</small></div><svg class="i"><use href="#i-go"/></svg></button>
-        <button class="row" data-go="6"><span class="ic mint"><svg class="i"><use href="#i-folder"/></svg></span><div><b>Vos données</b><small>Inventaire, export, suppression</small></div><svg class="i"><use href="#i-go"/></svg></button>
-        <div class="section">Apparence</div>
-        <div class="seg3" id="seg3" role="group" aria-label="Apparence"><span class="thumb" aria-hidden="true"></span>
-          <button data-p="light" aria-pressed="true"><svg class="i"><use href="#i-sun"/></svg>Clair</button>
-          <button data-p="dark" aria-pressed="false"><svg class="i"><use href="#i-moon"/></svg>Sombre</button>
-          <button data-p="system" aria-pressed="false"><svg class="i"><use href="#i-dots"/></svg>Système</button>
-        </div>
-        <div class="section">Aide</div>
-        <button class="row" data-onb-open="replay"><span class="ic lilac"><svg class="i"><use href="#i-play"/></svg></span><div><b>Revoir la démo</b><small>Une histoire fictive, sans vos fichiers</small></div><svg class="i"><use href="#i-go"/></svg></button>
-        <p class="note"><svg class="i"><use href="#i-shield"/></svg>Version locale · rien n’est envoyé à un serveur Famili-IA.</p>
-      </section>
-
-      <!-- Profil et famille -->
-      <section class="screen" data-screen="8" aria-label="Profil et famille">
-        <button class="back" data-go="7"><svg class="i"><use href="#i-go"/></svg>Plus</button>
-        <p class="eyebrow mono">Votre espace</p>
-        <h1 class="title">Profil et famille</h1>
+      <!-- Paramètres -->
+      <section class="screen menu web-settings" data-screen="7" aria-label="Paramètres">
+        <p class="eyebrow mono">Application</p>
+        <h1 class="title">Paramètres</h1>
+        <div class="section">Mon foyer</div>
+        <details class="prop" id="profile-settings">
+        <summary>Profil et famille <svg class="i"><use href="#i-plus"/></svg></summary>
         <div class="pf-hero"><span class="av big" id="pf-av" aria-hidden="true">A</span><div><b id="pf-name">Alice (exemple)</b><small>Initiale automatique · modifiable</small></div></div>
         <div class="lbl">Identité</div>
         <label class="field2"><input id="pf-in" aria-label="Nom d’affichage" value="Alice (exemple)" autocomplete="off"></label>
@@ -1079,6 +1068,18 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
           <div class="switchrow"><span><b>Localisation des photos</b><small>Utiliser le GPS des photos pour la recherche. Désactivé par défaut ; ne connecte aucun service et ne crée aucun partage.</small></span><button class="sw2" id="gps" role="switch" aria-checked="false" aria-label="Localisation des photos"></button></div>
           <p class="saved" id="gpsst" role="status" style="color:var(--on-pastel-soft);margin:0">Localisation désactivée.</p>
         </div>
+        </details>
+        <div class="section">Apparence</div>
+        <div class="seg3" id="seg3" role="group" aria-label="Apparence"><span class="thumb" aria-hidden="true"></span>
+          <button data-p="light" aria-pressed="true"><svg class="i"><use href="#i-sun"/></svg>Clair</button>
+          <button data-p="dark" aria-pressed="false"><svg class="i"><use href="#i-moon"/></svg>Sombre</button>
+          <button data-p="system" aria-pressed="false"><svg class="i"><use href="#i-dots"/></svg>Système</button>
+        </div>
+        <div class="section">Aide</div>
+        <button class="row" data-onb-open="replay"><span class="ic lilac"><svg class="i"><use href="#i-play"/></svg></span><div><b>Revoir la démo</b><small>Une histoire fictive, sans vos fichiers</small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <div class="section">Offres et abonnement</div>
+        <details class="prop"><summary>Découvrir les offres <svg class="i"><use href="#i-plus"/></svg></summary><p class="lead">Aperçu de la future rubrique. Aucun tarif défini, aucun achat possible dans cette maquette.</p></details>
+        <p class="note"><svg class="i"><use href="#i-shield"/></svg>Version locale · rien n’est envoyé à un serveur Famili-IA.</p>
       </section>
 
       <div class="toast" id="toast" role="status"></div>
@@ -1101,6 +1102,7 @@ details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animati
         <button data-i="1"><svg class="i"><use href="#i-search"/></svg>Recherche</button>
         <button data-i="2"><svg class="i"><use href="#i-foyer"/></svg>Foyer</button>
         <button data-i="3"><svg class="i"><use href="#i-bell"/></svg>Rappels<span class="dot" aria-hidden="true"></span></button>
+        <button class="mobile-data" data-i="6" aria-label="Vos données"><svg class="i"><use href="#i-folder"/></svg>Données</button>
       </nav>
 
       <div class="scrim" id="scrim"></div>
@@ -1262,23 +1264,21 @@ const asks = {
   4: '<h2>Assistant validé</h2><span>Bulles indigo/menthe avec sources, saisie flottante et action confirmée : retenus.</span>',
   5: '<h2>Importer validé</h2><span>Zone « Sur cet appareil », étapes avec progression et sources cloud sobres : retenus.</span>',
   6: '<h2>Vos données validé</h2><span>Donut de couverture, inventaire en liste/galerie, export et suppression confirmée : retenus.</span>',
-  7: '<h2>À vous de trancher · Plus</h2><span><b>1.</b> La carte du haut ouvre « Profil et famille » (plus de ligne Famille séparée) : OK ?</span><span><b>2.</b> « Revoir la démo » dans Aide, seul point d’entrée de la découverte : OK ?</span>',
-  8: '<h2>À vous de trancher · Profil et famille</h2><span><b>1.</b> Un seul écran : identité, cercle (ajout, renommage, suppression en feuille), localisation : OK ?</span><span><b>2.</b> Le cercle alimente la ligne « Mon cercle » du Foyer : OK ?</span><span><b>3.</b> Prochaine étape : l’onboarding (bouton à gauche, ou « Revoir la démo » dans Plus).</span>',
+  7: '<h2>À vous de trancher · Paramètres</h2><span>Les réglages sont-ils faciles à retrouver sans les raccourcis métier ? Essayez de changer le thème, puis de revenir à votre écran.</span>',
   9: '<h2>À vous de trancher · Onboarding</h2><span><b>1.</b> Deux parcours après l’accueil : « Créer mon espace » ou « Découvrir avec un exemple » : OK ?</span><span><b>2.</b> Sources : simple intention, rien n’est connecté à ce stade : OK ?</span><span><b>3.</b> Démo : question → preuve → rappel proposé, sans rien créer : OK ?</span>'
 };
-let dockIdx = 0, prevScreen = 0;
-const TAGS = { 0: '1 sur 8 · Accueil', 1: '2 sur 8 · Recherche', 2: '3 sur 8 · Foyer', 3: '4 sur 8 · Rappels', 4: '5 sur 8 · Assistant', 5: '6 sur 8 · Importer', 6: '7 sur 8 · Vos données', 7: '8 sur 8 · Plus', 8: '8 sur 8 · Profil et famille', 9: 'bonus · Onboarding' };
+let prevScreen = 0;
+const TAGS = { 0: '1 sur 8 · Accueil', 1: '2 sur 8 · Recherche', 2: '3 sur 8 · Foyer', 3: '4 sur 8 · Rappels', 4: '5 sur 8 · Assistant', 5: '6 sur 8 · Importer', 6: '7 sur 8 · Vos données', 7: '8 sur 8 · Paramètres', 9: 'bonus · Onboarding' };
 let current = 0;
 function show(i) {
-  if (i !== 7 && i !== 8) prevScreen = i;
-  const d = i === 4 ? 1 : (i === 5 || i === 6) ? 0 : (i === 7 || i === 8) ? dockIdx : i;
-  if (i !== 7 && i !== 8) dockIdx = d;
+  if (i === 7 && current !== 7) prevScreen = current;
+  const d = i === 4 ? 1 : i === 5 ? 0 : i;
   current = i;
   screens.forEach(s => s.classList.toggle('on', Number(s.dataset.screen) === i));
   dock.querySelectorAll('button').forEach(b => { const on = Number(b.dataset.i) === d; if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  dock.style.setProperty('--i', d);
+  dock.style.setProperty('--i', i === 6 ? 4 : d);
   document.getElementById('composer').classList.toggle('on', i === 4);
-  document.getElementById('morebtn').setAttribute('aria-pressed', String(i === 7 || i === 8));
+  document.getElementById('app-settings').setAttribute('aria-pressed', String(i === 7));
   document.querySelectorAll('[data-for]').forEach(p => p.hidden = Number(p.dataset.for) !== i);
   document.getElementById('ask').innerHTML = asks[i];
   document.getElementById('tag').textContent = 'Prototype · écran ' + TAGS[i] + ' · données fictives';
@@ -1293,7 +1293,14 @@ function show(i) {
 }
 dock.querySelectorAll('button').forEach(b => b.addEventListener('click', () => show(Number(b.dataset.i))));
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => show(Number(b.dataset.go))));
-document.getElementById('morebtn').addEventListener('click', () => show(current === 7 || current === 8 ? prevScreen : 7));
+document.getElementById('app-settings').addEventListener('click', () => show(current === 7 ? prevScreen : 7));
+document.getElementById('house-circle').addEventListener('click', () => {
+  show(7);
+  const profile = document.getElementById('profile-settings');
+  profile.open = true;
+  profile.closest('.screen').scrollTop = 0;
+  profile.querySelector('summary').focus({preventScroll:true});
+});
 
 /* orbes */
 const hero = document.getElementById('hero');
@@ -1427,6 +1434,7 @@ renderEq();
 const TODAY = new Date(2026, 10, 28);
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const fmt = d => d.getDate() + ' ' + MONTHS[d.getMonth()];
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const plus = n => { const d = new Date(TODAY); d.setDate(d.getDate() + n); return d; };
 const ALERTS = [{ id: 1, title: 'Contrat habitation', due: 14, status: 'active', source: 'Contrat habitation', excerpt: 'Échéance : 12 décembre 2026.', snooze: null, read: false }];
 let flt = 'actifs';
@@ -1471,6 +1479,20 @@ function renderAlerts() {
   document.getElementById('seg').style.setProperty('--s', flt === 'termines' ? 1 : 0);
   document.getElementById('liststatus').textContent = list.length + ' alerte' + (list.length > 1 ? 's' : '');
   if (!list.length) {
+    if (flt === 'actifs') {
+      alertsEl.innerHTML = `<article class="al alert-empty-date">
+        <div class="coralhero"><span class="ribbon" aria-hidden="true"><i></i><i></i><i></i></span>
+          <time datetime="${iso(TODAY)}" aria-label="${fmt(TODAY)} ${TODAY.getFullYear()}">
+            <span class="bigday" aria-hidden="true">${TODAY.getDate()}</span>
+            <span class="mono mo" aria-hidden="true">${MONTHS[TODAY.getMonth()]}</span>
+          </time>
+          <h3>Aucune alerte disponible</h3>
+          <p>Les rappels confirmés apparaîtront ici.</p>
+        </div>
+        <div class="aldetail"><p class="note"><svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>L’absence d’alerte ne prouve pas l’absence d’échéance.</p></div>
+      </article>`;
+      return;
+    }
     const [t, p] = EMPTY[flt] || ['Aucun rappel dans cette catégorie', 'Les autres catégories restent disponibles. Cette liste ne couvre que vos rappels enregistrés.'];
     alertsEl.innerHTML = `<div class="empty"><span class="bub"><svg class="i" style="width:30px;height:30px"><use href="#i-bell"/></svg></span><b>${t}</b><p>${p}</p></div>`;
     return;
@@ -1670,7 +1692,6 @@ const initialOf = n => (Array.from(n.trim())[0] || '?').toLocaleUpperCase('fr');
 const pfIn = document.getElementById('pf-in');
 function paintName(n) {
   document.getElementById('pf-av').textContent = initialOf(n); document.getElementById('pf-name').textContent = n || 'Mon espace';
-  document.getElementById('me-av').textContent = initialOf(n); document.getElementById('me-name').textContent = n || 'Mon espace';
   const first = (n.trim().split(/\s+/)[0] || '');
   document.querySelector('.hello .grad').textContent = first || 'là';
 }
@@ -1700,7 +1721,6 @@ function paintCircle(addedId) {
   document.getElementById('members').innerHTML = n ? MEMBERS.map(m => `
     <button class="row mrow${m.id === addedId ? ' add' : ''}" data-m="${m.id}" aria-label="Modifier la fiche de ${esc(m.name)}"><span class="avs" aria-hidden="true"><i>${esc(initialOf(m.name))}</i></span><div><b>${esc(m.name)}</b><small>Fiche locale</small></div><svg class="i"><use href="#i-go"/></svg></button>`).join('')
     : '<p class="saved" style="color:var(--muted)">Aucun membre pour l’instant. Ajoutez un prénom pour annoter vos photos.</p>';
-  document.getElementById('me-sub').textContent = 'Profil et famille · ' + label + ' dans votre cercle';
   document.getElementById('house-fcount').textContent = n ? 'Vous et ' + label : 'Vous seul·e pour l’instant';
   document.getElementById('house-avs').innerHTML = [NAME, ...MEMBERS.map(m => m.name)].slice(0, 3).map(x => `<i>${esc(initialOf(x))}</i>`).join('');
 }
@@ -1781,7 +1801,7 @@ const STEPS = {
   ready: () => {
     const picked = SOURCES.filter(s => ob.sources.has(s.id)).map(s => s.name), nm = ob.name.trim();
     return {
-      main: `<h1 tabindex="-1">Votre espace est prêt</h1><p class="osub">Voici ce que Famili-IA a retenu. Tout se modifie dans Plus et Importer.</p>
+      main: `<h1 tabindex="-1">Votre espace est prêt</h1><p class="osub">Vous pouvez modifier votre prénom dans Profil et famille et ajouter des fichiers dans Importer.</p>
         <div class="recap">
           <div class="rr"><span class="ic lilac" style="display:grid;place-items:center;color:var(--on-pastel)"><svg class="i"><use href="#i-people"/></svg></span><div><b>${esc(nm || 'Mon espace')}</b><small>Votre nom d’affichage</small></div></div>
           <div class="rr" style="animation-delay:.08s"><span class="ic mint" style="display:grid;place-items:center;color:var(--on-pastel)"><svg class="i"><use href="#i-folder"/></svg></span><div><b>${picked.length ? esc(picked.join(' · ')) : 'Aucune source choisie'}</b><small>${picked.some(p => p !== 'Cet appareil') ? 'Services à configurer depuis Importer — rien n’est connecté' : 'Importez vos fichiers depuis Importer'}</small></div></div>
@@ -1846,7 +1866,7 @@ function endOnb(kind) {
     const nm = ob.name.trim().replace(/\s+/g, ' '); NAME = nm || 'Mon espace'; pfIn.value = nm; MEMBERS = []; paintName(nm); paintCircle();
     banner.hidden = true; show(0); toast('Espace créé sur cet appareil.');
   } else if (kind === 'demo') { banner.hidden = false; show(0); toast('Fin de la démo : exemples fictifs.'); }
-  else if (kind === 'skip') { show(ob.origin); if (ob.mode === 'first') toast('Découverte passée : « Revoir la démo » dans Plus.'); }
+  else if (kind === 'skip') { show(ob.origin); if (ob.mode === 'first') toast('Découverte passée : « Revoir la démo » dans Paramètres.'); }
   else show(ob.origin);
 }
 function act(a, el) {
@@ -1882,6 +1902,6 @@ if (preview === 'web' || preview === 'mobile') {
       pref = e.newValue; applyPref();
     }
   });
-} else show(8);
+} else show(7);
 </script>
 </html>

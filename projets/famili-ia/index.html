@@ -36,8 +36,7 @@
       <label class="appearance-control" title="Apparence : clair, sombre ou système"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><use class="sun" href="./assets/prisme/aurore-icones.svg#i-sun"/><use class="moon" href="./assets/prisme/aurore-icones.svg#i-moon"/></svg><select id="aurore-theme" aria-label="Apparence de Famili-IA">
         <option value="light">Clair</option><option value="dark">Sombre</option><option value="system">Système</option>
       </select></label>
-      <button class="avatar avatar-small desktop-profile-button" type="button" data-open-view="profil" aria-label="Ouvrir Profil et famille"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></button>
-      <button class="avatar avatar-small mobile-more-button" type="button" data-open-view="plus" aria-label="Ouvrir Plus"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+      <button class="round app-settings-button" type="button" id="open-app-settings" aria-label="Ouvrir les paramètres" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-settings"/></svg></button>
     </header>
 
     <aside class="sidebar" aria-label="Navigation principale">
@@ -48,8 +47,7 @@
         <button class="nav-item" type="button" data-nav="alertes"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>Alertes</button>
         <button class="nav-item" type="button" data-nav="assistant"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Assistant</button>
         <button class="nav-item" type="button" data-nav="importer"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Importer</button>
-        <button class="nav-item" type="button" data-nav="profil"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profil et famille</button>
-        <button class="nav-item" type="button" data-nav="vos-donnees"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>Données</button>
+        <button class="nav-item" type="button" data-nav="vos-donnees"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>Vos données</button>
       </nav>
       <!-- <section class="sidebar-note">
         <span class="status-dot" aria-hidden="true"></span>
@@ -252,7 +250,7 @@
             <p class="eyebrow">Sur cet appareil</p>
             <h1 id="page-title">Recherche</h1>
           </div>
-          <button class="ui-button ui-button--secondary household-header-action" type="button" data-open-import aria-label="Ajouter des fichiers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter des fichiers</span></button>
+          <div class="aurore-kit"><button class="addbtn" type="button" data-open-import aria-label="Ajouter des fichiers"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-plus"/></svg></button></div>
         </header>
 
         <form class="search-form shared-search-form unified-search-form" id="experimental-index-form" role="search">
@@ -411,7 +409,7 @@
               <p id="house-photo-status" class="household-note" role="status" hidden></p>
               <span id="display-address"></span>
               <span id="display-city"></span>
-            <button class="link" type="button" data-open-view="profil">Modifier dans le profil</button>
+            <button class="link" type="button" data-open-view="profil">Modifier dans les paramètres</button>
           </div>
         </article>
         <section class="house-carnet" aria-labelledby="equipment-title">
@@ -439,7 +437,6 @@
         </section>
         <nav aria-label="Dans mon foyer">
           <h2 class="section" id="house-profile-title">Profil et famille</h2><button class="row" type="button" data-open-view="profil" aria-labelledby="house-profile-title house-circle-label" aria-describedby="house-family-count"><span class="avs" id="house-family-avatars" aria-hidden="true"><span class="ic mint"><svg class="i"><use href="./assets/prisme/aurore-icones.svg#i-people"/></svg></span></span><span class="house-row-copy"><b id="house-circle-label">Mon cercle</b><small id="house-family-count"></small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
-          <h2 class="section">Mon espace</h2><button class="row" type="button" data-open-view="plus"><span class="ic lilac"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-folder"/></svg></span><span class="house-row-copy"><b>Fichiers et réglages</b><small>Inventaire, profil, confidentialité</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
         </nav>
       </section>
 
@@ -514,7 +511,7 @@
           <div class="search-disclosure-content">
           <p>Du jour aux 90 prochains jours inclus, à partir des textes extraits fiables déjà présents dans Famili-IA. Les dates explicites et les estimations de garantie sont distinguées ; une estimation basée sur une date d'achat et une durée explicites doit être confirmée. Aucune proposition ne crée d'alerte sans votre confirmation.</p>
           <p>Les sources peuvent être incomplètes ou périmées ; l'accès actuel aux originaux n'est pas vérifié. L'absence de proposition ne prouve pas l'absence d'échéance.</p>
-          <button type="button" class="ui-button ui-button--secondary" id="experimental-deadline-refresh">Actualiser les propositions</button>
+          <button type="button" class="fchip aurore-action-pill" id="experimental-deadline-refresh">Actualiser les propositions</button>
           <p id="experimental-deadline-status" role="status" aria-live="polite"></p>
           <ul id="experimental-deadline-results" aria-label="Échéances proposées"></ul>
           <details id="experimental-deadline-review">
@@ -524,6 +521,7 @@
           </div>
         </details>
         <p class="note"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Vos rappels et leurs réglages restent sur cet appareil.</p>
+        <button class="row alerts-data-link" type="button" data-open-view="vos-donnees"><span class="ic mint" aria-hidden="true"><svg class="i"><use href="./assets/prisme/aurore-icones.svg#i-folder"/></svg></span><span class="house-row-copy"><b>Vos données</b><small>Consulter les fichiers de cet appareil</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
         </div></div>
       </section>
 
@@ -652,19 +650,19 @@
             <p>Vous pouvez aussi déposer des fichiers sur la carte. Recherche s’ouvre pendant leur traitement ; retrouvez le bilan ici.</p>
             <p class="import-intro">Bilan de session, non conservé au rechargement. Les ajouts simultanés ne sont pas regroupés. Pour les services cloud, le suivi et le bilan restent dans leurs options.</p>
             <div class="management-actions">
-              <button class="ui-button ui-button--secondary" type="button" data-open-view="vos-donnees">Voir mes fichiers</button>
+              <button class="fchip aurore-action-pill" type="button" data-open-view="vos-donnees">Voir mes fichiers</button>
               <button class="ui-button ui-button--text" type="button" data-open-view="recherche">Ouvrir la recherche</button>
             </div>
           </section>
         </div>
       </section>
 
-      <section class="view aurore-kit" id="view-profil" data-view="profil" aria-labelledby="profile-title" hidden>
-        <header>
-          <button class="back" type="button" data-open-view="plus"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg>Plus</button>
-          <p class="eyebrow mono">Votre espace</p><h1 class="title" id="profile-title">Profil et famille</h1>
-        </header>
-        <div>
+      <section class="view aurore-kit" id="view-plus" data-view="plus" aria-labelledby="plus-title" hidden>
+        <header><p class="eyebrow mono">Application</p><h1 class="title" id="plus-title">Paramètres</h1></header>
+        <div class="menu settings-menu">
+          <details class="prop settings-profile" id="settings-profile">
+            <summary id="profile-title"><span>Profil et famille<small id="settings-profile-description">Identité, cercle familial et photos</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-plus"/></svg></summary>
+            <div class="profile-view" id="view-profil" aria-labelledby="profile-title">
           <form id="profile-form" aria-labelledby="profile-title">
             <div class="pf-hero">
               <span class="av big" id="profile-avatar" aria-hidden="true">?</span>
@@ -709,23 +707,29 @@
             <button class="pick" type="submit" id="save-profile">Enregistrer le profil</button>
             <p class="saved" id="profile-save-status" role="status" aria-live="polite"></p>
           </form>
-          <div class="profile-secondary">
-            <section class="panel2" aria-labelledby="profile-discovery-title">
-              <h2 class="management-section-title" id="profile-discovery-title">Vos fichiers et vos rappels</h2>
-              <div class="management-actions management-actions--stack">
-                <button class="ui-button ui-button--secondary" type="button" data-open-view="vos-donnees">Gérer mes données</button>
-                <button class="ui-button ui-button--secondary" type="button" data-open-import>Ajouter des fichiers</button>
-                <button class="ui-button ui-button--secondary" type="button" data-open-view="alertes">Mes alertes</button>
-              </div>
-            </section>
-            <section class="panel2" aria-labelledby="profile-help-title">
-              <h2 class="management-section-title" id="profile-help-title">Un coup de main</h2>
-              <div class="management-actions management-actions--stack">
-                <button class="ui-button ui-button--secondary" type="button" id="reset-onboarding-btn">Revoir la découverte</button>
-                <button class="ui-button ui-button--text" type="button" id="start-view-tour-profile">Visiter les autres vues</button>
-              </div>
-            </section>
-          </div>
+            </div>
+          </details>
+          <section class="settings-group" aria-labelledby="plus-appearance-title">
+            <h2 class="section" id="plus-appearance-title">Apparence</h2>
+            <div class="seg3" role="group" aria-labelledby="plus-appearance-title"><span class="thumb" aria-hidden="true"></span>
+              <button type="button" data-appearance="light" aria-pressed="true"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-sun"/></svg>Clair</button>
+              <button type="button" data-appearance="dark" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-moon"/></svg>Sombre</button>
+              <button type="button" data-appearance="system" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-dots"/></svg>Système</button>
+            </div>
+          </section>
+          <section class="settings-group" aria-labelledby="settings-help-title">
+            <h2 class="section" id="settings-help-title">Aide</h2>
+            <button class="row" type="button" data-replay-demo><span class="ic lilac"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-play"/></svg></span><span class="menu-label"><b>Revoir la démo</b><small>Une histoire fictive, sans vos fichiers</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
+            <button class="ui-button ui-button--text" type="button" id="start-view-tour-profile">Visiter les autres vues</button>
+          </section>
+          <section class="settings-group" aria-labelledby="settings-offers-title">
+            <h2 class="section" id="settings-offers-title">Offres et abonnement</h2>
+            <details class="prop">
+              <summary>Découvrir les offres <svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-plus"/></svg></summary>
+              <p class="lead">Les offres et tarifs ne sont pas définis dans cette version. Aucun achat ni abonnement n’est proposé.</p>
+            </details>
+          </section>
+          <p class="note"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Votre profil et vos préférences restent sur cet appareil.</p>
         </div>
       </section>
 
@@ -757,8 +761,6 @@
             <p>Un parcours terminé ne garantit ni l'accès actuel aux originaux ni l'actualisation des copies.</p>
           </details>
         </section>
-
-        <button class="invite" type="button" data-replay-demo><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-play"/></svg><span>Besoin d’un premier aperçu ? Revoir la démo</span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
 
         <div>
           <h2 class="data-filters-heading visually-hidden">Affiner l’inventaire</h2>
@@ -818,29 +820,6 @@
         </div>
       </section>
 
-      <section class="view aurore-kit" id="view-plus" data-view="plus" aria-labelledby="plus-title" hidden>
-        <header><p class="eyebrow mono">Espace local</p><h1 class="title" id="plus-title">Plus</h1></header>
-        <div class="menu">
-          <button class="me" type="button" data-nav="profil">
-            <span class="av" id="plus-avatar" aria-hidden="true"></span>
-            <span class="menu-label"><b>Profil et famille</b><small id="plus-profile-description">Identité, cercle familial et préférences</small></span>
-            <svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg>
-          </button>
-          <button class="assistant" type="button" data-nav="assistant"><span class="sp"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-spark"/></svg></span><b>Assistant documentaire</b><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
-          <h2 class="section">Mon espace</h2>
-          <button class="row" type="button" data-nav="importer"><span class="ic sky"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-up"/></svg></span><span class="menu-label"><b>Importer</b><small>Appareil ou source disponible</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
-          <button class="row" type="button" data-nav="vos-donnees"><span class="ic mint"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-folder"/></svg></span><span class="menu-label"><b>Vos données</b><small>Inventaire, export et suppression locale</small></span><span class="plus-badge" data-count-el="documents" hidden></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
-          <h2 class="section" id="plus-appearance-title">Apparence</h2>
-          <div class="seg3" role="group" aria-labelledby="plus-appearance-title"><span class="thumb" aria-hidden="true"></span>
-            <button type="button" data-appearance="light" aria-pressed="true"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-sun"/></svg>Clair</button>
-            <button type="button" data-appearance="dark" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-moon"/></svg>Sombre</button>
-            <button type="button" data-appearance="system" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-dots"/></svg>Système</button>
-          </div>
-          <h2 class="section">Aide</h2>
-          <button class="row" type="button" data-replay-demo><span class="ic lilac"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-play"/></svg></span><span class="menu-label"><b>Revoir la démo</b><small>Une histoire fictive, sans vos fichiers</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
-          <p class="note"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Votre profil et vos préférences restent sur cet appareil.</p>
-        </div>
-      </section>
     </main>
     <section class="view-tour" id="view-tour" role="region" aria-labelledby="view-tour-title" hidden>
       <div class="view-tour-copy">
@@ -862,6 +841,7 @@
         <button class="nav-item" type="button" data-nav="recherche"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche</button>
         <button class="nav-item" type="button" data-nav="maison"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Foyer</button>
         <button class="nav-item" type="button" data-nav="alertes"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Rappels<span class="nav-badge" data-count-el="alertes" hidden></span></button>
+        <button class="nav-item" type="button" data-nav="vos-donnees" aria-label="Vos données"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></svg>Données</button>
     </nav>
   </div>
 

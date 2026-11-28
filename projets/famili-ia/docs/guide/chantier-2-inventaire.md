@@ -139,6 +139,22 @@ Alignement Rappels mobile (28 novembre 2026) : filtres « À venir · n » / « 
 
 Mesures et vérifications du lot Foyer précédent (13 tests Playwright, désormais retirés) : 64 mots visibles à 390 × 844 px, sans débordement. Cette capture ne remplace pas l’essai sur le téléphone réel ni la validation visuelle de l’utilisateur.
 
+## Suite Playwright transversale
+
+Lancer `npm run test:e2e` depuis le projet Famili-IA. La suite démarre son serveur Vite local sur le port 4173 et exécute cinq parcours Chromium : les onze routes actives sur trois largeurs avec thèmes clair/sombre, contrôle du débordement et vérification des variantes de boutons en sombre, dont le fond sur Accueil, Recherche et Foyer ; les boutons « Voir mes fichiers » et « Actualiser les propositions » sont comparés à la pastille sélectionnée « Tout » ; l’onboarding, l’enregistrement du prénom et la démo fictive ; les paramètres, l’accès profil depuis Foyer, le retour et le focus, les cinq destinations mobiles, ainsi que l’accès web ; l’état sans rappel avec tuile à la date du jour et son action ; puis l’import d’un fichier fictif, Recherche, une preuve de l’Assistant et la confirmation d’une alerte. Les tests n’utilisent ni fichier personnel ni accès authentifié à un fournisseur.
+
+Cette couverture ne remplace pas l’inventaire de chaque état vide, chargement, erreur, succès et action requise, l’essai sur appareil physique, ni la validation de compréhension par l’utilisateur. L’étape 2.1 et le chantier 2 restent ouverts jusqu’à la satisfaction de leurs critères.
+
+## Paramètres et navigation simplifiée — 28 novembre 2026
+
+L’en-tête ouvre désormais Paramètres avec une roue dentée sur mobile et sur le Web ; un second appui retourne à la vue précédente. La route `plus` affiche Paramètres et `profil` est conservée comme alias vers `plus?section=profile`. Le formulaire unique Profil et famille est replié dans Paramètres ; le raccourci de Mon foyer ouvre cet accordéon et remet le focus sur son résumé. Apparence et le sélecteur commun restent synchronisés. Aide regroupe la démo et la visite des vues. Offres est un aperçu non opérationnel : aucun tarif ni paiement.
+
+« Vos données » est accessible après les propositions de Rappels et devient la cinquième destination du dock mobile (nom accessible conservé, libellé visible « Données »). Le dock ne marque aucune destination active dans Paramètres. La barre latérale web ne présente plus de lien Profil séparé ; la roue dentée donne accès aux réglages. Les données, formulaires, autorisations, routes de métier et suppressions ne sont pas dupliqués ni élargis.
+
+Vérifié avec `npm run test:e2e -- --reporter=list` (5 parcours), `npm run build` et `git -c core.whitespace=cr-at-eol diff --check`. Les interactions ont été exercées à 390 px et 1 400 px. Le chantier 2 reste ouvert pour les critères non remplis et la validation utilisateur.
+
+L’icône d’accès aux Paramètres reprend le bouton carré arrondi de la maquette. Dans Rappels, l’absence d’alerte active affiche une tuile corail datée du jour, annonce que les rappels confirmés apparaîtront ici et rappelle que l’absence d’alerte ne prouve pas l’absence d’échéance.
+
 ## Limites de ce relevé
 
 Sur mobile, « Retrouver un fichier » mène à Recherche, puis « Assistant documentaire » à l’Assistant. La carte « À la une » présente la prochaine échéance active datée non reportée, ou son état vide. Dans Foyer, « Mon cercle » et « Fichiers et réglages » mènent à Famille et Plus. Dans Rappels, « À venir » regroupe les rappels actifs et « Terminés » les rappels résolus ; les rappels ignorés restent dans les autres filtres. Sur ordinateur, les vues restent indépendantes de cette présentation mobile.

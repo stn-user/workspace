@@ -1,6 +1,6 @@
 # Utiliser le kit Prisme Aurore
 
-Ouvrir le [catalogue](./kit-aurore.html) via le serveur local (`npm run dev`, puis `/docs/guide/kit-aurore.html`). Il présente les couleurs, les pictogrammes et un motif par écran avec son HTML. Les [maquettes interactives](./prisme-aurore.html) restent la référence pour les compositions complètes, les feuilles, les gestes et les états fictifs.
+Ouvrir le [catalogue](./kit-aurore.html) via le serveur local : depuis le projet, lancer `npm run dev`, puis ouvrir l’URL affichée par Vite suivie de `/docs/guide/kit-aurore.html` (par défaut `http://localhost:5173/docs/guide/kit-aurore.html`). Certains navigateurs limitent le chargement du sprite SVG si le fichier est ouvert directement en `file://`. Le catalogue présente les couleurs, les pictogrammes et un motif par écran avec son HTML. Les [maquettes interactives](./prisme-aurore.html) restent la référence pour les compositions complètes, les feuilles, les gestes et les états fictifs.
 
 ## Intégrer un motif
 
@@ -24,7 +24,7 @@ Le [sprite](../../assets/prisme/aurore-icones.svg) se sert depuis la même origi
 
 Rappels garde la même lecture sur téléphone et ordinateur : filtres, rappels enregistrés, puis propositions à confirmer. Le premier rappel actif daté en tête de liste utilise `.coralhero` ; les suivants utilisent `.mini`, avec une date menthe pour un rappel terminé. La feuille de réglages conserve la demande de permission explicite et distincte de l’enregistrement des préférences.
 
-Mon foyer utilise la carte maison menthe, les catégories défilantes, les lignes d’équipement et les avatars du cercle. Sur ordinateur, les liens Famille et Mon espace sont à droite du carnet ; sur mobile, ils le suivent. Les catégories du formulaire natif d’ajout et d’édition sont des pastilles radio. La maison reste une illustration ; les visuels personnels des équipements conservent leur provenance.
+Mon foyer utilise la carte maison menthe, les catégories défilantes, les lignes d’équipement et les avatars du cercle. Le raccourci « Profil et famille » ouvre la rubrique du même nom dans Paramètres. Les catégories du formulaire natif d’ajout et d’édition sont des pastilles radio. La maison reste une illustration ; les visuels personnels des équipements conservent leur provenance.
 
 Dans Recherche, Source, Type et Couverture utilisent les pastilles `.opts` / `.opt` avec des boutons radio natifs. Sur téléphone, « Appliquer » valide les choix et fermer la feuille les annule ; sur ordinateur, les filtres s’appliquent immédiatement. Les dates, personnes et lieux restent dans le volet complémentaire.
 
@@ -41,11 +41,20 @@ La salutation utilise le nom enregistré dans Profil ou le prénom facultatif du
 | Assistant | `.ctx`, `.chat`, `.msg`, `.typing`, `.composer` |
 | Importer | `.drop`, `.stepper`, `.prog`, `.frow` |
 | Vos données | `.trust`, `.donut`, `.legend`, `.viewseg`, `.danger` |
-| Plus | `.me`, `.assistant`, `.rowsm` |
-| Profil et famille | `.av`, `.preview`, `.seg3` |
+| En-tête | `.head-actions`, `.round`, icône `i-settings` à côté du thème |
+| Paramètres | `.web-settings`, `.section`, `.prop`, `.seg3`, `.row` |
+| Profil et famille (rubrique de Paramètres) | `.pf-hero`, `.av`, `.field2`, `.mrow`, `.invite`, `.privcard` |
+| Navigation mobile | `.dock`, `.ind`, `.mobile-data` et icône `i-folder` |
 | Onboarding | `.onbhero`, `.choice`, `.srccard`, `.recap` |
 
-Les classes décrivent la présentation, pas le comportement. Raccorder les actions, états accessibles, preuves et erreurs aux mécanismes de l’application. Ne pas importer le script du prototype, ses identifiants DOM ni ses données fictives. Conserver les dialogues natifs et le dock de production (neuf destinations web, quatre mobiles), déjà stylés dans [aurore.css](../../assets/prisme/aurore.css).
+### Navigation intégrée à l’application
+
+- **En-tête commun :** la roue dentée (`#open-app-settings`) ouvre Paramètres, sans remplacer le contrôle clair/sombre. Un nouvel appui retourne à l’écran d’origine et restaure le focus. `i-settings` est un tracé, pas une forme pleine : conserver `fill: none`, `stroke: currentColor` et le trait de 1.8 px du kit. Ne pas confondre cette icône avec `i-sliders`, réservé notamment aux réglages de Rappels.
+- **Paramètres :** la route conservée `plus` affiche le `<details class="prop">` Profil et famille, puis Apparence, Aide et Offres. Les anciens liens et hash `profil` sont acceptés et redirigés vers `plus?section=profile`. Depuis Foyer, ouvrir la même vue, déplier ce bloc et placer le focus sur son `<summary>`. Réutiliser les formulaires et confirmations existants, sans seconde copie du profil. L’offre illustrée n’implique ni tarif ni paiement.
+- **Rappels :** après les propositions, une ligne menthe avec `i-folder` mène à l’inventaire « Vos données ». Sur smartphone, ce même inventaire est aussi la cinquième destination du dock, après Accueil, Recherche, Foyer et Rappels : libellé court « Données », nom accessible « Vos données ».
+- **Indicateur du dock :** sur le bouton de la destination active, poser `aria-current="page"`. Données est une destination principale : elle s’active depuis Rappels ou le dock. Dans Paramètres, aucune destination du dock n’est active. La barre latérale web ne répète pas Profil et famille ; Paramètres reste accessible par la roue dentée.
+
+Les classes décrivent la présentation, pas le comportement. Raccorder les actions, états accessibles, preuves et erreurs aux mécanismes de l’application. Ne pas importer le script du prototype, ses identifiants DOM ni ses données fictives. L’application conserve la route `plus` pour Paramètres et traite `profil` comme un alias d’accès à la rubrique Profil et famille. Adapter le dock et les dialogues de production plutôt que les dupliquer.
 
 ## Actualiser les ressources
 

@@ -40,9 +40,11 @@
     </div></article>
     <article><h3>Foyer · carte illustrée</h3><div class="sample">
       <div class="house"><img src="../../assets/prisme/maison.svg" alt="" width="260" height="210"><span class="chip mono">Carnet de maison</span><div><h2>La maison</h2></div></div>
+      <button class="row" type="button" aria-controls="kit-profile"><span class="avs" aria-hidden="true"><i>A</i><i>L</i></span><b>Profil et famille</b><svg class="i" aria-hidden="true"><use href="../../assets/prisme/aurore-icones.svg#i-go"/></svg></button>
     </div></article>
     <article><h3>Rappels · échéance prioritaire</h3><div class="sample">
       <div class="coralhero"><span class="ribbon" aria-hidden="true"><i></i><i></i><i></i></span><b class="bigday">12</b><span class="mo mono">Décembre</span><h3>Contrat habitation</h3><p>Échéance à anticiper</p></div>
+      <a class="row" href="#kit-data"><span class="ic mint"><svg class="i" aria-hidden="true"><use href="../../assets/prisme/aurore-icones.svg#i-folder"/></svg></span><b>Vos données</b></a>
     </div></article>
     <article><h3>Assistant · réponse en cours</h3><div class="sample">
       <div class="ctx"><span>Extraits locaux</span></div><div class="chat"><div class="msg user">Quand se termine le contrat ?</div>
@@ -51,14 +53,21 @@
     <article><h3>Importer · étapes</h3><div class="sample">
       <div class="stepper" aria-label="Étapes de l’import"><div class="step done"><b>1</b>Choisir</div><div class="step active" aria-current="step"><b>2</b>Copier</div><div class="step"><b>3</b>Retrouver</div></div>
     </div></article>
-    <article><h3>Vos données · couverture</h3><div class="sample">
+    <article id="kit-data" tabindex="-1"><h3>Vos données · couverture</h3><div class="sample">
       <div class="trust"><h2>Inventaire local</h2><p class="own">Copies sur cet appareil</p><details class="srcdet"><summary>Sources et limites</summary><p>Une copie présente ne garantit pas l’accès à l’original.</p></details></div>
     </div></article>
-    <article><h3>Plus · accès au profil</h3><div class="sample">
-      <div class="me"><span class="av" aria-hidden="true">A</span><div><b>Alice (exemple)</b><small>Profil et famille</small></div></div>
+    <article><h3>En-tête · accès aux réglages</h3><div class="sample">
+      <div class="head-actions"><button type="button" class="round" id="kit-toggle" aria-label="Changer le thème"><svg class="i" aria-hidden="true"><use href="../../assets/prisme/aurore-icones.svg#i-moon"/></svg></button>
+      <a class="round" href="#kit-settings" aria-label="Paramètres"><svg class="i" aria-hidden="true"><use href="../../assets/prisme/aurore-icones.svg#i-settings"/></svg></a></div>
     </div></article>
-    <article><h3>Profil et famille · aperçu</h3><div class="sample">
-      <div class="preview"><span class="av" aria-hidden="true">L</span><div><b>Lou</b><small>Membre fictif du cercle</small></div></div>
+    <article id="kit-settings" tabindex="-1"><h3>Paramètres</h3><div class="sample">
+      <details class="prop" id="kit-profile"><summary>Profil et famille <svg class="i" aria-hidden="true"><use href="../../assets/prisme/aurore-icones.svg#i-plus"/></svg></summary>
+        <div class="pf-hero"><span class="av big" aria-hidden="true">A</span><div><b>Alice (exemple)</b><small>Profil local</small></div></div>
+        <div class="preview"><span class="av" aria-hidden="true">L</span><div><b>Lou</b><small>Membre fictif du cercle</small></div></div></details>
+      <div class="section">Apparence</div>
+      <div class="seg3" role="group" aria-label="Apparence"><span class="thumb" aria-hidden="true"></span><button type="button" data-pref="light" aria-pressed="true">Clair</button><button type="button" data-pref="dark" aria-pressed="false">Sombre</button><button type="button" data-pref="system" aria-pressed="false">Système</button></div>
+      <div class="section">Aide</div><a class="row" href="prisme-aurore.html">Ouvrir la maquette de démonstration</a>
+      <div class="section">Offres et abonnement</div><details class="prop"><summary>Découvrir les offres</summary><p class="lead">Aperçu fictif, aucun achat possible.</p></details>
     </div></article>
     <article><h3>Onboarding · identité animée</h3><div class="sample">
       <div class="onbhero"><img class="logo-mark" src="../../assets/prisme/aurore-orbite.svg" alt="Famili-IA"></div>
@@ -72,7 +81,26 @@
 <script type="module">
   const kit = document.querySelector('.aurore-kit'), theme = document.querySelector('#theme');
   const system = matchMedia('(prefers-color-scheme:dark)');
-  function applyTheme() { kit.dataset.theme = theme.value === 'system' ? (system.matches ? 'dark' : 'light') : theme.value; }
+  const toggle = document.querySelector('#kit-toggle');
+  const choices = [...document.querySelectorAll('[data-pref]')];
+  function applyTheme() {
+    kit.dataset.theme = theme.value === 'system' ? (system.matches ? 'dark' : 'light') : theme.value;
+    const dark = kit.dataset.theme === 'dark';
+    toggle.setAttribute('aria-label', dark ? 'Passer au thème clair' : 'Passer au thème sombre');
+    toggle.querySelector('use').setAttribute('href', `../../assets/prisme/aurore-icones.svg#i-${dark ? 'sun' : 'moon'}`);
+    choices.forEach((button, index) => {
+      const active = button.dataset.pref === theme.value;
+      button.setAttribute('aria-pressed', String(active));
+      if (active) button.parentElement.style.setProperty('--s', index);
+    });
+  }
+  toggle.onclick = () => { theme.value = kit.dataset.theme === 'dark' ? 'light' : 'dark'; applyTheme(); };
+  choices.forEach(button => button.onclick = () => { theme.value = button.dataset.pref; applyTheme(); });
+  document.querySelector('[aria-controls="kit-profile"]').onclick = () => {
+    const profile = document.querySelector('#kit-profile');
+    profile.open = true;
+    profile.querySelector('summary').focus();
+  };
   theme.addEventListener('change', applyTheme); system.addEventListener('change', applyTheme); applyTheme();
   for (const sample of document.querySelectorAll('.sample')) {
     const details = document.createElement('details'), summary = document.createElement('summary'), pre = document.createElement('pre');

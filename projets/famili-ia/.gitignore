@@ -4,6 +4,8 @@ dist/
 build/
 android/app/build/
 tests/fixtures/photo-exif/device-corpus/
+test-results/
+playwright-report/
 
 # Fichiers temporaires et système
 .DS_Store

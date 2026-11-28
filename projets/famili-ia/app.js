@@ -95,7 +95,7 @@ function manageOnboardingWizardVisibility() {
   const appearance = document.querySelector('.appearance-control');
   const before = document.querySelector(visible
     ? extendedDemo ? '#step-3-title' : '#onboarding-wizard .onbskip'
-    : '.topbar .desktop-profile-button');
+    : '#open-app-settings');
   if (appearance.nextElementSibling !== before) before.before(appearance);
   document.querySelector('#extended-demo').hidden = !(visible && extendedDemo);
   if (visible && !extendedDemo && !dialog.open) {
@@ -248,7 +248,6 @@ setTimeout(dismissAppSplash, 10000);
     if (activeView === 'maison') initHouseView(parseHash().params);
     if (activeView === 'famille') initFamilyView();
     if (activeView === 'detail') initEquipmentDetailView(parseHash().params.id);
-    if (activeView === 'profil') initProfileView();
     if (activeView === 'plus') renderPlusView();
     if (activeView === 'accueil') renderAccueilDashboard();
     if (activeView === 'assistant') refreshAssistantContext();
@@ -2862,19 +2861,21 @@ const pageTitles = {
   detail: "Détail équipement",
   assistant: "Assistant IA",
   importer: "Importer",
-  profil: "Profil et famille",
+  profil: "Paramètres",
   "vos-donnees": "Vos données",
-  plus: "Plus"
+  plus: "Paramètres"
 };
 let toastTimeout;
 // Initialiser activeView dès le départ en parsant le hash
 let importReturnContext = null;
+let settingsReturnContext = null;
 let activeView = (() => {
   const hash = window.location.hash.substring(1);
   if (!hash || hash === '' || hash === '#') return 'accueil';
   // Extraire la vue depuis le format #/view ou #view?params
   const viewMatch = hash.match(/^\/?([^?]+)/);
-  return viewMatch ? viewMatch[1] : 'accueil';
+  const view = viewMatch ? viewMatch[1] : 'accueil';
+  return view === 'profil' ? 'plus' : view;
 })();
 
 /**
@@ -2882,11 +2883,7 @@ let activeView = (() => {
  */
 const NAV_SECTION_OF = {
   detail: "maison",
-  famille: "maison",
-  importer: "plus",
-  assistant: "plus",
-  profil: "plus",
-  "vos-donnees": "plus"
+  famille: "maison"
 };
 
 const VIEW_TOUR_STEPS = [
@@ -2986,7 +2983,7 @@ function initializeViewWithParams(viewName, params) {
       break;
 
     case 'profil':
-      initProfileView();
+      renderPlusView({ section: 'profile' });
       break;
 
     case 'importer':
@@ -3018,7 +3015,7 @@ function initializeViewWithParams(viewName, params) {
       break;
 
     case 'plus':
-      renderPlusView();
+      renderPlusView(params);
       break;
 
     default:
@@ -3026,24 +3023,22 @@ function initializeViewWithParams(viewName, params) {
   }
 }
 
-/**
- * Met à jour les badges de compteur de la vue « Plus » :
- * alertes à traiter/anticiper, membres de la famille, documents indexés.
- */
-function renderPlusView() {
+/** Met à jour le nombre de rappels à traiter dans les accès de navigation. */
+function renderPlusView(params = {}) {
   const user = getCurrentUser();
-  document.querySelector('#plus-profile-description').textContent = user.name && user.name !== 'Mon espace'
-    ? `${user.name} · Mon cercle et mes préférences` : 'Identité, cercle familial et préférences';
-  document.querySelector('#plus-avatar').textContent = user.avatar || getNameInitial(user.name || '');
-  const counts = {
-    alertes: getAlerts()
-      .filter(a => !a.status || a.status === "active")
-      .map(a => ({ ...a, type: calculateAlertType(a.dueDate, a.type, a.documentType) }))
-      .filter(a => a.type === 'red' || a.type === 'amber').length,
-    documents: getDocuments().length
-  };
+  const profileDescription = document.querySelector('#settings-profile-description');
+  if (profileDescription) {
+    profileDescription.textContent = user.name && user.name !== 'Mon espace'
+      ? `${user.name} · identité et cercle local` : 'Identité, cercle familial et photos';
+  }
+  if (params.section === 'profile') document.querySelector('#settings-profile').open = true;
+  initProfileView();
+  const alertCount = getAlerts()
+    .filter(a => !a.status || a.status === "active")
+    .map(a => ({ ...a, type: calculateAlertType(a.dueDate, a.type, a.documentType) }))
+    .filter(a => a.type === 'red' || a.type === 'amber').length;
   document.querySelectorAll('[data-count-el]').forEach(badge => {
-    const count = counts[badge.dataset.countEl] || 0;
+    const count = badge.dataset.countEl === 'alertes' ? alertCount : 0;
     if (count > 0) {
       badge.hidden = false;
       badge.textContent = count > 99 ? '99+' : String(count);
@@ -3055,8 +3050,21 @@ function renderPlusView() {
 
 function showView(name, { addHistory = true, params = {} } = {}) {
   stopSearchDictation();
+  if (name === 'profil') {
+    name = 'plus';
+    params = { ...params, section: 'profile' };
+  }
   console.log("showView called for:", name);
   if (!Object.hasOwn(pageTitles, name)) return;
+  if (name === 'plus' && activeView !== 'plus') {
+    settingsReturnContext = {
+      view: activeView,
+      params: parseHash().params,
+      focus: document.activeElement
+    };
+  } else if (name !== 'plus' && activeView === 'plus') {
+    settingsReturnContext = null;
+  }
   if (name !== "assistant") abortAssistantQwenRequest();
   if (name !== "recherche") abortSearchQwenRequest();
   const currentTourStep = VIEW_TOUR_STEPS[viewTourStepIndex];
@@ -3099,8 +3107,8 @@ function showView(name, { addHistory = true, params = {} } = {}) {
     importReturnContext = null;
     document.querySelector("#return-from-import span").textContent = 'Accueil';
   }
-  document.body.classList.toggle('ui-theme', ['accueil', 'recherche', 'alertes', 'vos-donnees', 'maison', 'detail', 'famille', 'assistant', 'importer', 'profil', 'plus'].includes(name));
-  document.body.classList.toggle('ui-warm', ['accueil', 'recherche', 'maison', 'detail', 'importer', 'alertes', 'famille', 'vos-donnees', 'profil', 'plus', 'assistant'].includes(name));
+  document.body.classList.toggle('ui-theme', ['accueil', 'recherche', 'alertes', 'vos-donnees', 'maison', 'detail', 'famille', 'assistant', 'importer', 'plus'].includes(name));
+  document.body.classList.toggle('ui-warm', ['accueil', 'recherche', 'maison', 'detail', 'importer', 'alertes', 'famille', 'vos-donnees', 'plus', 'assistant'].includes(name));
   if (name !== 'alertes') document.querySelector('#alert-preferences-dialog')?.close();
 
   views.forEach((view) => {
@@ -3127,11 +3135,7 @@ function showView(name, { addHistory = true, params = {} } = {}) {
     if (isActive) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
-  const mobileMoreButton = document.querySelector(".mobile-more-button");
-  if (mobileMoreButton) {
-    if (bottomNavSection === "plus") mobileMoreButton.setAttribute("aria-current", "page");
-    else mobileMoreButton.removeAttribute("aria-current");
-  }
+  document.querySelector('#open-app-settings')?.setAttribute('aria-pressed', String(name === 'plus'));
 
   document.title = `${pageTitles[name]} | Famili-IA`;
   const mainContent = document.querySelector('.main-content');
@@ -3143,6 +3147,9 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   }
 
   initializeViewWithParams(name, params);
+  if (name === 'plus' && params.section === 'profile') {
+    document.querySelector('#settings-profile > summary')?.focus({ preventScroll: true });
+  }
 
   // Mettre à jour la visibilité des boutons de gestion de fichiers
   updateClearFilesButtonsVisibility();
@@ -3291,6 +3298,17 @@ document.querySelectorAll(".bottom-nav .nav-item").forEach((button) => {
     const nav = button.dataset.nav;
     showView(nav);
   });
+});
+
+document.querySelector('#open-app-settings').addEventListener('click', () => {
+  if (activeView !== 'plus') {
+    showView('plus');
+    return;
+  }
+  const context = settingsReturnContext || { view: 'accueil', params: {} };
+  settingsReturnContext = null;
+  showView(context.view, { addHistory: false, params: context.params });
+  if (context.focus?.isConnected && !context.focus.closest('[hidden]')) context.focus.focus();
 });
 
 // DÉLÉGATION D'ÉVÉNEMENTS pour data-open-view
@@ -4086,14 +4104,33 @@ function renderAlerts(filter, restoreFocus = false) {
     const nextTab = [...document.querySelectorAll('.alert-filter-tab')].find(tab =>
       tab !== selectedTab && Number(tab.querySelector('.alert-badge').textContent) > 0);
     const hasDocuments = getDocuments().length > 0;
-    const emptyTitle = filter === 'terminés' ? 'Aucun rappel terminé' : filter === 'actifs' ? 'Vos prochains rappels commencent ici' : 'Aucun rappel dans cette catégorie';
-    const emptyMessage = filter === 'terminés' ? 'Les rappels que vous terminez apparaissent ici.' : filter === 'actifs'
-      ? 'Ouvrez « Échéances proposées » plus bas pour confirmer une date trouvée dans vos fichiers.'
-      : 'Les autres catégories restent disponibles. Cette liste ne couvre que vos rappels enregistrés.';
     const emptyDestination = nextTab ? `alertes?filter=${encodeURIComponent(nextTab.dataset.filter)}`
       : hasDocuments ? 'recherche' : 'importer';
     const emptyAction = nextTab ? `Voir « ${nextTab.firstChild.textContent.trim()} »`
       : hasDocuments ? 'Rechercher une échéance' : 'Ajouter un document';
+    if (filter === 'actifs' && activeAlerts.length === 0) {
+      const currentDate = today.toLocaleDateString('fr-FR', { dateStyle: 'long' });
+      const currentMonth = today.toLocaleDateString('fr-FR', { month: 'long' });
+      alertList.innerHTML = `<article class="al alert-empty-date">
+        <div class="coralhero">
+          <span class="ribbon" aria-hidden="true"><i></i><i></i><i></i></span>
+          <time datetime="${todayIso}" aria-label="${escapeHtml(currentDate)}">
+            <span class="bigday" aria-hidden="true">${today.getDate()}</span>
+            <span class="mo mono" aria-hidden="true">${escapeHtml(currentMonth)}</span>
+          </time>
+          <h3>Aucune alerte disponible</h3>
+          <p>Les rappels confirmés apparaîtront ici.</p>
+        </div>
+        <div class="aldetail">
+          <p class="alert-empty-date-note">L’absence d’alerte ne prouve pas l’absence d’échéance.</p>
+          <button class="link" type="button" data-open-view="${escapeHtml(emptyDestination)}">${escapeHtml(emptyAction)}</button>
+        </div>
+      </article>`;
+      return;
+    }
+    const emptyTitle = filter === 'terminés' ? 'Aucun rappel terminé' : 'Aucun rappel dans cette catégorie';
+    const emptyMessage = filter === 'terminés' ? 'Les rappels que vous terminez apparaissent ici.'
+      : 'Les autres catégories restent disponibles. Cette liste ne couvre que vos rappels enregistrés.';
     alertList.innerHTML = `<section class="empty">
       <span class="bub" aria-hidden="true"><svg class="i"><use href="${auroreIcons}#i-bell"/></svg></span>
       <b>${emptyTitle}</b>
@@ -4529,8 +4566,12 @@ function initCoverPhotoDialog() {
 }
 
 
+function isProfileSettingsOpen() {
+  return activeView === 'plus' && document.querySelector('#settings-profile')?.open === true;
+}
+
 function renderFamilyMembers() {
-  if (activeView === 'profil') renderProfileCircle();
+  if (isProfileSettingsOpen()) renderProfileCircle();
   const memberList = document.querySelector('#member-list');
   if (!memberList) return;
 
@@ -4596,7 +4637,7 @@ function initAddMemberDialog() {
           form.reset();
           renderFamilyMembers();
           attachAddMemberListener();
-          if (activeView === 'profil') document.querySelector('#profile-add-member').focus();
+          if (isProfileSettingsOpen()) document.querySelector('#profile-add-member').focus();
           if (document.querySelector('#manage-members-dialog')?.open) updateManageMembersList(id);
           if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
         } catch (error) {
@@ -4656,7 +4697,7 @@ function initAddMemberDialog() {
     attachAddMemberListener(); // Re-attach listener
     if (document.querySelector('#manage-members-dialog')?.open) {
       updateManageMembersList(id);
-    } else if (activeView === 'profil') {
+    } else if (isProfileSettingsOpen()) {
       const edited = id && document.querySelector(`[data-edit-profile-member="${CSS.escape(id)}"]`);
       (edited || document.querySelector('#profile-add-member')).focus();
     } else {
