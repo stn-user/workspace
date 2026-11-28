@@ -1074,7 +1074,7 @@ function refreshExperimentalIndex() {
     document.querySelector('#search-filter-count').textContent = selectedFilterCount ? `(${selectedFilterCount})` : '';
     if (!experimentalQuery.trim() && !selectedFilterCount) {
       renderUnifiedPhotoResults([], { kind: "empty" });
-      experimentalIndexStatus.textContent = "";
+      experimentalIndexStatus.textContent = "Saisissez quelques mots ou choisissez un filtre pour retrouver un fichier.";
       return;
     }
     const request = getUnifiedIndexSearchRequest(experimentalQuery);
@@ -1133,7 +1133,7 @@ function refreshExperimentalIndex() {
       const sourceAccess = sourceStatuses.find(status => status.sourceId === match.sourceId)?.access;
       const result = describeExperimentalResult(match, record, sourceDocument, sourceAccess);
       item.className = "experimental-result prisme-result";
-      const typeBadge = addTextElement(item, "span", "prisme-mobile ui-badge result-kind", sourceDocument?.type || "Document");
+      const typeBadge = addTextElement(item, "span", "ui-badge result-kind", sourceDocument?.type || "Document");
       const typeIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       typeIcon.setAttribute("viewBox", "0 0 24 24");
       typeIcon.setAttribute("aria-hidden", "true");
@@ -1273,7 +1273,10 @@ function resetSearchFilters(clearQuery = false) {
   experimentalIndexQuery.focus();
 }
 
-document.querySelector('#reset-search-filters').addEventListener('click', () => resetSearchFilters());
+document.querySelector('#reset-search-filters').addEventListener('click', () => {
+  if (filterSheet.open) filterSheet.close();
+  resetSearchFilters();
+});
 document.querySelector('#reset-empty-search').addEventListener('click', () => resetSearchFilters(true));
 contractFilter.addEventListener('click', () => {
   abortSearchQwenRequest();
@@ -1285,6 +1288,7 @@ contractFilter.addEventListener('click', () => {
 
 experimentalIndexForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  if (filterSheet.open) filterSheet.close();
   abortSearchQwenRequest();
   clearLocalQwenSearchResponse();
   experimentalQuery = experimentalIndexQuery.value;
@@ -2988,38 +2992,45 @@ sourceDialog.addEventListener("click", (event) => {
 const views = [...document.querySelectorAll("[data-view]")];
 const navigationButtons = [...document.querySelectorAll("[data-nav]")];
 const mobileLayout = window.matchMedia('(max-width: 1024px)');
-const searchOptions = document.querySelector('.mobile-search-options');
+const filterSheet = document.querySelector('#search-filter-sheet');
+const filterPanel = document.querySelector('#search-filters-panel');
+const filterRail = document.querySelector('#search-filter-rail');
+const filterControls = [...filterPanel.querySelectorAll('select, input')];
+let openingFilterValues = [];
+function dismissSearchFilters() {
+  filterControls.forEach((control, index) => { control.value = openingFilterValues[index]; });
+  filterSheet.close();
+}
+document.querySelector('#open-search-filters').addEventListener('click', () => {
+  openingFilterValues = filterControls.map(control => control.value);
+  filterSheet.showModal();
+});
+document.querySelector('#close-search-filters').addEventListener('click', dismissSearchFilters);
+filterSheet.addEventListener('cancel', event => { event.preventDefault(); dismissSearchFilters(); });
+filterSheet.addEventListener('click', event => { if (event.target === filterSheet) dismissSearchFilters(); });
+filterPanel.addEventListener('change', () => {
+  if (mobileLayout.matches || !experimentalIndexForm.checkValidity()) return;
+  abortSearchQwenRequest();
+  clearLocalQwenSearchResponse();
+  experimentalQuery = experimentalIndexQuery.value;
+  refreshExperimentalIndex();
+});
 const desktopQueryHint = experimentalIndexQuery.placeholder;
 function arrangeSearchTools() {
   const mobile = mobileLayout.matches;
   experimentalIndexQuery.placeholder = mobile ? 'Nom, date, référence…' : desktopQueryHint;
-  const scope = document.querySelector('.search-scope-note');
-  if (mobile) {
-    document.querySelector('#search-filters-panel .search-disclosure-content').append(searchOptions);
-    document.querySelector('.mobile-assistant').before(scope);
-  } else {
-    experimentalIndexForm.append(searchOptions);
-    document.querySelector('#search-filters-panel').before(scope);
-  }
-  searchOptions.open = !mobile;
-  if (!mobile && contractsOnly()) {
-    setContractsOnly(false);
-    abortSearchQwenRequest();
-    clearLocalQwenSearchResponse();
-    refreshExperimentalIndex();
-  }
+  if (filterSheet.open) dismissSearchFilters();
+  (mobile ? filterSheet : filterRail).append(filterPanel);
 }
 arrangeSearchTools();
 mobileLayout.addEventListener('change', arrangeSearchTools);
-searchQwenToggle.addEventListener('change', () => {
-  if (!experimentalIndexForm.contains(searchQwenToggle)) {
-    abortSearchQwenRequest();
-    clearLocalQwenSearchResponse();
-  }
-});
 const moreAlertFilters = document.querySelector('.mobile-alert-more');
+function showExtraAlertFilters(open) {
+  moreAlertFilters.setAttribute('aria-expanded', String(open));
+  document.querySelector('#extra-alert-filters').hidden = !open;
+}
 moreAlertFilters.addEventListener('click', () => {
-  moreAlertFilters.setAttribute('aria-expanded', String(moreAlertFilters.getAttribute('aria-expanded') !== 'true'));
+  showExtraAlertFilters(moreAlertFilters.getAttribute('aria-expanded') !== 'true');
 });
 const pageTitles = {
   accueil: "Accueil",
@@ -3671,14 +3682,6 @@ function renderEquipmentList(category = 'tout') {
   if (!equipmentList || !equipmentEmpty) return;
 
   const equipment = getEquipmentByCategory(category);
-  const selectedCategory = [...document.querySelectorAll('[data-house-category]')]
-    .find(tab => tab.dataset.houseCategory === category);
-  const filterSummary = document.querySelector('#house-category-filter-summary');
-  if (filterSummary) {
-    filterSummary.textContent = category === 'tout'
-      ? 'Filtrer par catégorie'
-      : `Catégorie : ${selectedCategory?.textContent.trim() || category}`;
-  }
   document.querySelectorAll('[data-house-category]').forEach(tab => {
     const selected = tab.dataset.houseCategory === category;
     tab.classList.toggle('is-selected', selected);
@@ -3690,9 +3693,10 @@ function renderEquipmentList(category = 'tout') {
   if (equipment.length === 0) {
     const hasEquipment = getEquipmentByCategory().length > 0;
     equipmentList.innerHTML = '';
-    document.querySelector('#equipment-empty-title').textContent = 'Encore aucun équipement dans cette catégorie';
-    document.querySelector('#equipment-empty-description').textContent = 'Vos autres équipements vous attendent dans le carnet.';
-    equipmentEmpty.hidden = !hasEquipment;
+    document.querySelector('#equipment-empty-title').textContent = hasEquipment ? 'Aucun équipement dans cette catégorie' : 'Votre carnet est vide';
+    document.querySelector('#equipment-empty-description').textContent = hasEquipment ? 'Vos autres équipements vous attendent dans le carnet.' : 'Utilisez le bouton + pour ajouter votre premier équipement.';
+    document.querySelector('#show-all-equipment').hidden = !hasEquipment;
+    equipmentEmpty.hidden = false;
     return;
   }
 
@@ -4149,8 +4153,8 @@ function initAlertsView(params = {}) {
   });
 
   const initialFilter = [...tabs].some(tab => tab.dataset.filter === params?.filter)
-    ? params.filter : mobileLayout.matches ? 'actifs' : 'à-traiter';
-  moreAlertFilters.setAttribute('aria-expanded', String(!['actifs', 'terminés'].includes(initialFilter)));
+    ? params.filter : 'actifs';
+  showExtraAlertFilters(!['actifs', 'terminés'].includes(initialFilter));
   renderAlerts(initialFilter);
 }
 
@@ -4228,32 +4232,32 @@ function renderAlerts(filter, restoreFocus = false) {
     `${filteredAlerts.length} alerte${filteredAlerts.length > 1 ? 's' : ''} · ${filterLabel}`;
   const markReadButton = document.querySelector('#mark-alerts-read');
   markReadButton.disabled = filteredAlerts.length === 0;
+  markReadButton.hidden = filteredAlerts.length === 0;
   markReadButton.textContent = "Tout marquer comme lu";
   if (restoreFocus) selectedTab.focus({ preventScroll: true });
 
   if (filteredAlerts.length === 0) {
     const nextTab = [...document.querySelectorAll('.alert-filter-tab')].find(tab =>
-      tab !== selectedTab && (mobileLayout.matches || !tab.classList.contains('prisme-mobile'))
-      && Number(tab.querySelector('.alert-badge').textContent) > 0);
+      tab !== selectedTab && Number(tab.querySelector('.alert-badge').textContent) > 0);
     const hasDocuments = getDocuments().length > 0;
-    const emptyTitle = alerts.length === 0 ? 'Vos prochains rappels commencent ici' : 'Aucun rappel dans cette catégorie';
-    const emptyMessage = alerts.length === 0
-      ? 'Confirmez une échéance dans « Échéances proposées », sous la liste, pour la retrouver ici. Seuls les rappels enregistrés apparaissent dans cette liste.'
+    const emptyTitle = filter === 'terminés' ? 'Aucun rappel terminé' : filter === 'actifs' ? 'Vos prochains rappels commencent ici' : 'Aucun rappel dans cette catégorie';
+    const emptyMessage = filter === 'terminés' ? 'Les rappels que vous terminez apparaissent ici.' : filter === 'actifs'
+      ? 'Ouvrez « Échéances proposées » plus bas pour confirmer une date trouvée dans vos fichiers.'
       : 'Les autres catégories restent disponibles. Cette liste ne couvre que vos rappels enregistrés.';
     const emptyDestination = nextTab ? `alertes?filter=${encodeURIComponent(nextTab.dataset.filter)}`
       : hasDocuments ? 'recherche' : 'importer';
     const emptyAction = nextTab ? `Voir « ${nextTab.firstChild.textContent.trim()} »`
       : hasDocuments ? 'Rechercher une échéance' : 'Ajouter un document';
     alertList.innerHTML = `<section class="ui-card alerts-empty">
-      <span class="ui-icon" aria-hidden="true">${getAlertIcon('blue')}</span>
+      <span class="ui-icon" aria-hidden="true"><svg class="prisme-icon" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 10h18c0-2-3-3-3-10ZM10 21h4"/></svg></span>
       <h3>${emptyTitle}</h3>
       <p>${emptyMessage}</p>
-      <button class="ui-button ui-button--primary" type="button" data-open-view="${escapeHtml(emptyDestination)}">${escapeHtml(emptyAction)}</button>
+      <button class="ui-button ui-button--text" type="button" data-open-view="${escapeHtml(emptyDestination)}">${escapeHtml(emptyAction)}</button>
     </section>`;
     return;
   }
 
-  alertList.innerHTML = '<ol class="alert-timeline" aria-labelledby="alert-period-title">' + filteredAlerts.map(alert => {
+  alertList.innerHTML = '<ol class="alert-timeline" aria-labelledby="alert-period-title">' + filteredAlerts.map((alert, index) => {
     const iconSvg = getAlertIcon(alert.type);
     const isSnoozed = alert.snoozedUntil && alert.snoozedUntil > todayIso;
     const showsResume = isSnoozed && alert.status === 'active';
@@ -4314,18 +4318,19 @@ function renderAlerts(filter, restoreFocus = false) {
       ? `<div class="alert-date-tile" aria-hidden="true"><strong>${dueDay}</strong><span><i class="month-long">${escapeHtml(dueMonth)}</i><i class="month-short">${escapeHtml(dueMonthShort)}</i></span></div>`
       : "";
 
+    const featured = index === 0 && dateTile && alert.status === 'active';
     return `
       <li class="alert-timeline-item">
-      <article class="ui-card alert-card ${escapeHtml(alert.type)}${isSnoozed ? " is-snoozed" : ""}${dateTile ? " has-date-tile" : ""}" data-alert-card data-alert-id="${escapeHtml(alert.id)}">
-        <div class="ui-icon alert-icon" aria-hidden="true">
-          ${iconSvg}
-        </div>
-        ${dateTile}
-        <div class="alert-content">
+      <article class="ui-card alert-card ${escapeHtml(alert.type)}${isSnoozed ? " is-snoozed" : ""}" data-alert-card data-alert-id="${escapeHtml(alert.id)}">
+        <div class="reminder-heading${featured ? ' reminder-featured' : ''}${alert.status === 'resolved' ? ' reminder-done' : ''}">
+          ${featured ? '<span class="reminder-ribbon" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}
+          ${dateTile || `<div class="ui-icon alert-icon" aria-hidden="true">${iconSvg}</div>`}
           <div class="alert-header">
             <h3>${escapeHtml(alert.title)}</h3>
+            ${timingLabel ? `<p class="alert-time-hint">${showsResume ? 'Reprise · ' : ''}${timingLabel}</p>` : ''}
           </div>
-          ${timingLabel ? `<p class="alert-time-hint">${showsResume ? 'Reprise · ' : ''}${timingLabel}</p>` : ''}
+        </div>
+        <div class="alert-content">
           <div class="alert-meta">
             <span class="alert-state">${stateLabel}</span>
             <span class="alert-date">${dueDate ? `Échéance : <time datetime="${dueDateIso}">${escapeHtml(dueDate)}</time>` : alert.dueDate ? 'Date à vérifier' : 'Date non renseignée'}</span>
@@ -4333,7 +4338,7 @@ function renderAlerts(filter, restoreFocus = false) {
           </div>
           <p>${escapeHtml(alert.detail)}</p>
           ${snoozeNotice}
-          ${sourceExcerpt || alert.source === "document" ? '<h4 class="prisme-mobile alert-source-title">Document source</h4>' : ''}
+          ${sourceExcerpt || alert.source === "document" ? '<h4 class="alert-source-title">Document source</h4>' : ''}
           ${sourceExcerpt}
           ${alert.source === "document" ? `<p class="alert-provenance">Copie locale · accès à l'original non garanti.</p>` : ''}
           ${sourceDocument?.expiryDateEstimated ? '<p class="household-note">Date estimée à partir de la date d’achat et de la durée de garantie, puis confirmée par vous.</p>' : ''}
@@ -4491,30 +4496,8 @@ loadSavedFamilyState();
  * Initialize house view
  */
 function initHouseView(params = {}) {
-  renderHousePhoto();
   const category = [...document.querySelectorAll('[data-house-category]')]
     .some(tab => tab.dataset.houseCategory === params.filter) ? params.filter : 'tout';
-  const categoryFilters = document.querySelector('#house-category-filters');
-  if (categoryFilters) {
-    if (!categoryFilters.dataset.responsiveBound) {
-      categoryFilters.dataset.mobileExpanded = String(category !== 'tout');
-      categoryFilters.dataset.responsiveBound = 'true';
-      categoryFilters.addEventListener('toggle', () => {
-        if (window.matchMedia('(max-width: 1024px)').matches) {
-          categoryFilters.dataset.mobileExpanded = String(categoryFilters.open);
-        }
-      });
-      window.addEventListener('resize', () => {
-        categoryFilters.open = window.matchMedia('(max-width: 1024px)').matches
-          ? categoryFilters.dataset.mobileExpanded === 'true'
-          : true;
-      }, { passive: true });
-    }
-    if (category !== 'tout') categoryFilters.dataset.mobileExpanded = 'true';
-    categoryFilters.open = window.matchMedia('(max-width: 1024px)').matches
-      ? categoryFilters.dataset.mobileExpanded === 'true'
-      : true;
-  }
   const familyMembers = getFamilyMembers();
   const familyCount = familyMembers.length;
   document.querySelector('#house-family-count').textContent = familyCount
@@ -4540,9 +4523,6 @@ function initHouseView(params = {}) {
   }
   document.querySelector('#show-all-equipment').onclick = () => {
     showView('maison');
-    const categoryFilters = document.querySelector('#house-category-filters');
-    categoryFilters.open = true;
-    categoryFilters.dataset.mobileExpanded = 'true';
     document.querySelector('[data-house-category="tout"]').focus();
   };
 
@@ -4561,14 +4541,6 @@ function initHouseView(params = {}) {
     displayCity.textContent = `${postal} ${city}`.trim();
     displayCity.hidden = !displayCity.textContent;
   }
-}
-
-function renderHousePhoto() {
-  const image = document.querySelector('#house-photo');
-  const source = new URL('./assets/maison/maison-photo.jpg', import.meta.url).href;
-  if (image.src !== source) image.src = source;
-  image.alt = "Illustration d'une maison";
-  document.querySelector('#house-photo-origin').textContent = "Visuel d'illustration · IA";
 }
 
 function initCoverPhotoDialog() {

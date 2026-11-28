@@ -17,7 +17,21 @@ Relevé du 27 novembre 2026 : Chromium, **390 × 844 px**, données de démonstr
 
 ## Constats
 
-**Recherche mobile — ajustement Prisme :** champ compact, filtre « Contrats uniquement » réversible et carte avec type, provenance et preuve issue de l’index. Le filtre utilise le type enregistré, pas une déduction à partir du nom. Les options de réponse restent accessibles sous « Affiner la recherche ». La validation visuelle du chantier reste ouverte.
+**Rappels — quatrième lot Prisme Aurore.** « À venir » et « Terminés » sont communs aux deux formats ; les liens vers une catégorie détaillée ouvrent ses filtres. Après comparaison avec la maquette, le panneau expérimental suit la liste sur les deux formats. Seul le premier rappel actif daté en tête de liste reçoit la carte corail autonome (218 px minimum, rayon de 30 px, trois anneaux immobiles si mouvement réduit). Les rappels suivants ont une petite date, menthe si terminés. Sans rappel, afficher la carte de verre à bordure pointillée plutôt qu'une date fictive. Les réglages de notification restent explicites.
+
+Vérifications : build Vite, 42 tests ciblés sur les alertes et les échéances. Dans Chrome isolé : import d’une garantie fictive, confirmation depuis les propositions (un seul rappel après confirmation), passage à « Terminés », rechargement et réactivation. Contrôle du mode sombre, de la largeur de page et des réglages (Échap et retour du focus) à 320, 390, 820 et 1 366 px. Pas de suite Playwright, d’autorisation de notification accordée ni d’essai sur appareil physique.
+
+**Foyer — troisième lot Prisme Aurore.** Même carte menthe illustrée, catégories défilantes et accès au cercle local sur mobile et ordinateur. Le carnet distingue première utilisation et catégorie sans résultat. La feuille d’ajout réutilise le dialogue d’équipement ; aucun équipement ou membre de démonstration ajouté par la vue.
+
+Vérifications : build Vite, cinq tests unitaires liés au foyer et à la famille, contrôle Chrome à 320, 390, 820 et 1 366 px (largeur de page, ouverture et annulation). En profil temporaire : création d’un équipement fictif, persistance après rechargement en sombre, filtre vide, retour clavier sur « Tout », ouverture du détail et navigation vers Famille. Pas de suite Playwright ni d’essai sur appareil physique.
+
+**28 novembre — premier lot Prisme Aurore dans l’application.** L’Accueil mobile et web partage un seul raccourci de recherche, la prochaine échéance issue des rappels enregistrés (ou son état vide), les raccourcis Importer/Foyer et les fichiers avec leur provenance. Le détail des rappels reste accessible sur ordinateur. Le logo Orbite, le sélecteur d’apparence et la navigation sont communs.
+
+Vérifications : build Vite ; Accueil dans Chrome sur un profil temporaire à 320, 390, 820 et 1 366 px, sans débordement horizontal du contenu ; bascule dock/barre latérale, navigation vers Recherche, persistance du sombre et suivi des changements de thème système. Pas de suite Playwright, ni de validation sur appareil physique pour ce lot.
+
+**Recherche — deuxième lot Prisme Aurore dans l’application.** Sur ordinateur, les filtres latéraux actualisent l’index sans génération Qwen. Sur mobile, « Filtres » ouvre une feuille : appliquer valide les choix, fermer ou Échap abandonne les changements non appliqués. La carte à anneaux conserve le type, la provenance, la preuve et l’accès conditionnel à la copie. Le filtre Contrats utilise le type enregistré ; « Options de réponse » sous la requête conserve l’opt-in Qwen.
+
+Vérifications : build Vite, 18 tests unitaires d’index et de recherche de contenu, puis parcours Chrome dans un profil temporaire avec import texte fictif, recherche, preuve et ouverture de la copie. Vérifiés à 320, 390, 820 et 1 366 px : absence de débordement horizontal de la page, feuille modale, focus et Échap, filtre appliqué conservé au changement de format, état sans résultat, réinitialisation, bascule sombre et lien Assistant. Pas de suite Playwright, d’essai sur appareil physique ni de génération Qwen pour ce lot.
 
 - **Plus de texte :** Recherche (573 mots), Vos données (534) et Importer (264) concentrent l'essentiel de la lecture. Sur Vos données et Importer, la page dépasse deux hauteurs d'écran.
 - **Répétitions probables :** le périmètre « fichiers présents dans Famili-IA », la mention des exemples fictifs, la confidentialité du dossier/connexion, les limites de couverture et le fonctionnement de Qwen sont répétés dans plusieurs blocs de Recherche, Assistant, Importer et Vos données.

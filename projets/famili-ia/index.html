@@ -8,6 +8,8 @@
   <title>Accueil | Famili-IA</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="assets/prisme/prisme.css">
+  <link rel="stylesheet" href="assets/prisme/aurore.css">
+  <script type="module" src="aurore-theme.js"></script>
   <script type="module" src="app.js"></script>
 </head>
 <body>
@@ -28,13 +30,18 @@
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="#accueil" data-open-view="accueil" aria-label="Famili-IA, accueil">
-        <img src="assets/Logo.svg" alt="Famili-IA" class="logo-lg app-logo">
-        <svg class="ui-brand-logo" viewBox="596 309 252 185" aria-hidden="true" focusable="false">
-          <image href="assets/Logo.svg" width="1440" height="810"></image>
-        </svg>
+        <svg class="aurore-logo" width="36" height="36" viewBox="0 0 48 48" aria-hidden="true">
+          <defs><linearGradient id="orbit-fill" x2="1" y2="1"><stop stop-color="#8571f5"/><stop offset="1" stop-color="#5296ef"/></linearGradient></defs>
+          <rect width="48" height="48" rx="15" fill="url(#orbit-fill)"/>
+          <path d="M18 34V15h13M18 24h9.5" fill="none" stroke="white" stroke-width="4.6" stroke-linecap="round"/>
+          <g class="aurore-orbit"><circle cx="24" cy="24" r="16.5" stroke="white" stroke-opacity=".6" stroke-dasharray="3 5" fill="none"/><circle cx="40.5" cy="24" r="3" fill="white"/></g>
+        </svg><span>Famili-IA</span>
       </a>
       <!-- <div class="demo-status"><span class="status-dot"></span><span id="demo-status-label">Prototype — données fictives</span></div> -->
       <div id="demo-badge" class="demo-badge" hidden>Mode Démo</div>
+      <select id="aurore-theme" aria-label="Apparence de Famili-IA">
+        <option value="light">Clair</option><option value="dark">Sombre</option><option value="system">Système</option>
+      </select>
       <button class="avatar avatar-small desktop-profile-button" type="button" data-open-view="profil" aria-label="Ouvrir mon profil"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></button>
       <button class="avatar avatar-small mobile-more-button" type="button" data-open-view="plus" aria-label="Ouvrir Plus"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
     </header>
@@ -264,20 +271,12 @@
           </div>
         </section>
 
-        <section class="ui-prisme ui-prisme--inline home-actions-panel" aria-labelledby="home-actions-title">
-          <button type="button" class="prisme-mobile mobile-file-search" data-open-view="recherche"><svg class="prisme-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg>Retrouver un fichier</button>
-          <div class="prisme-feature prisme-feature--action">
-            <h2 id="home-actions-title">Retrouvez l’essentiel</h2>
-            <p>Dans vos fichiers ajoutés.</p>
-            <div class="management-actions">
-              <button class="ui-button ui-button--primary" type="button" data-open-view="recherche">Ouvrir la recherche <span aria-hidden="true">→</span></button>
-            </div>
-          </div>
-        </section>
+        <div class="ui-prisme ui-prisme--inline home-actions-panel">
+          <button type="button" class="mobile-file-search" data-open-view="recherche"><svg class="prisme-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg>Retrouver un fichier <span aria-hidden="true">→</span></button>
+        </div>
 
-        <section class="ui-card ui-prisme ui-prisme--inline verify-panel" aria-labelledby="verify-title"></section>
-        <section class="prisme-mobile ui-prisme ui-prisme--inline home-featured" aria-label="À la une">
-          <h2>À la une</h2>
+        <section class="ui-prisme ui-prisme--inline home-featured" aria-label="À la une">
+          <div class="section-heading"><h2>À la une</h2><button class="ui-button ui-button--text" type="button" data-open-view="alertes">Voir les rappels</button></div>
           <button type="button" class="prisme-feature prisme-feature--action" id="home-featured-reminder" data-open-view="alertes">
             <small>Prochaine échéance</small><strong></strong><span></span>
           </button>
@@ -300,6 +299,9 @@
           </div>
           <div class="home-recent-list" id="home-recent-documents"></div>
         </section>
+        <details class="home-reminder-details"><summary>Consulter le détail des rappels</summary>
+          <section class="ui-card ui-prisme ui-prisme--inline verify-panel" aria-labelledby="verify-title"></section>
+        </details>
       </section>
 
       <!-- Progress bar -->
@@ -311,8 +313,8 @@
       <section class="view search-view ui-prisme ui-prisme--inline" id="view-recherche" data-view="recherche" aria-labelledby="page-title" hidden>
         <header class="household-header">
           <div class="view-titles">
-            <p class="prisme-mobile eyebrow">Vos fichiers locaux</p>
-            <h1 id="page-title"><span class="prisme-desktop">Que cherchez-vous&nbsp;?</span><span class="prisme-mobile">Recherche</span></h1>
+            <p class="eyebrow">Sur cet appareil</p>
+            <h1 id="page-title">Recherche</h1>
           </div>
           <button class="ui-button ui-button--secondary household-header-action" type="button" data-open-import aria-label="Ajouter des fichiers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter des fichiers</span></button>
         </header>
@@ -320,20 +322,16 @@
         <form class="search-form shared-search-form unified-search-form" id="experimental-index-form" role="search">
           <label class="ui-label" for="experimental-index-query">Rechercher dans vos sources</label>
           <div class="unified-search-query">
-            <svg class="prisme-mobile prisme-icon search-field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg>
+            <svg class="prisme-icon search-field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg>
             <input class="ui-input" id="experimental-index-query" name="question" type="search" autocomplete="off" placeholder="Ex. : facture pergola, photos de vacances">
             <button class="ui-button ui-button--secondary search-dictation-button" id="search-dictation" type="button" aria-label="Dicter la recherche" aria-pressed="false" aria-haspopup="dialog" title="Dicter la recherche">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"></path></svg>
             </button>
             <button class="ui-button ui-button--primary submit-button" type="submit" aria-label="Lancer la recherche">
-              <svg class="prisme-mobile prisme-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
-              <svg class="prisme-desktop" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
+              <svg class="prisme-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
             </button>
           </div>
-          <details class="mobile-search-options" open><summary>Options de réponse</summary>
+          <details class="mobile-search-options"><summary>Options de réponse</summary>
           <label class="assistant-qwen-toggle" for="search-use-qwen">
             <input type="checkbox" id="search-use-qwen" form="experimental-index-form">
             <span>Répondre à cette recherche avec Qwen local (expérimental)</span>
@@ -343,12 +341,10 @@
         </form>
 
         <p id="search-dictation-status" class="household-note" role="status" aria-live="polite" hidden></p>
-        <div class="search-mobile-filters">
-          <button type="button" class="prisme-mobile search-contract-filter" id="search-contract-filter" aria-pressed="false">
-          <svg class="prisme-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h8m5 0h5M3 17h3m5 0h10M11 4v6M7 14v6"/></svg><span>Filtrer par contrat</span>
-          </button>
-        <details class="ui-card search-disclosure" id="search-filters-panel">
-          <summary id="experimental-index-title">Filtres <span id="search-filter-count"></span></summary>
+        <div class="search-workspace">
+        <aside id="search-filter-rail" aria-label="Filtres de recherche">
+        <section id="search-filters-panel">
+          <header><h2 id="experimental-index-title">Affiner la recherche</h2><button class="ui-button ui-button--text" type="button" id="close-search-filters">Fermer</button></header>
           <div class="search-disclosure-content">
             <fieldset class="search-filter-options">
               <legend>Affiner les résultats</legend>
@@ -374,6 +370,7 @@
                 <option value="analyzed">Contenu analysé</option>
                 <option value="unavailable">Contenu indisponible</option>
               </select>
+              <details class="search-extra-filters"><summary>Dates, personnes et lieux</summary>
               <label class="ui-label" for="experimental-index-date-type">Nature de la date</label>
               <select class="ui-input" id="experimental-index-date-type" form="experimental-index-form">
                 <option value="">Toute nature de date disponible</option>
@@ -395,15 +392,21 @@
               <select class="ui-input" id="experimental-index-place" form="experimental-index-form">
                 <option value="">Tous les lieux</option>
               </select>
+              </details>
             </fieldset>
           <div class="management-actions">
             <button type="submit" form="experimental-index-form" class="ui-button ui-button--primary">Appliquer les filtres</button>
             <button type="button" class="ui-button ui-button--secondary" id="reset-search-filters">Effacer les filtres</button>
           </div>
           </div>
-        </details>
+        </section>
+        </aside>
+        <dialog id="search-filter-sheet" aria-labelledby="experimental-index-title"></dialog>
+        <div class="search-results-column">
+        <div class="search-mobile-filters">
+          <button type="button" class="search-contract-filter" id="search-contract-filter" aria-pressed="false"><svg class="prisme-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2h9l5 5v15H5zM14 2v6h5M8 13h8M8 17h6"/></svg><span>Filtrer par contrat</span></button>
+          <button type="button" id="open-search-filters" aria-haspopup="dialog" aria-controls="search-filter-sheet">Filtres <span id="search-filter-count"></span></button>
         </div>
-        <p class="search-scope-note">Copies sur cet appareil. Accès aux originaux non vérifié. Photos : métadonnées et annotations explicites, sans reconnaissance visuelle.</p>
         <section class="search-results-panel" aria-label="Résultats de la recherche">
           <p id="experimental-index-status" role="status" aria-live="polite"></p>
           <section class="ui-card search-qwen-panel" id="search-qwen-panel" aria-labelledby="search-qwen-title" hidden>
@@ -455,25 +458,27 @@
           </section>
         </section>
 
-        <button type="button" class="prisme-mobile mobile-assistant" data-open-view="assistant">Assistant documentaire <span aria-hidden="true">›</span></button>
+        <p class="search-scope-note">Copies sur cet appareil. Accès aux originaux non vérifié. Photos : métadonnées et annotations explicites, sans reconnaissance visuelle.</p>
+        <button type="button" class="mobile-assistant" data-open-view="assistant">Assistant documentaire <span aria-hidden="true">›</span></button>
+        </div></div>
       </section>
 
       <section class="view house-view ui-prisme ui-prisme--inline" id="view-maison" data-view="maison" aria-labelledby="house-title" hidden>
         <header class="household-header">
           <div class="view-titles">
-            <p class="prisme-mobile eyebrow">Espace local</p>
-            <h1 id="house-title"><span class="prisme-desktop">Foyer</span><span class="prisme-mobile">Mon foyer</span></h1>
+            <p class="eyebrow">Espace local</p>
+            <h1 id="house-title">Mon foyer</h1>
           </div>
           <button class="ui-button ui-button--primary household-header-action" type="button" id="add-equipment-btn" aria-label="Ajouter un équipement"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter un équipement</span></button>
         </header>
         <article class="ui-card property-card">
           <div class="property-illustration">
-            <img src="assets/maison/maison-photo.jpg" alt="Illustration d'une maison" loading="lazy" class="property-photo" id="house-photo">
+            <img src="assets/prisme/maison.svg" alt="" loading="lazy" class="property-photo" id="house-photo">
           </div>
           <div class="property-content">
-            <small class="property-kicker prisme-mobile">Carnet de maison</small>
+            <small class="property-kicker">Carnet de maison</small>
             <div class="property-copy">
-              <h2><span class="prisme-desktop">Le carnet de la maison</span><span class="prisme-mobile">La maison</span></h2>
+              <h2>La maison</h2>
               <small id="house-photo-origin">Visuel d'illustration · IA</small>
               <p id="house-photo-status" class="household-note" role="status" hidden></p>
               <span id="display-address"></span>
@@ -484,8 +489,6 @@
         </article>
         <section class="ui-card equipment-panel household-panel" aria-labelledby="equipment-title">
           <div class="section-heading"><h2 id="equipment-title">Équipements</h2><span id="equipment-list-status" role="status" aria-live="polite"></span></div>
-          <details class="house-category-filters" id="house-category-filters">
-            <summary id="house-category-filter-summary">Filtrer par catégorie</summary>
             <div class="category-tabs" role="group" aria-label="Filtrer les équipements de la maison">
               <button class="ui-button ui-button--secondary category-tab is-selected" type="button" data-house-category="tout" aria-pressed="true">Tout</button>
               <button class="ui-button ui-button--secondary category-tab" type="button" data-house-category="piscine" aria-pressed="false">Piscine</button>
@@ -496,8 +499,6 @@
               <button class="ui-button ui-button--secondary category-tab" type="button" data-house-category="assurance" aria-pressed="false">Assurance</button>
               <button class="ui-button ui-button--secondary category-tab" type="button" data-house-category="imprimante" aria-pressed="false">Imprimante</button>
             </div>
-          </details>
-          <p class="household-note">Illustrations IA par défaut, pas des photos de vos équipements.</p>
           <div class="equipment-list" id="equipment-list">
             <!-- Equipment list will be populated dynamically by app.js -->
           </div>
@@ -506,8 +507,9 @@
             <p id="equipment-empty-description">Vos autres équipements vous attendent dans le carnet.</p>
             <button class="ui-button ui-button--secondary" type="button" id="show-all-equipment">Voir tous les équipements</button>
           </div>
+          <p class="household-note">Illustrations IA par défaut. Le statut est celui que vous avez renseigné.</p>
         </section>
-        <nav class="prisme-mobile foyer-links" aria-label="Dans mon foyer">
+        <nav class="foyer-links" aria-label="Dans mon foyer">
           <h2>Famille</h2><button class="prisme-row ui-button" type="button" data-open-view="famille"><span class="prisme-row-visual prisme-avatars" id="house-family-avatars" aria-hidden="true"><svg class="prisme-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2m4-13v6m-3-3h6"/></svg></span><span class="prisme-row-copy"><strong>Mon cercle</strong><small id="house-family-count"></small></span><span aria-hidden="true">›</span></button>
           <h2>Mon espace</h2><button class="prisme-row ui-button" type="button" data-open-view="plus"><span class="prisme-row-visual" aria-hidden="true"><svg class="prisme-icon" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v12H3z"/></svg></span><span class="prisme-row-copy"><strong>Fichiers et réglages</strong><small>Inventaire, profil, confidentialité</small></span><span aria-hidden="true">›</span></button>
         </nav>
@@ -547,18 +549,22 @@
       <section class="view alerts-view ui-prisme ui-prisme--inline" id="view-alertes" data-view="alertes" aria-labelledby="alerts-title" hidden>
         <header class="alerts-page-header">
           <div>
-            <p class="prisme-mobile eyebrow">Suivi local</p>
-            <h1 id="alerts-title"><span class="prisme-desktop">Rappels</span><span class="prisme-mobile">Mes rappels</span></h1>
+            <p class="eyebrow">Suivi local</p>
+            <h1 id="alerts-title">Mes rappels</h1>
           </div>
           <button class="ui-button ui-button--secondary alerts-settings-button" id="open-alert-preferences" type="button" aria-label="Réglages des alertes" aria-haspopup="dialog">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 3-.6 2.4-2.1 1.2L4 6l-2 3.5 1.7 1.8v2.4L2 15.5 4 19l2.3-.6 2.1 1.2L9 22h4l.6-2.4 2.1-1.2 2.3.6 2-3.5-1.7-1.8v-2.4L20 9.5 18 6l-2.3.6-2.1-1.2L13 3z"/><circle cx="11" cy="12.5" r="3"/></svg>
           </button>
         </header>
+        <div class="reminders-layout">
+        <div class="reminders-main">
         <div class="alert-filter-tabs" role="group" aria-label="Filtrer les alertes">
-          <button class="ui-button alert-filter-tab prisme-mobile" type="button" data-filter="actifs" aria-pressed="false">À venir<span class="alert-badge">0</span></button>
-          <button class="ui-button alert-filter-tab prisme-mobile" type="button" data-filter="terminés" aria-pressed="false">Terminés<span class="alert-badge">0</span></button>
-          <button class="prisme-mobile ui-button mobile-alert-more" type="button" aria-expanded="false">Autres filtres</button>
-          <button class="ui-button ui-button--secondary alert-filter-tab is-selected" type="button" data-filter="à-traiter" aria-pressed="true">À traiter<span class="alert-badge">0</span></button>
+          <button class="ui-button alert-filter-tab" type="button" data-filter="actifs" aria-pressed="true">À venir<span class="alert-badge">0</span></button>
+          <button class="ui-button alert-filter-tab" type="button" data-filter="terminés" aria-pressed="false">Terminés<span class="alert-badge">0</span></button>
+        </div>
+          <button class="ui-button mobile-alert-more" type="button" aria-controls="extra-alert-filters" aria-expanded="false">Autres filtres</button>
+        <div id="extra-alert-filters" role="group" aria-label="Autres filtres" hidden>
+          <button class="ui-button ui-button--secondary alert-filter-tab" type="button" data-filter="à-traiter" aria-pressed="false">À traiter<span class="alert-badge">0</span></button>
           <button class="ui-button ui-button--secondary alert-filter-tab" type="button" data-filter="à-anticiper" aria-pressed="false">À anticiper<span class="alert-badge">0</span></button>
           <button class="ui-button ui-button--secondary alert-filter-tab" type="button" data-filter="à-surveiller" aria-pressed="false">À surveiller<span class="alert-badge">0</span></button>
           <button class="ui-button ui-button--secondary alert-filter-tab" type="button" data-filter="reportées" aria-pressed="false">Reportées<span class="alert-badge">0</span></button>
@@ -569,11 +575,13 @@
             <h2 id="alert-period-title">À traiter en premier</h2>
             <p id="alert-list-status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
-          <button class="ui-button ui-button--text" id="mark-alerts-read" type="button">Tout marquer comme lu</button>
         </div>
         <div class="alert-list" id="alert-list" aria-label="Alertes">
           <!-- Alertes seront générées dynamiquement par app.js -->
         </div>
+        <button class="ui-button ui-button--text" id="mark-alerts-read" type="button" hidden>Tout marquer comme lu</button>
+        </div>
+        <div class="reminders-proposals">
         <details class="ui-card search-disclosure" id="search-deadline-panel">
           <summary id="experimental-deadline-title">Échéances proposées — expérimental</summary>
           <div class="search-disclosure-content">
@@ -589,6 +597,7 @@
           </div>
         </details>
         <p class="alerts-footnote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Vos rappels et leurs réglages restent sur cet appareil.</p>
+        </div></div>
       </section>
 
       <section class="view detail-view ui-prisme ui-prisme--inline" id="view-detail" data-view="detail" aria-labelledby="detail-title" hidden>

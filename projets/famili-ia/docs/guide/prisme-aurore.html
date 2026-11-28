@@ -1,0 +1,1885 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Famili-IA — Prisme Aurore · prototype</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg1:#f8f5ff;--bg2:#ecf3ff;--bg3:#fff3ee;
+  --stage:#e9e7f6;--ink:#1b1f3f;--muted:#5d6486;
+  --glass:rgba(255,255,255,.68);--glass2:rgba(255,255,255,.92);--stroke:rgba(102,87,240,.16);--scrim:rgba(27,31,63,.32);
+  --shadow:0 22px 44px -26px rgba(70,60,160,.45);
+  --iris:#6657f0;--iris2:#4f8dff;--ok:#2f9e7b;--hl:#ffe9a8;
+  --lilac:#e0d9ff;--mint:#cdf3e3;--peach:#ffdccb;--sky:#d4e8ff;--butter:#fff1c4;
+  --on-pastel:#241f4d;--on-pastel-soft:#4a4577;
+  --nav-ind:linear-gradient(135deg,#ddd5ff,#cbe5ff);
+  --cta:linear-gradient(120deg,#2a2c6b,#4a4fc9);
+}
+[data-theme=dark]{
+  --bg1:#0e1026;--bg2:#121637;--bg3:#1b1233;
+  --stage:#080a1a;--ink:#eef0ff;--muted:#a6acd0;
+  --glass:rgba(255,255,255,.07);--glass2:rgba(255,255,255,.13);--stroke:rgba(170,180,255,.18);--scrim:rgba(4,5,18,.6);
+  --shadow:0 24px 48px -24px #000;
+  --iris:#9a8cff;--iris2:#72aaff;--ok:#6fe3c1;--hl:#6b5a1f;
+  --lilac:#3b3380;--mint:#1c4d47;--peach:#5d3544;--sky:#1f3d69;--butter:#524726;
+  --on-pastel:#f3f1ff;--on-pastel-soft:#c4c3ea;
+  --nav-ind:linear-gradient(135deg,#4b3fb0,#2d5fa8);
+  --cta:linear-gradient(120deg,#4b3fb0,#3a73d8);
+}
+html{color-scheme:light}[data-theme=dark]{color-scheme:dark}
+body{margin:0;min-height:100vh;color:var(--ink);font:15px/1.45 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;background:var(--stage);transition:background .5s,color .5s}
+button,input{font:inherit;color:inherit}
+button{border:0;background:none;padding:0;cursor:pointer;text-align:left}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--iris2);outline-offset:3px}
+svg{display:block}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.mono{font:700 10px/1.2 ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase}
+.grad{background:linear-gradient(100deg,var(--iris),var(--iris2));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ---------- présentation ---------- */
+.top{max-width:1320px;margin:auto;padding:26px 28px 6px;display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.top h1{margin:4px 0 0;font:780 clamp(34px,4vw,54px)/1 system-ui,sans-serif;letter-spacing:-.07em}
+.tag{border:1px solid var(--stroke);border-radius:99px;padding:7px 13px;font-size:12px;color:var(--muted);background:var(--glass)}
+.stage{max-width:1320px;margin:auto;padding:18px 28px 30px;display:grid;grid-template-columns:minmax(260px,1fr) 400px minmax(260px,1fr);gap:28px;align-items:start}
+.panel{background:var(--glass);border:1px solid var(--stroke);border-radius:24px;padding:18px;backdrop-filter:blur(14px);box-shadow:var(--shadow)}
+.panel+.panel{margin-top:16px}
+.panel h2{margin:0 0 4px;font-size:15px;letter-spacing:-.02em}
+.panel p{margin:4px 0 10px;color:var(--muted);font-size:13px}
+.panel[hidden]{display:none}
+.list{margin:0;padding-left:18px;color:var(--muted);font-size:13px}
+.list li{margin:5px 0}
+.brandcard{display:flex;align-items:center;gap:14px}
+.brandcard svg{width:72px;height:72px}
+.swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.sw{height:50px;border-radius:14px;display:grid;place-items:end start;padding:6px;font-size:9px;font-weight:700;color:var(--on-pastel);border:1px solid var(--stroke)}
+.ask{max-width:1320px;margin:0 auto;padding:0 28px 50px}
+.ask .panel{display:grid;gap:6px;font-size:14px}
+.ask b{color:var(--iris)}
+
+/* ---------- téléphone ---------- */
+.phone{position:relative;width:390px;height:800px;margin:auto;border-radius:46px;overflow:hidden;overflow:clip;border:1px solid var(--stroke);background:linear-gradient(160deg,var(--bg1),var(--bg2) 55%,var(--bg3));box-shadow:0 40px 80px -36px rgba(40,30,120,.55),inset 0 0 0 6px color-mix(in srgb,var(--ink) 6%,transparent);transition:background .5s}
+.phone:before,.phone:after{content:"";position:absolute;border-radius:50%;filter:blur(46px);opacity:.65;pointer-events:none;animation:drift 18s ease-in-out infinite alternate}
+.phone:before{width:260px;height:260px;left:-80px;top:120px;background:var(--lilac)}
+.phone:after{width:240px;height:240px;right:-90px;bottom:140px;background:var(--peach);animation-delay:-7s}
+@keyframes drift{to{transform:translate(40px,-50px) scale(1.12)}}
+.app-head{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;align-items:center;gap:10px;padding:22px 20px 10px;backdrop-filter:blur(14px);-webkit-mask:linear-gradient(#000 78%,transparent);mask:linear-gradient(#000 78%,transparent)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:760;font-size:18px;letter-spacing:-.05em}
+.logo-mark{width:34px;height:34px;transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.brand:hover .logo-mark{transform:rotate(-8deg) scale(1.1)}
+.head-actions{margin-left:auto;display:flex;gap:8px}
+.round{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px);position:relative;overflow:hidden;transition:transform .25s}
+.round:hover{transform:translateY(-2px)}
+.theme .sun,.theme .moon{position:absolute;transition:transform .6s cubic-bezier(.34,1.56,.64,1),opacity .4s}
+[data-theme=light] .theme .moon{transform:translateY(24px) rotate(-60deg);opacity:0}
+[data-theme=dark] .theme .sun{transform:translateY(-24px) rotate(60deg);opacity:0}
+
+.screen{position:absolute;inset:0;overflow:auto;padding:84px 20px 124px;scrollbar-width:none;opacity:0;visibility:hidden;transform:translateY(14px);transition:opacity .35s,transform .45s cubic-bezier(.2,.8,.2,1),visibility 0s .45s}
+.screen::-webkit-scrollbar{display:none}
+.screen.on{opacity:1;visibility:visible;transform:none;transition:opacity .35s,transform .45s cubic-bezier(.2,.8,.2,1)}
+.eyebrow{margin:2px 0 0;color:var(--muted)}
+.hello,.title{margin:4px 0 16px;font:780 40px/1.02 system-ui,sans-serif;letter-spacing:-.075em}
+.section{display:flex;align-items:baseline;justify-content:space-between;margin:20px 2px 9px;font-weight:700;font-size:16px;letter-spacing:-.03em}
+.section small{font-weight:600;color:var(--iris);font-size:12px;letter-spacing:0}
+.note{margin:6px 4px 0;font-size:12px;color:var(--muted);display:flex;gap:7px;align-items:flex-start}
+.note .i{width:15px;height:15px;margin-top:1px;color:var(--iris)}
+
+.find{display:flex;align-items:center;gap:10px;min-height:56px;padding:0 8px 0 16px;border-radius:21px;background:var(--glass2);border:1px solid var(--stroke);backdrop-filter:blur(14px);box-shadow:var(--shadow);width:100%;transition:transform .3s,box-shadow .3s}
+.find:hover{transform:translateY(-2px)}
+.find>.i{color:var(--iris)}
+.find .txt{flex:1;font-weight:560;color:var(--muted);text-align:left}
+.find .mic{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;background:var(--nav-ind);color:var(--on-pastel)}
+.field{padding:0 6px 0 16px}
+.field:focus-within{box-shadow:0 0 0 3px color-mix(in srgb,var(--iris) 35%,transparent),var(--shadow);border-color:var(--iris)}
+.field input{flex:1;min-width:0;border:0;background:transparent;font-weight:600;font-size:16px;padding:14px 0;outline:0}
+.field .clear{width:32px;height:44px;display:grid;place-items:center;color:var(--muted)}
+.field .clear .i{width:18px;height:18px}
+.field .go{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;background:var(--cta);color:#fff;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.field .go:hover{transform:scale(1.07)}
+
+.hero{position:relative;overflow:hidden;border-radius:30px;padding:18px;min-height:210px;color:var(--on-pastel);isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;width:100%;background:linear-gradient(135deg,var(--lilac),var(--sky) 75%);box-shadow:var(--shadow);border:1px solid var(--stroke);transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+.hero:hover{transform:translateY(-3px)}
+.hero:before{content:"";position:absolute;inset:-30%;z-index:-2;background:radial-gradient(40% 40% at 25% 30%,#ffd8e8aa,transparent 70%),radial-gradient(35% 35% at 80% 70%,#ffffffaa,transparent 70%);animation:aurora 12s ease-in-out infinite alternate}
+[data-theme=dark] .hero:before{background:radial-gradient(40% 40% at 25% 30%,#7b4fd088,transparent 70%),radial-gradient(35% 35% at 80% 70%,#2d6fa088,transparent 70%)}
+@keyframes aurora{to{transform:translate(8%,-6%) rotate(12deg) scale(1.1)}}
+.chip{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;background:color-mix(in srgb,#fff 55%,transparent);backdrop-filter:blur(8px);color:var(--on-pastel)}
+[data-theme=dark] .chip{background:#ffffff1c}
+.chip i{width:7px;height:7px;border-radius:50%;background:#ff7a9b;box-shadow:0 0 0 0 #ff7a9b99;animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px #ff7a9b00}100%{box-shadow:0 0 0 0 #ff7a9b00}}
+.hero h3{margin:34px 0 4px;font:780 32px/1 system-ui,sans-serif;letter-spacing:-.07em}
+.hero p{margin:0;font-weight:600;font-size:13px;color:var(--on-pastel-soft)}
+.orb{position:absolute;right:-6px;top:8px;width:170px;height:170px;z-index:-1;pointer-events:none;transform:translate(var(--px,0),var(--py,0));transition:transform .2s}
+.orb .s{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 25%,#fff 0 7%,var(--c1) 32%,var(--c2) 80%);box-shadow:inset -7px -9px 16px #ffffff4d,0 18px 26px -12px var(--c2);animation:bob var(--d,7s) ease-in-out infinite}
+.orb .s1{--c1:#d6cbff;--c2:#8f7dff;width:92px;height:92px;right:28px;top:6px}
+.orb .s2{--c1:#d3e8ff;--c2:#6fa8ff;--d:5.5s;width:58px;height:58px;right:0;top:92px;animation-delay:-2s}
+.orb .s3{--c1:#ffdbe9;--c2:#ff9ec4;--d:8s;width:36px;height:36px;right:104px;top:112px;animation-delay:-4s}
+@keyframes bob{50%{transform:translateY(-9px) rotate(8deg)}}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.tile{position:relative;overflow:hidden;border-radius:24px;padding:14px;min-height:104px;display:flex;flex-direction:column;justify-content:space-between;color:var(--on-pastel);border:1px solid var(--stroke);transition:transform .35s cubic-bezier(.34,1.56,.64,1);box-shadow:var(--shadow)}
+.tile:hover{transform:translateY(-4px) rotate(-.6deg)}
+.tile.sky{background:linear-gradient(145deg,var(--sky),var(--lilac))}
+.tile.mint{background:linear-gradient(145deg,var(--mint),var(--sky))}
+.tile .bub{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,#fff 60%,transparent)}
+[data-theme=dark] .tile .bub{background:#ffffff1f}
+.tile b{font-size:15px;letter-spacing:-.03em;display:block}
+.tile small{font-size:12px;color:var(--on-pastel-soft)}
+.row{display:flex;align-items:center;gap:12px;width:100%;min-height:68px;padding:10px 12px;margin-bottom:10px;border-radius:22px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px);transition:transform .3s,background .3s}
+.row:hover{transform:translateX(4px);background:var(--glass2)}
+.row .ic{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;color:var(--on-pastel)}
+.ic.peach{background:var(--peach)}.ic.butter{background:var(--butter)}.ic.lilac{background:var(--lilac)}.ic.mint{background:var(--mint)}
+.row div{flex:1;min-width:0}
+.row b{display:block;font-size:14px;letter-spacing:-.02em}
+.row small{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12px;margin-top:1px}
+.badge{padding:1px 8px;border-radius:99px;font-size:11px;font-weight:650;background:var(--sky);color:var(--on-pastel)}
+.badge.mint{background:var(--mint)}
+.row>.i{color:var(--muted);width:16px}
+
+/* ---------- recherche ---------- */
+.filters{display:flex;gap:8px;margin:12px 0 4px;flex-wrap:wrap}
+.fchip{min-height:44px;padding:0 14px;border-radius:99px;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:650;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px);transition:transform .3s cubic-bezier(.34,1.56,.64,1),background .3s}
+.fchip:hover{transform:translateY(-2px)}
+.fchip .i{width:17px;height:17px;color:var(--iris)}
+.fchip[aria-pressed=true]{background:var(--lilac);color:var(--on-pastel);border-color:color-mix(in srgb,var(--iris) 40%,transparent)}
+.fchip[aria-pressed=true]:after{content:"×";font-size:16px;line-height:1;margin-left:2px;opacity:.7}
+.count{display:flex;align-items:baseline;justify-content:space-between;margin:14px 2px 8px;font-weight:700;letter-spacing:-.03em}
+.count small{font-weight:500;color:var(--muted);font-size:12px}
+.res{position:relative;overflow:hidden;border-radius:28px;padding:16px;margin-bottom:14px;isolation:isolate;color:var(--on-pastel);background:linear-gradient(140deg,var(--lilac),color-mix(in srgb,var(--lilac) 40%,var(--glass2)));border:1px solid var(--stroke);box-shadow:var(--shadow);animation:rise .55s cubic-bezier(.2,.8,.2,1) both}
+.res:nth-child(2){animation-delay:.08s}
+@keyframes rise{from{opacity:0;transform:translateY(16px) scale(.98)}}
+.res .rings{position:absolute;right:-30px;top:-34px;width:150px;height:150px;z-index:-1;color:color-mix(in srgb,var(--iris) 55%,transparent);animation:breathe 7s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.1) rotate(8deg)}}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;font-size:11px;font-weight:700;background:#3b2f8f;color:#fff}
+[data-theme=dark] .pill{background:#8f7dff;color:#14102f}
+.pill .i{width:14px;height:14px}
+.res h3{margin:12px 0 2px;font:760 22px/1.1 system-ui,sans-serif;letter-spacing:-.05em}
+.res .meta{font-size:12px;color:var(--on-pastel-soft)}
+.proof{margin:12px 0 4px;padding:12px 14px;border-radius:0 18px 18px 0;border-left:3px solid var(--iris);background:color-mix(in srgb,#fff 68%,transparent);backdrop-filter:blur(6px)}
+[data-theme=dark] .proof{background:#ffffff14}
+.proof small{display:block;margin-bottom:4px;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--iris)}
+.proof q{quotes:none;font:620 17px/1.32 system-ui,sans-serif;letter-spacing:-.03em;color:var(--on-pastel)}
+mark{background:var(--hl);color:inherit;border-radius:6px;padding:0 3px;box-decoration-break:clone}
+.actions{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
+.link{min-height:48px;display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:14px;color:var(--iris);transition:gap .3s}
+[data-theme=light] .link{color:#3a30b8}
+.link:hover{gap:11px}
+.link .i{width:18px;height:18px}
+details.prov{border-top:1px solid color-mix(in srgb,var(--iris) 18%,transparent)}
+details.prov summary{min-height:48px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none;font-weight:650;font-size:13px}
+details.prov summary::-webkit-details-marker{display:none}
+details.prov summary .i{width:18px;height:18px;transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+details.prov[open] summary .i{transform:rotate(45deg)}
+details.prov p{margin:0 0 6px;font-size:12px;color:var(--on-pastel-soft);animation:fade .4s both}
+@keyframes fade{from{opacity:0;transform:translateY(-4px)}}
+.assistant{display:flex;align-items:center;gap:12px;width:100%;min-height:62px;margin-top:6px;padding:0 16px;border-radius:22px;background:var(--cta);color:#fff;box-shadow:0 18px 34px -18px #4a4fc9;position:relative;overflow:hidden;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.assistant:hover{transform:translateY(-3px)}
+.assistant:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,#ffffff33 50%,transparent 70%);transform:translateX(-120%);animation:sweep 5s ease-in-out infinite}
+@keyframes sweep{60%,100%{transform:translateX(120%)}}
+.assistant b{flex:1;font-size:15px;letter-spacing:-.02em}
+.assistant .sp{color:#d8e3ff;animation:twinkle 3.4s ease-in-out infinite}
+@keyframes twinkle{50%{transform:scale(.75) rotate(40deg);opacity:.75}}
+.empty{display:grid;justify-items:center;text-align:center;gap:6px;padding:22px 16px;border-radius:28px;background:var(--glass);border:1px dashed color-mix(in srgb,var(--iris) 40%,transparent)}
+.empty .bub{width:64px;height:64px;border-radius:22px;display:grid;place-items:center;background:var(--lilac);color:var(--on-pastel);margin-bottom:4px}
+.empty b{font-size:16px;letter-spacing:-.03em}
+.empty p{margin:0;font-size:13px;color:var(--muted)}
+.empty button{margin-top:8px;min-height:46px;padding:0 18px;border-radius:15px;background:var(--glass2);border:1px solid var(--stroke);font-weight:650}
+
+/* feuille de filtres */
+.scrim{position:absolute;inset:0;z-index:20;background:var(--scrim);opacity:0;visibility:hidden;transition:opacity .35s,visibility 0s .35s;backdrop-filter:blur(3px)}
+.scrim.on{opacity:1;visibility:visible;transition:opacity .35s}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:21;padding:10px 18px 24px;border-radius:30px 30px 0 0;background:var(--glass2);backdrop-filter:blur(26px) saturate(1.4);border:1px solid var(--stroke);transform:translateY(105%);transition:transform .55s cubic-bezier(.2,.9,.2,1)}
+.sheet.on{transform:none}
+.grab{width:42px;height:5px;border-radius:9px;background:var(--stroke);margin:0 auto 12px}
+.sheet h3{margin:0 0 6px;font:760 22px system-ui;letter-spacing:-.05em}
+.sheet .grp{margin:10px 0 4px;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.opts{display:flex;gap:7px;flex-wrap:wrap}
+.opt{min-height:44px;padding:0 13px;border-radius:99px;border:1px solid var(--stroke);background:var(--glass);font-size:13px;font-weight:600;transition:background .3s,transform .3s cubic-bezier(.34,1.56,.64,1)}
+.opt[aria-pressed=true]{background:var(--lilac);color:var(--on-pastel);border-color:color-mix(in srgb,var(--iris) 45%,transparent);transform:scale(1.04)}
+.sheet .btns{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:16px}
+.btn{min-height:50px;border-radius:17px;font-weight:700;text-align:center;display:grid;place-items:center}
+.btn.ghost{border:1px solid var(--stroke);background:var(--glass)}
+.btn.main{background:var(--cta);color:#fff}
+
+/* ---------- foyer ---------- */
+.titlebar{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.addbtn{width:52px;height:52px;margin-top:4px;border-radius:19px;display:grid;place-items:center;flex:none;background:var(--cta);color:#fff;box-shadow:0 16px 28px -14px #4a4fc9;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.addbtn:hover{transform:rotate(90deg) scale(1.06)}
+.house{position:relative;overflow:hidden;isolation:isolate;border-radius:30px;min-height:196px;padding:16px;color:var(--on-pastel);background:linear-gradient(145deg,var(--mint),var(--sky) 90%);border:1px solid var(--stroke);box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between}
+.house:before{content:"";position:absolute;z-index:-2;right:-40px;top:-50px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,#fff8c9cc,transparent 65%);animation:breathe 8s ease-in-out infinite}
+[data-theme=dark] .house:before{background:radial-gradient(circle,#8f7dff66,transparent 65%)}
+.house img{position:absolute;z-index:-1;right:-26px;bottom:-4px;width:74%;filter:drop-shadow(0 14px 14px #2a5a5233);animation:floaty 7s ease-in-out infinite}
+@keyframes floaty{50%{transform:translateY(-7px)}}
+.house .chip{background:color-mix(in srgb,#fff 60%,transparent)}
+.house h2{margin:44px 0 0;font:780 30px/1 system-ui,sans-serif;letter-spacing:-.07em}
+.house small{display:block;margin-top:4px;font-size:12px;font-weight:600;color:var(--on-pastel-soft)}
+.house .link{color:var(--on-pastel);min-height:48px;margin-left:-2px;text-decoration:underline;text-underline-offset:4px}
+.cats{display:flex;gap:8px;overflow-x:auto;margin:0 -20px;padding:2px 20px 10px;scrollbar-width:none;-webkit-mask:linear-gradient(90deg,transparent,#000 20px,#000 calc(100% - 28px),transparent);mask:linear-gradient(90deg,transparent,#000 20px,#000 calc(100% - 28px),transparent)}
+.cats::-webkit-scrollbar{display:none}
+.cats .fchip{flex:none}
+.cats .fchip[aria-pressed=true]:after{content:none}
+.eqrow{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+.eqrow .ic{width:50px;height:50px;border-radius:17px}
+.eqrow small+small{margin-top:0;font-size:11px}
+.avs{display:flex;flex:none}
+.avs i{width:36px;height:36px;border-radius:50%;border:2px solid var(--bg1);display:grid;place-items:center;font:700 14px system-ui;font-style:normal;color:#3e304e;background:#ffd2e4;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.avs i+i{margin-left:-9px;background:#d9ddff}
+.row:hover .avs i:first-child{transform:translateX(-3px)}
+.row:hover .avs i+i{transform:translateX(3px)}
+[data-theme=dark] .avs i{color:#1d1640}
+.field2{display:block;margin-top:4px}
+.field2 input{width:100%;min-height:50px;border-radius:16px;border:1px solid var(--stroke);background:var(--glass);padding:0 14px;font-weight:600;outline:0}
+.field2 input:focus{border-color:var(--iris);box-shadow:0 0 0 3px color-mix(in srgb,var(--iris) 30%,transparent)}
+
+/* ---------- rappels ---------- */
+.gear{margin-top:4px;width:50px;height:50px}
+.seg{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:20px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px);isolation:isolate}
+.seg .thumb{position:absolute;z-index:-1;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:16px;background:var(--glass2);box-shadow:0 6px 16px -8px rgba(60,50,160,.5),inset 0 0 0 1px var(--stroke);transform:translateX(calc(var(--s,0)*100%));transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.seg button{min-height:46px;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:650;font-size:14px;color:var(--muted);border-radius:16px;text-align:center;transition:color .3s}
+.seg button[aria-pressed=true]{color:var(--ink)}
+.morebtn{display:flex;align-items:center;gap:6px;min-height:46px;margin:2px 0 0 4px;font-size:13px;font-weight:650;color:var(--muted)}
+.morebtn .i{width:16px;height:16px;transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+.morebtn[aria-expanded=true] .i{transform:rotate(180deg)}
+.morechips{max-height:0;overflow:hidden;opacity:0;transition:max-height .5s cubic-bezier(.2,.8,.2,1),opacity .4s}
+.morechips.on{max-height:72px;opacity:1}
+.al{margin-bottom:16px;animation:rise .55s cubic-bezier(.2,.8,.2,1) both}
+.coralhero{position:relative;overflow:hidden;isolation:isolate;border-radius:30px;padding:18px 18px 16px;min-height:218px;color:#3d1c25;background:linear-gradient(130deg,#ffdccb,#ffb99d);border:1px solid color-mix(in srgb,#ff8a6a 25%,transparent);box-shadow:0 22px 40px -24px #ff8a6acc;transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+[data-theme=dark] .coralhero{color:#ffe9e1;background:linear-gradient(130deg,#6b3a4c,#4a2c56);box-shadow:0 22px 40px -24px #000}
+.coralhero:hover{transform:translateY(-3px)}
+.coralhero:before{content:"";position:absolute;inset:-30%;z-index:-2;background:radial-gradient(40% 40% at 20% 25%,#fff3e0aa,transparent 70%),radial-gradient(35% 35% at 85% 80%,#ff9fb855,transparent 70%);animation:aurora 12s ease-in-out infinite alternate}
+.ribbon{position:absolute;right:-20px;top:6px;width:160px;height:160px;z-index:-1;pointer-events:none}
+.ribbon i{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#ff8f6b,#ff7aa5,#ffcf9e,#ff9a7a,#c88bff,#ff8f6b);-webkit-mask:radial-gradient(circle,transparent 48%,#000 52%,#000 62%,transparent 66%);mask:radial-gradient(circle,transparent 48%,#000 52%,#000 62%,transparent 66%);animation:tilt 10s linear infinite}
+.ribbon i:nth-child(2){inset:16px;animation-duration:14s;animation-direction:reverse;opacity:.85}
+.ribbon i:nth-child(3){inset:34px;animation-duration:8s;opacity:.65}
+@keyframes tilt{from{transform:rotateX(64deg) rotateZ(0)}to{transform:rotateX(64deg) rotateZ(360deg)}}
+.bigday{display:block;font:780 84px/.86 system-ui,sans-serif;letter-spacing:-.095em}
+.mo{display:block;margin:8px 0 20px;letter-spacing:.13em}
+.coralhero h3{margin:0 0 4px;font:760 25px/1.08 system-ui,sans-serif;letter-spacing:-.06em}
+.coralhero p{margin:0;font-weight:650;font-size:13px;opacity:.85}
+.mini{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:10px;border-radius:24px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px)}
+.mini .dt{width:58px;height:62px;border-radius:19px;display:grid;place-content:center;justify-items:center;background:linear-gradient(130deg,#ffdccb,#ffb99d);color:#3d1c25;flex:none}
+[data-theme=dark] .mini .dt{background:linear-gradient(130deg,#6b3a4c,#4a2c56);color:#ffe9e1}
+.mini .dt b{font:780 24px/1 system-ui;letter-spacing:-.06em}
+.mini .dt span{font:700 9px ui-monospace,Consolas,monospace;letter-spacing:.1em;text-transform:uppercase}
+.mini h3{margin:0;font-size:15px;letter-spacing:-.03em}
+.mini p{margin:1px 0 0;font-size:12px;color:var(--muted)}
+.mini.done .dt{background:var(--mint);color:var(--on-pastel)}
+.aldetail{padding:4px 4px 0}
+.aldetail h4{margin:14px 0 6px;font-size:15px;letter-spacing:-.025em}
+.meta2{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;font-size:12px;color:var(--muted)}
+.st{padding:3px 10px;border-radius:99px;font-weight:700;font-size:11px;color:var(--on-pastel);background:var(--sky)}
+.st.red{background:var(--peach)}.st.amber{background:var(--butter)}.st.done{background:var(--mint)}
+.snote{margin:8px 0 0;padding:8px 12px;border-radius:14px;background:var(--butter);color:var(--on-pastel);font-size:12px;font-weight:600}
+.al .proof{margin:6px 0}
+.al .proof q{font-size:15px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 12px}
+.act{min-height:44px;padding:0 14px;border-radius:99px;font-size:13px;font-weight:650;background:var(--glass2);border:1px solid var(--stroke);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.act:hover{transform:translateY(-2px)}
+.act.pri{background:var(--cta);color:#fff;border-color:transparent}
+.al.read .coralhero,.al.read .mini{opacity:.6}
+.prop{margin-top:6px;border-radius:26px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px);padding:0 16px}
+.prop summary{min-height:56px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none;font-weight:700;letter-spacing:-.02em}
+.prop summary::-webkit-details-marker{display:none}
+.prop summary .i{transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+.prop[open] summary .i{transform:rotate(45deg)}
+.prop .lead{margin:0 0 10px;font-size:12px;color:var(--muted)}
+.prop .pc{padding:14px;margin-bottom:14px;border-radius:22px;background:linear-gradient(140deg,var(--lilac),color-mix(in srgb,var(--lilac) 40%,var(--glass2)));color:var(--on-pastel);border:1px solid var(--stroke)}
+.prop .pc b{display:block;font-size:15px;letter-spacing:-.03em}
+.prop .pc small{display:block;margin:2px 0 8px;color:var(--on-pastel-soft);font-size:12px}
+.pstatus{margin:0 0 12px;font-size:12px;font-weight:600;color:var(--ok)}
+.switchrow{display:flex;align-items:center;gap:12px;min-height:60px;border-bottom:1px solid var(--stroke)}
+.switchrow>span:first-child{flex:1}
+.switchrow b{display:block;font-size:14px}
+.switchrow small{color:var(--muted);font-size:12px}
+.sw2{width:52px;height:32px;border-radius:99px;background:color-mix(in srgb,var(--muted) 35%,transparent);position:relative;flex:none;transition:background .4s}
+.sw2:after{content:"";position:absolute;left:4px;top:4px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 6px #1d34534d;transition:transform .45s cubic-bezier(.34,1.56,.64,1)}
+.sw2[aria-checked=true]{background:var(--cta)}
+.sw2[aria-checked=true]:after{transform:translateX(20px)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+
+/* ---------- assistant ---------- */
+.back{display:inline-flex;align-items:center;gap:4px;min-height:44px;margin:-4px 0 0 -6px;padding:0 8px;font-size:13px;font-weight:650;color:var(--muted)}
+.back .i{width:16px;height:16px;transform:rotate(180deg)}
+.ctx{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+.ctx span{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;font-size:12px;font-weight:650;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(10px)}
+.ctx .i{width:15px;height:15px;color:var(--iris)}
+.chat{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.msg{max-width:90%;border-radius:24px;padding:12px 15px;font-size:14.5px;animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+.msg.user{align-self:flex-end;background:var(--cta);color:#fff;border-bottom-right-radius:8px;box-shadow:0 14px 26px -16px #4a4fc9}
+.msg.ai{align-self:flex-start;background:linear-gradient(140deg,var(--mint),color-mix(in srgb,var(--mint) 45%,var(--glass2)));color:var(--on-pastel);border:1px solid var(--stroke);border-bottom-left-radius:8px;font-weight:560}
+.msg.ai .who{display:flex;align-items:center;gap:6px;margin-bottom:5px;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--on-pastel-soft)}
+.msg.ai .who .i{width:14px;height:14px;animation:twinkle 3.4s ease-in-out infinite}
+.msg .src{margin-top:10px;padding:11px 13px;border-radius:20px;background:color-mix(in srgb,#fff 62%,transparent);border:1px solid var(--stroke)}
+[data-theme=dark] .msg .src{background:#ffffff12}
+.msg .src small{display:block;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--iris)}
+.msg .src q{display:block;margin:4px 0;quotes:none;font:620 15px/1.3 system-ui,sans-serif;letter-spacing:-.02em}
+.msg .src .meta{font-size:11px;color:var(--on-pastel-soft)}
+.msg .mlinks{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.msg .mlinks button{min-height:44px;padding:0 13px;border-radius:99px;font-size:13px;font-weight:700;background:color-mix(in srgb,#fff 70%,transparent);border:1px solid var(--stroke);color:var(--on-pastel)}
+[data-theme=dark] .msg .mlinks button{background:#ffffff1c}
+.typing{align-self:flex-start;display:flex;gap:5px;padding:14px 16px;border-radius:22px;background:var(--glass);border:1px solid var(--stroke)}
+.typing i{width:8px;height:8px;border-radius:50%;background:var(--iris);animation:dots 1s ease-in-out infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes dots{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+.sugg{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.sugg button{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 14px;border-radius:18px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(10px);font-size:13.5px;font-weight:600;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.sugg button:hover{transform:translateX(4px)}
+.sugg .i{width:17px;height:17px;color:var(--iris)}
+.composer{position:absolute;left:14px;right:14px;bottom:100px;z-index:9;display:flex;align-items:center;gap:8px;min-height:58px;padding:0 7px 0 16px;border-radius:22px;background:var(--glass2);border:1px solid var(--stroke);backdrop-filter:blur(20px) saturate(1.4);box-shadow:var(--shadow);opacity:0;visibility:hidden;transform:translateY(12px);transition:.4s}
+.composer.on{opacity:1;visibility:visible;transform:none}
+.composer:focus-within{border-color:var(--iris);box-shadow:0 0 0 3px color-mix(in srgb,var(--iris) 30%,transparent),var(--shadow)}
+.composer input{flex:1;min-width:0;border:0;background:transparent;outline:0;font-weight:600;padding:14px 0}
+.composer .send{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;background:var(--cta);color:#fff;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.composer .send:hover{transform:scale(1.07)}
+.composer .mc{width:36px;height:46px;display:grid;place-items:center;color:var(--muted)}
+
+/* ---------- importer ---------- */
+.drop{position:relative;overflow:hidden;isolation:isolate;border-radius:30px;padding:18px;color:var(--on-pastel);background:linear-gradient(145deg,var(--mint),var(--sky));border:1px solid var(--stroke);box-shadow:var(--shadow)}
+.drop:before{content:"";position:absolute;inset:8px;border-radius:24px;border:1.5px dashed color-mix(in srgb,var(--on-pastel) 28%,transparent);pointer-events:none;animation:pulseb 4s ease-in-out infinite}
+@keyframes pulseb{50%{opacity:.4}}
+.fx{position:absolute;right:16px;top:16px;width:104px;height:92px;z-index:-1;pointer-events:none}
+.fx i{position:absolute;width:52px;height:66px;border-radius:14px;background:linear-gradient(160deg,#fff,color-mix(in srgb,#fff 40%,var(--lilac)));box-shadow:0 12px 20px -10px #4a4fc966;animation:bob 6s ease-in-out infinite}
+.fx i:nth-child(1){left:0;top:14px;transform:rotate(-10deg)}
+.fx i:nth-child(2){left:30px;top:2px;transform:rotate(7deg);animation-delay:-2s;background:linear-gradient(160deg,#fff,color-mix(in srgb,#fff 40%,var(--peach)))}
+.fx i:nth-child(3){left:56px;top:26px;width:42px;height:54px;transform:rotate(16deg);animation-delay:-4s;background:linear-gradient(160deg,#fff,color-mix(in srgb,#fff 40%,var(--butter)))}
+[data-theme=dark] .fx i{background:linear-gradient(160deg,#ffffff30,#ffffff12)}
+.drop h2{margin:70px 0 4px;font:760 24px/1.08 system-ui,sans-serif;letter-spacing:-.06em;max-width:84%}
+.drop p{margin:0 0 14px;font-size:13px;font-weight:600;color:var(--on-pastel-soft)}
+.pick{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:54px;border-radius:18px;background:var(--cta);color:#fff;font-weight:700;box-shadow:0 16px 28px -16px #4a4fc9;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.pick:hover:not(:disabled){transform:translateY(-2px)}
+.pick:disabled{opacity:.6;cursor:default}
+.stepper{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 4px}
+.step{display:grid;justify-items:center;gap:6px;padding:10px 4px;border-radius:18px;background:var(--glass);border:1px solid var(--stroke);font-size:12px;font-weight:650;color:var(--muted);text-align:center;transition:.4s}
+.step b{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:color-mix(in srgb,var(--muted) 20%,transparent);color:var(--muted);transition:.4s}
+.step.active{color:var(--ink);background:var(--glass2)}
+.step.active b{background:var(--cta);color:#fff;animation:pulse2 1.6s infinite}
+@keyframes pulse2{70%{box-shadow:0 0 0 9px #6657f000}0%{box-shadow:0 0 0 0 #6657f066}}
+.step.done{color:var(--on-pastel);background:var(--mint)}
+.step.done b{background:#fff;color:var(--ok)}
+.prog{height:8px;border-radius:99px;background:color-mix(in srgb,var(--muted) 18%,transparent);overflow:hidden;margin:12px 2px}
+.prog span{display:block;height:100%;width:0;border-radius:99px;background:var(--cta);transition:width .7s cubic-bezier(.2,.8,.2,1);position:relative;overflow:hidden}
+.prog span:after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,#ffffff66 50%,transparent 70%);animation:sweep 1.6s linear infinite}
+.pstat{margin:0 2px 8px;font-size:13px;font-weight:650}
+.frow{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 12px;margin-bottom:8px;border-radius:20px;background:var(--glass);border:1px solid var(--stroke);animation:rise .45s cubic-bezier(.2,.8,.2,1) both}
+.frow .ic{width:40px;height:40px;border-radius:14px}
+.frow div{flex:1;min-width:0}
+.frow b{display:block;font-size:14px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frow small{font-size:12px;color:var(--muted)}
+.state{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none}
+.state .i{width:17px;height:17px}
+.state.spin{border:3px solid color-mix(in srgb,var(--iris) 25%,transparent);border-top-color:var(--iris);animation:spin 0.9s linear infinite}
+.state.ok{background:var(--mint);color:var(--ok)}
+.state.ok .i path{stroke-dasharray:24;stroke-dashoffset:24;animation:draw .5s .05s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.state.warn{background:var(--butter);color:#8a5a00}
+[data-theme=dark] .state.warn{color:#ffd36b}
+.sumcard{padding:16px;border-radius:26px;background:linear-gradient(140deg,var(--mint),color-mix(in srgb,var(--mint) 40%,var(--glass2)));color:var(--on-pastel);border:1px solid var(--stroke);animation:rise .5s both;margin:6px 0 4px}
+.sumcard b{font-size:16px;letter-spacing:-.03em}
+.sumcard p{margin:4px 0 10px;font-size:13px;color:var(--on-pastel-soft)}
+.sumcard .acts{padding:0}
+.src-st{padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;background:var(--butter);color:var(--on-pastel)}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+.chiprow span{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:99px;font-size:12px;font-weight:650;background:var(--glass);border:1px solid var(--stroke)}
+.chiprow .i{width:14px;height:14px;color:var(--iris)}
+
+/* ---------- vos données ---------- */
+.seelink{min-height:44px;padding:0 2px;font-weight:600;color:var(--iris);font-size:12px;letter-spacing:0}
+.trust{position:relative;overflow:hidden;isolation:isolate;border-radius:30px;padding:18px;background:linear-gradient(140deg,var(--lilac),color-mix(in srgb,var(--lilac) 35%,var(--glass2)));border:1px solid var(--stroke);box-shadow:var(--shadow);color:var(--on-pastel)}
+.trust h2{margin:0;font-size:15px;letter-spacing:-.03em}
+.trust .own{display:flex;align-items:center;gap:7px;margin:6px 0 14px;font-size:12px;font-weight:650;color:var(--on-pastel-soft)}
+.trust .own .i{width:15px;height:15px;color:var(--iris)}
+.tbody{display:flex;align-items:center;gap:18px}
+.donut{position:relative;width:118px;height:118px;flex:none;border-radius:50%;background:conic-gradient(var(--c) );-webkit-mask:radial-gradient(circle,transparent 54%,#000 56%);mask:radial-gradient(circle,transparent 54%,#000 56%);animation:dspin 1.3s cubic-bezier(.2,.8,.2,1) both}
+@keyframes dspin{from{transform:rotate(-140deg) scale(.85);opacity:0}}
+.dwrap{position:relative;flex:none}
+.dwrap .num{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;line-height:1}
+.dwrap .num b{font:780 34px system-ui;letter-spacing:-.08em}
+.dwrap .num small{font-size:10px;font-weight:650;color:var(--on-pastel-soft)}
+.legend{display:grid;gap:8px;font-size:12.5px;font-weight:600;flex:1;min-width:0}
+.legend span{display:flex;align-items:center;gap:8px}
+.legend i{width:11px;height:11px;border-radius:4px;flex:none}
+.legend b{margin-left:auto;font-variant-numeric:tabular-nums}
+.srcdet{margin-top:12px;border-top:1px solid color-mix(in srgb,var(--iris) 20%,transparent)}
+.srcdet summary{min-height:48px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none;font-weight:650;font-size:13px}
+.srcdet summary::-webkit-details-marker{display:none}
+.srcdet summary .i{width:18px;height:18px;transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+.srcdet[open] summary .i{transform:rotate(45deg)}
+.srcdet p{margin:0 0 8px;font-size:12px;color:var(--on-pastel-soft);animation:fade .4s both}
+.srcdet p b{color:var(--on-pastel)}
+.invite{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;margin:12px 0 4px;padding:0 14px;border-radius:20px;background:var(--glass);border:1px dashed color-mix(in srgb,var(--iris) 40%,transparent);font-size:13px;font-weight:600}
+.invite span{flex:1}
+.invite .i{width:18px;height:18px;color:var(--iris)}
+.viewseg{display:inline-grid;grid-template-columns:1fr 1fr;padding:3px;border-radius:14px;background:var(--glass);border:1px solid var(--stroke);position:relative;isolation:isolate}
+.viewseg .thumb{position:absolute;z-index:-1;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:11px;background:var(--glass2);box-shadow:inset 0 0 0 1px var(--stroke);transform:translateX(calc(var(--s,0)*100%));transition:transform .45s cubic-bezier(.34,1.56,.64,1)}
+.viewseg button{min-height:38px;padding:0 14px;font-size:12px;font-weight:650;color:var(--muted);text-align:center}
+.viewseg button[aria-pressed=true]{color:var(--ink)}
+.invrow{display:flex;align-items:center;gap:12px;width:100%;min-height:72px;padding:10px 12px;margin-bottom:10px;border-radius:22px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px);animation:rise .45s cubic-bezier(.2,.8,.2,1) both;transition:transform .3s,background .3s}
+.invrow:hover{transform:translateX(4px);background:var(--glass2)}
+.invrow .ic{width:46px;height:46px;border-radius:16px}
+.invrow div{flex:1;min-width:0}
+.invrow b{display:block;font-size:14px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.invrow .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
+.invrow .tags span{padding:1px 8px;border-radius:99px;font-size:11px;font-weight:650;color:var(--on-pastel);background:var(--sky)}
+.invrow .tags .t-ok{background:var(--mint)}.invrow .tags .t-meta{background:var(--butter)}
+.invrow small{display:block;margin-top:2px;font-size:11.5px;color:var(--muted)}
+.invrow>.i{width:16px;color:var(--muted)}
+.gal{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tilephoto{position:relative;overflow:hidden;aspect-ratio:1;border-radius:24px;display:flex;align-items:flex-end;padding:12px;color:var(--on-pastel);background:linear-gradient(150deg,var(--sky),var(--lilac));border:1px solid var(--stroke);animation:rise .5s both;box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.tilephoto:hover{transform:translateY(-4px) rotate(-1deg)}
+.tilephoto:before{content:"";position:absolute;left:18%;top:20%;width:34%;aspect-ratio:1;border-radius:50%;background:#fff8;filter:blur(1px)}
+.tilephoto:after{content:"";position:absolute;left:-10%;right:-10%;bottom:-18%;height:52%;border-radius:50% 50% 0 0;background:color-mix(in srgb,var(--mint) 80%,transparent)}
+.tilephoto span{position:relative;z-index:1;font-size:12px;font-weight:700}
+.panel2{padding:16px;border-radius:26px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px)}
+.panel2 h3{margin:0 0 4px;font-size:15px;letter-spacing:-.03em}
+.panel2 p{margin:0 0 10px;font-size:12.5px;color:var(--muted)}
+.rowsm{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;border-top:1px solid var(--stroke);font-weight:650;font-size:14px}
+.rowsm .ic{width:38px;height:38px;border-radius:13px}
+.rowsm span{flex:1}
+.rowsm small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.rowsm>.i{width:16px;color:var(--muted)}
+.danger{position:relative;overflow:hidden;margin-top:14px;padding:16px;border-radius:26px;background:linear-gradient(140deg,#ffe1dc,#ffd0c8);color:#5a1a14;border:1px solid #ff9a8a55}
+[data-theme=dark] .danger{background:linear-gradient(140deg,#4d2430,#3a1f3a);color:#ffe7e2;border-color:#ff8a7a33}
+.danger h3{margin:0 0 4px;font-size:15px;letter-spacing:-.03em}
+.danger p{margin:0 0 12px;font-size:12.5px;opacity:.85}
+.btn.dng{background:linear-gradient(120deg,#c8362b,#e0594a);color:#fff}
+.dbtn{min-height:50px;width:100%;border-radius:17px;font-weight:700;text-align:center;background:linear-gradient(120deg,#c8362b,#e0594a);color:#fff}
+.purged{margin:0 2px 10px;padding:12px 14px;border-radius:18px;background:var(--mint);color:var(--on-pastel);font-size:13px;font-weight:600}
+
+/* ---------- plus & profil ---------- */
+.me{display:flex;align-items:center;gap:14px;width:100%;padding:14px;margin-bottom:12px;border-radius:28px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px);box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.me:hover{transform:translateY(-3px)}
+.me div{flex:1;min-width:0}
+.me b{display:block;font-size:17px;letter-spacing:-.04em}
+.me small{color:var(--muted);font-size:12px}
+.me>.i{width:16px;color:var(--muted)}
+.av{position:relative;flex:none;width:60px;height:60px;border-radius:50%;display:grid;place-items:center;font:780 26px system-ui;color:#3d1c25;background:linear-gradient(130deg,#ffdccb,#ffb99d);isolation:isolate}
+.av:before{content:"";position:absolute;inset:-4px;z-index:-1;border-radius:50%;background:conic-gradient(from 0deg,#ff9a7a,#c88bff,#7ab8ff,#ff9a7a);-webkit-mask:radial-gradient(circle,transparent 66%,#000 68%);mask:radial-gradient(circle,transparent 66%,#000 68%);animation:spin 9s linear infinite}
+.av.big{width:96px;height:96px;font-size:44px}
+.menu .row small{display:block}
+.seg3{position:relative;display:grid;grid-template-columns:repeat(3,1fr);padding:4px;border-radius:20px;background:var(--glass);border:1px solid var(--stroke);isolation:isolate}
+.seg3 .thumb{position:absolute;z-index:-1;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/3);border-radius:16px;background:var(--glass2);box-shadow:0 6px 16px -8px rgba(60,50,160,.5),inset 0 0 0 1px var(--stroke);transform:translateX(calc(var(--s,0)*100%));transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.seg3 button{min-height:46px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13.5px;font-weight:650;color:var(--muted);text-align:center;border-radius:16px}
+.seg3 button[aria-pressed=true]{color:var(--ink)}
+.seg3 .i{width:17px;height:17px}
+.lbl{margin:14px 2px 5px;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pf-hero{display:flex;align-items:center;gap:16px;margin:2px 0 6px}
+.pf-hero b{display:block;font-size:19px;letter-spacing:-.04em}
+.pf-hero small{color:var(--muted);font-size:12px}
+.addr{margin-top:10px;border-radius:22px;background:var(--glass);border:1px solid var(--stroke);padding:0 14px}
+.addr summary{min-height:54px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none;font-weight:650}
+.addr summary::-webkit-details-marker{display:none}
+.addr summary .i{transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+.addr[open] summary .i{transform:rotate(45deg)}
+.addr .f2{padding-bottom:14px;display:grid;gap:8px;animation:fade .4s both}
+.privcard{padding:14px 16px;border-radius:26px;background:linear-gradient(140deg,var(--lilac),color-mix(in srgb,var(--lilac) 35%,var(--glass2)));border:1px solid var(--stroke);color:var(--on-pastel)}
+.privcard .switchrow{border-bottom:0}
+.privcard small{color:var(--on-pastel-soft)}
+.saved{margin:10px 2px 0;font-size:13px;font-weight:650;color:var(--ok);min-height:20px}
+.toast{position:absolute;left:50%;bottom:104px;transform:translate(-50%,16px);opacity:0;z-index:30;padding:10px 16px;border-radius:16px;background:var(--ink);color:var(--bg1);font-size:12.5px;font-weight:650;pointer-events:none;white-space:nowrap;transition:.4s cubic-bezier(.2,.9,.2,1)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.round[aria-pressed=true]{background:var(--mint);color:#182739}
+
+/* ---------- famille (dans Profil) ---------- */
+.lilac-note{display:flex;gap:8px;align-items:flex-start;margin:0 0 10px;padding:10px 12px;border-radius:18px;font-size:12px;font-weight:600;color:var(--on-pastel);background:linear-gradient(140deg,var(--lilac),color-mix(in srgb,var(--lilac) 40%,var(--glass2)));border:1px solid var(--stroke)}
+.lilac-note .i{width:16px;height:16px;margin-top:1px;color:var(--iris)}
+.mrow .avs i{width:40px;height:40px;font-size:16px;margin:0!important}
+.mrow:nth-child(3n+2) .avs i{background:#d9ddff}.mrow:nth-child(3n) .avs i{background:var(--mint)}
+.mrow.add{animation:rise .5s both}
+.dlink{min-height:48px;width:100%;margin-top:6px;border-radius:16px;font-weight:700;color:#b3392c;text-align:center}
+[data-theme=dark] .dlink{color:#ff9d8f}
+.demobanner{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:10px 12px;border-radius:18px;background:var(--butter);color:var(--on-pastel);font-size:12.5px;font-weight:650}
+.demobanner[hidden]{display:none}
+.demobanner span{flex:1}
+.demobanner button{min-height:44px;padding:0 12px;border-radius:99px;background:var(--glass2);border:1px solid var(--stroke);font-weight:700;font-size:12px}
+
+/* ---------- onboarding ---------- */
+.onb{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;background:linear-gradient(160deg,var(--bg1),var(--bg2) 55%,var(--bg3));opacity:0;visibility:hidden;transform:scale(1.03);transition:opacity .5s,transform .6s cubic-bezier(.2,.8,.2,1),visibility 0s .6s;overflow:hidden}
+.onb.on{opacity:1;visibility:visible;transform:none;transition:opacity .5s,transform .6s cubic-bezier(.2,.8,.2,1)}
+.onb .bgs{position:absolute;inset:0;pointer-events:none;z-index:0}
+.onb .bgs i{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 25%,#fff 0 6%,var(--c1) 30%,var(--c2) 80%);opacity:.8;box-shadow:inset -8px -10px 18px #ffffff40,0 24px 30px -16px var(--c2);animation:bob var(--d,8s) ease-in-out infinite}
+[data-theme=dark] .onb .bgs i{opacity:.45}
+.onb .bgs i:nth-child(1){--c1:#d6cbff;--c2:#8f7dff;width:120px;height:120px;right:-30px;top:70px}
+.onb .bgs i:nth-child(2){--c1:#d3e8ff;--c2:#6fa8ff;--d:6s;width:64px;height:64px;left:18px;top:150px;animation-delay:-2s}
+.onb .bgs i:nth-child(3){--c1:#ffdbe9;--c2:#ff9ec4;--d:9s;width:40px;height:40px;right:60px;bottom:210px;animation-delay:-4s}
+.onbtop{position:relative;z-index:2;display:flex;align-items:center;gap:10px;padding:22px 18px 6px;min-height:78px}
+.onbtop .iconbtn{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px)}
+.onbtop .iconbtn[hidden]{visibility:hidden;display:grid}
+.onbtop .iconbtn .i{width:18px;height:18px;transform:rotate(180deg)}
+.onbdots{flex:1;display:flex;justify-content:center;gap:6px}
+.onbdots i{width:7px;height:7px;border-radius:99px;background:color-mix(in srgb,var(--muted) 35%,transparent);transition:width .5s cubic-bezier(.34,1.56,.64,1),background .4s}
+.onbdots i.on{width:24px;background:var(--cta)}
+.onbdots i.done{background:var(--iris)}
+.onbskip{min-height:44px;padding:0 10px;font-size:13px;font-weight:650;color:var(--muted)}
+.onbmain{position:relative;z-index:1;flex:1;overflow:auto;padding:6px 22px 12px;scrollbar-width:none;animation:onbin .55s cubic-bezier(.2,.8,.2,1) both}
+.onbmain::-webkit-scrollbar{display:none}
+@keyframes onbin{from{opacity:0;transform:translateX(24px)}}
+.onbfoot{position:relative;z-index:2;padding:8px 22px 26px;display:grid;gap:8px}
+.onb h1{margin:0 0 8px;font:780 32px/1.04 system-ui,sans-serif;letter-spacing:-.07em;outline:0}
+.onb .osub{margin:0 0 16px;font-size:14.5px;color:var(--muted)}
+.onbhero{position:relative;display:grid;place-items:center;height:210px;margin:6px 0 10px}
+.onbhero:before{content:"";position:absolute;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--iris) 38%,transparent),transparent 68%);animation:breathe 7s ease-in-out infinite}
+.onbhero .logo-mark{width:116px;height:116px;filter:drop-shadow(0 24px 24px #4a4fc955);animation:floaty 6s ease-in-out infinite}
+.onbhero .logo-mark:hover{transform:none}
+.onbcenter{text-align:center}
+.onbcenter .note{justify-content:center}
+.choice{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;gap:6px;width:100%;margin-bottom:12px;padding:18px;border-radius:28px;color:var(--on-pastel);border:1px solid var(--stroke);box-shadow:var(--shadow);transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+.choice:hover{transform:translateY(-4px) rotate(-.4deg)}
+.choice.a{background:linear-gradient(140deg,var(--lilac),var(--sky))}
+.choice.b{background:linear-gradient(140deg,var(--mint),var(--sky))}
+.choice .bub2{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;background:color-mix(in srgb,#fff 60%,transparent);margin-bottom:6px}
+[data-theme=dark] .choice .bub2{background:#ffffff1f}
+.choice b{font-size:18px;letter-spacing:-.04em}
+.choice span.d{font-size:13px;color:var(--on-pastel-soft)}
+.choice .badge{align-self:flex-start;background:color-mix(in srgb,#fff 60%,transparent)}
+.choice .go{position:absolute;right:16px;bottom:16px;width:38px;height:38px;border-radius:14px;display:grid;place-items:center;background:var(--cta);color:#fff}
+.preview{display:flex;align-items:center;gap:14px;padding:16px;margin:14px 0 6px;border-radius:26px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(12px)}
+.preview .av{width:56px;height:56px;font-size:24px}
+.preview b{display:block;font:780 24px/1.05 system-ui;letter-spacing:-.06em}
+.srccard{display:flex;align-items:center;gap:12px;width:100%;min-height:68px;margin-bottom:10px;padding:10px 14px;border-radius:22px;background:var(--glass);border:1.5px solid var(--stroke);backdrop-filter:blur(12px);transition:.35s cubic-bezier(.34,1.56,.64,1)}
+.srccard div{flex:1;min-width:0}
+.srccard b{display:block;font-size:14px;letter-spacing:-.02em}
+.srccard small{color:var(--muted);font-size:12px}
+.srccard .ck{width:28px;height:28px;border-radius:50%;border:2px solid color-mix(in srgb,var(--muted) 40%,transparent);display:grid;place-items:center;color:transparent;transition:.35s cubic-bezier(.34,1.56,.64,1)}
+.srccard .ck .i{width:16px;height:16px}
+.srccard[aria-pressed=true]{border-color:var(--iris);background:var(--glass2);transform:scale(1.015)}
+.srccard[aria-pressed=true] .ck{background:var(--cta);border-color:transparent;color:#fff}
+.tipcard{display:flex;gap:10px;align-items:flex-start;margin:6px 0 0;padding:12px 14px;border-radius:20px;background:var(--lilac);color:var(--on-pastel);font-size:12.5px;font-weight:600}
+.tipcard .i{width:18px;height:18px;flex:none;color:var(--iris);margin-top:1px}
+.recap{display:grid;gap:10px;margin:6px 0 0}
+.recap .rr{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:20px;background:var(--glass);border:1px solid var(--stroke);animation:rise .5s both}
+.recap .rr .ic{width:38px;height:38px;border-radius:13px}
+.recap .rr b{display:block;font-size:14px}
+.recap .rr small{color:var(--muted);font-size:12px}
+.demochip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:99px;background:var(--butter);color:var(--on-pastel);margin-bottom:12px}
+.qbox{display:flex;align-items:center;gap:10px;min-height:56px;padding:0 16px;border-radius:21px;background:var(--glass2);border:1px solid var(--stroke);box-shadow:var(--shadow);font-weight:600}
+.qbox .i{color:var(--iris);width:20px;height:20px}
+.qbox .caret{display:inline-block;width:2px;height:20px;background:var(--iris);margin-left:2px;vertical-align:middle;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.onb .res{margin-top:14px;animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
+.stepcap{margin:0 2px 8px;color:var(--muted)}
+.onb .coralmini{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px;border-radius:26px;background:linear-gradient(130deg,#ffdccb,#ffb99d);color:#3d1c25;animation:rise .6s both}
+[data-theme=dark] .onb .coralmini{background:linear-gradient(130deg,#6b3a4c,#4a2c56);color:#ffe9e1}
+.coralmini .dt{width:62px;height:66px;border-radius:20px;display:grid;place-content:center;justify-items:center;background:#ffffff55}
+.coralmini .dt b{font:780 28px/1 system-ui;letter-spacing:-.07em}
+.coralmini .dt span{font:700 9px ui-monospace,Consolas,monospace;letter-spacing:.1em}
+.coralmini h3{margin:0;font-size:16px;letter-spacing:-.03em}
+.coralmini p{margin:2px 0 0;font-size:12px;font-weight:650;opacity:.85}
+.confirmbar{display:flex;gap:8px;margin-top:12px}
+.confirmbar .btn{flex:1;min-height:48px;font-size:13px}
+
+/* écrans à venir */
+.soon{display:grid;gap:8px;justify-items:center;text-align:center;margin-top:90px;color:var(--muted)}
+.soon .bub{width:84px;height:84px;border-radius:28px;display:grid;place-items:center;background:var(--lilac);color:var(--on-pastel);animation:breathe 6s ease-in-out infinite}
+.soon b{font-size:18px;color:var(--ink);letter-spacing:-.03em}
+
+/* dock */
+.dock{position:absolute;left:14px;right:14px;bottom:14px;z-index:10;height:74px;border-radius:28px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(22px) saturate(1.4);box-shadow:0 18px 40px -18px rgba(40,30,120,.55);padding:6px;display:grid;grid-template-columns:repeat(4,1fr);isolation:isolate}
+.dock .ind{position:absolute;z-index:-1;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/4);border-radius:22px;background:var(--nav-ind);transform:translateX(calc(var(--i,0)*100%));transition:transform .55s cubic-bezier(.34,1.56,.64,1);box-shadow:inset 0 0 0 1px #ffffff55}
+.dock button{display:grid;place-content:center;justify-items:center;gap:3px;font-size:11px;font-weight:650;color:var(--muted);text-align:center;border-radius:22px;position:relative;transition:color .3s}
+.dock button .i{transition:transform .45s cubic-bezier(.34,1.56,.64,1)}
+.dock button[aria-current=page]{color:var(--on-pastel)}
+.dock button[aria-current=page] .i{transform:translateY(-2px) scale(1.12)}
+.dock .dot{position:absolute;top:10px;right:calc(50% - 20px);width:9px;height:9px;border-radius:50%;background:#ff7a9b;border:2px solid var(--bg1)}
+
+/* logo animé */
+.logo-mark .f{transform-box:fill-box;transform-origin:50% 100%;animation:facet .9s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes facet{from{opacity:0;transform:translateY(8px) scale(.85)}}
+.orbit{transform-origin:24px 24px;animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.logo-mark .letter{animation:facet .9s cubic-bezier(.34,1.56,.64,1) both}
+
+@media(max-width:1180px){.stage{grid-template-columns:1fr;max-width:460px}.phone{order:-1}}
+.web-link{display:inline-flex;align-items:center;min-height:44px;color:var(--ink);font-weight:650}
+.review-tools,.mobile-reference,.compact-nav-note{display:none}
+[data-preview] .stage>div:not(.device-wrap),[data-preview] .ask,[data-preview=mobile] .top{display:none}
+[data-preview] .stage{max-width:none;display:block;padding:0}
+[data-preview=mobile] .phone{width:100%;height:100dvh;border-radius:28px}
+[data-preview=web] .top,[data-preview=web] .stage,.review-tools{max-width:1680px;margin:auto}
+[data-preview=web] .stage{display:grid;grid-template-columns:minmax(0,1fr) min(27vw,390px);align-items:start;gap:22px;padding:0 24px 24px}
+[data-preview=web] .review-tools{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 24px}
+.review-tools fieldset{margin:0;padding:0;border:0}
+.review-tools legend,.mobile-reference h2{color:var(--muted);margin:0 0 6px;font-size:12px;font-weight:650}
+.review-tools label{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid var(--stroke);border-radius:14px;cursor:pointer}
+.review-tools label:has(:checked){background:var(--nav-ind)}
+.review-tools input{accent-color:var(--iris)}
+[data-preview=web] .mobile-reference{display:block;min-width:0}
+.mobile-reference iframe{display:block;width:100%;height:800px;border:0;border-radius:28px}
+[data-preview=web] .device-wrap{container-type:inline-size}
+[data-preview=web] .phone{width:min(390px,100%);height:800px;max-width:100%}
+.search-facets{display:none}
+[data-preview=web] .phone:has(.web-home.on,.web-search.on){width:100%;height:clamp(530px,calc(100dvh - 224px),800px);border-radius:28px}
+@container (min-width:640px){
+  .phone:has(.web-home.on,.web-search.on) .app-head{padding:18px 26px;mask:none}
+  .web-search{padding:84px clamp(18px,2.4cqw,38px) 100px}
+  .search-workspace{display:grid;grid-template-columns:clamp(162px,23%,240px) minmax(0,1fr);gap:clamp(12px,2cqw,26px);align-items:start;margin-top:18px}
+  .search-facets{display:block;padding:16px;border:1px solid var(--stroke);border-radius:24px;background:var(--glass);backdrop-filter:blur(16px)}
+  .search-facets h2{margin:0;font-size:17px}
+  .search-facets .grp{margin:14px 0 5px;color:var(--muted);font-weight:650;font-size:12px}
+  .search-facets .opts{display:flex;flex-wrap:wrap;gap:4px}
+  .search-facets .opt{min-height:44px}
+  .search-facets #apply,.web-search #fopen{display:none}
+  .search-facets #reset{margin-top:14px;width:100%}
+  .search-column{min-width:0}
+  .search-column .filters{margin-top:0}
+  .web-home{display:grid;align-content:start;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);column-gap:18px;padding:86px clamp(22px,3cqw,52px) 100px}
+  .web-home>*{grid-column:1/-1}
+  .web-home .hello{font-size:clamp(42px,5cqw,68px)}
+  .web-home .hero{grid-column:1;min-height:200px;padding:20px}
+  .web-home .tiles{grid-column:2;grid-template-columns:1fr;margin:0}
+  .web-home .tile{min-height:88px;flex-direction:row;align-items:center;justify-content:flex-start;gap:12px}
+  .web-home .row{margin-bottom:6px}
+  .phone:has(.web-home.on,.web-search.on) .dock{width:360px;left:50%;right:auto;translate:-50% 0}
+  [data-nav=rail] :is(.web-home,.web-search){left:110px;padding-bottom:24px}
+  [data-nav=rail] .phone:has(.web-home.on,.web-search.on) .dock{width:92px;height:auto;left:12px;top:86px;bottom:auto;translate:none;grid-template-columns:1fr;grid-auto-rows:66px}
+  [data-nav=rail] .phone:has(.web-home.on,.web-search.on) .ind{display:none}
+  [data-nav=rail] .phone:has(.web-home.on,.web-search.on) .dock [aria-current=page]{background:var(--nav-ind)}
+}
+@media(max-width:1040px){
+  [data-preview=web] .stage{grid-template-columns:minmax(0,1fr)}
+  .mobile-reference{width:min(390px,100%);margin:0 auto}
+}
+@media(max-width:700px){
+  [data-preview=web] .stage{padding:0 8px 18px}
+  [data-preview=web] .review-tools{padding:12px}
+}
+@media(max-width:655px){
+  .review-tools fieldset{display:none}
+  .compact-nav-note{display:block;color:var(--muted)}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9684ff"/><stop offset="1" stop-color="#5aa0ff"/></linearGradient>
+    <clipPath id="lc"><rect width="48" height="48" rx="15"/></clipPath>
+  </defs>
+  <symbol id="logo-b" viewBox="0 0 48 48">
+    <g clip-path="url(#lc)">
+      <rect width="48" height="48" fill="url(#lg)"/>
+      <path class="letter" d="M18 34V15h13M18 24h9.5" fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <g class="orbit"><circle cx="24" cy="24" r="16.5" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.4" stroke-dasharray="3 5"/><circle cx="40.5" cy="24" r="3.3" fill="#fff"/></g>
+    </g>
+  </symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7.5 9 7.5M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
+  <symbol id="i-foyer" viewBox="0 0 24 24"><path d="M3 20V11l6-5 6 5v9M15 20h6v-8l-4-3.5M9 20v-5h3v5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21h4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6zM14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+  <symbol id="i-go" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-arr" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></g></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v5h14v-5"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16v4m-2-2h4"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9m4 0h3M4 17h3m4 0h9M13 4v6M7 14v6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v5.5c0 5-3.4 8.2-8 9.5-4.6-1.3-8-4.5-8-9.5V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 19c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .3 1.5 1 2 2 2 0-3 .3-5 1-8z"/></symbol>
+  <symbol id="i-pump" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></symbol>
+  <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z"/></symbol>
+  <symbol id="i-shutter" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 8h16M4 12h16M4 16h16"/></symbol>
+  <symbol id="i-pergola" viewBox="0 0 24 24"><path d="M3 8h18M5 8v12M19 8v12M7 8v3M11 8v3M15 8v3"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4.5h4.5"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6M3 20v-1.5a5.5 5.5 0 0 1 11 0V20M16.5 11a2.7 2.7 0 1 0-.9-5.2M17.5 14.5a5 5 0 0 1 3.5 4.7V20"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5 3.5-5 3.5z"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 10.5a3.8 3.8 0 0 1-.5 7.5z"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+  <symbol id="i-rings" viewBox="0 0 130 130"><g fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="65" cy="65" r="18"/><circle cx="65" cy="65" r="34"/><circle cx="65" cy="65" r="50"/><circle cx="65" cy="65" r="64" opacity=".5"/></g></symbol>
+</svg>
+
+<header class="top">
+  <div><span class="mono" style="color:var(--muted)">Famili-IA &nbsp;/&nbsp; Direction artistique 03</span><h1>Prisme <span class="grad">Aurore</span></h1></div>
+  <span class="tag" id="tag">Prototype · écran 2 sur 8 · données fictives</span>
+</header>
+
+<div class="review-tools">
+  <fieldset><legend>Navigation sur grand écran</legend>
+    <label><input type="radio" name="web-nav" value="rail" checked> Barre latérale</label>
+    <label><input type="radio" name="web-nav" value="dock"> Dock flottant</label>
+  </fieldset>
+  <small class="compact-nav-note">Fenêtre compacte · dock mobile. Élargissez la fenêtre pour comparer les navigations.</small>
+  <a class="web-link" href="?vue=web&amp;ecran=recherche">Comparer Recherche web et mobile</a>
+  <a class="web-link" href="?">Retour aux maquettes mobiles</a>
+</div>
+<main class="stage">
+  <!-- gauche : notes de l'écran courant -->
+  <div>
+    <section class="panel" aria-labelledby="t-id">
+      <h2 id="t-id">Identité retenue</h2>
+      <div class="brandcard">
+        <svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#logo-b"/></svg>
+        <p style="margin:0">Logo <b>B · Orbite</b> : le « F » de Famili-IA, une orbite d’étincelle IA. Dock flottant en verre, mode clair par défaut.</p>
+      </div>
+      <button class="act pri" id="first-run" style="margin-top:12px;width:100%">Rejouer le premier lancement (onboarding)</button>
+      <a class="web-link" href="?vue=web">Comparer l’Accueil web et mobile →</a>
+    </section>
+    <section class="panel" data-for="0" aria-label="Notes Accueil">
+      <h2>Accueil · ajusté</h2>
+      <ul class="list"><li>Moins arc-en-ciel : dégradés limités au violet et au bleu, un seul rose discret.</li><li>Logo B dans l’en-tête, bouton de thème conservé.</li></ul>
+    </section>
+    <section class="panel" data-for="1" hidden aria-label="Notes Recherche">
+      <h2>Recherche · nouveau</h2>
+      <ul class="list">
+        <li>Champ de recherche flottant avec halo au focus, dictée et bouton d’envoi dégradé.</li>
+        <li>Filtre contrat en pastille réversible ; « Filtres » ouvre une feuille en verre.</li>
+        <li>Résultat en carte lilas : pastille de type, extrait littéral surligné, « Voir la copie », provenance repliable.</li>
+        <li>L’Assistant devient une carte d’action avec reflet animé.</li>
+        <li>Essayez : taper « chaudière », « zzz » (aucun résultat), basculer le filtre contrat.</li>
+      </ul>
+    </section>
+    <section class="panel" data-for="2" hidden aria-label="Notes Foyer">
+      <h2>Foyer · nouveau</h2>
+      <ul class="list">
+        <li>Carnet de maison en carte menthe/ciel : illustration flottante, halo solaire doux, pastille de rubrique.</li>
+        <li>Catégories en défilement horizontal avec fondu ; la sélection filtre la liste.</li>
+        <li>Équipements en cartes verre avec tuile pastel par catégorie ; chaque ligne garde statut saisi et documents associés.</li>
+        <li>Le « + » ouvre une feuille de saisie en verre (nom, catégorie, statut).</li>
+        <li>Famille et Mon espace reprennent le même style de ligne, avatars qui s’écartent au survol.</li>
+        <li>Essayez : choisir « Volets » (catégorie vide) ou ajouter un équipement.</li>
+      </ul>
+    </section>
+    <section class="panel" data-for="7" hidden aria-label="Notes Plus">
+      <h2>Plus · mis à jour</h2>
+      <ul class="list">
+        <li>Ouvert par le bouton « ⋯ » de l’en-tête (qui passe en menthe) ; un second appui revient à l’écran précédent.</li>
+        <li>La carte du haut ouvre « Profil et famille » : plus de ligne Famille séparée.</li>
+        <li>Apparence Clair / Sombre / Système en contrôle segmenté.</li>
+        <li>« Revoir la démo » est dans la section Aide : c’est le seul point d’entrée pour rejouer la découverte (le lien a quitté le profil).</li>
+      </ul>
+    </section>
+    <section class="panel" data-for="8" hidden aria-label="Notes Profil et famille">
+      <h2>Profil et famille · fusionnés</h2>
+      <ul class="list">
+        <li>Un seul écran : identité (nom, adresse facultative), puis « Mon cercle » avec les membres, puis la localisation des photos.</li>
+        <li>Ajouter, renommer ou supprimer une fiche par feuille de verre ; la suppression est confirmée et ne touche ni photos ni fichiers.</li>
+        <li>Rappel permanent : fiches locales, aucun compte, invitation ni partage.</li>
+        <li>Le nom enregistré met à jour l’initiale, la carte de Plus et le « Bonjour » de l’Accueil ; le cercle alimente la ligne « Mon cercle » du Foyer.</li>
+        <li>Essayez : ajouter « Camille », renommer, supprimer, puis changer votre nom.</li>
+      </ul>
+    </section>
+    <section class="panel" data-for="9" hidden aria-label="Notes Onboarding">
+      <h2>Onboarding · nouveau</h2>
+      <ul class="list">
+        <li>Plein écran, sans dock : sphères de verre en arrière-plan, logo animé, points de progression qui s’étirent, « Passer » toujours disponible.</li>
+        <li>Parcours « Mon espace » : accueil → choix → prénom (aperçu en direct) → sources → prêt. Aucune source n’est connectée ici : seule l’intention est notée.</li>
+        <li>Parcours « Exemple » : question, preuve citée, aperçu de rappel — tout est fictif, rien n’est créé ni importé.</li>
+        <li>« Revoir la démo » (Plus ou Vos données) rejoue seulement la démo et revient où vous étiez.</li>
+        <li>À la fin de la démo, un bandeau « exemples fictifs » propose de créer son espace.</li>
+        <li>Essayez : les deux parcours, la touche retour, « Passer ».</li>
+      </ul>
+    </section>
+    <section class="panel" data-for="6" hidden aria-label="Notes Vos données">
+      <h2>Vos données · nouveau</h2>
+      <ul class="list">
+        <li>Carte de confiance lilas : donut animé de la couverture (texte indexé, photos par métadonnées, métadonnées seules) avec le total au centre.</li>
+        <li>« Sources, contrôle et limites » reste visible en un geste : dernier parcours, accès inconnus écrits, limites des nombres.</li>
+        <li>Inventaire filtrable en pastilles, en liste ou en galerie ; chaque ligne affiche type et couverture.</li>
+        <li>Toucher un fichier ouvre sa fiche : extrait, couverture, « ce n’est pas l’original ».</li>
+        <li>Export JSON/PDF expliqué avant création ; suppression en zone rouge sémantique avec confirmation, qui rappelle que les originaux ne sont jamais supprimés.</li>
+        <li>« Revoir la démo » (ligne en pointillés) relance la démonstration.</li>
+        <li>Essayez : filtre « Images », « Galerie », un fichier, puis « Supprimer toutes mes données ».</li>
+      </ul>
+    </section>
+    <section class="panel" data-for="5" hidden aria-label="Notes Importer">
+      <h2>Importer · nouveau</h2>
+      <ul class="list">
+        <li>Grande zone « Sur cet appareil » en pointillés doux avec feuilles flottantes ; un seul bouton d’action, indigo.</li>
+        <li>Parcours en trois étapes qui s’allument (Choisir, Copier, Retrouver) et barre de progression réelle du traitement.</li>
+        <li>Chaque fichier a son état : en cours, copié, ou « métadonnées seules » avec la raison ; les échecs comptent dans le bilan.</li>
+        <li>Bilan de session, puis « Retrouver dans Recherche ».</li>
+        <li>Drive, OneDrive et Dropbox : lignes sobres dont l’état est écrit ; la feuille explique lecture seule, choix du dossier, copie locale et déconnexion.</li>
+        <li>Essayez : « Choisir des fichiers » (simulation avec un fichier illisible) puis un service cloud.</li>
+      </ul>
+    </section>
+    <section class="panel" data-for="4" hidden aria-label="Notes Assistant">
+      <h2>Assistant · nouveau</h2>
+      <ul class="list">
+        <li>Conversation en bulles : vos questions en indigo, les réponses en menthe avec la mention « Réponse locale ».</li>
+        <li>Chaque réponse cite sa source : extrait littéral, document, copie locale, accès à l’original non garanti, « Voir la copie ».</li>
+        <li>Sans preuve : l’Assistant s’abstient. Si deux sources se contredisent ou se confondent, il demande une précision.</li>
+        <li>Une action (créer un rappel) n’est proposée qu’avec une confirmation explicite en feuille ; un doublon est signalé, pas recréé.</li>
+        <li>Zone de saisie flottante au-dessus du dock, dictée, indicateur de frappe animé.</li>
+        <li>Essayez : « Quand se termine le contrat ? », « Montant de la chaudière ? », « La piscine », puis une question absurde.</li>
+      </ul>
+    </section>
+    <section class="panel" data-for="3" hidden aria-label="Notes Rappels">
+      <h2>Rappels · nouveau</h2>
+      <ul class="list">
+        <li>Filtres « À venir / Terminés » en contrôle segmenté avec pastille qui glisse ; « Autres filtres » déroule les catégories.</li>
+        <li>Le rappel le plus proche devient une grande carte corail : date géante, mois, titre, ruban irisé. Les suivants sont des cartes compactes à tuile date.</li>
+        <li>Sous la carte : « Document source » avec preuve littérale, provenance, et « Gérer cette alerte » (Ignorer, Terminée, Reporter 1 ou 7 jours, Marquer comme lue).</li>
+        <li>« Échéances proposées » est rangé ici, avec confirmation explicite dans une feuille avant toute création d’alerte.</li>
+        <li>Réglages des alertes dans une feuille (interrupteurs animés).</li>
+        <li>Essayez : « Terminée », « Reporter 7 jours », ouvrir « Échéances proposées » puis confirmer.</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- téléphone -->
+  <div class="device-wrap">
+    <div class="phone" id="phone">
+      <div class="app-head">
+        <div class="brand"><svg viewBox="0 0 48 48" class="logo-mark" aria-hidden="true"><use href="#logo-b"/></svg><span>Famili-<span class="grad">IA</span></span></div>
+        <div class="head-actions">
+          <button class="round theme" id="theme" aria-pressed="false" aria-label="Basculer entre mode clair et mode sombre"><svg class="i sun"><use href="#i-sun"/></svg><svg class="i moon"><use href="#i-moon"/></svg></button>
+          <button class="round" id="morebtn" aria-label="Ouvrir Plus" aria-pressed="false"><svg class="i"><use href="#i-dots"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Accueil -->
+      <section class="screen web-home" data-screen="0" aria-label="Accueil">
+        <p class="eyebrow mono">Samedi 28 novembre</p>
+        <div class="demobanner" id="demobanner" hidden><span>Espace de démonstration — exemples fictifs</span><button data-onb-open="perso-name">Créer mon espace</button></div>
+        <h1 class="hello">Bonjour <span class="grad">Alice</span></h1>
+        <button class="find" data-go="1"><svg class="i"><use href="#i-search"/></svg><span class="txt">Retrouver un fichier</span><span class="mic" aria-hidden="true"><svg class="i"><use href="#i-mic"/></svg></span></button>
+        <div class="section">À la une <button class="seelink" data-go="3">Voir les rappels</button></div>
+        <button class="hero" id="hero" data-go="3" aria-label="Prochaine échéance : Habitation, 12 décembre">
+          <span class="orb" aria-hidden="true"><span class="s s1"></span><span class="s s2"></span><span class="s s3"></span></span>
+          <span class="chip mono"><i></i>Prochaine échéance</span>
+          <span><h3>Habitation</h3><p>12 décembre · dans 14 jours →</p></span>
+        </button>
+        <div class="tiles">
+          <button class="tile sky" data-go="5"><span class="bub"><svg class="i"><use href="#i-up"/></svg></span><span><b>Ajouter</b><small>des fichiers</small></span></button>
+          <button class="tile mint" data-go="2"><span class="bub"><svg class="i"><use href="#i-foyer"/></svg></span><span><b>Mon foyer</b><small>Maison, équipements</small></span></button>
+        </div>
+        <div class="section">Fichiers récents <button class="seelink" data-go="6">Tout voir</button></div>
+        <button class="row"><span class="ic peach"><svg class="i"><use href="#i-file"/></svg></span><div><b>Contrat habitation</b><small><span class="badge">Contrat</span> Sur cet appareil</small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <button class="row"><span class="ic butter"><svg class="i"><use href="#i-file"/></svg></span><div><b>Facture chaudière</b><small><span class="badge mint">Facture</span> Sur cet appareil</small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <p class="note">Exemples fictifs · vos fichiers restent à leur emplacement.</p>
+      </section>
+
+      <!-- Recherche -->
+      <section class="screen web-search" data-screen="1" aria-label="Recherche">
+        <p class="eyebrow mono">Vos fichiers locaux</p>
+        <h1 class="title">Recherche</h1>
+        <form class="find field" id="form" role="search">
+          <svg class="i"><use href="#i-search"/></svg>
+          <input id="q" aria-label="Rechercher dans vos fichiers" value="habitation" autocomplete="off" placeholder="Nom, date, référence…">
+          <button type="button" class="clear" id="clear" aria-label="Effacer la recherche"><svg class="i"><use href="#i-x"/></svg></button>
+          <button type="button" class="clear" aria-label="Dicter la recherche"><svg class="i"><use href="#i-mic"/></svg></button>
+          <button class="go" aria-label="Lancer la recherche"><svg class="i"><use href="#i-arr"/></svg></button>
+        </form>
+        <div class="search-workspace">
+        <aside class="search-facets" aria-label="Filtres de recherche"><h2>Affiner la recherche</h2></aside>
+        <div class="search-column">
+        <div class="filters">
+          <button class="fchip" id="fcontract" aria-pressed="true"><svg class="i"><use href="#i-file"/></svg>Contrats</button>
+          <button class="fchip" id="fopen" aria-haspopup="dialog"><svg class="i"><use href="#i-sliders"/></svg>Filtres <span id="fcount"></span></button>
+        </div>
+        <div class="count" id="count"></div>
+        <div id="results" aria-live="polite"></div>
+        <p class="note"><svg class="i"><use href="#i-shield"/></svg>Copies sur cet appareil. Accès aux originaux non vérifié. Photos : métadonnées et annotations, sans reconnaissance visuelle.</p>
+        <button class="assistant" data-go="4"><span class="sp"><svg class="i"><use href="#i-spark"/></svg></span><b>Assistant documentaire</b><svg class="i"><use href="#i-go"/></svg></button>
+        </div></div>
+      </section>
+
+      <!-- à venir -->
+      <section class="screen" data-screen="2" aria-label="Foyer">
+        <p class="eyebrow mono">Espace local</p>
+        <div class="titlebar"><h1 class="title">Mon foyer</h1><button class="addbtn" id="eqadd" aria-label="Ajouter un équipement" aria-haspopup="dialog"><svg class="i" style="width:26px;height:26px"><use href="#i-plus"/></svg></button></div>
+
+        <article class="house">
+          <img src="../../assets/prisme/maison.svg" alt="Illustration d’une maison" width="260" height="210">
+          <span class="chip mono">Carnet de maison</span>
+          <div><h2>La maison</h2><small>Visuel d’illustration · IA</small><button class="link">Modifier dans le profil</button></div>
+        </article>
+
+        <div class="section">Équipements <small id="eqcount"></small></div>
+        <div class="cats" id="cats" role="group" aria-label="Filtrer les équipements par catégorie">
+          <button class="fchip" aria-pressed="true" data-cat="tout">Tout</button>
+          <button class="fchip" aria-pressed="false" data-cat="piscine">Piscine</button>
+          <button class="fchip" aria-pressed="false" data-cat="chauffage">Chauffage</button>
+          <button class="fchip" aria-pressed="false" data-cat="pompe">Pompe</button>
+          <button class="fchip" aria-pressed="false" data-cat="imprimante">Imprimante</button>
+          <button class="fchip" aria-pressed="false" data-cat="volets">Volets</button>
+          <button class="fchip" aria-pressed="false" data-cat="pergola">Pergola</button>
+        </div>
+        <div id="eqlist" aria-live="polite"></div>
+        <p class="note"><svg class="i"><use href="#i-shield"/></svg>Illustrations IA par défaut, pas des photos de vos équipements. Le statut est une saisie de votre part, pas un diagnostic.</p>
+
+        <div class="section">Famille</div>
+        <button class="row" data-go="8" id="house-circle"><span class="avs" id="house-avs" aria-hidden="true"></span><div><b>Mon cercle</b><small id="house-fcount"></small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <div class="section">Mon espace</div>
+        <button class="row"><span class="ic lilac"><svg class="i"><use href="#i-folder"/></svg></span><div><b>Fichiers et réglages</b><small>Inventaire, profil, confidentialité</small></div><svg class="i"><use href="#i-go"/></svg></button>
+      </section>
+      <section class="screen" data-screen="3" aria-label="Rappels">
+        <p class="eyebrow mono">Suivi local</p>
+        <div class="titlebar"><h1 class="title">Mes rappels</h1><button class="round gear" id="settings" aria-label="Réglages des alertes" aria-haspopup="dialog"><svg class="i"><use href="#i-sliders"/></svg></button></div>
+        <div class="seg" id="seg" role="group" aria-label="Filtrer les alertes"><span class="thumb" aria-hidden="true"></span><button data-f="actifs" aria-pressed="true">À venir <span class="n">· 0</span></button><button data-f="termines" aria-pressed="false">Terminés <span class="n">· 0</span></button></div>
+        <button class="morebtn" id="more" aria-expanded="false">Autres filtres <svg class="i"><use href="#i-chev"/></svg></button>
+        <div class="morechips" id="morechips"><div class="cats" role="group" aria-label="Autres filtres">
+          <button class="fchip" data-f="a-traiter" aria-pressed="false">À traiter <span class="n">· 0</span></button>
+          <button class="fchip" data-f="a-anticiper" aria-pressed="false">À anticiper <span class="n">· 0</span></button>
+          <button class="fchip" data-f="a-surveiller" aria-pressed="false">À surveiller <span class="n">· 0</span></button>
+          <button class="fchip" data-f="reportees" aria-pressed="false">Reportées <span class="n">· 0</span></button>
+          <button class="fchip" data-f="historique" aria-pressed="false">Ignorées / terminées <span class="n">· 0</span></button>
+        </div></div>
+        <p class="sr" id="liststatus" role="status"></p>
+        <div id="alerts" style="margin-top:8px"></div>
+
+        <details class="prop" id="prop">
+          <summary>Échéances proposées — expérimental <svg class="i"><use href="#i-plus"/></svg></summary>
+          <p class="lead">Dates trouvées dans les textes fiables de vos copies, sur 90 jours. Aucune alerte n’est créée sans votre confirmation ; l’absence de proposition ne prouve pas l’absence d’échéance.</p>
+          <p class="pstatus" id="pstatus" role="status"></p>
+          <div id="pcards"></div>
+        </details>
+        <p class="note"><svg class="i"><use href="#i-shield"/></svg>Vos rappels et leurs réglages restent sur cet appareil.</p>
+      </section>
+
+      <!-- Assistant -->
+      <section class="screen" data-screen="4" aria-label="Assistant">
+        <button class="back" data-go="1"><svg class="i"><use href="#i-go"/></svg>Recherche</button>
+        <p class="eyebrow mono">Questions sur vos fichiers</p>
+        <div class="titlebar"><h1 class="title">Assistant</h1><button class="round gear" id="chatreset" aria-label="Nouvelle conversation"><svg class="i"><use href="#i-reset"/></svg></button></div>
+        <div class="ctx"><span><svg class="i"><use href="#i-shield"/></svg>Traitement local</span><span><svg class="i"><use href="#i-spark"/></svg>Qwen : indisponible sur mobile</span></div>
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <div class="sugg" id="sugg" aria-label="Idées de questions"></div>
+        <p class="note" style="margin-top:14px"><svg class="i"><use href="#i-shield"/></svg>Réponses tirées des extraits vérifiés de vos copies locales. Sans preuve, l’Assistant s’abstient ; il ne déclenche aucune action sans votre confirmation.</p>
+      </section>
+
+      <form class="composer" id="composer" aria-label="Poser une question">
+        <input id="ask-in" aria-label="Votre question" placeholder="Poser une question sur vos fichiers…" autocomplete="off">
+        <button type="button" class="mc" aria-label="Dicter la question"><svg class="i"><use href="#i-mic"/></svg></button>
+        <button class="send" aria-label="Envoyer"><svg class="i"><use href="#i-arr"/></svg></button>
+      </form>
+
+      <!-- Importer -->
+      <section class="screen" data-screen="5" aria-label="Importer">
+        <button class="back" data-go="0"><svg class="i"><use href="#i-go"/></svg>Accueil</button>
+        <p class="eyebrow mono">Ajouter à votre espace</p>
+        <h1 class="title">Importer</h1>
+        <div class="drop">
+          <div class="fx" aria-hidden="true"><i></i><i></i><i></i></div>
+          <h2>Copier des fichiers dans Famili-IA</h2>
+          <p>Sur cet appareil · vos originaux restent à leur emplacement.</p>
+          <button class="pick" id="pick"><svg class="i"><use href="#i-up"/></svg><span id="picklabel">Choisir des fichiers</span></button>
+        </div>
+        <div class="stepper" id="stepper" aria-label="Étapes de l’import"><div class="step active" data-s="0"><b>1</b>Choisir</div><div class="step" data-s="1"><b>2</b>Copier</div><div class="step" data-s="2"><b>3</b>Retrouver</div></div>
+        <div id="imp" hidden>
+          <div class="prog" aria-hidden="true"><span id="bar"></span></div>
+          <p class="pstat" id="pstat" role="status" aria-live="polite"></p>
+          <div id="files"></div>
+          <div id="sum"></div>
+        </div>
+        <div class="section">Autres sources <small>sur autorisation</small></div>
+        <button class="row" data-src="Google Drive"><span class="ic lilac"><svg class="i"><use href="#i-cloud"/></svg></span><div><b>Google Drive</b><small><span class="src-st">Selon la configuration</span></small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <button class="row" data-src="OneDrive"><span class="ic lilac"><svg class="i"><use href="#i-cloud"/></svg></span><div><b>OneDrive</b><small><span class="src-st">Selon la configuration</span></small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <button class="row" data-src="Dropbox"><span class="ic lilac"><svg class="i"><use href="#i-cloud"/></svg></span><div><b>Dropbox</b><small><span class="src-st">Selon la configuration</span></small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <details class="prov" style="margin-top:4px;border-color:var(--stroke)"><summary style="font-size:14px">Formats et limites <svg class="i"><use href="#i-plus"/></svg></summary>
+          <p style="color:var(--muted)">Photos : JPEG, PNG ou WebP, 20 Mio maximum par fichier. Le texte des documents est extrait localement quand c’est possible ; sinon la copie reste en métadonnées seules.</p></details>
+        <p class="note"><svg class="i"><use href="#i-shield"/></svg>Traitement local. Aucune connexion n’importe quoi sans votre choix, et aucun fichier n’est envoyé à un serveur Famili-IA.</p>
+      </section>
+
+      <!-- Vos données -->
+      <section class="screen" data-screen="6" aria-label="Vos données">
+        <button class="back" data-go="0"><svg class="i"><use href="#i-go"/></svg>Accueil</button>
+        <p class="eyebrow mono">Inventaire local</p>
+        <div class="titlebar"><h1 class="title">Vos données</h1><button class="addbtn" data-go="5" aria-label="Ajouter des fichiers"><svg class="i" style="width:26px;height:26px"><use href="#i-plus"/></svg></button></div>
+
+        <div class="trust">
+          <h2>Ce que vous retrouvez ici</h2>
+          <p class="own"><svg class="i"><use href="#i-shield"/></svg>Vos originaux restent à leur emplacement</p>
+          <div class="tbody">
+            <div class="dwrap"><div class="donut" id="donut"></div><div class="num"><b id="dtotal">0</b><small>éléments visibles</small></div></div>
+            <div class="legend" id="legend"></div>
+          </div>
+          <details class="srcdet"><summary>Sources, contrôle et limites <svg class="i"><use href="#i-plus"/></svg></summary>
+            <p><b>Dernier parcours connu</b> · Fichiers locaux, 28 novembre.</p>
+            <p><b>Appareil</b> · <span id="s-local">4</span> · fichiers importés explicitement ; aucun suivi automatique des originaux.</p>
+            <p><b>Google Drive</b> · 0 · aucun parcours enregistré ; accès actuel inconnu.</p>
+            <p><b>OneDrive</b> · 0 · aucun parcours enregistré ; accès actuel inconnu.</p>
+            <p><b>Dropbox</b> · 0 · aucun parcours enregistré ; accès actuel inconnu.</p>
+            <p>Ces nombres décrivent les copies enregistrées, pas des comptes connectés. Un parcours terminé ne garantit ni l’accès actuel aux originaux ni l’actualisation des copies.</p>
+          </details>
+        </div>
+        <button class="invite" data-onb-open="replay"><svg class="i"><use href="#i-play"/></svg><span>Besoin d’un premier aperçu ? Revoir la démo</span><svg class="i"><use href="#i-go"/></svg></button>
+
+        <div class="cats" id="invcats" role="group" aria-label="Filtrer les fichiers" style="margin-top:6px">
+          <button class="fchip" aria-pressed="true" data-t="all">Tout</button>
+          <button class="fchip" aria-pressed="false" data-t="Facture">Facture</button>
+          <button class="fchip" aria-pressed="false" data-t="Garantie">Garantie</button>
+          <button class="fchip" aria-pressed="false" data-t="Contrat">Contrat</button>
+          <button class="fchip" aria-pressed="false" data-t="Notice">Notice</button>
+          <button class="fchip" aria-pressed="false" data-t="Documents">Documents</button>
+          <button class="fchip" aria-pressed="false" data-t="Images">Images</button>
+        </div>
+        <div class="section" style="margin-top:6px">Inventaire <span class="viewseg" id="viewseg" role="group" aria-label="Affichage"><span class="thumb" aria-hidden="true"></span><button aria-pressed="true" data-v="list">Liste</button><button aria-pressed="false" data-v="gallery">Galerie</button></span></div>
+        <p class="sr" id="invstatus" role="status"></p>
+        <div id="purgedmsg"></div>
+        <div id="inv"></div>
+        <p class="note" id="invnote"><svg class="i"><use href="#i-shield"/></svg>Cet inventaire ne couvre pas l’ensemble de vos comptes. « Métadonnées seules » signifie que le contenu n’est pas indexé.</p>
+
+        <div class="section">Export et suppression</div>
+        <div class="panel2">
+          <h3>Emporter mes données</h3>
+          <p>Le JSON contient les données détaillées ; le PDF donne un bilan chiffré, sans noms de fichiers ni de proches. Ni l’un ni l’autre n’exporte les originaux. Les coordonnées GPS des photos sont exclues par défaut.</p>
+          <button class="rowsm" data-export="JSON"><span class="ic mint"><svg class="i"><use href="#i-down"/></svg></span><span>Exporter mes données (JSON)<small>Données applicatives détaillées</small></span><svg class="i"><use href="#i-go"/></svg></button>
+          <button class="rowsm" data-export="PDF"><span class="ic mint"><svg class="i"><use href="#i-down"/></svg></span><span>Exporter le rapport (PDF)<small>Bilan chiffré</small></span><svg class="i"><use href="#i-go"/></svg></button>
+        </div>
+        <div class="panel2" style="margin-top:12px">
+          <h3>Mes sessions et autorisations</h3>
+          <p>Google Drive : état de session inconnu. OneDrive : la déconnexion locale ne révoque pas l’autorisation Microsoft et ne supprime pas les copies enregistrées.</p>
+          <button class="rowsm"><span class="ic lilac"><svg class="i"><use href="#i-shield"/></svg></span><span>Gérer les autorisations Microsoft<small>S’ouvre sur le site du fournisseur</small></span><svg class="i"><use href="#i-go"/></svg></button>
+        </div>
+        <div class="danger">
+          <h3>Effacer sur cet appareil</h3>
+          <p>La suppression efface les données enregistrées par Famili-IA sur cet appareil. Les fichiers d’origine (locaux, Google Drive, OneDrive, Dropbox) ne sont pas supprimés.</p>
+          <button class="dbtn" id="purgebtn">Supprimer toutes mes données</button>
+        </div>
+      </section>
+
+      <!-- Plus -->
+      <section class="screen menu" data-screen="7" aria-label="Plus">
+        <p class="eyebrow mono">Espace local</p>
+        <h1 class="title">Plus</h1>
+        <button class="me" data-go="8"><span class="av" id="me-av" aria-hidden="true">A</span><div><b id="me-name">Alice (exemple)</b><small id="me-sub">Profil et famille · 2 fiches dans votre cercle</small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <button class="assistant" data-go="4"><span class="sp"><svg class="i"><use href="#i-spark"/></svg></span><b>Assistant documentaire</b><svg class="i"><use href="#i-go"/></svg></button>
+        <div class="section">Mon espace</div>
+        <button class="row" data-go="5"><span class="ic sky" style="background:var(--sky)"><svg class="i"><use href="#i-up"/></svg></span><div><b>Importer</b><small>Appareil, Drive, OneDrive, Dropbox</small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <button class="row" data-go="6"><span class="ic mint"><svg class="i"><use href="#i-folder"/></svg></span><div><b>Vos données</b><small>Inventaire, export, suppression</small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <div class="section">Apparence</div>
+        <div class="seg3" id="seg3" role="group" aria-label="Apparence"><span class="thumb" aria-hidden="true"></span>
+          <button data-p="light" aria-pressed="true"><svg class="i"><use href="#i-sun"/></svg>Clair</button>
+          <button data-p="dark" aria-pressed="false"><svg class="i"><use href="#i-moon"/></svg>Sombre</button>
+          <button data-p="system" aria-pressed="false"><svg class="i"><use href="#i-dots"/></svg>Système</button>
+        </div>
+        <div class="section">Aide</div>
+        <button class="row" data-onb-open="replay"><span class="ic lilac"><svg class="i"><use href="#i-play"/></svg></span><div><b>Revoir la démo</b><small>Une histoire fictive, sans vos fichiers</small></div><svg class="i"><use href="#i-go"/></svg></button>
+        <p class="note"><svg class="i"><use href="#i-shield"/></svg>Version locale · rien n’est envoyé à un serveur Famili-IA.</p>
+      </section>
+
+      <!-- Profil et famille -->
+      <section class="screen" data-screen="8" aria-label="Profil et famille">
+        <button class="back" data-go="7"><svg class="i"><use href="#i-go"/></svg>Plus</button>
+        <p class="eyebrow mono">Votre espace</p>
+        <h1 class="title">Profil et famille</h1>
+        <div class="pf-hero"><span class="av big" id="pf-av" aria-hidden="true">A</span><div><b id="pf-name">Alice (exemple)</b><small>Initiale automatique · modifiable</small></div></div>
+        <div class="lbl">Identité</div>
+        <label class="field2"><input id="pf-in" aria-label="Nom d’affichage" value="Alice (exemple)" autocomplete="off"></label>
+        <details class="addr"><summary>Adresse facultative <svg class="i"><use href="#i-plus"/></svg></summary>
+          <div class="f2"><label class="field2"><input aria-label="Adresse" placeholder="Adresse" autocomplete="off"></label><label class="field2"><input aria-label="Code postal" placeholder="Code postal" autocomplete="off"></label><label class="field2"><input aria-label="Ville" placeholder="Ville" autocomplete="off"></label><span class="sub" style="font-size:12px;color:var(--muted)">Adresse, code postal et ville restent sur cet appareil.</span></div></details>
+        <div style="margin-top:12px"><button class="dbtn" id="pf-save" style="background:var(--cta)">Enregistrer le profil</button></div>
+        <p class="saved" id="pf-saved" role="status"></p>
+
+        <div class="section" style="margin-top:14px">Mon cercle <small id="mcount" style="color:var(--muted)"></small></div>
+        <div class="lilac-note"><svg class="i"><use href="#i-shield"/></svg>Ces fiches restent sur cet appareil. Aucun compte, invitation ni partage n’est créé.</div>
+        <div id="members" aria-live="polite"></div>
+        <button class="invite" id="addmember" aria-haspopup="dialog"><svg class="i"><use href="#i-plus"/></svg><span>Ajouter un membre</span></button>
+
+        <div class="lbl">Photos</div>
+        <div class="privcard">
+          <div class="switchrow"><span><b>Localisation des photos</b><small>Utiliser le GPS des photos pour la recherche. Désactivé par défaut ; ne connecte aucun service et ne crée aucun partage.</small></span><button class="sw2" id="gps" role="switch" aria-checked="false" aria-label="Localisation des photos"></button></div>
+          <p class="saved" id="gpsst" role="status" style="color:var(--on-pastel-soft);margin:0">Localisation désactivée.</p>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status"></div>
+
+      <!-- Onboarding (plein écran) -->
+      <div class="onb" id="onb" role="dialog" aria-modal="true" aria-label="Découvrir Famili-IA" aria-hidden="true">
+        <div class="bgs" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="onbtop">
+          <button class="iconbtn" id="onbback" aria-label="Étape précédente"><svg class="i"><use href="#i-go"/></svg></button>
+          <div class="onbdots" id="onbdots" aria-hidden="true"></div>
+          <button class="onbskip" id="onbskip">Passer</button>
+        </div>
+        <div class="onbmain" id="onbmain"></div>
+        <div class="onbfoot" id="onbfoot"></div>
+      </div>
+
+      <nav class="dock" id="dock" aria-label="Navigation principale">
+        <span class="ind" aria-hidden="true"></span>
+        <button data-i="0"><svg class="i"><use href="#i-home"/></svg>Accueil</button>
+        <button data-i="1"><svg class="i"><use href="#i-search"/></svg>Recherche</button>
+        <button data-i="2"><svg class="i"><use href="#i-foyer"/></svg>Foyer</button>
+        <button data-i="3"><svg class="i"><use href="#i-bell"/></svg>Rappels<span class="dot" aria-hidden="true"></span></button>
+      </nav>
+
+      <div class="scrim" id="scrim"></div>
+      <div class="sheet" id="sheet" role="dialog" aria-label="Filtres de recherche" aria-hidden="true">
+        <div class="grab"></div>
+        <h3>Affiner la recherche</h3>
+        <div id="facet-fields">
+        <div class="grp">Source</div>
+        <div class="opts" data-group><button class="opt" aria-pressed="true">Toutes</button><button class="opt" aria-pressed="false">Fichiers locaux</button></div>
+        <small style="color:var(--muted)">Exemple fictif · aucun cloud connecté.</small>
+        <div class="grp">Type</div>
+        <div class="opts" data-group><button class="opt" aria-pressed="true">Tous</button><button class="opt" aria-pressed="false">Documents</button><button class="opt" aria-pressed="false">Photos</button></div>
+        <div class="grp">Couverture</div>
+        <div class="opts" data-group><button class="opt" aria-pressed="true">Toutes</button><button class="opt" aria-pressed="false">Texte indexé</button><button class="opt" aria-pressed="false">Métadonnées seules</button></div>
+        <div class="btns"><button class="btn ghost" id="reset">Effacer</button><button class="btn main" id="apply">Appliquer</button></div>
+        </div>
+      </div>
+      <div class="sheet" id="sheet2" role="dialog" aria-label="Ajouter un équipement" aria-hidden="true">
+        <div class="grab"></div>
+        <h3>Ajouter un équipement</h3>
+        <div class="grp">Nom</div>
+        <label class="field2"><input id="eqname" placeholder="Ex. : Volet salon" autocomplete="off"></label>
+        <div class="grp">Catégorie</div>
+        <div class="opts" id="eqcat"><button class="opt" aria-pressed="true" data-cat="chauffage">Chauffage</button><button class="opt" aria-pressed="false" data-cat="piscine">Piscine</button><button class="opt" aria-pressed="false" data-cat="pompe">Pompe</button><button class="opt" aria-pressed="false" data-cat="imprimante">Imprimante</button><button class="opt" aria-pressed="false" data-cat="volets">Volets</button><button class="opt" aria-pressed="false" data-cat="pergola">Pergola</button></div>
+        <div class="grp">Statut saisi</div>
+        <label class="field2"><input id="eqstatus" placeholder="Ex. : À vérifier" autocomplete="off"></label>
+        <div class="btns"><button class="btn ghost" id="eqcancel">Annuler</button><button class="btn main" id="eqsave">Ajouter</button></div>
+      </div>
+      <div class="sheet" id="sheet3" role="dialog" aria-label="Réglages des alertes" aria-hidden="true">
+        <div class="grab"></div>
+        <h3>Réglages des alertes</h3>
+        <p class="sub" style="margin:0 0 4px;font-size:12px;color:var(--muted)">Les rappels du navigateur sont vérifiés lorsque Famili-IA est ouvert. Aucun détail de document n’apparaît dans la notification.</p>
+        <div class="switchrow"><span><b>Notifications du navigateur</b><small>Autorisation demandée à l’activation</small></span><button class="sw2" role="switch" aria-checked="false" aria-label="Notifications du navigateur" id="swnotif"></button></div>
+        <div class="switchrow"><span><b>Heures calmes</b><small>Pas de notification de 22:00 à 08:00</small></span><button class="sw2" role="switch" aria-checked="true" aria-label="Heures calmes"></button></div>
+        <div class="grp">Notifications maximum par jour</div>
+        <div class="opts" id="maxday"><button class="opt" aria-pressed="false">1</button><button class="opt" aria-pressed="true">3</button><button class="opt" aria-pressed="false">5</button></div>
+        <div class="btns"><button class="btn ghost" data-close>Fermer</button><button class="btn main" data-close>Enregistrer</button></div>
+      </div>
+      <div class="sheet" id="sheet4" role="dialog" aria-label="Confirmer l’échéance" aria-hidden="true">
+        <div class="grab"></div>
+        <h3>Confirmer l’échéance du 20 décembre 2026 ?</h3>
+        <div class="proof"><small>Preuve</small><q>« Fin de garantie : 20 décembre 2026 »</q></div>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--muted)">Source : garantie pergola (exemple), copie locale. Cela enregistre votre confirmation dans Famili-IA et crée une alerte, selon vos préférences de notification. L’original ne sera pas modifié.</p>
+        <div class="btns"><button class="btn ghost" data-close>Laisser en proposition</button><button class="btn main" id="pconfirm">Confirmer et créer l’alerte</button></div>
+      </div>
+      <div class="sheet" id="sheet5" role="dialog" aria-label="Confirmer le rappel" aria-hidden="true">
+        <div class="grab"></div>
+        <h3>Créer un rappel pour le 12 décembre 2026 ?</h3>
+        <div class="proof"><small>Preuve</small><q>« Échéance : 12 décembre 2026. »</q></div>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--muted)">Source : contrat habitation, copie locale. Rien n’est créé sans votre confirmation ; l’original ne sera pas modifié.</p>
+        <div class="btns"><button class="btn ghost" data-close>Annuler</button><button class="btn main" id="aconfirm">Confirmer</button></div>
+      </div>
+      <div class="sheet" id="sheet6" role="dialog" aria-label="Choisir une source" aria-hidden="true">
+        <div class="grab"></div>
+        <h3 id="s6title">Source</h3>
+        <div class="chiprow"><span><svg class="i"><use href="#i-shield"/></svg>Lecture seule</span><span><svg class="i"><use href="#i-folder"/></svg>Dossier choisi par vous</span><span><svg class="i"><use href="#i-up"/></svg>Copie locale</span></div>
+        <p class="sub" style="margin:0;font-size:13px;color:var(--muted)">La connexion demande votre autorisation, ne copie rien sans votre choix et ne modifie jamais les originaux. Se déconnecter ne supprime pas les copies déjà enregistrées.</p>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--muted)">La disponibilité dépend de la configuration de cette version ; elle n’est pas vérifiée dans cette maquette.</p>
+        <div class="btns"><button class="btn ghost" data-close>Fermer</button><button class="btn main" disabled style="opacity:.55">Connexion non disponible ici</button></div>
+      </div>
+      <div class="sheet" id="sheet7" role="dialog" aria-label="Fiche document" aria-hidden="true">
+        <div class="grab"></div>
+        <span class="mono" style="color:var(--muted)">Fiche document</span>
+        <h3 id="s7title">Document</h3>
+        <span class="badge" id="s7cov" style="display:inline-block">Texte indexé</span>
+        <div id="s7body"></div>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--muted)">Ce n’est pas l’original : l’accès à l’original n’est pas vérifié.</p>
+        <div class="btns"><button class="btn ghost" data-close>Fermer</button><button class="btn main" id="s7go">Voir dans Recherche</button></div>
+      </div>
+      <div class="sheet" id="sheet8" role="dialog" aria-label="Exporter mes données" aria-hidden="true">
+        <div class="grab"></div>
+        <h3 id="s8title">Exporter</h3>
+        <p class="sub" style="margin:0;font-size:13px;color:var(--muted)">Le fichier est créé sur cet appareil. Il n’inclut pas vos originaux ; les coordonnées GPS des photos sont exclues par défaut.</p>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--muted)">Maquette : aucun fichier n’est réellement créé.</p>
+        <div class="btns"><button class="btn ghost" data-close>Annuler</button><button class="btn main" data-close>Créer l’export</button></div>
+      </div>
+      <div class="sheet" id="sheet9" role="alertdialog" aria-label="Supprimer toutes mes données" aria-hidden="true">
+        <div class="grab"></div>
+        <h3>Supprimer toutes vos données ?</h3>
+        <p class="sub" style="margin:0;font-size:13px;color:var(--muted)">Les copies, annotations, fiches et rappels enregistrés par Famili-IA sur cet appareil seront effacés. Cette action est définitive.</p>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--muted)"><b>Vos fichiers d’origine ne sont pas supprimés</b> (appareil, Google Drive, OneDrive, Dropbox). Pensez à exporter vos données d’abord.</p>
+        <div class="btns"><button class="btn ghost" data-close>Annuler</button><button class="btn dng" id="purgeok">Supprimer définitivement</button></div>
+      </div>
+      <div class="sheet" id="sheet11" role="dialog" aria-label="Fiche de membre" aria-hidden="true">
+        <div class="grab"></div>
+        <h3 id="s11title">Ajouter un membre</h3>
+        <p class="sub" style="margin:0 0 4px;font-size:12px;color:var(--muted)">Un prénom ou un surnom suffit. La fiche reste sur cet appareil : aucun compte, invitation ni partage.</p>
+        <label class="field2"><input id="s11name" aria-label="Nom du membre" placeholder="Prénom ou surnom" autocomplete="off"></label>
+        <p class="saved" id="s11err" role="alert" style="color:#b3392c;margin:6px 2px 0"></p>
+        <div class="btns"><button class="btn ghost" data-close>Annuler</button><button class="btn main" id="s11ok">Ajouter</button></div>
+        <button class="dlink" id="s11del" hidden>Supprimer cette fiche</button>
+      </div>
+      <div class="sheet" id="sheet12" role="alertdialog" aria-label="Supprimer la fiche" aria-hidden="true">
+        <div class="grab"></div>
+        <h3 id="s12title">Supprimer cette fiche ?</h3>
+        <p class="sub" style="margin:0;font-size:13px;color:var(--muted)">La fiche est retirée de votre cercle et de ses associations avec les photos annotées. Vos photos et vos fichiers ne sont pas supprimés.</p>
+        <div class="btns"><button class="btn ghost" data-close>Annuler</button><button class="btn dng" id="s12ok">Supprimer la fiche</button></div>
+      </div>
+      <div class="sheet" id="sheet10" role="dialog" aria-label="Localisation des photos" aria-hidden="true">
+        <div class="grab"></div>
+        <h3 id="s10title">Autoriser la localisation des photos ?</h3>
+        <p class="sub" id="s10text" style="margin:0;font-size:13px;color:var(--muted)"></p>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--muted)">Ce choix ne connecte aucun service et ne crée aucun partage.</p>
+        <div class="btns"><button class="btn ghost" data-close>Annuler</button><button class="btn main" id="s10ok">Autoriser</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- droite -->
+  <aside class="mobile-reference" aria-label="Comparaison mobile">
+    <h2 id="mobile-caption">Référence · Accueil mobile validé</h2>
+    <iframe id="mobile-reference" title="Maquette mobile interactive"></iframe>
+  </aside>
+  <div>
+    <section class="panel" aria-labelledby="t-pal">
+      <h2 id="t-pal">Palette</h2>
+      <p>Pastels par rôle : lilas (preuve), ciel (action), menthe (foyer), pêche (dates), beurre (documents).</p>
+      <div class="swatches">
+        <div class="sw" style="background:var(--lilac)">Lilas</div><div class="sw" style="background:var(--sky)">Ciel</div><div class="sw" style="background:var(--mint)">Menthe</div><div class="sw" style="background:var(--peach)">Pêche</div><div class="sw" style="background:var(--butter)">Beurre</div>
+      </div>
+    </section>
+    <section class="panel" data-for="1" hidden aria-labelledby="t-keep">
+      <h2 id="t-keep">Règles produit conservées</h2>
+      <ul class="list"><li>Preuve littérale et provenance toujours visibles près du résultat.</li><li>« Accès aux originaux non vérifié » et couverture écrits, jamais cachés.</li><li>Filtre contrat réversible, sans perdre la requête.</li><li>Dictée uniquement sur action explicite.</li><li>Aucune donnée envoyée : le calcul reste local.</li></ul>
+    </section>
+    <section class="panel" data-for="0" aria-labelledby="t-mv">
+      <h2 id="t-mv">Mouvement &amp; accessibilité</h2>
+      <ul class="list"><li>Tout s’arrête avec « réduire les animations ».</li><li>Cibles de 44 px au minimum, libellés toujours écrits.</li><li>Texte sombre sur pastel, clair sur fonds profonds.</li></ul>
+    </section>
+  </div>
+</main>
+
+<section class="ask">
+  <div class="panel" id="ask"></div>
+</section>
+
+<script>
+/* thème */
+const root = document.documentElement, themeBtn = document.getElementById('theme');
+const sysDark = matchMedia('(prefers-color-scheme: dark)');
+let pref = 'light'; try { pref = localStorage.getItem('aurore-pref') || localStorage.getItem('aurore-theme') || 'light'; } catch {}
+function applyPref() {
+  const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+  root.dataset.theme = t; themeBtn.setAttribute('aria-pressed', String(t === 'dark'));
+  document.querySelectorAll('#seg3 [data-p]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === pref)));
+  const seg3 = document.getElementById('seg3'); if (seg3) seg3.style.setProperty('--s', ['light', 'dark', 'system'].indexOf(pref));
+}
+const setPref = p => { pref = p; try { localStorage.setItem('aurore-pref', p); } catch {} applyPref(); };
+sysDark.addEventListener('change', () => { if (pref === 'system') applyPref(); });
+themeBtn.addEventListener('click', () => setPref(root.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+/* écrans + dock */
+const screens = [...document.querySelectorAll('.screen')], dock = document.getElementById('dock');
+const asks = {
+  0: '<h2>Accueil validé</h2><span>Logo B, dock en verre, clair par défaut : retenus.</span>',
+  1: '<h2>Recherche validée</h2><span>Carte à anneaux, feuille de filtres en verre et carte Assistant indigo : retenues.</span>',
+  2: '<h2>Foyer validé</h2><span>Grande carte menthe, catégories défilantes et ajout par feuille de verre : retenus.</span>',
+  3: '<h2>Rappels validés</h2><span>Carte corail, contrôle segmenté, échéances proposées avec confirmation : retenus. Le halo de l’Accueil est devenu des sphères de verre flottantes.</span>',
+  4: '<h2>Assistant validé</h2><span>Bulles indigo/menthe avec sources, saisie flottante et action confirmée : retenus.</span>',
+  5: '<h2>Importer validé</h2><span>Zone « Sur cet appareil », étapes avec progression et sources cloud sobres : retenus.</span>',
+  6: '<h2>Vos données validé</h2><span>Donut de couverture, inventaire en liste/galerie, export et suppression confirmée : retenus.</span>',
+  7: '<h2>À vous de trancher · Plus</h2><span><b>1.</b> La carte du haut ouvre « Profil et famille » (plus de ligne Famille séparée) : OK ?</span><span><b>2.</b> « Revoir la démo » dans Aide, seul point d’entrée de la découverte : OK ?</span>',
+  8: '<h2>À vous de trancher · Profil et famille</h2><span><b>1.</b> Un seul écran : identité, cercle (ajout, renommage, suppression en feuille), localisation : OK ?</span><span><b>2.</b> Le cercle alimente la ligne « Mon cercle » du Foyer : OK ?</span><span><b>3.</b> Prochaine étape : l’onboarding (bouton à gauche, ou « Revoir la démo » dans Plus).</span>',
+  9: '<h2>À vous de trancher · Onboarding</h2><span><b>1.</b> Deux parcours après l’accueil : « Créer mon espace » ou « Découvrir avec un exemple » : OK ?</span><span><b>2.</b> Sources : simple intention, rien n’est connecté à ce stade : OK ?</span><span><b>3.</b> Démo : question → preuve → rappel proposé, sans rien créer : OK ?</span>'
+};
+let dockIdx = 0, prevScreen = 0;
+const TAGS = { 0: '1 sur 8 · Accueil', 1: '2 sur 8 · Recherche', 2: '3 sur 8 · Foyer', 3: '4 sur 8 · Rappels', 4: '5 sur 8 · Assistant', 5: '6 sur 8 · Importer', 6: '7 sur 8 · Vos données', 7: '8 sur 8 · Plus', 8: '8 sur 8 · Profil et famille', 9: 'bonus · Onboarding' };
+let current = 0;
+function show(i) {
+  if (i !== 7 && i !== 8) prevScreen = i;
+  const d = i === 4 ? 1 : (i === 5 || i === 6) ? 0 : (i === 7 || i === 8) ? dockIdx : i;
+  if (i !== 7 && i !== 8) dockIdx = d;
+  current = i;
+  screens.forEach(s => s.classList.toggle('on', Number(s.dataset.screen) === i));
+  dock.querySelectorAll('button').forEach(b => { const on = Number(b.dataset.i) === d; if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  dock.style.setProperty('--i', d);
+  document.getElementById('composer').classList.toggle('on', i === 4);
+  document.getElementById('morebtn').setAttribute('aria-pressed', String(i === 7 || i === 8));
+  document.querySelectorAll('[data-for]').forEach(p => p.hidden = Number(p.dataset.for) !== i);
+  document.getElementById('ask').innerHTML = asks[i];
+  document.getElementById('tag').textContent = 'Prototype · écran ' + TAGS[i] + ' · données fictives';
+  if (i === 1) renderResults();
+  if (root.dataset.preview === 'web' && (i === 0 || i === 1)) {
+    const ref = document.getElementById('mobile-reference');
+    const src = '?vue=mobile' + (i === 1 ? '&ecran=recherche' : '');
+    if (ref.getAttribute('src') !== src) ref.src = src;
+    document.getElementById('mobile-caption').textContent = i === 1 ? 'Référence · Recherche mobile validée' : 'Référence · Accueil mobile validé';
+  }
+  closeSheets();
+}
+dock.querySelectorAll('button').forEach(b => b.addEventListener('click', () => show(Number(b.dataset.i))));
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => show(Number(b.dataset.go))));
+document.getElementById('morebtn').addEventListener('click', () => show(current === 7 || current === 8 ? prevScreen : 7));
+
+/* orbes */
+const hero = document.getElementById('hero');
+hero.addEventListener('pointermove', e => { const r = hero.getBoundingClientRect(), o = hero.querySelector('.orb');
+  o.style.setProperty('--px', ((e.clientX - r.left) / r.width - .5) * -18 + 'px'); o.style.setProperty('--py', ((e.clientY - r.top) / r.height - .5) * -12 + 'px'); });
+hero.addEventListener('pointerleave', () => hero.querySelector('.orb').style.removeProperty('--px'));
+
+/* recherche */
+const DOCS = [
+  { type: 'Contrat', name: 'Contrat habitation', text: 'Échéance : 12 décembre 2026.', label: 'Extrait correspondant', cov: 'Texte indexé', date: 'Importé le 20 novembre' },
+  { type: 'Facture', name: 'Facture chaudière', text: 'Habitation principale — montant total : 321 euros TTC.', label: 'Extrait correspondant', cov: 'Texte indexé', date: 'Importé le 18 novembre' }
+];
+const q = document.getElementById('q'), results = document.getElementById('results'), count = document.getElementById('count');
+const contract = document.getElementById('fcontract'), fcount = document.getElementById('fcount');
+const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function mark(text, term) {
+  if (!term) return esc(text);
+  const n = norm(text), t = norm(term), at = n.indexOf(t);
+  return at < 0 ? esc(text) : esc(text.slice(0, at)) + '<mark>' + esc(text.slice(at, at + t.length)) + '</mark>' + esc(text.slice(at + t.length));
+}
+function renderResults() {
+  const term = q.value.trim(), only = contract.getAttribute('aria-pressed') === 'true';
+  const hits = DOCS.filter(d => (!only || d.type === 'Contrat')
+    && (!facets[1] || facets[1] === 'Documents') && (!facets[2] || facets[2] === d.cov)
+    && (!term || norm(d.name + ' ' + d.text).includes(norm(term))));
+  count.innerHTML = hits.length ? `<span>${hits.length} résultat${hits.length > 1 ? 's' : ''}</span><small>dans les fichiers de cet appareil</small>` : '';
+  if (!hits.length) {
+    results.innerHTML = `<div class="empty"><span class="bub"><svg class="i" style="width:30px;height:30px"><use href="#i-search"/></svg></span><b>Aucun résultat pour le moment</b><p>Essayez d’autres mots, retirez un filtre, ou ajoutez un fichier. D’autres fichiers peuvent exister dans vos sources.</p><button id="resetall">Effacer la recherche et les filtres</button></div>`;
+    document.getElementById('resetall').onclick = () => { q.value = ''; contract.setAttribute('aria-pressed', 'false'); applyFacets([]); q.focus(); };
+    return;
+  }
+  results.innerHTML = hits.map(d => `
+    <article class="res">
+      <svg class="rings" viewBox="0 0 130 130" aria-hidden="true"><use href="#i-rings"/></svg>
+      <span class="pill"><svg class="i"><use href="#i-file"/></svg>${d.type}</span>
+      <h3>${mark(d.name, term)}</h3>
+      <span class="meta">Fichier local · ${d.cov}</span>
+      <div class="proof"><small>${d.label}</small><q>« ${mark(d.text, term)} »</q></div>
+      <div class="actions"><button class="link" data-copy="${DOCS.indexOf(d)}">Voir la copie <svg class="i"><use href="#i-arr"/></svg></button></div>
+      <details class="prov"><summary>Provenance et détails <svg class="i"><use href="#i-plus"/></svg></summary>
+        <p>Source : fichiers locaux · ${d.date}.</p><p>Couverture : ${d.cov.toLowerCase()} — d’autres fichiers peuvent ne pas être indexés.</p><p>Accès à l’original : non garanti.</p></details>
+    </article>`).join('');
+}
+q.addEventListener('input', renderResults);
+document.getElementById('form').addEventListener('submit', e => { e.preventDefault(); renderResults(); });
+document.getElementById('clear').addEventListener('click', () => { q.value = ''; q.focus(); renderResults(); });
+contract.addEventListener('click', () => { contract.setAttribute('aria-pressed', String(contract.getAttribute('aria-pressed') !== 'true')); renderResults(); });
+
+/* feuilles (filtres, ajout d'équipement) */
+const sheet = document.getElementById('sheet'), sheet2 = document.getElementById('sheet2'), scrim = document.getElementById('scrim');
+const allSheets = [...document.querySelectorAll('.sheet')];
+const setSheet = (el, on) => { el.classList.toggle('on', on); el.setAttribute('aria-hidden', String(!on)); scrim.classList.toggle('on', allSheets.some(s => s.classList.contains('on'))); };
+const closeSheets = () => allSheets.forEach(s => setSheet(s, false));
+allSheets.forEach(s => s.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeSheets)));
+const toggleSheet = on => setSheet(sheet, on);
+const facetFields = document.getElementById('facet-fields'), facetPanel = document.querySelector('.search-facets');
+const groups = [...facetFields.querySelectorAll('[data-group]')];
+let facets = [];
+function paintFacets(values) {
+  groups.forEach((g, i) => [...g.children].forEach((b, j) =>
+    b.setAttribute('aria-pressed', String(values[i] ? b.textContent === values[i] : j === 0))));
+}
+function applyFacets(values) {
+  facets = values; paintFacets(values);
+  const n = values.filter(Boolean).length;
+  fcount.textContent = n ? '· ' + n : ''; renderResults();
+}
+function selectedFacets() {
+  return groups.map(g => { const b = g.querySelector('[aria-pressed=true]'); return b === g.firstElementChild ? null : b.textContent; });
+}
+document.getElementById('fopen').addEventListener('click', () => { paintFacets(facets); toggleSheet(true); });
+scrim.addEventListener('click', closeSheets);
+groups.forEach(g => g.addEventListener('click', e => {
+  const opt = e.target.closest('.opt'); if (!opt) return;
+  [...g.children].forEach(b => b.setAttribute('aria-pressed', String(b === opt)));
+  if (facetPanel.contains(facetFields)) applyFacets(selectedFacets());
+}));
+document.getElementById('apply').addEventListener('click', () => {
+  applyFacets(selectedFacets()); toggleSheet(false);
+});
+document.getElementById('reset').addEventListener('click', () => {
+  if (facetPanel.contains(facetFields)) applyFacets([]); else paintFacets([]);
+});
+results.addEventListener('click', e => {
+  const b = e.target.closest('[data-copy]'); if (!b) return;
+  const d = DOCS[Number(b.dataset.copy)];
+  document.getElementById('s7title').textContent = d.name;
+  document.getElementById('s7cov').textContent = 'Copie fictive · ' + d.cov;
+  document.getElementById('s7body').innerHTML = `<div class="proof"><small>Extrait de la copie</small><q>${esc(d.text)}</q></div>`;
+  setSheet(document.getElementById('sheet7'), true);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheets(); });
+
+/* foyer */
+const CAT = { piscine: ['Piscine', 'sky', 'i-wave'], chauffage: ['Chauffage', 'peach', 'i-flame'], pompe: ['Pompe', 'mint', 'i-pump'], imprimante: ['Imprimante', 'butter', 'i-printer'], volets: ['Volets', 'lilac', 'i-shutter'], pergola: ['Pergola', 'butter', 'i-pergola'] };
+const EQ = [
+  { name: 'Chaudière (exemple)', cat: 'chauffage', status: 'À vérifier', docs: 1 },
+  { name: 'Pompe de piscine (exemple)', cat: 'pompe', status: 'En service', docs: 2 },
+  { name: 'Imprimante (exemple)', cat: 'imprimante', status: 'Non renseigné', docs: 0 }
+];
+let cat = 'tout';
+const eqlist = document.getElementById('eqlist'), eqcount = document.getElementById('eqcount'), cats = document.getElementById('cats');
+function renderEq() {
+  const items = EQ.filter(e => cat === 'tout' || e.cat === cat);
+  eqcount.textContent = items.length + ' équipement' + (items.length > 1 ? 's' : '');
+  if (!items.length) {
+    eqlist.innerHTML = `<div class="empty"><span class="bub"><svg class="i" style="width:30px;height:30px"><use href="#i-foyer"/></svg></span><b>Encore aucun équipement dans cette catégorie</b><p>Vos autres équipements vous attendent dans le carnet.</p><button id="eqall">Voir tous les équipements</button></div>`;
+    document.getElementById('eqall').onclick = () => setCat('tout');
+    return;
+  }
+  eqlist.innerHTML = items.map((e, i) => { const [label, tone, icon] = CAT[e.cat];
+    return `<button class="row eqrow" style="animation-delay:${i * 60}ms"><span class="ic ${tone}"><svg class="i"><use href="#${icon}"/></svg></span><div><b>${esc(e.name)}</b><small><span class="badge">${label}</span> Statut saisi : ${esc(e.status)}</small><small>${e.docs} document${e.docs > 1 ? 's' : ''} associé${e.docs > 1 ? 's' : ''} · Illustration IA</small></div><svg class="i"><use href="#i-go"/></svg></button>`; }).join('');
+}
+function setCat(c) { cat = c; cats.querySelectorAll('.fchip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cat === c))); renderEq(); }
+cats.querySelectorAll('.fchip').forEach(b => b.addEventListener('click', () => setCat(b.dataset.cat)));
+
+let newCat = 'chauffage';
+document.getElementById('eqadd').addEventListener('click', () => { setSheet(sheet2, true); setTimeout(() => document.getElementById('eqname').focus(), 400); });
+document.getElementById('eqcancel').addEventListener('click', closeSheets);
+document.querySelectorAll('#eqcat .opt').forEach(o => o.addEventListener('click', () => { newCat = o.dataset.cat; document.querySelectorAll('#eqcat .opt').forEach(x => x.setAttribute('aria-pressed', String(x === o))); }));
+document.getElementById('eqsave').addEventListener('click', () => {
+  const name = document.getElementById('eqname').value.trim(); if (!name) { document.getElementById('eqname').focus(); return; }
+  EQ.unshift({ name, cat: newCat, status: document.getElementById('eqstatus').value.trim() || 'Non renseigné', docs: 0 });
+  document.getElementById('eqname').value = ''; document.getElementById('eqstatus').value = '';
+  closeSheets(); setCat('tout');
+});
+renderEq();
+
+/* rappels */
+const TODAY = new Date(2026, 10, 28);
+const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const fmt = d => d.getDate() + ' ' + MONTHS[d.getMonth()];
+const plus = n => { const d = new Date(TODAY); d.setDate(d.getDate() + n); return d; };
+const ALERTS = [{ id: 1, title: 'Contrat habitation', due: 14, status: 'active', source: 'Contrat habitation', excerpt: 'Échéance : 12 décembre 2026.', snooze: null, read: false }];
+let flt = 'actifs';
+const typeOf = a => a.due <= 7 ? 'red' : a.due <= 30 ? 'amber' : 'blue';
+const LABEL = { red: 'À traiter', amber: 'À anticiper', blue: 'À surveiller' };
+const isSnoozed = a => a.status === 'active' && a.snooze;
+const FILTERS = {
+  actifs: a => a.status === 'active',
+  termines: a => a.status === 'resolved',
+  'a-traiter': a => a.status === 'active' && !a.snooze && typeOf(a) === 'red',
+  'a-anticiper': a => a.status === 'active' && !a.snooze && typeOf(a) === 'amber',
+  'a-surveiller': a => a.status === 'active' && !a.snooze && typeOf(a) === 'blue',
+  reportees: a => isSnoozed(a),
+  historique: a => a.status !== 'active'
+};
+const EMPTY = { actifs: ['Vos prochains rappels commencent ici', 'Ouvrez « Échéances proposées » plus bas pour confirmer une date trouvée dans vos fichiers.'], termines: ['Aucun rappel terminé', 'Les rappels que vous terminez apparaissent ici.'] };
+const alertsEl = document.getElementById('alerts');
+function detailHTML(a) {
+  const due = plus(a.due), t = typeOf(a);
+  const label = a.status === 'resolved' ? 'Terminée' : a.status === 'ignored' ? 'Ignorée' : isSnoozed(a) ? 'Reportée' : LABEL[t];
+  const cls = a.status === 'resolved' ? 'done' : t;
+  const acts = a.status !== 'active'
+    ? `<button class="act pri" data-act="reactivate" data-id="${a.id}">Réactiver</button>`
+    : isSnoozed(a)
+      ? `<button class="act pri" data-act="unsnooze" data-id="${a.id}">Réactiver maintenant</button>`
+      : `<button class="act" data-act="ignored" data-id="${a.id}">Ignorer</button><button class="act pri" data-act="resolved" data-id="${a.id}">Terminée</button><button class="act" data-act="snooze1" data-id="${a.id}">Reporter 1 jour</button><button class="act" data-act="snooze7" data-id="${a.id}">Reporter 7 jours</button>`;
+  return `<div class="aldetail">
+    <div class="meta2"><span class="st ${cls}">${label}</span><span>Échéance : ${fmt(due)} ${due.getFullYear()}</span></div>
+    ${isSnoozed(a) ? `<p class="snote">Reportée jusqu’au ${fmt(a.snooze)}.</p>` : ''}
+    <h4>Document source</h4>
+    <div class="proof"><small>Extrait correspondant</small><q>« ${esc(a.excerpt)} »</q></div>
+    <p class="note" style="margin:0 0 4px"><svg class="i"><use href="#i-shield"/></svg>Copie locale · accès à l’original non garanti.</p>
+    <button class="link" data-go="0" data-copy>Voir la copie <svg class="i"><use href="#i-arr"/></svg></button>
+    <details class="prov"><summary>Gérer cette alerte <span class="sr">: ${esc(a.title)}</span><svg class="i"><use href="#i-plus"/></svg></summary>
+      <div class="acts"><button class="act" data-act="read" data-id="${a.id}">${a.read ? 'Marquer comme non lue' : 'Marquer comme lue'}</button>${acts}</div></details>
+  </div>`;
+}
+function renderAlerts() {
+  const list = ALERTS.filter(FILTERS[flt]).sort((x, y) => x.due - y.due);
+  document.querySelectorAll('#seg .n, #morechips .n').forEach(n => { n.textContent = '· ' + ALERTS.filter(FILTERS[n.parentElement.dataset.f]).length; });
+  document.querySelectorAll('[data-f]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === flt)));
+  document.getElementById('seg').style.setProperty('--s', flt === 'termines' ? 1 : 0);
+  document.getElementById('liststatus').textContent = list.length + ' alerte' + (list.length > 1 ? 's' : '');
+  if (!list.length) {
+    const [t, p] = EMPTY[flt] || ['Aucun rappel dans cette catégorie', 'Les autres catégories restent disponibles. Cette liste ne couvre que vos rappels enregistrés.'];
+    alertsEl.innerHTML = `<div class="empty"><span class="bub"><svg class="i" style="width:30px;height:30px"><use href="#i-bell"/></svg></span><b>${t}</b><p>${p}</p></div>`;
+    return;
+  }
+  alertsEl.innerHTML = list.map((a, i) => {
+    const due = plus(a.due), when = a.status === 'resolved' ? 'Terminé' : a.due < 0 ? 'Échéance dépassée' : a.due === 0 ? 'Aujourd’hui' : 'Échéance dans ' + a.due + ' jour' + (a.due > 1 ? 's' : '');
+    const head = i === 0 && a.status === 'active'
+      ? `<div class="coralhero"><span class="ribbon" aria-hidden="true"><i></i><i></i><i></i></span><span class="bigday">${due.getDate()}</span><span class="mono mo">${MONTHS[due.getMonth()]}</span><h3>${esc(a.title)}</h3><p>${when} →</p></div>`
+      : `<div class="mini ${a.status === 'resolved' ? 'done' : ''}"><span class="dt"><b>${due.getDate()}</b><span>${MONTHS[due.getMonth()].slice(0, 3)}.</span></span><div><h3>${esc(a.title)}</h3><p>${when}</p></div></div>`;
+    return `<article class="al ${a.read ? 'read' : ''}" data-id="${a.id}">${head}${detailHTML(a)}</article>`;
+  }).join('');
+}
+alertsEl.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const a = ALERTS.find(x => x.id === Number(b.dataset.id)), act = b.dataset.act;
+  if (act === 'read') a.read = !a.read;
+  else if (act === 'snooze1' || act === 'snooze7') a.snooze = plus(act === 'snooze1' ? 1 : 7);
+  else if (act === 'unsnooze') a.snooze = null;
+  else if (act === 'reactivate') { a.status = 'active'; a.snooze = null; }
+  else { a.status = act; a.snooze = null; }
+  renderAlerts();
+});
+alertsEl.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) show(Number(g.dataset.go)); });
+document.querySelectorAll('#seg [data-f], #morechips [data-f]').forEach(b => b.addEventListener('click', () => { flt = b.dataset.f; renderAlerts(); }));
+const more = document.getElementById('more'), morechips = document.getElementById('morechips');
+more.addEventListener('click', () => { const on = more.getAttribute('aria-expanded') !== 'true'; more.setAttribute('aria-expanded', String(on)); morechips.classList.toggle('on', on); });
+document.getElementById('settings').addEventListener('click', () => setSheet(document.getElementById('sheet3'), true));
+document.querySelectorAll('.sw2').forEach(s => s.addEventListener('click', () => s.setAttribute('aria-checked', String(s.getAttribute('aria-checked') !== 'true'))));
+document.querySelectorAll('#maxday .opt').forEach(o => o.addEventListener('click', () => document.querySelectorAll('#maxday .opt').forEach(x => x.setAttribute('aria-pressed', String(x === o)))));
+
+/* échéances proposées */
+let proposed = true;
+const pcards = document.getElementById('pcards');
+function renderProposals() {
+  pcards.innerHTML = proposed ? `<div class="pc"><b>garantie-pergola (exemple).txt</b><small>Source : Local · Échéance proposée : 20 décembre 2026 · dans 22 jours · à confirmer</small>
+    <div class="proof"><small>Extrait</small><q>« Fin de garantie : 20 décembre 2026 »</q></div>
+    <small>Accès actuel à l’original inconnu · couverture : texte partiellement recherché, fraîcheur inconnue.</small>
+    <div class="acts"><button class="act" data-go="1">Voir la copie</button><button class="act pri" id="popen">Confirmer la date et créer l’alerte</button></div></div>` : '';
+  const p = document.getElementById('popen'); if (p) p.onclick = () => setSheet(document.getElementById('sheet4'), true);
+  const g = pcards.querySelector('[data-go]'); if (g) g.onclick = () => show(1);
+}
+document.getElementById('pconfirm').addEventListener('click', () => {
+  ALERTS.push({ id: 2, title: 'Garantie pergola', due: 22, status: 'active', source: 'garantie-pergola', excerpt: 'Fin de garantie : 20 décembre 2026', snooze: null, read: false });
+  proposed = false; closeSheets(); renderProposals(); renderAlerts();
+  document.getElementById('pstatus').textContent = 'Échéance confirmée et alerte créée dans Famili-IA ; preuve, source et choix conservés.';
+});
+renderProposals(); renderAlerts();
+
+/* assistant */
+const chat = document.getElementById('chat'), sugg = document.getElementById('sugg'), askIn = document.getElementById('ask-in');
+const KB = [
+  { re: /contrat|habitation|termine|echeance/, doc: 'Contrat habitation', q: 'Échéance : 12 décembre 2026.', a: 'Le contrat habitation arrive à échéance le 12 décembre 2026.', action: true },
+  { re: /chaudiere|montant|combien|321|prix/, doc: 'Facture chaudière', q: 'Montant total : 321 euros TTC.', a: 'Le montant total de la facture de la chaudière est de 321 euros TTC.' }
+];
+const SUGG = ['Quand se termine le contrat habitation ?', 'Quel est le montant de la chaudière ?', 'Je cherche ma facture de piscine'];
+let busy = false;
+function addMsg(html, cls) { const d = document.createElement('div'); d.className = 'msg ' + cls; d.innerHTML = html; chat.appendChild(d); scrollChat(); return d; }
+function scrollChat() { const s = document.querySelector('[data-screen="4"]'); setTimeout(() => s.scrollTo({ top: s.scrollHeight, behavior: 'smooth' }), 60); }
+const who = '<div class="who"><svg class="i"><use href="#i-spark"/></svg>Réponse locale</div>';
+function answerFor(text) {
+  const n = norm(text);
+  if (/piscine|pompe/.test(n)) return { html: who + 'Plusieurs sources parlent de la piscine. Laquelle voulez-vous consulter ?<div class="mlinks"><button data-ask="Quel est le montant de la facture de la pompe de piscine ?">La pompe de piscine</button><button data-ask="Je cherche la facture de la piscine">Une facture de piscine</button></div>' };
+  const hit = KB.find(k => k.re.test(n));
+  if (!hit) return { html: who + 'Je n’ai trouvé aucune preuve dans vos fichiers pour répondre. Reformulez, ajoutez un fichier ou essayez la Recherche.<div class="mlinks"><button data-go="1">Ouvrir la Recherche</button></div>' };
+  return { html: who + esc(hit.a) + `<div class="src"><small>Extrait vérifié</small><q>« ${esc(hit.q)} »</q><span class="meta">${hit.doc} · copie locale · accès à l’original non garanti</span><div class="mlinks"><button data-go="1">Voir la copie</button>${hit.action ? '<button data-action="rappel">Créer un rappel…</button>' : ''}</div></div>` };
+}
+function ask(text) {
+  text = text.trim(); if (!text || busy) return; busy = true;
+  sugg.style.display = 'none';
+  addMsg(esc(text), 'user');
+  const t = document.createElement('div'); t.className = 'typing'; t.setAttribute('aria-label', 'L’Assistant répond'); t.innerHTML = '<i></i><i></i><i></i>'; chat.appendChild(t); scrollChat();
+  setTimeout(() => { t.remove(); addMsg(answerFor(text).html, 'ai'); busy = false; }, 1100);
+}
+function resetChat() {
+  chat.innerHTML = ''; busy = false; sugg.style.display = '';
+  addMsg(who + 'Bonjour Alice. Posez une question sur vos fichiers : je cite toujours mes sources, et je préfère m’abstenir plutôt que deviner.', 'ai');
+  sugg.innerHTML = SUGG.map(s => `<button data-ask="${esc(s)}"><svg class="i"><use href="#i-spark"/></svg>${esc(s)}</button>`).join('');
+}
+document.getElementById('composer').addEventListener('submit', e => { e.preventDefault(); ask(askIn.value); askIn.value = ''; });
+document.getElementById('chatreset').addEventListener('click', resetChat);
+document.querySelector('[data-screen="4"]').addEventListener('click', e => {
+  const a = e.target.closest('[data-ask]'); if (a) return ask(a.dataset.ask);
+  const g = e.target.closest('[data-go]'); if (g && !g.classList.contains('back')) return show(Number(g.dataset.go));
+  if (e.target.closest('[data-action]')) setSheet(document.getElementById('sheet5'), true);
+});
+document.getElementById('aconfirm').addEventListener('click', () => {
+  closeSheets();
+  addMsg(who + 'Cette échéance est déjà confirmée dans vos rappels ; aucune alerte en double n’a été créée.<div class="mlinks"><button data-go="3">Voir mes rappels</button></div>', 'ai');
+});
+resetChat();
+
+/* importer */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const IMPORTS = [
+  { n: 'Facture chaudière.pdf', k: 'Facture · texte extrait', r: 'ok', tone: 'butter' },
+  { n: 'Contrat habitation.txt', k: 'Contrat · texte extrait', r: 'ok', tone: 'peach' },
+  { n: 'Photo terrasse.jpg', k: 'Photo · date de prise de vue lue', r: 'ok', tone: 'sky' },
+  { n: 'scan-illisible.pdf', k: 'Texte non extrait · métadonnées seules', r: 'meta', tone: 'lilac' }
+];
+const pick = document.getElementById('pick'), imp = document.getElementById('imp'), bar = document.getElementById('bar'), pstat = document.getElementById('pstat');
+const filesEl = document.getElementById('files'), sumEl = document.getElementById('sum');
+const setStep = n => document.querySelectorAll('#stepper .step').forEach((s, i) => { s.classList.toggle('done', i < n); s.classList.toggle('active', i === n); });
+const CHECK = '<svg class="i"><use href="#i-check"/></svg>', WARN = '<svg class="i"><use href="#i-sliders"/></svg>';
+async function runImport() {
+  pick.disabled = true; imp.hidden = false; filesEl.innerHTML = ''; sumEl.innerHTML = ''; bar.style.width = '0'; setStep(1);
+  let done = 0, meta = 0;
+  for (const f of IMPORTS) {
+    pstat.textContent = 'Copie locale : ' + done + '/' + IMPORTS.length + ' fichiers traités';
+    const row = document.createElement('div'); row.className = 'frow';
+    row.innerHTML = `<span class="ic ${f.tone}"><svg class="i"><use href="#i-file"/></svg></span><div><b>${esc(f.n)}</b><small>Lecture en cours…</small></div><span class="state spin"></span>`;
+    filesEl.appendChild(row); scrollImp();
+    await sleep(900);
+    done++; if (f.r === 'meta') meta++;
+    row.querySelector('small').textContent = f.k;
+    const st = row.querySelector('.state'); st.className = 'state ' + (f.r === 'ok' ? 'ok' : 'warn'); st.innerHTML = f.r === 'ok' ? CHECK : WARN;
+    bar.style.width = (done / IMPORTS.length * 100) + '%';
+  }
+  pstat.textContent = 'Indexation terminée : ' + (done - meta) + '/' + done + ' fichiers indexés, ' + meta + ' en métadonnées seules';
+  setStep(2);
+  sumEl.innerHTML = `<div class="sumcard"><b>Bilan de cette session</b><p>${done} fichiers traités : ${done - meta} indexés (dont une photo, par ses métadonnées) et ${meta} en métadonnées seules. « scan-illisible.pdf » reste retrouvable par son nom, pas par son contenu. Ce bilan n’est pas conservé.</p><div class="acts"><button class="act pri" data-go="6">Voir dans Vos données</button><button class="act" data-go="1">Retrouver dans Recherche</button></div></div>`;
+  sumEl.querySelectorAll('[data-go]').forEach(b => b.onclick = () => show(Number(b.dataset.go)));
+  document.getElementById('picklabel').textContent = 'Choisir d’autres fichiers'; pick.disabled = false; scrollImp();
+}
+function scrollImp() { const s = document.querySelector('[data-screen="5"]'); setTimeout(() => s.scrollTo({ top: s.scrollHeight, behavior: 'smooth' }), 80); }
+pick.addEventListener('click', runImport);
+document.querySelectorAll('[data-src]').forEach(b => b.addEventListener('click', () => { document.getElementById('s6title').textContent = b.dataset.src; setSheet(document.getElementById('sheet6'), true); }));
+
+/* vos données */
+const INV0 = [
+  { name: 'Contrat habitation.txt', type: 'Contrat', cat: 'Documents', cov: 'ok', covLabel: 'Texte indexé', size: '2 Ko', date: '28 nov.', tone: 'peach', quote: 'Échéance : 12 décembre 2026.' },
+  { name: 'Facture chaudière.pdf', type: 'Facture', cat: 'Documents', cov: 'ok', covLabel: 'Texte indexé', size: '184 Ko', date: '28 nov.', tone: 'butter', quote: 'Montant total : 321 euros TTC.' },
+  { name: 'Photo terrasse.jpg', type: 'Image', cat: 'Images', cov: 'photo', covLabel: 'Date et annotations', size: '2,4 Mo', date: '27 nov.', tone: 'sky', quote: null },
+  { name: 'scan-illisible.pdf', type: 'Document', cat: 'Documents', cov: 'meta', covLabel: 'Métadonnées seules', size: '1,1 Mo', date: '28 nov.', tone: 'lilac', quote: null }
+];
+let INV = INV0.slice(), invType = 'all', invView = 'list';
+const invEl = document.getElementById('inv');
+const COV = { ok: ['#6fd9ae', 'Texte indexé'], photo: ['#82b8ff', 'Photos (métadonnées)'], meta: ['#ffcd5e', 'Métadonnées seules'] };
+function renderTrust() {
+  const counts = { ok: 0, photo: 0, meta: 0 }; INV.forEach(d => counts[d.cov]++);
+  const total = INV.length;
+  document.getElementById('dtotal').textContent = total;
+  document.getElementById('s-local').textContent = total;
+  let acc = 0, stops = [];
+  Object.entries(counts).forEach(([k, n]) => { const from = acc; acc += total ? n / total * 100 : 0; stops.push(`${COV[k][0]} ${from}% ${acc}%`); });
+  document.getElementById('donut').style.background = total ? `conic-gradient(${stops.join(',')})` : 'color-mix(in srgb,var(--muted) 20%,transparent)';
+  document.getElementById('legend').innerHTML = Object.entries(counts).map(([k, n]) => `<span><i style="background:${COV[k][0]}"></i>${COV[k][1]}<b>${n}</b></span>`).join('');
+}
+function renderInv() {
+  const list = INV.filter(d => invType === 'all' || d.type === invType || d.cat === invType);
+  document.getElementById('invstatus').textContent = list.length + ' fichier' + (list.length > 1 ? 's' : '') + ' affiché' + (list.length > 1 ? 's' : '') + ' sur ' + INV.length;
+  if (invView === 'gallery') {
+    const photos = INV.filter(d => d.cat === 'Images');
+    invEl.innerHTML = photos.length
+      ? `<div class="gal">${photos.map((d, i) => `<button class="tilephoto" data-i="${INV.indexOf(d)}" aria-label="Voir le détail de ${esc(d.name)}"><span>${esc(d.name)}</span></button>`).join('')}</div><p class="note">Photos : métadonnées et annotations saisies, sans reconnaissance visuelle. Aucun aperçu n’est créé sans votre choix.</p>`
+      : `<div class="empty"><span class="bub"><svg class="i" style="width:30px;height:30px"><use href="#i-file"/></svg></span><b>Aucune photo pour le moment</b><p>Ajoutez des photos depuis Importer pour les retrouver ici.</p></div>`;
+    return;
+  }
+  if (!list.length) { invEl.innerHTML = INV.length
+    ? `<div class="empty"><span class="bub"><svg class="i" style="width:30px;height:30px"><use href="#i-file"/></svg></span><b>Aucun fichier de ce type</b><p>Les autres types restent disponibles dans l’inventaire.</p><button data-allt>Voir tout</button></div>`
+    : `<div class="empty"><span class="bub"><svg class="i" style="width:30px;height:30px"><use href="#i-folder"/></svg></span><b>Aucune donnée sur cet appareil</b><p>Ajoutez des fichiers pour reconstituer votre inventaire.</p><button data-go="5">Ajouter des fichiers</button></div>`;
+    const a = invEl.querySelector('[data-allt]'); if (a) a.onclick = () => setInvType('all');
+    const g = invEl.querySelector('[data-go]'); if (g) g.onclick = () => show(5);
+    return; }
+  invEl.innerHTML = list.map((d, i) => `<button class="invrow" style="animation-delay:${i * 50}ms" data-i="${INV.indexOf(d)}"><span class="ic ${d.tone}"><svg class="i"><use href="#i-file"/></svg></span><div><b>${esc(d.name)}</b><span class="tags"><span>${d.type}</span><span class="t-${d.cov}">${d.covLabel}</span></span><small>${d.size} · importé le ${d.date}</small></div><svg class="i"><use href="#i-go"/></svg></button>`).join('');
+}
+function setInvType(t) { invType = t; document.querySelectorAll('#invcats .fchip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t))); renderInv(); }
+document.querySelectorAll('#invcats .fchip').forEach(b => b.addEventListener('click', () => setInvType(b.dataset.t)));
+document.querySelectorAll('#viewseg [data-v]').forEach(b => b.addEventListener('click', () => { invView = b.dataset.v; document.querySelectorAll('#viewseg [data-v]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); document.getElementById('viewseg').style.setProperty('--s', invView === 'gallery' ? 1 : 0); renderInv(); }));
+invEl.addEventListener('click', e => {
+  const r = e.target.closest('[data-i]'); if (!r) return;
+  const d = INV[Number(r.dataset.i)];
+  document.getElementById('s7title').textContent = d.name;
+  const cov = document.getElementById('s7cov'); cov.textContent = 'Copie locale · ' + d.covLabel.toLowerCase();
+  document.getElementById('s7body').innerHTML = d.quote
+    ? `<div class="proof"><small>Extrait indexé</small><q>« ${esc(d.quote)} »</q></div>`
+    : `<p class="sub" style="margin:10px 0 0;font-size:13px;color:var(--muted)">Aucun texte indexé pour ce fichier : seules ses métadonnées (nom, taille, date) sont disponibles.</p>`;
+  document.getElementById('s7body').insertAdjacentHTML('beforeend', `<p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--muted)">${d.size} · importé le ${d.date} · source : fichiers locaux.</p>`);
+  setSheet(document.getElementById('sheet7'), true);
+});
+document.getElementById('s7go').addEventListener('click', () => show(1));
+document.querySelectorAll('[data-export]').forEach(b => b.addEventListener('click', () => { document.getElementById('s8title').textContent = 'Exporter en ' + b.dataset.export; setSheet(document.getElementById('sheet8'), true); }));
+document.getElementById('purgebtn').addEventListener('click', () => setSheet(document.getElementById('sheet9'), true));
+document.getElementById('purgeok').addEventListener('click', () => {
+  INV = []; closeSheets(); renderTrust(); renderInv();
+  document.getElementById('purgedmsg').innerHTML = '<p class="purged" role="status">Données supprimées sur cet appareil. Vos fichiers d’origine n’ont pas été touchés. <button class="seelink" id="restore" style="text-decoration:underline">Restaurer l’exemple (maquette)</button></p>';
+  document.getElementById('restore').onclick = () => { INV = INV0.slice(); document.getElementById('purgedmsg').innerHTML = ''; renderTrust(); renderInv(); };
+});
+renderTrust(); renderInv();
+
+/* plus & profil */
+const toastEl = document.getElementById('toast');
+function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('on'); clearTimeout(toastEl.t); toastEl.t = setTimeout(() => toastEl.classList.remove('on'), 2000); }
+document.querySelectorAll('#seg3 [data-p]').forEach(b => b.addEventListener('click', () => setPref(b.dataset.p)));
+applyPref();
+let NAME = 'Alice (exemple)';
+const initialOf = n => (Array.from(n.trim())[0] || '?').toLocaleUpperCase('fr');
+const pfIn = document.getElementById('pf-in');
+function paintName(n) {
+  document.getElementById('pf-av').textContent = initialOf(n); document.getElementById('pf-name').textContent = n || 'Mon espace';
+  document.getElementById('me-av').textContent = initialOf(n); document.getElementById('me-name').textContent = n || 'Mon espace';
+  const first = (n.trim().split(/\s+/)[0] || '');
+  document.querySelector('.hello .grad').textContent = first || 'là';
+}
+pfIn.addEventListener('input', () => { document.getElementById('pf-av').textContent = initialOf(pfIn.value); document.getElementById('pf-saved').textContent = ''; });
+document.getElementById('pf-save').addEventListener('click', () => { NAME = pfIn.value.trim() || 'Mon espace'; paintName(NAME === 'Mon espace' ? '' : NAME); document.getElementById('pf-saved').textContent = 'Profil enregistré sur cet appareil.'; });
+let gpsOn = false;
+const gps = document.getElementById('gps');
+gps.addEventListener('click', () => {
+  document.getElementById('s10title').textContent = gpsOn ? 'Retirer la localisation des photos ?' : 'Autoriser la localisation des photos ?';
+  document.getElementById('s10text').textContent = gpsOn
+    ? 'Les coordonnées GPS déjà enregistrées avec vos photos seront effacées de cet appareil. Vos photos originales ne sont pas modifiées.'
+    : 'Les coordonnées GPS présentes dans vos photos seront lues localement pour la recherche. Rien n’est envoyé ailleurs, et vous pouvez retirer ce choix à tout moment.';
+  document.getElementById('s10ok').textContent = gpsOn ? 'Retirer et effacer' : 'Autoriser';
+  setSheet(document.getElementById('sheet10'), true);
+});
+document.getElementById('s10ok').addEventListener('click', () => {
+  gpsOn = !gpsOn; gps.setAttribute('aria-checked', String(gpsOn)); closeSheets();
+  document.getElementById('gpsst').textContent = gpsOn ? 'Localisation activée : les coordonnées sont lues localement.' : 'Localisation désactivée ; les coordonnées déjà enregistrées ont été effacées.';
+});
+
+/* famille : membres du cercle */
+let MEMBERS = [{ id: 1, name: 'Lou' }, { id: 2, name: 'Camille' }], nextId = 3, editId = null, delId = null;
+const sheet11 = document.getElementById('sheet11'), sheet12 = document.getElementById('sheet12'), s11name = document.getElementById('s11name'), s11err = document.getElementById('s11err');
+function paintCircle(addedId) {
+  const n = MEMBERS.length, label = n ? n + (n > 1 ? ' fiches' : ' fiche') : 'aucune fiche';
+  document.getElementById('mcount').textContent = n ? '· ' + n : '';
+  document.getElementById('members').innerHTML = n ? MEMBERS.map(m => `
+    <button class="row mrow${m.id === addedId ? ' add' : ''}" data-m="${m.id}" aria-label="Modifier la fiche de ${esc(m.name)}"><span class="avs" aria-hidden="true"><i>${esc(initialOf(m.name))}</i></span><div><b>${esc(m.name)}</b><small>Fiche locale</small></div><svg class="i"><use href="#i-go"/></svg></button>`).join('')
+    : '<p class="saved" style="color:var(--muted)">Aucun membre pour l’instant. Ajoutez un prénom pour annoter vos photos.</p>';
+  document.getElementById('me-sub').textContent = 'Profil et famille · ' + label + ' dans votre cercle';
+  document.getElementById('house-fcount').textContent = n ? 'Vous et ' + label : 'Vous seul·e pour l’instant';
+  document.getElementById('house-avs').innerHTML = [NAME, ...MEMBERS.map(m => m.name)].slice(0, 3).map(x => `<i>${esc(initialOf(x))}</i>`).join('');
+}
+function openMember(id) {
+  editId = id; const m = MEMBERS.find(x => x.id === id);
+  document.getElementById('s11title').textContent = m ? 'Modifier la fiche' : 'Ajouter un membre';
+  document.getElementById('s11ok').textContent = m ? 'Enregistrer' : 'Ajouter';
+  document.getElementById('s11del').hidden = !m; s11name.value = m ? m.name : ''; s11err.textContent = '';
+  setSheet(sheet11, true); setTimeout(() => s11name.focus(), 400);
+}
+document.getElementById('addmember').addEventListener('click', () => openMember(null));
+document.getElementById('members').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (b) openMember(Number(b.dataset.m)); });
+document.getElementById('s11ok').addEventListener('click', () => {
+  const v = s11name.value.trim().replace(/\s+/g, ' ');
+  if (!v) { s11err.textContent = 'Saisissez un prénom ou un surnom.'; s11name.focus(); return; }
+  if (v.length > 40) { s11err.textContent = '40 caractères au maximum.'; return; }
+  if (MEMBERS.some(m => m.id !== editId && m.name.toLocaleLowerCase('fr') === v.toLocaleLowerCase('fr'))) { s11err.textContent = 'Une fiche porte déjà ce nom.'; return; }
+  let addedId;
+  if (editId == null) { addedId = nextId++; MEMBERS.push({ id: addedId, name: v }); } else MEMBERS.find(m => m.id === editId).name = v;
+  closeSheets(); paintCircle(addedId); toast(editId == null ? 'Fiche ajoutée à votre cercle.' : 'Fiche mise à jour.');
+});
+s11name.addEventListener('input', () => { s11err.textContent = ''; });
+s11name.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('s11ok').click(); });
+document.getElementById('s11del').addEventListener('click', () => {
+  delId = editId; document.getElementById('s12title').textContent = 'Supprimer « ' + MEMBERS.find(m => m.id === delId).name + ' » ?';
+  closeSheets(); setSheet(sheet12, true);
+});
+document.getElementById('s12ok').addEventListener('click', () => { MEMBERS = MEMBERS.filter(m => m.id !== delId); closeSheets(); paintCircle(); toast('Fiche supprimée. Vos photos sont intactes.'); });
+paintCircle();
+
+/* onboarding */
+const onb = document.getElementById('onb'), onbMain = document.getElementById('onbmain'), onbFoot = document.getElementById('onbfoot'), onbDots = document.getElementById('onbdots'), onbBack = document.getElementById('onbback'), onbSkip = document.getElementById('onbskip');
+const FLOWS = { perso: ['welcome', 'choice', 'name', 'sources', 'ready'], demo: ['welcome', 'choice', 'd1', 'd2', 'd3'], replay: ['d1', 'd2', 'd3'] };
+const SOURCES = [
+  { id: 'device', name: 'Cet appareil', sub: 'Recommandé · copie locale, fonctionne hors connexion', icon: 'i-phone' },
+  { id: 'drive', name: 'Google Drive', sub: 'Selon la configuration · non vérifié ici', icon: 'i-cloud' },
+  { id: 'onedrive', name: 'OneDrive', sub: 'Selon la configuration · non vérifié ici', icon: 'i-cloud' },
+  { id: 'dropbox', name: 'Dropbox', sub: 'Selon la configuration · non vérifié ici', icon: 'i-cloud' }
+];
+const DEMO_Q = 'Quand se termine le contrat habitation ?';
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const GO = '<svg class="i"><use href="#i-go"/></svg>';
+const nextBtn = label => `<button class="btn main" data-act="next">${label}</button>`;
+const remHtml = () => ob.rem === 'made'
+  ? '<div class="tipcard"><svg class="i"><use href="#i-check"/></svg><span>Maquette de démonstration : aucun rappel n’a été ajouté à votre espace.</span></div>'
+  : ob.rem === 'skip'
+    ? '<div class="tipcard"><svg class="i"><use href="#i-shield"/></svg><span>Rien n’est créé sans votre accord. Vous pourrez proposer un rappel depuis une réponse.</span></div>'
+    : '<div class="confirmbar"><button class="btn main" data-act="mk">Créer le rappel</button><button class="btn ghost" data-act="nomk">Pas maintenant</button></div>';
+const STEPS = {
+  welcome: () => ({
+    main: `<div class="onbhero"><svg class="logo-mark" viewBox="0 0 48 48" aria-hidden="true"><use href="#logo-b"/></svg></div>
+      <div class="onbcenter"><h1 tabindex="-1">Bienvenue dans Famili-IA</h1><p class="osub">Retrouvez vos documents de famille, avec la preuve à chaque réponse. Tout reste sur cet appareil.</p></div>`,
+    foot: nextBtn('Commencer')
+  }),
+  choice: () => ({
+    main: `<h1 tabindex="-1">Comment voulez-vous commencer ?</h1><p class="osub">Vous pourrez changer d’avis à tout moment.</p>
+      <button class="choice a" data-act="perso"><span class="bub2"><svg class="i"><use href="#i-people"/></svg></span><b>Créer mon espace</b><span class="d">Un prénom, vos sources : en une minute.</span><span class="go">${GO}</span></button>
+      <button class="choice b" data-act="demo"><span class="bub2"><svg class="i"><use href="#i-play"/></svg></span><span class="badge">Sans vos fichiers</span><b>Découvrir avec un exemple</b><span class="d">Une histoire fictive : question, preuve, rappel.</span><span class="go">${GO}</span></button>`,
+    foot: ''
+  }),
+  name: () => ({
+    main: `<h1 tabindex="-1">Comment vous appeler ?</h1><p class="osub">Un prénom ou un surnom suffit. Il reste sur cet appareil.</p>
+      <label class="field2"><input id="onb-name" aria-label="Votre prénom ou surnom" placeholder="Prénom ou surnom" autocomplete="off" maxlength="40" value="${esc(ob.name)}"></label>
+      <div class="preview"><span class="av" id="onb-av" aria-hidden="true">${esc(initialOf(ob.name))}</span><div><small class="mono" style="color:var(--muted)">Aperçu</small><b>Bonjour <span class="grad" id="onb-hello">${esc(ob.name.trim().split(/\s+/)[0] || 'là')}</span></b></div></div>`,
+    foot: nextBtn('Continuer'),
+    after() {
+      const i = document.getElementById('onb-name');
+      i.addEventListener('input', () => { ob.name = i.value; document.getElementById('onb-av').textContent = initialOf(i.value); document.getElementById('onb-hello').textContent = i.value.trim().split(/\s+/)[0] || 'là'; });
+      i.addEventListener('keydown', e => { if (e.key === 'Enter') act('next'); });
+    }
+  }),
+  sources: () => ({
+    main: `<h1 tabindex="-1">Où sont vos documents ?</h1><p class="osub">Choisissez où vous les retrouverez. Vous pourrez en ajouter plus tard.</p>
+      ${SOURCES.map(s => `<button class="srccard" data-act="src" data-id="${s.id}" aria-pressed="${ob.sources.has(s.id)}"><span class="ic ${s.id === 'device' ? 'mint' : 'lilac'}" style="width:44px;height:44px;border-radius:15px;display:grid;place-items:center;color:var(--on-pastel)"><svg class="i"><use href="#${s.icon}"/></svg></span><div><b>${s.name}</b><small>${s.sub}</small></div><span class="ck">${CHECK}</span></button>`).join('')}
+      <div class="tipcard"><svg class="i"><use href="#i-shield"/></svg><span>Aucune connexion n’est faite maintenant : ce choix est seulement noté. Vous configurerez les services depuis Importer. Vos fichiers d’origine ne sont jamais modifiés.</span></div>`,
+    foot: nextBtn('Continuer')
+  }),
+  ready: () => {
+    const picked = SOURCES.filter(s => ob.sources.has(s.id)).map(s => s.name), nm = ob.name.trim();
+    return {
+      main: `<h1 tabindex="-1">Votre espace est prêt</h1><p class="osub">Voici ce que Famili-IA a retenu. Tout se modifie dans Plus et Importer.</p>
+        <div class="recap">
+          <div class="rr"><span class="ic lilac" style="display:grid;place-items:center;color:var(--on-pastel)"><svg class="i"><use href="#i-people"/></svg></span><div><b>${esc(nm || 'Mon espace')}</b><small>Votre nom d’affichage</small></div></div>
+          <div class="rr" style="animation-delay:.08s"><span class="ic mint" style="display:grid;place-items:center;color:var(--on-pastel)"><svg class="i"><use href="#i-folder"/></svg></span><div><b>${picked.length ? esc(picked.join(' · ')) : 'Aucune source choisie'}</b><small>${picked.some(p => p !== 'Cet appareil') ? 'Services à configurer depuis Importer — rien n’est connecté' : 'Importez vos fichiers depuis Importer'}</small></div></div>
+          <div class="rr" style="animation-delay:.16s"><span class="ic butter" style="display:grid;place-items:center;color:var(--on-pastel)"><svg class="i"><use href="#i-shield"/></svg></span><div><b>Traitement local</b><small>Vos documents restent sur cet appareil.</small></div></div>
+        </div>`,
+      foot: nextBtn('Ouvrir mon espace')
+    };
+  },
+  d1: () => ({
+    main: `<span class="demochip mono">Exemple fictif</span><p class="stepcap mono">1 · Poser une question</p>
+      <h1 tabindex="-1">Posez-la comme à un proche</h1><p class="osub">Pas de mots-clés à deviner : une phrase suffit.</p>
+      <div class="qbox" aria-label="Question d’exemple"><svg class="i"><use href="#i-search"/></svg><span><span id="onb-q"></span><span class="caret"></span></span></div>`,
+    foot: nextBtn('Voir la réponse'),
+    after() {
+      const el = document.getElementById('onb-q');
+      if (reduceMotion.matches) { el.textContent = DEMO_Q; return; }
+      let n = 0; typer = setInterval(() => { n++; el.textContent = DEMO_Q.slice(0, n); if (n >= DEMO_Q.length) clearInterval(typer); }, 45);
+    }
+  }),
+  d2: () => ({
+    main: `<span class="demochip mono">Exemple fictif</span><p class="stepcap mono">2 · Une réponse, avec sa preuve</p>
+      <h1 tabindex="-1">Chaque réponse cite sa source</h1>
+      <article class="res"><svg class="rings" viewBox="0 0 130 130" aria-hidden="true"><use href="#i-rings"/></svg>
+        <span class="pill"><svg class="i"><use href="#i-file"/></svg>Contrat</span><h3>Contrat habitation</h3><span class="meta">Exemple fictif · Texte indexé</span>
+        <div class="proof"><small>Extrait correspondant</small><q>« Échéance : 12 décembre 2026. »</q></div></article>
+      <div class="tipcard"><svg class="i"><use href="#i-shield"/></svg><span>Si aucune preuve n’existe, Famili-IA le dit au lieu d’inventer. Ce n’est pas l’original : l’accès à l’original n’est pas garanti.</span></div>`,
+    foot: nextBtn('Continuer')
+  }),
+  d3: () => ({
+    main: `<span class="demochip mono">Exemple fictif</span><p class="stepcap mono">3 · Agir, avec votre accord</p>
+      <h1 tabindex="-1">Un rappel, seulement si vous le voulez</h1>
+      <div class="coralmini"><div class="dt"><b>12</b><span>DÉC</span></div><div><h3>Contrat habitation</h3><p>Rappel proposé · échéance dans 14 jours</p></div></div>
+      <div id="onb-rem" aria-live="polite">${remHtml()}</div>`,
+    foot: nextBtn('Terminer la démo')
+  })
+};
+let ob = null, typer = 0;
+function renderOnb() {
+  clearInterval(typer);
+  const flow = FLOWS[ob.flow], s = STEPS[flow[ob.idx]]();
+  onbMain.style.animation = 'none'; void onbMain.offsetWidth; onbMain.style.animation = '';
+  onbMain.innerHTML = s.main; onbMain.scrollTop = 0; onbFoot.innerHTML = s.foot;
+  onbDots.innerHTML = flow.map((_, i) => `<i class="${i === ob.idx ? 'on' : i < ob.idx ? 'done' : ''}"></i>`).join('');
+  onbBack.hidden = ob.idx === 0;
+  onbSkip.textContent = ob.mode === 'replay' ? 'Quitter' : 'Passer';
+  if (s.after) s.after();
+  const h = onbMain.querySelector('h1'); if (h) h.focus({ preventScroll: true });
+}
+function openOnb(kind) {
+  closeSheets();
+  ob = { mode: kind === 'replay' ? 'replay' : 'first', flow: kind === 'replay' ? 'replay' : 'perso', idx: kind === 'perso-name' ? 2 : 0, origin: kind === 'replay' || kind === 'perso-name' ? current : 0, name: '', sources: new Set(['device']), rem: 'ask' };
+  document.querySelectorAll('[data-for]').forEach(p => p.hidden = Number(p.dataset.for) !== 9);
+  document.getElementById('ask').innerHTML = asks[9];
+  document.getElementById('tag').textContent = 'Prototype · ' + TAGS[9] + ' · données fictives';
+  onb.classList.add('on'); onb.setAttribute('aria-hidden', 'false');
+  renderOnb();
+}
+function endOnb(kind) {
+  clearInterval(typer); onb.classList.remove('on'); onb.setAttribute('aria-hidden', 'true');
+  const banner = document.getElementById('demobanner');
+  if (kind === 'perso') {
+    const nm = ob.name.trim().replace(/\s+/g, ' '); NAME = nm || 'Mon espace'; pfIn.value = nm; MEMBERS = []; paintName(nm); paintCircle();
+    banner.hidden = true; show(0); toast('Espace créé sur cet appareil.');
+  } else if (kind === 'demo') { banner.hidden = false; show(0); toast('Fin de la démo : exemples fictifs.'); }
+  else if (kind === 'skip') { show(ob.origin); if (ob.mode === 'first') toast('Découverte passée : « Revoir la démo » dans Plus.'); }
+  else show(ob.origin);
+}
+function act(a, el) {
+  if (a === 'next') { if (ob.idx < FLOWS[ob.flow].length - 1) { ob.idx++; renderOnb(); } else endOnb(ob.flow); }
+  else if (a === 'perso' || a === 'demo') { ob.flow = a; ob.idx = 2; renderOnb(); }
+  else if (a === 'src') { const id = el.dataset.id, on = !ob.sources.has(id); on ? ob.sources.add(id) : ob.sources.delete(id); el.setAttribute('aria-pressed', String(on)); }
+  else if (a === 'mk' || a === 'nomk') { ob.rem = a === 'mk' ? 'made' : 'skip'; document.getElementById('onb-rem').innerHTML = remHtml(); }
+}
+onb.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) act(b.dataset.act, b); });
+onbBack.addEventListener('click', () => { if (ob.idx > 0) { ob.idx--; renderOnb(); } });
+onbSkip.addEventListener('click', () => endOnb('skip'));
+onb.addEventListener('keydown', e => { if (e.key === 'Escape') endOnb('skip'); });
+document.querySelectorAll('[data-onb-open]').forEach(b => b.addEventListener('click', () => openOnb(b.dataset.onbOpen)));
+document.getElementById('first-run').addEventListener('click', () => openOnb('first'));
+
+const preview = new URLSearchParams(location.search).get('vue');
+if (preview === 'web' || preview === 'mobile') {
+  root.dataset.preview = preview;
+  show(new URLSearchParams(location.search).get('ecran') === 'recherche' ? 1 : 0);
+  if (preview === 'web') {
+    root.dataset.nav = 'rail';
+    const device = document.querySelector('.device-wrap');
+    new ResizeObserver(([entry]) => {
+      const target = entry.contentRect.width >= 640 ? facetPanel : sheet;
+      if (facetFields.parentElement === target) return;
+      toggleSheet(false); paintFacets(facets); target.append(facetFields);
+    }).observe(device);
+    document.querySelectorAll('[name="web-nav"]').forEach(radio =>
+      radio.addEventListener('change', () => { root.dataset.nav = radio.value; }));
+  }
+  window.addEventListener('storage', e => {
+    if (e.key === 'aurore-pref' && ['light', 'dark', 'system'].includes(e.newValue)) {
+      pref = e.newValue; applyPref();
+    }
+  });
+} else show(8);
+</script>
+</html>

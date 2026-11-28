@@ -422,11 +422,6 @@
   .search-mobile-filters { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem; margin-bottom: .35rem; }
   .search-contract-filter { display: inline-flex; flex: 0 1 auto; gap: .45rem; align-items: center; width: auto; min-height: 48px; padding: .3rem; background: transparent; border: 0; font: 650 .85rem system-ui; cursor: pointer; }
   .search-contract-filter[aria-pressed=true] { color: var(--ui-accent); text-decoration: underline; }
-  .search-view #search-filters-panel { background: transparent; border: 0; box-shadow: none; margin: 0; }
-  .search-view #search-filters-panel:not([open]) { display: block; flex: 0 1 auto; width: auto; vertical-align: middle; }
-  .search-view #search-filters-panel[open] { flex-basis: 100%; }
-  .search-view #search-filters-panel:not([open]) > .search-disclosure-content { display: none; }
-  .search-view #search-filters-panel > summary { width: auto; padding: .45rem; min-height: 48px; align-items: center; color: var(--ui-muted); font-size: .82rem; white-space: nowrap; }
   .search-view #experimental-index-results .experimental-result { isolation: isolate; position: relative; overflow: hidden; padding: .9rem; gap: .25rem; }
   .search-view #experimental-index-results .experimental-result::before { content: ""; position: absolute; z-index: -1; right: -2rem; top: -3rem; width: 8rem; height: 7rem; border-radius: 50%; background: repeating-radial-gradient(ellipse, transparent 0 6px, #8172c642 7px 8px, transparent 9px 13px); transform: rotate(-24deg); }
   .search-view .result-kind { display: inline-flex; align-items: center; gap: .3rem; justify-self: start; border-radius: 2rem; padding: .25rem .7rem; color: white; background: var(--ui-accent); font-size: .78rem; font-weight: 700; }
