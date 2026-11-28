@@ -33,7 +33,7 @@
       </a>
       <!-- <div class="demo-status"><span class="status-dot"></span><span id="demo-status-label">Prototype — données fictives</span></div> -->
       <div id="demo-badge" class="demo-badge" hidden>Mode Démo</div>
-      <label class="appearance-control"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><select id="aurore-theme" aria-label="Apparence de Famili-IA">
+      <label class="appearance-control" title="Apparence : clair, sombre ou système"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><use class="sun" href="./assets/prisme/aurore-icones.svg#i-sun"/><use class="moon" href="./assets/prisme/aurore-icones.svg#i-moon"/></svg><select id="aurore-theme" aria-label="Apparence de Famili-IA">
         <option value="light">Clair</option><option value="dark">Sombre</option><option value="system">Système</option>
       </select></label>
       <button class="avatar avatar-small desktop-profile-button" type="button" data-open-view="profil" aria-label="Ouvrir Profil et famille"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></button>
@@ -546,19 +546,19 @@
           <p class="eyebrow mono">Questions sur vos fichiers</p>
           <div class="titlebar"><h1 class="title" id="assistant-title">Assistant</h1><button class="round gear" id="assistant-reset" type="button" aria-label="Nouvelle conversation"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-reset"/></svg></button></div>
         </header>
-        <div class="ctx"><span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Traitement local</span><span id="assistant-qwen-badge"></span></div>
-          <p id="assistant-context" class="household-note"></p>
+        <div class="ctx"><span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Traitement local</span><span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-spark"/></svg><b id="assistant-qwen-badge"></b></span></div>
+        <p id="assistant-context" class="household-note"></p>
         <div class="chat" id="assistant-chat" role="log" aria-label="Conversation avec l'assistant" aria-live="polite" aria-relevant="additions" tabindex="0">
           <div class="msg ai"><div class="who"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-spark"/></svg>Famili-IA</div>Un montant, une date, une référence ? Nommez le document ; je montre le passage trouvé.</div>
         </div>
         <div class="sugg" id="assistant-suggestions" role="group" aria-label="Idées de questions">
-          <button type="button" class="assistant-suggestion-chip" data-question="Quel est le montant de ma facture d'électricité ?">Le montant d’une facture</button>
-          <button type="button" class="assistant-suggestion-chip" data-question="Quand se termine mon contrat habitation ?">La date d’un contrat</button>
-          <button type="button" class="assistant-suggestion-chip" data-question="Quelle est la référence de ma chaudière ?">Une référence d’équipement</button>
+          <button type="button" class="assistant-suggestion-chip" data-question="Quel est le montant de ma facture d'électricité ?"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-spark"/></svg>Le montant d’une facture</button>
+          <button type="button" class="assistant-suggestion-chip" data-question="Quand se termine mon contrat habitation ?"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-spark"/></svg>La date d’un contrat</button>
+          <button type="button" class="assistant-suggestion-chip" data-question="Quelle est la référence de ma chaudière ?"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-spark"/></svg>Une référence d’équipement</button>
         </div>
           <details class="prov assistant-limits">
             <summary>Options de réponse et limites</summary>
-            <p>Ici, posez une question précise pour repérer un montant, une date ou une référence dans le texte disponible. Dans Recherche, explorez vos fichiers et vos photos avec les filtres.</p>
+            <p>L’Assistant consulte le même index local que Recherche, sans reprendre ses filtres. Il ne parcourt ni tout l’appareil ni vos comptes cloud. Seuls les passages vérifiés des documents servent de preuve.</p>
             <p>Sans Qwen, l’assistant utilise les règles locales existantes. Si l’option Qwen est activée, la question et jusqu’à huit extraits vérifiés sont envoyés à Ollama sur ce PC pour une réponse expérimentale. Le document complet et l’historique ne sont jamais envoyés. Le modèle ne déclenche aucune action ; une échéance admissible demande toujours votre confirmation. Les échanges ne sont pas conservés après rechargement.</p>
           <p id="assistant-question-hint" class="household-note">Chaque question est indépendante : précisez son sujet, même après une première réponse.</p>
           <label class="assistant-qwen-toggle" for="assistant-use-qwen">
@@ -569,6 +569,7 @@
           </details>
           <p class="note"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Sans extrait vérifié, l’Assistant s’abstient. Aucun rappel n’est créé sans votre confirmation.</p>
           <button class="ui-button ui-button--secondary" id="assistant-cancel-qwen" type="button" hidden>Annuler la génération Qwen</button>
+          <div class="typing" id="assistant-typing" aria-hidden="true" hidden><i></i><i></i><i></i></div>
           <p id="assistant-status" class="household-note" role="status" aria-live="polite"></p>
         <form class="composer on" id="assistant-form" aria-label="Poser une question" aria-describedby="assistant-question-hint assistant-qwen-disclosure">
             <input type="text" id="assistant-input" aria-label="Votre question" placeholder="Poser une question sur vos fichiers…" autocomplete="off" required>

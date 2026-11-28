@@ -92,6 +92,11 @@ function manageOnboardingWizardVisibility() {
   if (!onboarding) return;
   const dialog = document.querySelector('#onboarding-wizard');
   const visible = activeView === 'accueil' && !viewTourActive && (replayOnboarding || !isOnboardingComplete());
+  const appearance = document.querySelector('.appearance-control');
+  const before = document.querySelector(visible
+    ? extendedDemo ? '#step-3-title' : '#onboarding-wizard .onbskip'
+    : '.topbar .desktop-profile-button');
+  if (appearance.nextElementSibling !== before) before.before(appearance);
   document.querySelector('#extended-demo').hidden = !(visible && extendedDemo);
   if (visible && !extendedDemo && !dialog.open) {
     dialog.showModal();
@@ -6150,8 +6155,11 @@ function initAssistantView() {
   if (!form || !input || !chatContainer) return;
   const reset = document.querySelector('#assistant-reset');
   const welcome = chatContainer.firstElementChild;
+  const suggestions = document.querySelector('#assistant-suggestions');
+  const typing = document.querySelector('#assistant-typing');
   reset.addEventListener('click', () => {
     chatContainer.replaceChildren(welcome);
+    suggestions.hidden = false;
     assistantResponseContexts.clear();
     input.value = '';
     document.querySelector('#assistant-status').textContent = 'Nouvelle conversation.';
@@ -6224,6 +6232,7 @@ function initAssistantView() {
             if (qwenCancelButton) qwenCancelButton.hidden = false;
             qwenController = new AbortController();
             assistantQwenRequest = { controller: qwenController, context: aiResponse.context };
+            typing.hidden = false;
             status.textContent = `Qwen local expérimental en cours : seuls la question et jusqu’à ${LOCAL_QWEN_LIMITS.evidencePassages} extraits vérifiés seront envoyés à Ollama sur ce PC.`;
             const generated = await generateLocalQwenAnswer({ question, evidence, signal: qwenController.signal });
             if (!isAssistantContextCurrent(aiResponse.context)) {
@@ -6236,6 +6245,7 @@ function initAssistantView() {
       }
       addUserMessage(question, chatContainer);
       addAIMessage(aiResponse, chatContainer);
+      suggestions.hidden = true;
       input.value = '';
       status.textContent = statusMessage;
     } catch (error) {
@@ -6254,6 +6264,7 @@ function initAssistantView() {
       }
     } finally {
       isSubmitting = false;
+      typing.hidden = true;
       reset.disabled = false;
       input.disabled = false;
       if (qwenToggle && canUseLocalQwen) qwenToggle.disabled = false;
@@ -6269,10 +6280,10 @@ function refreshAssistantContext() {
   invalidateAssistantResponses();
   const context = document.querySelector('#assistant-context');
   if (!uploadedDocuments.length) {
-    context.textContent = 'Mode exemples fictifs : aucun fichier personnel chargé. Les réponses utilisent uniquement les documents de démonstration.';
+    context.textContent = 'Exemples fictifs uniquement · aucun fichier personnel chargé.';
   } else {
     const counts = countInventorySources(uploadedDocuments);
-    context.textContent = `${counts.total} fichier${counts.total > 1 ? 's' : ''} chargé${counts.total > 1 ? 's' : ''} dans Famili-IA. Même index local que Recherche ; réponses limitées au texte vérifié des documents, pas à tout l'appareil ni au cloud. Les filtres de Recherche ne s'appliquent pas ici.${counts.demo ? ' Les exemples fictifs sont exclus des réponses personnelles.' : ''}`;
+    context.textContent = `${counts.total} fichier${counts.total > 1 ? 's' : ''} chargé${counts.total > 1 ? 's' : ''} · réponses limitées au texte vérifié.${counts.demo ? ' Exemples fictifs exclus des réponses personnelles.' : ''}`;
   }
 }
 
