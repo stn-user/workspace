@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Famili-IA">
+  <style>
+    @media(prefers-reduced-motion:no-preference){
+      .orbit{transform-origin:24px 24px;animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+      .letter{animation:facet .9s cubic-bezier(.34,1.56,.64,1) both}
+      @keyframes facet{from{opacity:0;transform:translateY(8px) scale(.85)}}
+
+    }
+  </style>
+  <defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9684ff"/><stop offset="1" stop-color="#5aa0ff"/></linearGradient>
+    <clipPath id="lc"><rect width="48" height="48" rx="15"/></clipPath>
+  </defs>
+  
+    <g clip-path="url(#lc)">
+      <rect width="48" height="48" fill="url(#lg)"/>
+      <path class="letter" d="M18 34V15h13M18 24h9.5" fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <g class="orbit"><circle cx="24" cy="24" r="16.5" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.4" stroke-dasharray="3 5"/><circle cx="40.5" cy="24" r="3.3" fill="#fff"/></g>
+    </g>
+  </svg>

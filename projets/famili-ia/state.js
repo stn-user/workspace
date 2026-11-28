@@ -703,6 +703,19 @@ export async function updatePrivacyConsent(newPrivacySettings) {
   return user.privacy;
 }
 
+export function getNameInitial(name) {
+  return Array.from(name.trim())[0]?.toLocaleUpperCase('fr') || '?';
+}
+
+export function updateDisplayName(name) {
+  return serializePhotoMutation(async () => {
+    const user = { ...state.currentUser, name };
+    if (!user.avatar || user.avatar === getNameInitial(state.currentUser.name)) user.avatar = getNameInitial(name);
+    await put('users', user);
+    state.currentUser = user;
+  });
+}
+
 export function updateUserProfile({ name, avatar, address, postalCode, city, photoLocationConsent }) {
   return serializePhotoMutation(async () => {
     if (!photoLocationConsent || state.currentUser.privacy?.photoLocationConsent !== true) {

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kit de composants Prisme Aurore · Famili-IA</title>
+<link rel="stylesheet" href="../../assets/prisme/aurore-kit.css">
+<style>
+  body{margin:0}main{min-height:100vh;background:linear-gradient(145deg,var(--bg1),var(--bg2),var(--bg3));padding:clamp(16px,4vw,56px)}
+  .catalog{max-width:1100px;margin:auto}.catalog header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .catalog h1{font-size:clamp(32px,5vw,56px);letter-spacing:-.06em;margin:0}.catalog h2{margin:2rem 0 .6rem}
+  .catalog a{color:inherit}.catalog select{font:inherit;min-height:44px}
+  .samples{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));gap:18px}
+  .samples>article,.palette span,.glyphs figure{min-width:0;background:var(--glass);border:1px solid var(--stroke);border-radius:20px;padding:14px}
+  .samples h3{margin:0 0 12px}.samples pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+  .samples summary{cursor:pointer;padding:12px 0}.palette,.glyphs{display:flex;flex-wrap:wrap;gap:8px}
+  .palette span{background:var(--sw);color:var(--on-pastel)}.glyphs figure{width:98px;margin:0;display:grid;justify-items:center;gap:8px}.glyphs code{font-size:12px}
+</style>
+<main class="aurore-kit">
+<div class="catalog">
+  <header><img src="../../assets/prisme/aurore-orbite.svg" width="64" height="64" alt="">
+    <div><span class="mono">Famili-IA · kit d’interface</span><h1>Prisme <span class="grad">Aurore</span></h1></div>
+    <label>Apparence <select id="theme"><option value="light">Clair</option><option value="dark">Sombre</option><option value="system">Système</option></select></label>
+  </header>
+  <p>Exemples fictifs, sans accès aux données de l’application. Dépliez le HTML pour réutiliser un motif.</p>
+  <nav aria-label="Ressources"><a href="../../assets/prisme/aurore-kit.css" download>CSS du kit</a> ·
+    <a href="../../assets/prisme/aurore-icones.svg" download>Sprite SVG</a> · <a href="../../assets/prisme/aurore-orbite.svg" download>Logo animé</a> ·
+    <a href="prisme-aurore.html">Maquettes interactives complètes</a></nav>
+  <h2>Palette et surfaces</h2>
+  <div class="palette"><span style="--sw:var(--lilac)">Lilas</span><span style="--sw:var(--mint)">Menthe</span><span style="--sw:var(--peach)">Pêche</span><span style="--sw:var(--sky)">Ciel</span><span style="--sw:var(--butter)">Beurre</span></div>
+  <h2>Motifs par écran</h2>
+  <div class="samples">
+    <article><h3>Accueil · carte à la une</h3><div class="sample">
+      <div class="hero"><span class="orb" aria-hidden="true"><i class="s s1"></i><i class="s s2"></i><i class="s s3"></i></span>
+        <span class="chip mono"><i></i>À la une</span><div><h3>Habitation</h3><p>Prochaine échéance · exemple</p></div></div>
+    </div></article>
+    <article><h3>Recherche · résultat et preuve</h3><div class="sample">
+      <div class="res"><svg class="rings" aria-hidden="true"><use href="../../assets/prisme/aurore-icones.svg#i-rings"></use></svg>
+        <span class="pill">Contrat</span><h3>Contrat habitation</h3><div class="proof"><q>Échéance : 12 décembre.</q></div>
+        <details class="prov"><summary>Provenance</summary><p>Copie locale · exemple fictif</p></details></div>
+    </div></article>
+    <article><h3>Foyer · carte illustrée</h3><div class="sample">
+      <div class="house"><img src="../../assets/prisme/maison.svg" alt="" width="260" height="210"><span class="chip mono">Carnet de maison</span><div><h2>La maison</h2></div></div>
+    </div></article>
+    <article><h3>Rappels · échéance prioritaire</h3><div class="sample">
+      <div class="coralhero"><span class="ribbon" aria-hidden="true"><i></i><i></i><i></i></span><b class="bigday">12</b><span class="mo mono">Décembre</span><h3>Contrat habitation</h3><p>Échéance à anticiper</p></div>
+    </div></article>
+    <article><h3>Assistant · réponse en cours</h3><div class="sample">
+      <div class="ctx"><span>Extraits locaux</span></div><div class="chat"><div class="msg user">Quand se termine le contrat ?</div>
+        <div class="typing" role="status" aria-label="Réponse en cours"><i></i><i></i><i></i></div></div>
+    </div></article>
+    <article><h3>Importer · étapes</h3><div class="sample">
+      <div class="stepper" aria-label="Étapes de l’import"><div class="step done"><b>1</b>Choisir</div><div class="step active" aria-current="step"><b>2</b>Copier</div><div class="step"><b>3</b>Retrouver</div></div>
+    </div></article>
+    <article><h3>Vos données · couverture</h3><div class="sample">
+      <div class="trust"><h2>Inventaire local</h2><p class="own">Copies sur cet appareil</p><details class="srcdet"><summary>Sources et limites</summary><p>Une copie présente ne garantit pas l’accès à l’original.</p></details></div>
+    </div></article>
+    <article><h3>Plus · accès au profil</h3><div class="sample">
+      <div class="me"><span class="av" aria-hidden="true">A</span><div><b>Alice (exemple)</b><small>Profil et famille</small></div></div>
+    </div></article>
+    <article><h3>Profil et famille · aperçu</h3><div class="sample">
+      <div class="preview"><span class="av" aria-hidden="true">L</span><div><b>Lou</b><small>Membre fictif du cercle</small></div></div>
+    </div></article>
+    <article><h3>Onboarding · identité animée</h3><div class="sample">
+      <div class="onbhero"><img class="logo-mark" src="../../assets/prisme/aurore-orbite.svg" alt="Famili-IA"></div>
+    </div></article>
+  </div>
+  <h2>Icônes et mouvement</h2>
+  <p>Chaque libellé est l’identifiant du symbole SVG. Ajoutez <code>fx-spark</code> (étincelle) ou <code>fx-breathe</code> (respiration) à une icône de classe <code>i</code> pour l’animer. Le mouvement réduit conserve le tracé fixe.</p>
+  <div class="glyphs" id="glyphs"></div><p id="error" role="alert"></p>
+</div>
+</main>
+<script type="module">
+  const kit = document.querySelector('.aurore-kit'), theme = document.querySelector('#theme');
+  const system = matchMedia('(prefers-color-scheme:dark)');
+  function applyTheme() { kit.dataset.theme = theme.value === 'system' ? (system.matches ? 'dark' : 'light') : theme.value; }
+  theme.addEventListener('change', applyTheme); system.addEventListener('change', applyTheme); applyTheme();
+  for (const sample of document.querySelectorAll('.sample')) {
+    const details = document.createElement('details'), summary = document.createElement('summary'), pre = document.createElement('pre');
+    summary.textContent = 'HTML à réutiliser'; pre.textContent = sample.innerHTML.trim().replaceAll('../../assets/', './assets/');
+    details.append(summary, pre); sample.after(details);
+  }
+  const sprite = '../../assets/prisme/aurore-icones.svg';
+  try {
+    const response = await fetch(sprite);
+    if (!response.ok) throw new Error(`Sprite SVG : HTTP ${response.status}`);
+    const doc = new DOMParser().parseFromString(await response.text(), 'image/svg+xml');
+    const icons = doc.querySelectorAll('symbol[id]');
+    if (!icons.length || doc.querySelector('parsererror')) throw new Error('Sprite SVG illisible');
+    for (const {id} of icons) {
+      const figure = document.createElement('figure'), label = document.createElement('figcaption');
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), use = document.createElementNS(svg.namespaceURI, 'use');
+      svg.setAttribute('class', id === 'i-spark' ? 'i fx-spark' : id === 'i-rings' ? 'i fx-breathe' : 'i');
+      svg.setAttribute('aria-hidden', 'true'); use.setAttribute('href', `${sprite}#${id}`); svg.append(use);
+      label.append(document.createElement('code')); label.firstChild.textContent = id;
+      figure.append(svg, label); document.querySelector('#glyphs').append(figure);
+    }
+  } catch (error) { document.querySelector('#error').textContent = `Impossible d’afficher les icônes : ${error.message}. Ouvrez le catalogue depuis le serveur local.`; }
+</script>
+</html>

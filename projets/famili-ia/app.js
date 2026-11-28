@@ -1,5 +1,6 @@
 console.log("App script loaded");
 import { buildSearchResponse, rankDocuments } from "./search-utils.js";
+import auroreIcons from "./assets/prisme/aurore-icones.svg?no-inline";
 import { GoogleDriveClient, prepareDriveDocumentForIndex } from "./google-drive.js";
 import { GoogleDriveSource } from "./google-drive-source.js";
 import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryAccountRef, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
@@ -14,7 +15,7 @@ import { clearFamilyState, loadFamilyState } from "./family-storage.js";
 import {
   initState, getCurrentUser, getFamilyMembers, getEquipmentByCategory, getEquipmentDetail, getAlerts,
   getDocuments, addDocument, confirmDocumentAlert, confirmDocumentDeadline, deleteDocument, calculateAlertType, updateAlert,
-  updateAlertNotificationPreferences, updateUserProfile, getFullState,
+  updateAlertNotificationPreferences, updateUserProfile, updateDisplayName, getNameInitial, getFullState,
   addFamilyMember, addEquipment, updateEquipment, updateEquipmentPhoto, deleteEquipment, deleteFamilyMember, updateFamilyMember,
   updatePhotoAnnotations, resetState, getDropboxIndexCheckpoint, saveDropboxIndexCheckpoint,
   clearDropboxIndexCheckpoint, clearDropboxIndexCheckpoints
@@ -76,6 +77,7 @@ function isOnboardingComplete() {
     // localStorage unavailable - consider onboarding as not completed
     return false;
   }
+
 }
 
 /**
@@ -174,6 +176,22 @@ function initOnboardingWizard() {
         // Étape 1 -> Saisie prénom optionnel
         if (userNameInput && targetStep === 2) {
           const name = userNameInput.value.trim();
+          const error = document.querySelector('#wizard-name-error');
+          error.hidden = true;
+          if (name && !replayOnboarding && name !== getCurrentUser().name) {
+            const step = document.querySelector('#step-1');
+            step.inert = true;
+            try {
+              await updateDisplayName(name);
+            } catch (cause) {
+              console.error("Enregistrement du prénom impossible", cause);
+              error.hidden = false;
+              return;
+            } finally {
+              step.inert = false;
+              if (!error.hidden) userNameInput.focus();
+            }
+          }
 
           // Le prénom est optionnel, pas de validation bloquante
           const greetingSpan = document.querySelector('#wizard-user-greeting');
@@ -230,15 +248,6 @@ function initOnboardingWizard() {
 
   if (startScanMode) {
     startScanMode.addEventListener('click', async () => {
-      // Sauvegarder le prénom s'il a été saisi (facultatif)
-      if (userNameInput) {
-        const name = userNameInput.value.trim();
-        if (name) {
-          const user = getCurrentUser();
-          if (user) user.name = name;
-        }
-      }
-
       await launchIntelligentScan();
     });
   }
@@ -561,7 +570,7 @@ function initEquipmentDialog() {
     e.preventDefault();
     const id = document.querySelector('#eq-id-input').value;
     const name = document.querySelector('#eq-name-input').value;
-    const category = document.querySelector('#eq-category-input').value;
+    const category = form.elements.namedItem('category').value;
     const status = document.querySelector('#eq-status-input').value;
 
     const existingEquipment = id ? getEquipmentDetail(id) : null;
@@ -606,7 +615,9 @@ function openEquipmentForm(equipment = null) {
   document.querySelector('#equipment-form-status').textContent = '';
   document.querySelector('#eq-id-input').value = equipment ? equipment.id : '';
   document.querySelector('#eq-name-input').value = equipment ? equipment.name : '';
-  document.querySelector('#eq-category-input').value = equipment ? equipment.category : 'pompe';
+  document.querySelectorAll('#equipment-form [name=category]').forEach(option => {
+    option.checked = option.value === (equipment ? equipment.category : 'pompe');
+  });
   document.querySelector('#eq-status-input').value = equipment ? equipment.status : '';
   dialog.showModal();
 }
@@ -707,14 +718,11 @@ function contractsOnly() {
 }
 function setContractsOnly(active) {
   contractFilter.setAttribute('aria-pressed', String(active));
-  contractFilter.querySelector('span').textContent = active ? 'Contrats uniquement ×' : 'Filtrer par contrat';
+  contractFilter.querySelector('span').textContent = active ? 'Contrats uniquement' : 'Contrats';
 }
 function isContract(document) {
   return document && getInventoryTypeKey(document) === 'contrat';
 }
-const experimentalIndexSource = document.querySelector("#experimental-index-source");
-const experimentalIndexType = document.querySelector("#experimental-index-type");
-const experimentalIndexCoverage = document.querySelector("#experimental-index-coverage");
 const experimentalIndexDateType = document.querySelector("#experimental-index-date-type");
 const experimentalIndexDateFrom = document.querySelector("#experimental-index-date-from");
 const experimentalIndexDateTo = document.querySelector("#experimental-index-date-to");
@@ -780,9 +788,9 @@ function refreshExperimentalFacets(records) {
 
 function getExperimentalIndexFilters() {
   return Object.fromEntries([
-    ["sourceId", experimentalIndexSource.value],
-    ["type", experimentalIndexType.value],
-    ["coverage", experimentalIndexCoverage.value],
+    ["sourceId", experimentalIndexForm.elements.namedItem("sourceId").value],
+    ["type", experimentalIndexForm.elements.namedItem("type").value],
+    ["coverage", experimentalIndexForm.elements.namedItem("coverage").value],
     ["dateType", experimentalIndexDateType.value],
     ["dateFrom", experimentalIndexDateFrom.value],
     ["dateTo", experimentalIndexDateTo.value],
@@ -1132,42 +1140,29 @@ function refreshExperimentalIndex() {
         entry.accountRef === (match.accountRef ?? null) && entry.itemId === match.itemId);
       const sourceAccess = sourceStatuses.find(status => status.sourceId === match.sourceId)?.access;
       const result = describeExperimentalResult(match, record, sourceDocument, sourceAccess);
-      item.className = "experimental-result prisme-result";
-      const typeBadge = addTextElement(item, "span", "ui-badge result-kind", sourceDocument?.type || "Document");
-      const typeIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      typeIcon.setAttribute("viewBox", "0 0 24 24");
-      typeIcon.setAttribute("aria-hidden", "true");
-      typeIcon.classList.add("prisme-icon");
-      const typePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      typePath.setAttribute("d", "M5 2h9l5 5v15H5zM14 2v6h5M8 13h8M8 17h6");
-      typeIcon.append(typePath);
-      typeBadge.prepend(typeIcon);
-      addTextElement(item, "h3", "experimental-result-name", result.name);
-      addTextElement(item, "p", "search-result-origin prisme-meta", `${result.sourceLabel} · ${result.coverageLabel} · accès à l'original non garanti`);
+      item.className = "res";
+      item.append(auroreIcon("rings", "rings"));
+      const typeBadge = addTextElement(item, "span", "pill", sourceDocument?.type || "Document");
+      typeBadge.prepend(auroreIcon("file"));
+      addTextElement(item, "h3", "", result.name);
+      addTextElement(item, "p", "meta", `${result.sourceLabel} · ${result.coverageLabel} · accès à l'original non garanti`);
       const evidence = match.reasons.find(reason => reason.location === "content") ?? match.reasons[0];
       if (evidence) {
-        const proof = addTextElement(item, "blockquote", "search-result-proof prisme-proof", "");
+        const proof = addTextElement(item, "blockquote", "proof", "");
         const label = evidence.location === "content" ? "Extrait correspondant"
           : evidence.location === "name" ? "Nom correspondant" : "Indice correspondant";
-        addTextElement(proof, "p", "search-proof-label", label);
-        addTextElement(proof, "mark", "", evidence.value);
+        addTextElement(proof, "small", "", label);
+        addTextElement(proof, "q", "", evidence.value);
         if (evidence.estimated) addTextElement(proof, "p", "", "Estimation non confirmée.");
         if (evidence.approximateMatches?.length) {
           addTextElement(proof, "p", "", "Correspondance approchée ; le texte de la preuve est conservé.");
         }
       }
       if (result.canViewCopy) {
-        const button = addTextElement(item, "button", "source-button ui-button ui-button--secondary", "Voir la copie");
+        const button = addTextElement(item, "button", "link", "Voir la copie");
         button.type = "button";
         button.setAttribute("aria-label", "Voir la copie dans Famili-IA");
-        const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        arrow.setAttribute("viewBox", "0 0 24 24");
-        arrow.setAttribute("aria-hidden", "true");
-        arrow.classList.add("prisme-icon");
-        const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        arrowPath.setAttribute("d", "M4 12h15m-6-6 6 6-6 6");
-        arrow.append(arrowPath);
-        button.append(arrow);
+        button.append(auroreIcon("arr"));
         button.addEventListener("click", () => {
           const current = findExperimentalDocument(match.sourceId, match.itemId, match.accountRef);
           if (!current || typeof current.content !== "string" || !current.content.trim()) {
@@ -1180,8 +1175,8 @@ function refreshExperimentalIndex() {
       } else {
         addTextElement(item, "p", "search-copy-unavailable", "Copie textuelle indisponible dans Famili-IA.");
       }
-      const provenance = addTextElement(item, "details", "search-result-details", "");
-      addTextElement(provenance, "summary", "", "Provenance et détails");
+      const provenance = addTextElement(item, "details", "prov", "");
+      addTextElement(provenance, "summary", "", "Provenance et détails").append(auroreIcon("plus"));
       for (const detail of result.details) addTextElement(provenance, "p", "", detail);
       for (const reason of result.reasons) addTextElement(provenance, "p", "search-evidence", reason);
       if (match.sourceId === "onedrive") addOneDriveOriginalAction(item, sourceDocument);
@@ -1263,7 +1258,8 @@ function resetSearchFilters(clearQuery = false) {
   abortSearchQwenRequest();
   clearLocalQwenSearchResponse();
   for (const control of document.querySelectorAll('.search-filter-options select, .search-filter-options input')) {
-    control.value = '';
+    if (control.type === 'radio') control.checked = control.defaultChecked;
+    else control.value = '';
   }
   if (clearQuery) {
     experimentalQuery = '';
@@ -1370,6 +1366,16 @@ function updateModeBanner() {
       sidebarModeCopy.textContent = "Exemples inventés, sans connexion à vos services.";
     }
   }
+}
+
+function auroreIcon(id, className = "i") {
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("class", className);
+  icon.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS(icon.namespaceURI, "use");
+  use.setAttribute("href", `${auroreIcons}#i-${id}`);
+  icon.append(use);
+  return icon;
 }
 
 function addTextElement(parent, tagName, className, text) {
@@ -2998,11 +3004,14 @@ const filterRail = document.querySelector('#search-filter-rail');
 const filterControls = [...filterPanel.querySelectorAll('select, input')];
 let openingFilterValues = [];
 function dismissSearchFilters() {
-  filterControls.forEach((control, index) => { control.value = openingFilterValues[index]; });
+  filterControls.forEach((control, index) => {
+    if (control.type === 'radio') control.checked = openingFilterValues[index];
+    else control.value = openingFilterValues[index];
+  });
   filterSheet.close();
 }
 document.querySelector('#open-search-filters').addEventListener('click', () => {
-  openingFilterValues = filterControls.map(control => control.value);
+  openingFilterValues = filterControls.map(control => control.type === 'radio' ? control.checked : control.value);
   filterSheet.showModal();
 });
 document.querySelector('#close-search-filters').addEventListener('click', dismissSearchFilters);
@@ -3024,7 +3033,7 @@ function arrangeSearchTools() {
 }
 arrangeSearchTools();
 mobileLayout.addEventListener('change', arrangeSearchTools);
-const moreAlertFilters = document.querySelector('.mobile-alert-more');
+const moreAlertFilters = document.querySelector('#more-alert-filters');
 function showExtraAlertFilters(open) {
   moreAlertFilters.setAttribute('aria-expanded', String(open));
   document.querySelector('#extra-alert-filters').hidden = !open;
@@ -3464,10 +3473,6 @@ document.querySelectorAll(".bottom-nav .nav-item").forEach((button) => {
     console.log("Clicked nav:", button.dataset.nav);
     const nav = button.dataset.nav;
     showView(nav);
-    // Close sidebar on mobile when selecting a nav item
-    if (!Capacitor.isNativePlatform() && window.innerWidth < 1025) {
-      document.querySelector(".sidebar").style.display = "none";
-    }
   });
 });
 
@@ -3653,7 +3658,7 @@ function bindEquipmentPhotoErrors(root) {
     image.addEventListener('error', () => {
       const equipment = getEquipmentDetail(image.dataset.equipmentCover);
       if (!equipment) return;
-      const scope = image.closest('.equipment-row, .equipment-cover');
+      const scope = image.closest('.eqrow, .equipment-cover');
       const personal = image.dataset.personalPhoto === 'true';
       const illustration = getEquipmentIllustration(equipment.category);
       console.error(personal ? "Photo personnelle d'équipement illisible." : "Illustration d'équipement indisponible.");
@@ -3703,17 +3708,11 @@ function renderEquipmentList(category = 'tout') {
   equipmentList.innerHTML = equipment.map(eq => {
     const cover = getEquipmentCover(eq);
     const documentCount = new Set(eq.docs || []).size;
-    let iconClass = 'blue';
-    if (eq.category === 'pompe') { iconClass = 'green'; }
-    else if (eq.category === 'piscine') { iconClass = 'violet'; }
-    else if (eq.category === 'imprimante') { iconClass = 'cyan'; }
-    else if (eq.category === 'assurance') { iconClass = 'amber'; }
-
     return `
-      <button class="ui-button ui-button--secondary equipment-row" type="button" data-equipment="${escapeHtml(eq.id)}" data-open-view="detail?id=${escapeHtml(encodeURIComponent(eq.id))}">
-        <span class="ui-icon row-icon ${iconClass} equipment-visual" aria-hidden="true">${cover.visual}</span>
-        <span class="row-copy"><strong>${escapeHtml(eq.name)}</strong><small class="equipment-photo-origin">${cover.origin}</small><small class="equipment-photo-error" ${cover.error ? '' : 'hidden'}>${cover.error}</small><small>Statut saisi : ${escapeHtml(eq.status || 'non renseigné')}</small><small>${documentCount} document${documentCount > 1 ? 's' : ''} associé${documentCount > 1 ? 's' : ''}</small></span>
-        <span class="stat-arrow" aria-hidden="true">›</span>
+      <button class="row eqrow" type="button" data-equipment="${escapeHtml(eq.id)}" data-open-view="detail?id=${escapeHtml(encodeURIComponent(eq.id))}">
+        <span class="ic mint" aria-hidden="true">${cover.visual}</span>
+        <span class="house-row-copy"><b>${escapeHtml(eq.name)}</b><small><span class="badge">${escapeHtml(eq.category)}</span> Statut saisi : ${escapeHtml(eq.status || 'non renseigné')}</small><small>${documentCount} document${documentCount > 1 ? 's' : ''} associé${documentCount > 1 ? 's' : ''} · <span class="equipment-photo-origin">${cover.origin}</span></small><small class="equipment-photo-error" ${cover.error ? '' : 'hidden'}>${cover.error}</small></span>
+        <svg class="i" aria-hidden="true"><use href="${auroreIcons}#i-go"/></svg>
       </button>
     `;
   }).join('');
@@ -3767,11 +3766,11 @@ function renderAccueilDashboard() {
       && !(getDaysUntilDate(alert.snoozedUntil, new Date()) > 0))
     .sort((a, b) => a.date.localeCompare(b.date))[0];
   const featured = document.querySelector('#home-featured-reminder');
-  featured.querySelector('strong').textContent = next?.alert.title || 'Aucune échéance à venir';
-  featured.querySelector('span').textContent = next
+  featured.querySelector('[data-home-label]').textContent = next ? 'Prochaine échéance' : 'Mes rappels';
+  featured.querySelector('[data-home-title]').textContent = next ? next.alert.title || 'Rappel enregistré' : 'Aucune échéance à venir';
+  featured.querySelector('[data-home-summary]').textContent = next
     ? `${new Date(`${next.date}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} · ${next.alert.source === 'document' ? '' : documents.some(doc => doc.id === next.alert.docId) ? 'Exemple fictif · ' : 'Source non renseignée · '}Voir les rappels →`
     : 'Consulter mes rappels enregistrés →';
-  featured.dataset.openView = 'alertes?filter=actifs';
   const inventory = mergeInventoryDocuments(uploadedDocuments.length === 0 ? documents : [], uploadedDocuments);
 
   const hasPersonalName = Boolean(user.name && user.name !== 'Mon espace');
@@ -3781,8 +3780,8 @@ function renderAccueilDashboard() {
     month: 'long'
   }).format(new Date());
   document.querySelector('#dashboard-date').textContent = `${todayLabel.charAt(0).toLocaleUpperCase('fr-FR')}${todayLabel.slice(1)}`;
-  document.querySelector('#dashboard-greeting').textContent = hasPersonalName ? 'Bonjour ' : 'Aujourd’hui';
   document.querySelector('#dashboard-user-name').textContent = hasPersonalName ? user.name : '';
+  document.querySelector('#home-set-name').hidden = hasPersonalName;
 
 
   const recentDocuments = [...inventory]
@@ -3806,20 +3805,19 @@ function renderAccueilDashboard() {
     demo: 'Exemple fictif'
   };
   const recentDocumentsPanel = document.querySelector('#home-recent-documents');
-  recentDocumentsPanel.innerHTML = recentDocuments.length
-    ? recentDocuments.map(file => {
+  document.querySelector('#home-no-files').hidden = recentDocuments.length > 0;
+  recentDocumentsPanel.innerHTML = recentDocuments.map(file => {
       const fileName = file.name || file.originalName || 'Fichier sans nom';
       const fileType = String(file.type || 'Type non renseigné');
       const source = sourceLabels[getInventorySource(file)] || 'Source non renseignée';
       return `
-        <button class="home-file-row" type="button" data-open-view="vos-donnees?docId=${escapeHtml(encodeURIComponent(file.id))}" aria-label="Afficher le détail de ${escapeHtml(fileName)}">
-          <span class="home-file-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7M8 14h8m-8 4h6"/></svg></span>
-          <span class="home-file-copy"><strong>${escapeHtml(fileName)}</strong><small>${escapeHtml(fileType)} · ${escapeHtml(source)}</small></span>
-          <span class="stat-arrow" aria-hidden="true">›</span>
+        <button class="row" type="button" data-open-view="vos-donnees?docId=${escapeHtml(encodeURIComponent(file.id))}">
+          <span class="ic peach" aria-hidden="true"><svg class="i"><use href="${auroreIcons}#i-file"/></svg></span>
+          <span class="home-file-label"><b>${escapeHtml(fileName)}</b><small><span class="badge">${escapeHtml(fileType)}</span> ${escapeHtml(source)}</small></span>
+          <svg class="i" aria-hidden="true"><use href="${auroreIcons}#i-go"/></svg>
         </button>
       `;
-    }).join('')
-    : `<div class="home-files-empty"><p>Aucun fichier visible pour le moment.</p><button class="ui-button ui-button--secondary" type="button" data-open-import>Ajouter des fichiers</button></div>`;
+    }).join('');
 
   const verifyPanel = document.querySelector('#view-accueil .verify-panel');
   if (verifyPanel) {
@@ -4248,11 +4246,11 @@ function renderAlerts(filter, restoreFocus = false) {
       : hasDocuments ? 'recherche' : 'importer';
     const emptyAction = nextTab ? `Voir « ${nextTab.firstChild.textContent.trim()} »`
       : hasDocuments ? 'Rechercher une échéance' : 'Ajouter un document';
-    alertList.innerHTML = `<section class="ui-card alerts-empty">
-      <span class="ui-icon" aria-hidden="true"><svg class="prisme-icon" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 10h18c0-2-3-3-3-10ZM10 21h4"/></svg></span>
-      <h3>${emptyTitle}</h3>
+    alertList.innerHTML = `<section class="empty">
+      <span class="bub" aria-hidden="true"><svg class="i"><use href="${auroreIcons}#i-bell"/></svg></span>
+      <b>${emptyTitle}</b>
       <p>${emptyMessage}</p>
-      <button class="ui-button ui-button--text" type="button" data-open-view="${escapeHtml(emptyDestination)}">${escapeHtml(emptyAction)}</button>
+      <button class="link" type="button" data-open-view="${escapeHtml(emptyDestination)}">${escapeHtml(emptyAction)}</button>
     </section>`;
     return;
   }
@@ -4268,18 +4266,16 @@ function renderAlerts(filter, restoreFocus = false) {
         : '<button class="ui-button ui-button--secondary alert-status-action" type="button" data-alert-status="ignored">Ignorer</button><button class="ui-button ui-button--secondary alert-status-action" type="button" data-alert-status="resolved">Terminée</button><button class="ui-button ui-button--secondary alert-status-action" type="button" data-snooze-days="1">Reporter 1 jour</button><button class="ui-button ui-button--secondary alert-status-action" type="button" data-snooze-days="7">Reporter 7 jours</button>';
     const dueDateIso = normalizeAlertDate(alert.dueDate);
     const dueDate = dueDateIso
-      ? new Date(`${dueDateIso}T00:00:00`).toLocaleDateString("fr-FR")
+      ? new Date(`${dueDateIso}T00:00:00`).toLocaleDateString("fr-FR", { dateStyle: "long" })
       : "";
     const daysUntil = getDaysUntilDate(showsResume ? alert.snoozedUntil : dueDateIso, today);
-    const timingLabel = daysUntil === null ? ''
-      : daysUntil === 0 ? "Aujourd'hui"
-        : daysUntil === 1 ? 'Demain'
-          : daysUntil === -1 ? 'Hier'
-            : daysUntil < 0 ? `Il y a ${-daysUntil} jours` : `Dans ${daysUntil} jours`;
+    const timingLabel = alert.status === 'resolved' ? 'Terminé' : alert.status === 'ignored' ? 'Ignoré'
+      : daysUntil === null ? '' : daysUntil < 0 ? 'Échéance dépassée'
+        : `${showsResume ? 'Reprise' : 'Échéance'} ${daysUntil === 0 ? 'aujourd’hui' : `dans ${daysUntil} jour${daysUntil > 1 ? 's' : ''}`}`;
     const resumeDate = normalizeAlertDate(alert.snoozedUntil);
     const alertSource = alert.sourceId ? sourceName(alert.sourceId) : "Document";
     const sourceExcerpt = alert.sourceExcerpt
-      ? `<p class="alert-evidence"><strong>Source — ${escapeHtml(alertSource)} :</strong> <mark>${escapeHtml(alert.sourceExcerpt)}</mark></p>`
+      ? `<div class="proof"><small>Extrait correspondant</small><q>« ${escapeHtml(alert.sourceExcerpt)} »</q></div>`
       : alert.source === 'document' ? '<p class="alert-provenance">Extrait de l\'échéance non renseigné.</p>' : "";
     const snoozeNotice = isSnoozed
       ? `<p class="alert-snooze-note">${resumeDate ? `Reportée jusqu'au ${escapeHtml(new Date(`${resumeDate}T00:00:00`).toLocaleDateString("fr-FR"))}.` : 'Date de reprise à vérifier.'}</p>`
@@ -4314,39 +4310,38 @@ function renderAlerts(filter, restoreFocus = false) {
     const dueMonthShort = dueDateIso
       ? new Date(`${dueDateIso}T00:00:00`).toLocaleDateString("fr-FR", { month: "short" }).replace(".", "")
       : "";
-    const dateTile = dueDateIso
-      ? `<div class="alert-date-tile" aria-hidden="true"><strong>${dueDay}</strong><span><i class="month-long">${escapeHtml(dueMonth)}</i><i class="month-short">${escapeHtml(dueMonthShort)}</i></span></div>`
-      : "";
-
-    const featured = index === 0 && dateTile && alert.status === 'active';
+    const featured = index === 0 && dueDateIso && alert.status === 'active';
+    const dateTile = featured
+      ? `<div aria-hidden="true"><b class="bigday">${dueDay}</b><span class="mo mono">${escapeHtml(dueMonth)}</span></div>`
+      : dueDateIso ? `<div class="dt" aria-hidden="true"><b>${dueDay}</b><span>${escapeHtml(dueMonthShort)}</span></div>` : '';
     return `
       <li class="alert-timeline-item">
-      <article class="ui-card alert-card ${escapeHtml(alert.type)}${isSnoozed ? " is-snoozed" : ""}" data-alert-card data-alert-id="${escapeHtml(alert.id)}">
-        <div class="reminder-heading${featured ? ' reminder-featured' : ''}${alert.status === 'resolved' ? ' reminder-done' : ''}">
-          ${featured ? '<span class="reminder-ribbon" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}
+      <article class="al" data-alert-card data-alert-id="${escapeHtml(alert.id)}">
+        <div class="${featured ? 'coralhero' : `mini${alert.status === 'resolved' ? ' done' : ''}`}">
+          ${featured ? '<span class="ribbon" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}
           ${dateTile || `<div class="ui-icon alert-icon" aria-hidden="true">${iconSvg}</div>`}
-          <div class="alert-header">
+          <div>
             <h3>${escapeHtml(alert.title)}</h3>
-            ${timingLabel ? `<p class="alert-time-hint">${showsResume ? 'Reprise · ' : ''}${timingLabel}</p>` : ''}
+            ${timingLabel ? `<p>${timingLabel}${featured ? ' <span aria-hidden="true">→</span>' : ''}</p>` : ''}
           </div>
         </div>
-        <div class="alert-content">
-          <div class="alert-meta">
-            <span class="alert-state">${stateLabel}</span>
-            <span class="alert-date">${dueDate ? `Échéance : <time datetime="${dueDateIso}">${escapeHtml(dueDate)}</time>` : alert.dueDate ? 'Date à vérifier' : 'Date non renseignée'}</span>
+        <div class="aldetail">
+          <div class="meta2">
+            <span class="st ${alert.status === 'resolved' ? 'done' : escapeHtml(alert.type)}">${stateLabel}</span>
+            <span>${dueDate ? `Échéance : <time datetime="${dueDateIso}">${escapeHtml(dueDate)}</time>` : alert.dueDate ? 'Date à vérifier' : 'Date non renseignée'}</span>
             ${alert.source !== 'document' ? `<span class="alert-demo-label">${isExample ? 'Exemple fictif' : 'Source non renseignée'}</span>` : ''}
           </div>
-          <p>${escapeHtml(alert.detail)}</p>
+          ${alert.detail && alert.source !== 'document' ? `<p>${escapeHtml(alert.detail)}</p>` : ''}
           ${snoozeNotice}
           ${sourceExcerpt || alert.source === "document" ? '<h4 class="alert-source-title">Document source</h4>' : ''}
           ${sourceExcerpt}
-          ${alert.source === "document" ? `<p class="alert-provenance">Copie locale · accès à l'original non garanti.</p>` : ''}
+          ${alert.source === "document" ? `<p class="note">${auroreIcon('shield').outerHTML}Copie locale · accès à l'original non garanti.</p>` : ''}
           ${sourceDocument?.expiryDateEstimated ? '<p class="household-note">Date estimée à partir de la date d’achat et de la durée de garantie, puis confirmée par vous.</p>' : ''}
           ${reviewMessage ? `<p class="alert-source-review"><strong>Source à vérifier.</strong> ${escapeHtml(reviewMessage)} Notifications suspendues pour cette alerte jusqu'à confirmation.</p>` : ''}
-        </div>
-        <button class="ui-button ui-button--secondary alert-action" type="button" data-open-view="${escapeHtml(sourceDestination)}" aria-label="${sourceAction} : ${escapeHtml(alert.title)}">${sourceAction}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
-        <details class="alert-management">
-          <summary>Gérer cette alerte<span class="visually-hidden"> : ${escapeHtml(alert.title)}</span></summary>
+        <button class="link" data-alert-source-action type="button" data-open-view="${escapeHtml(sourceDestination)}" aria-label="${sourceAction} : ${escapeHtml(alert.title)}">${sourceAction} ${auroreIcon('arr').outerHTML}</button>
+        <details class="prov alert-management">
+          <summary>Gérer cette alerte<span class="visually-hidden"> : ${escapeHtml(alert.title)}</span>${auroreIcon('plus').outerHTML}</summary>
+          ${alert.source === 'document' ? `<p>${escapeHtml(alertSource)}${alert.detail ? ` · ${escapeHtml(alert.detail)}` : ''}</p>` : ''}
           <div class="alert-status-actions">
             ${statusAction}
             <button class="ui-button ui-button--secondary alert-status-action" type="button" data-toggle-alert-read aria-pressed="false">Marquer comme lue</button>
@@ -4354,6 +4349,7 @@ function renderAlerts(filter, restoreFocus = false) {
           ${correctionForm}
           ${alert.source === "document" ? `<button class="ui-button ui-button--secondary" type="button" data-open-view="recherche">Réexaminer les preuves dans Recherche</button>` : ''}
         </details>
+        </div>
       </article>
       </li>
     `;
@@ -4370,7 +4366,7 @@ function renderAlerts(filter, restoreFocus = false) {
   });
 
   // Handle alert action button navigation explicitly
-  alertList.querySelectorAll(".alert-action").forEach((button) => {
+  alertList.querySelectorAll("[data-alert-source-action]").forEach((button) => {
     button.addEventListener("click", (e) => {
       e.stopPropagation();
       console.log("Clicked alert action explicitly:", button.dataset.openView);
@@ -4684,9 +4680,6 @@ function initCoverPhotoDialog() {
   });
 }
 
-function getNameInitial(name) {
-  return Array.from(name.trim())[0]?.toLocaleUpperCase('fr') || '?';
-}
 
 function renderFamilyMembers() {
   const memberList = document.querySelector('#member-list');
@@ -6278,6 +6271,21 @@ function initAssistantView() {
   const canUseLocalQwen = !isNativePlatform && !isMobileBrowser;
 
   if (!form || !input || !chatContainer) return;
+  const reset = document.querySelector('#assistant-reset');
+  const welcome = chatContainer.firstElementChild;
+  reset.addEventListener('click', () => {
+    chatContainer.replaceChildren(welcome);
+    assistantResponseContexts.clear();
+    input.value = '';
+    document.querySelector('#assistant-status').textContent = 'Nouvelle conversation.';
+    input.focus();
+  });
+  const updateBadge = () => {
+    document.querySelector('#assistant-qwen-badge').textContent = !canUseLocalQwen
+      ? 'Qwen : indisponible sur mobile' : qwenToggle.checked ? 'Qwen local demandé' : 'Qwen : désactivé';
+  };
+  updateBadge();
+  qwenToggle.addEventListener('change', updateBadge);
   refreshAssistantContext();
   if (!canUseLocalQwen && qwenToggle) {
     qwenToggle.disabled = true;
@@ -6292,7 +6300,6 @@ function initAssistantView() {
     chip.addEventListener('click', () => {
       const question = chip.dataset.question;
       input.value = question;
-      document.querySelector('.assistant-ideas').open = false;
       document.querySelector('#assistant-status').textContent = 'Question préparée. Vous pouvez la modifier avant de l’envoyer.';
       input.focus();
     });
@@ -6333,6 +6340,7 @@ function initAssistantView() {
               : 'Qwen local n’a pas été appelé : aucun extrait textuel vérifié et pertinent n’a été trouvé.';
           } else {
             isSubmitting = true;
+            reset.disabled = true;
             input.disabled = true;
             qwenToggle.disabled = true;
             if (submitButton) submitButton.disabled = true;
@@ -6369,6 +6377,7 @@ function initAssistantView() {
       }
     } finally {
       isSubmitting = false;
+      reset.disabled = false;
       input.disabled = false;
       if (qwenToggle && canUseLocalQwen) qwenToggle.disabled = false;
       if (submitButton) submitButton.disabled = false;
@@ -6415,12 +6424,9 @@ function abortAssistantQwenRequest() {
  */
 function addUserMessage(text, container) {
   const msgDiv = document.createElement('div');
-  msgDiv.className = 'chat-message user';
-  const avatar = addTextElement(msgDiv, "div", "chat-avatar", getNameInitial(getCurrentUser().name || ''));
-  avatar.setAttribute("aria-hidden", "true");
-  const bubble = addTextElement(msgDiv, "div", "chat-bubble", "");
-  addTextElement(bubble, "p", "chat-speaker", "Vous");
-  addTextElement(bubble, "p", "assistant-answer", text);
+  msgDiv.className = 'msg user';
+  addTextElement(msgDiv, "span", "visually-hidden", "Vous : ");
+  addTextElement(msgDiv, "p", "assistant-answer", text);
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
 }
@@ -6430,12 +6436,9 @@ function addUserMessage(text, container) {
  */
 function addAIMessage(response, container) {
   const msgDiv = document.createElement('div');
-  msgDiv.className = 'chat-message ai';
-  const avatar = addTextElement(msgDiv, "div", "ui-icon chat-avatar", "");
-  avatar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>';
-  avatar.setAttribute("aria-hidden", "true");
-  const bubble = addTextElement(msgDiv, "div", "chat-bubble", "");
-  addTextElement(bubble, "p", "chat-speaker", "Famili-IA");
+  msgDiv.className = 'msg ai';
+  const bubble = msgDiv;
+  addTextElement(bubble, "div", "who", "Famili-IA").prepend(auroreIcon("spark"));
   addTextElement(bubble, "p", "assistant-response-label", response.label);
   if (response.context?.query) {
     addTextElement(bubble, "p", "household-note assistant-query",
@@ -6446,7 +6449,7 @@ function addAIMessage(response, container) {
       ? response.matches[0].exactFact : response.answer);
   addTextElement(bubble, "p", "assistant-answer", answer);
   for (const match of response.matches) {
-    const source = addTextElement(bubble, "div", "assistant-source", "");
+    const source = addTextElement(bubble, "div", "assistant-source src", "");
     if (response.modelAnswer) {
       addTextElement(source, "p", "assistant-proof-label", match.modelQuotes?.length
         ? "Citation de Qwen · passage littéral à vérifier"
