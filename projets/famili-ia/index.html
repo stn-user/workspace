@@ -16,16 +16,9 @@
 <body>
   <div class="app-splash" id="app-splash" role="status" aria-label="Chargement de Famili-IA">
     <div class="app-splash-content">
-      <svg class="onboarding-logo" viewBox="596 309 252 185" role="img" aria-label="Famili-IA">
-        <image href="assets/Logo.svg" width="1440" height="810"></image>
-      </svg>
-      <h2>L'essentiel, toujours à portée de main.</h2>
-      <p>Vos documents et photos réunis dans un même espace de recherche.</p>
-      <svg class="onboarding-illustration" viewBox="117 528 576 384" aria-hidden="true" focusable="false">
-        <image href="assets/famili-ia-accueil.svg" width="810" height="1440"></image>
-      </svg>
+      <img class="launch-orbit" src="assets/prisme/aurore-orbite.svg" width="92" height="92" alt="">
+      <h2>Famili-IA</h2>
       <div class="app-splash-progress" aria-hidden="true"><span></span></div>
-      <p class="onboarding-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>Vous choisissez les données à importer ou connecter.</p>
     </div>
   </div>
   <div class="app-shell">
@@ -43,7 +36,7 @@
       <label class="appearance-control"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><select id="aurore-theme" aria-label="Apparence de Famili-IA">
         <option value="light">Clair</option><option value="dark">Sombre</option><option value="system">Système</option>
       </select></label>
-      <button class="avatar avatar-small desktop-profile-button" type="button" data-open-view="profil" aria-label="Ouvrir mon profil"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></button>
+      <button class="avatar avatar-small desktop-profile-button" type="button" data-open-view="profil" aria-label="Ouvrir Profil et famille"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></button>
       <button class="avatar avatar-small mobile-more-button" type="button" data-open-view="plus" aria-label="Ouvrir Plus"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
     </header>
 
@@ -52,11 +45,10 @@
           <button class="nav-item is-active" type="button" data-nav="accueil" aria-current="page"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil</button>
         <button class="nav-item" type="button" data-nav="recherche"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>Recherche</button>
         <button class="nav-item" type="button" data-nav="maison"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Maison</button>
-        <button class="nav-item" type="button" data-nav="famille"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Famille</button>
         <button class="nav-item" type="button" data-nav="alertes"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>Alertes</button>
         <button class="nav-item" type="button" data-nav="assistant"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Assistant</button>
         <button class="nav-item" type="button" data-nav="importer"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Importer</button>
-        <button class="nav-item" type="button" data-nav="profil"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profil</button>
+        <button class="nav-item" type="button" data-nav="profil"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profil et famille</button>
         <button class="nav-item" type="button" data-nav="vos-donnees"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>Données</button>
       </nav>
       <!-- <section class="sidebar-note">
@@ -80,73 +72,20 @@
       </div>
 
       <section class="view dashboard-view" id="view-accueil" data-view="accueil" aria-label="Accueil">
-        <!-- Conteneur pour onboarding en mode page blanche -->
-        <section class="onboarding-page-white" id="onboarding-wizard" aria-label="Découvrir Famili-IA" hidden>
-          <!-- Écran 1 : Accueil de l'onboarding -->
-          <div class="wizard-step" id="step-0" aria-labelledby="step-0-title">
-            <svg class="onboarding-logo" viewBox="596 309 252 185" role="img" aria-label="Famili-IA">
-              <image href="assets/Logo.svg" width="1440" height="810"></image>
-            </svg>
-            <h2 id="step-0-title" tabindex="-1">L'essentiel, toujours à portée de main.</h2>
-            <p>Vos documents et photos réunis dans un même espace de recherche.</p>
-            <svg class="onboarding-illustration" viewBox="117 528 576 384" aria-hidden="true" focusable="false">
-              <image href="assets/famili-ia-accueil.svg" width="810" height="1440"></image>
-            </svg>
-            <button class="ui-button ui-button--primary ui-button--full" type="button" id="start-onboarding">Découvrir Famili-IA <span aria-hidden="true">→</span></button>
-            <p class="onboarding-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>Vous choisissez les données à importer ou connecter.</p>
-          </div>
-
-          <!-- Écran 2 : Personnalisation -->
-          <div class="wizard-step" id="step-1" aria-labelledby="step-1-title" hidden>
-            <div class="onboarding-header">
-              <button class="onboarding-back-btn" type="button" data-wizard-prev="0" aria-label="Retour">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
-              </button>
-              <span class="onboarding-progress">Étape 1 sur 3 · Personnalisation</span>
+        <dialog id="onboarding-wizard" class="aurore-kit" aria-label="Découvrir Famili-IA">
+          <div class="onb on">
+            <div class="bgs" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="onbtop">
+              <button type="button" class="iconbtn" data-action="back" aria-label="Étape précédente"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
+              <div class="onbdots" role="img"></div>
+              <button type="button" class="onbskip" data-action="skip">Passer</button>
             </div>
-            <span class="ui-icon onboarding-person-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg></span>
-            <h2 id="step-1-title" tabindex="-1">Faisons connaissance !</h2>
-            <p>Votre prénom sera enregistré sur cet appareil pour personnaliser l’accueil.</p>
-            <label class="ui-label onboarding-field" for="wizard-user-name">Prénom <span>(facultatif)</span></label>
-            <input class="ui-input" type="text" id="wizard-user-name" autocomplete="given-name" placeholder="Votre prénom">
-            <p id="wizard-name-error" role="alert" hidden>Le prénom n’a pas pu être enregistré. Réessayez ou passez cette étape.</p>
-            <button class="ui-button ui-button--primary ui-button--full" type="button" data-wizard-next="2">Continuer <span aria-hidden="true">→</span></button>
-            <button class="ui-button ui-button--text" type="button" id="skip-personalization">Passer cette étape</button>
+            <div class="onbmain"></div>
+            <div class="onbfoot"></div>
           </div>
-
-          <!-- Écran 3 : Découverte Famili-IA -->
-          <div class="wizard-step" id="step-2" aria-labelledby="step-2-title" hidden>
-            <div class="onboarding-header">
-              <button class="onboarding-back-btn" type="button" data-wizard-prev="1" aria-label="Retour">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
-              </button>
-              <span class="onboarding-progress">Étape 2 sur 3 · Choix du parcours</span>
-            </div>
-            <p class="onboarding-greeting" id="wizard-greeting" hidden>Bonjour <span id="wizard-user-greeting"></span> !</p>
-            <h2 id="step-2-title" tabindex="-1">Comment souhaitez-vous commencer ?</h2>
-            <p>Découvrez Famili-IA avec des exemples ou choisissez vos propres fichiers.</p>
-            <!-- Card 1 : Découvrir avec un exemple -->
-            <button class="ui-card onboarding-option-card" type="button" data-wizard-next="3">
-              <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3z"></path><path d="M19 15v4m-2-2h4M5 3v4M3 5h4"></path></svg></span>
-              <span class="onboarding-option-copy"><span class="ui-badge">Sans connexion</span><strong>Découvrir avec un exemple</strong><span>Explorez des résultats fictifs, sans utiliser vos données personnelles.</span></span>
-              <span class="onboarding-arrow" aria-hidden="true">›</span>
-            </button>
-            <!-- Card 2 : Créer mon espace personnel -->
-            <button class="ui-card onboarding-option-card" type="button" id="start-scan-mode">
-              <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M12 10v6m-3-3h6"></path></svg></span>
-              <span class="onboarding-option-copy"><strong>Créer mon espace personnel</strong><span>Choisissez les fichiers ou le dossier à importer depuis cet appareil.</span></span>
-              <span class="onboarding-arrow" aria-hidden="true">›</span>
-            </button>
-          </div>
-
-          <!-- Écran 4 : Résultats de la démo -->
-          <div class="wizard-step" id="step-3" aria-labelledby="step-3-title" hidden>
-            <div class="onboarding-header">
-              <button class="onboarding-back-btn" type="button" data-wizard-prev="2" aria-label="Retour au choix du parcours">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
-              </button>
-              <span class="onboarding-progress">Étape 3 sur 3 · Visite guidée</span>
-            </div>
+        </dialog>
+        <section class="onboarding-page-white" id="extended-demo" aria-label="Visite guidée" hidden>
+          <div class="wizard-step" id="step-3" aria-labelledby="step-3-title">
             <h2 id="step-3-title" tabindex="-1">Une maison, des souvenirs,<br>moins de recherches.</h2>
             <p>Suivons Camille et Alex : retrouver un document, vérifier une échéance et revoir un moment d’été.</p>
             <p class="demo-disclosure"><strong>Univers de démonstration.</strong> Fichiers, dates et comptes sont préparés ; aucune connexion ni écriture réelle.</p>
@@ -499,7 +438,7 @@
           <p class="note"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Illustrations IA par défaut. Le statut est celui que vous avez renseigné.</p>
         </section>
         <nav aria-label="Dans mon foyer">
-          <h2 class="section">Famille</h2><button class="row" type="button" data-open-view="famille"><span class="avs" id="house-family-avatars" aria-hidden="true"><span class="ic mint"><svg class="i"><use href="./assets/prisme/aurore-icones.svg#i-people"/></svg></span></span><span class="house-row-copy"><b>Mon cercle</b><small id="house-family-count"></small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
+          <h2 class="section" id="house-profile-title">Profil et famille</h2><button class="row" type="button" data-open-view="profil" aria-labelledby="house-profile-title house-circle-label" aria-describedby="house-family-count"><span class="avs" id="house-family-avatars" aria-hidden="true"><span class="ic mint"><svg class="i"><use href="./assets/prisme/aurore-icones.svg#i-people"/></svg></span></span><span class="house-row-copy"><b id="house-circle-label">Mon cercle</b><small id="house-family-count"></small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
           <h2 class="section">Mon espace</h2><button class="row" type="button" data-open-view="plus"><span class="ic lilac"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-folder"/></svg></span><span class="house-row-copy"><b>Fichiers et réglages</b><small>Inventaire, profil, confidentialité</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
         </nav>
       </section>
@@ -637,58 +576,39 @@
         </form>
       </section>
 
-      <section class="view import-view ui-prisme ui-prisme--inline" id="view-importer" data-view="importer" aria-labelledby="import-title" hidden>
-        <header class="household-header">
-          <div class="view-titles">
-            <h1 id="import-title" tabindex="-1">Importer</h1>
-          </div>
-          <button class="ui-button ui-button--secondary" id="return-from-import" type="button" hidden>Retour</button>
+      <section class="view import-view aurore-kit" id="view-importer" data-view="importer" aria-labelledby="import-title" hidden>
+        <header>
+          <button class="back" id="return-from-import" type="button"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg><span>Accueil</span></button>
+          <p class="eyebrow mono">Ajouter à votre espace</p>
+          <h1 class="title" id="import-title" tabindex="-1">Importer</h1>
         </header>
-        <div class="import-container">
-          <ol class="import-steps" aria-label="Les repères de l'import">
-            <li><span aria-hidden="true">1</span>Choisir une source</li>
-            <li><span aria-hidden="true">2</span>Comprendre l'accès</li>
-            <li><span aria-hidden="true">3</span>Suivre et retrouver</li>
-          </ol>
-          <section aria-labelledby="import-sources-title">
-          <h2 class="management-section-title" id="import-sources-title">Où se trouvent vos fichiers ?</h2>
-          <div class="import-source-grid">
-          <div class="ui-card drop-zone" id="drop-zone">
-            <span class="ui-icon drop-icon" aria-hidden="true">
-              <svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/Dossier.svg" width="1440" height="810"></image></svg>
-            </span>
-            <h3 class="drop-text">Sur cet appareil</h3>
-            <p class="import-intro">Choisissez des fichiers ou glissez-les ici depuis votre ordinateur.</p>
-            <button type="button" class="ui-button ui-button--primary" id="choose-import-files">Choisir des fichiers</button>
+        <div>
+          <div class="drop" id="drop-zone">
+            <div class="fx" aria-hidden="true"><i></i><i></i><i></i></div>
+            <h2>Copier des fichiers dans Famili-IA</h2>
+            <p>Sur cet appareil · vos originaux restent à leur emplacement.</p>
+            <button type="button" class="pick" id="choose-import-files"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-up"/></svg>Choisir des fichiers</button>
             <input type="file" id="import-input" class="visually-hidden" aria-label="Choisir des fichiers à importer" multiple accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls">
-            <p class="import-intro">Traitement local. Les originaux ne sont ni déplacés ni supprimés.</p>
-            <p class="import-intro">Recherche s'ouvre pendant le traitement ; revenez ici pour le bilan local.</p>
           </div>
-          <article class="ui-card import-source-card">
-            <span class="ui-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/google-drive.svg" width="1440" height="810"></image></svg></span>
-            <h3>Google Drive</h3>
-            <p class="import-intro" id="import-google-availability">Vérification de la disponibilité…</p>
-            <p class="import-intro">Accès limité aux fichiers choisis. Les permissions sont expliquées avant la connexion.</p>
-            <button class="ui-button ui-button--secondary" type="button" data-import-source="drive">Options Google Drive</button>
-          </article>
-          <article class="ui-card import-source-card">
-            <span class="ui-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/onedrive.svg" width="1440" height="810"></image></svg></span>
-            <h3>OneDrive personnel</h3>
-            <p class="import-intro" id="import-onedrive-availability">Vérification de la disponibilité…</p>
-            <p class="import-intro">La permission Microsoft peut couvrir tous les fichiers du compte. L'indexation reste sur demande.</p>
-            <button class="ui-button ui-button--secondary" type="button" data-import-source="onedrive">Options OneDrive</button>
-          </article>
-          <article class="ui-card import-source-card">
-            <span class="ui-icon" aria-hidden="true"><svg viewBox="548 233 344 344" focusable="false"><image href="assets/icone/dropbox.svg" width="1440" height="810"></image></svg></span>
-            <h3>Dropbox</h3>
-            <p class="import-intro" id="import-dropbox-availability">Vérification de la disponibilité…</p>
-            <p class="import-intro">Full Dropbox en lecture seule : accès possible aux fichiers existants du compte. Indexation sur demande.</p>
-            <button class="ui-button ui-button--secondary" type="button" data-import-source="dropbox">Options Dropbox</button>
-          </article>
+          <ol class="stepper" id="import-steps" aria-label="Étapes de l’import">
+            <li class="step active" aria-current="step"><b aria-hidden="true">1</b>Choisir</li>
+            <li class="step"><b aria-hidden="true">2</b>Copier</li>
+            <li class="step"><b aria-hidden="true">3</b>Retrouver</li>
+          </ol>
+          <div class="import-feedback" id="import-feedback" hidden>
+            <h3 id="import-feedback-title"></h3>
+            <p id="import-feedback-status" role="status" aria-live="polite"></p>
+            <progress id="import-progress" max="1" aria-label="Progression des fichiers traités, réussis ou non" hidden></progress>
+            <p id="import-feedback-warnings" class="import-intro"></p>
           </div>
+          <section aria-labelledby="import-sources-title">
+          <h2 class="section" id="import-sources-title">Autres sources <small>sur autorisation</small></h2>
+          <button class="row" type="button" data-import-source="drive"><span class="ic lilac"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-cloud"/></svg></span><span><b>Google Drive</b><small id="import-google-availability">Vérification de la disponibilité…</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
+          <button class="row" type="button" data-import-source="onedrive"><span class="ic lilac"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-cloud"/></svg></span><span><b>OneDrive personnel</b><small id="import-onedrive-availability">Vérification de la disponibilité…</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
+          <button class="row" type="button" data-import-source="dropbox"><span class="ic lilac"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-cloud"/></svg></span><span><b>Dropbox</b><small id="import-dropbox-availability">Vérification de la disponibilité…</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
           </section>
-          <section aria-labelledby="import-options-title">
-          <h2 class="management-section-title" id="import-options-title">D'autres façons d'ajouter</h2>
+          <details class="prov">
+          <summary>D’autres façons d’ajouter <svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-plus"/></svg></summary>
           <div class="import-options">
             <button class="ui-button ui-button--secondary import-option" type="button" data-action="folder" id="btn-folder">
               <span class="option-icon" aria-hidden="true">
@@ -720,20 +640,15 @@
             </button>
           </div>
           <p class="drop-formats" id="folder-selection-help" hidden>Sur mobile, choisissez plusieurs fichiers dans le dossier de votre choix : la sélection de dossier complète n'est pas prise en charge par l'application.</p>
-          </section>
-          <details class="ui-card import-format-details">
-            <summary>Formats et limites d'import</summary>
+          </details>
+          <details class="prov">
+            <summary>Formats et limites d’import <svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-plus"/></svg></summary>
             <p class="drop-formats">Formats acceptés : .txt, .md, .pdf, .jpg, .jpeg, .png, .docx, .xlsx, .xls. Indexation en arrière-plan avec progression, sans limite de nombre (10 Mo max par photo ou PDF, 1 Mo par autre fichier). Le contenu indexable dépend du format et de l'extraction disponible.</p>
           </details>
-          <section class="ui-card import-library-note" aria-labelledby="import-library-title">
+          <p class="note"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Traitement local. Ouvrir les options d’une source ne lance ni connexion ni import.</p>
+          <section aria-labelledby="import-library-title">
             <h2 class="management-section-title" id="import-library-title">Suivre l'ajout, puis retrouver vos fichiers</h2>
-            <p id="import-feedback-intro">Le suivi local apparaîtra ici au rythme du traitement réel.</p>
-            <div class="import-feedback" id="import-feedback" hidden>
-              <h3 id="import-feedback-title"></h3>
-              <p id="import-feedback-status" role="status" aria-live="polite"></p>
-              <progress id="import-progress" max="1" aria-label="Progression des fichiers traités, réussis ou non" hidden></progress>
-              <p id="import-feedback-warnings" class="import-intro"></p>
-            </div>
+            <p>Vous pouvez aussi déposer des fichiers sur la carte. Recherche s’ouvre pendant leur traitement ; retrouvez le bilan ici.</p>
             <p class="import-intro">Bilan de session, non conservé au rechargement. Les ajouts simultanés ne sont pas regroupés. Pour les services cloud, le suivi et le bilan restent dans leurs options.</p>
             <div class="management-actions">
               <button class="ui-button ui-button--secondary" type="button" data-open-view="vos-donnees">Voir mes fichiers</button>
@@ -743,57 +658,58 @@
         </div>
       </section>
 
-      <section class="view profile-view ui-prisme ui-prisme--inline" id="view-profil" data-view="profil" aria-labelledby="profile-title" hidden>
-        <header class="household-header">
-          <div class="view-titles">
-            <h1 id="profile-title">Votre profil</h1>
-          </div>
+      <section class="view aurore-kit" id="view-profil" data-view="profil" aria-labelledby="profile-title" hidden>
+        <header>
+          <button class="back" type="button" data-open-view="plus"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg>Plus</button>
+          <p class="eyebrow mono">Votre espace</p><h1 class="title" id="profile-title">Profil et famille</h1>
         </header>
-        <div class="profile-grid">
-          <form class="ui-card user-info-panel management-panel" id="profile-form" aria-labelledby="profile-identity-title">
-            <div class="user-header">
-              <div class="user-avatar-large" id="profile-avatar" aria-hidden="true">?</div>
-              <div class="user-meta">
-                <strong id="profile-name">Mon espace</strong>
-                <span>Votre espace sur cet appareil</span>
+        <div>
+          <form id="profile-form" aria-labelledby="profile-title">
+            <div class="pf-hero">
+              <span class="av big" id="profile-avatar" aria-hidden="true">?</span>
+              <div><b id="profile-name">Mon espace</b>
+                <small>Votre profil sur cet appareil</small>
               </div>
             </div>
-            <h2 class="management-section-title" id="profile-identity-title">À votre image</h2>
-            <div class="field profile-name-field">
-              <label class="ui-label" for="edit-name">Nom d'affichage</label>
-              <input class="ui-input" type="text" id="edit-name" required autocomplete="nickname">
-            </div>
-            <details class="profile-address">
-              <summary>Adresse de la maison (facultative)</summary>
+            <label class="field2"><span class="lbl">Nom d’affichage</span>
+              <input type="text" id="edit-name" required autocomplete="nickname">
+            </label>
+            <details class="addr">
+              <summary>Adresse facultative <svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-plus"/></svg></summary>
               <p class="household-note">Affichée dans Maison, sans lien avec les coordonnées GPS de vos photos.</p>
-              <div class="profile-fields">
-              <div class="field">
+              <div class="f2">
+              <div class="field2">
                 <label class="ui-label" for="edit-profile-address">Adresse</label>
                 <input class="ui-input" type="text" id="edit-profile-address" autocomplete="street-address">
               </div>
-              <div class="field">
+              <div class="field2">
                 <label class="ui-label" for="edit-profile-postal">Code postal</label>
                 <input class="ui-input" type="text" id="edit-profile-postal" autocomplete="postal-code">
               </div>
-              <div class="field">
+              <div class="field2">
                 <label class="ui-label" for="edit-profile-city">Ville</label>
                 <input class="ui-input" type="text" id="edit-profile-city" autocomplete="address-level2">
               </div>
               </div>
             </details>
-            <div class="privacy-panel">
-              <div class="section-heading"><h2>Vos choix de confidentialité</h2></div>
-              <label class="privacy-option" for="consent-photo-gps">
-                <span class="option-text"><strong>Localisation des photos</strong><small>Autoriser les coordonnées GPS disponibles dans les métadonnées des prochains imports. Désactiver efface les coordonnées déjà enregistrées dans Famili-IA, sans modifier vos originaux. Les copies existantes ne sont pas relues automatiquement.</small></span>
+            <h2 class="section">Mon cercle <small id="profile-circle-count"></small></h2>
+            <p class="lilac-note"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Ces fiches restent sur cet appareil. Aucun compte, invitation ni partage n’est créé.</p>
+            <ul id="profile-circle" aria-label="Membres du cercle"></ul>
+            <button type="button" class="invite" id="profile-add-member" aria-haspopup="dialog"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-plus"/></svg>Ajouter un membre</button>
+            <h2 class="lbl">Photos</h2>
+            <div class="privcard">
+              <label class="switchrow quiet-switch" for="consent-photo-gps">
+                <span><b>Localisation des photos</b><small>Autoriser les coordonnées GPS disponibles dans les métadonnées des prochains imports. Désactiver efface les coordonnées déjà enregistrées dans Famili-IA, sans modifier vos originaux. Les copies existantes ne sont pas relues automatiquement.</small></span>
                 <input type="checkbox" id="consent-photo-gps" aria-label="Autoriser les coordonnées GPS des photos">
+                <span class="sw2" aria-hidden="true"></span>
               </label>
-              <p class="household-note">Ce choix ne connecte aucun service et ne crée aucun partage.</p>
-              <p id="profile-save-status" role="status" aria-live="polite"></p>
-              <button class="ui-button ui-button--primary" type="submit" id="save-profile">Enregistrer les modifications</button>
+              <p>Ce choix prend effet à l’enregistrement. Il ne connecte aucun service et ne crée aucun partage.</p>
             </div>
+            <button class="pick" type="submit" id="save-profile">Enregistrer le profil</button>
+            <p class="saved" id="profile-save-status" role="status" aria-live="polite"></p>
           </form>
           <div class="profile-secondary">
-            <section class="ui-card management-panel" aria-labelledby="profile-discovery-title">
+            <section class="panel2" aria-labelledby="profile-discovery-title">
               <h2 class="management-section-title" id="profile-discovery-title">Vos fichiers et vos rappels</h2>
               <div class="management-actions management-actions--stack">
                 <button class="ui-button ui-button--secondary" type="button" data-open-view="vos-donnees">Gérer mes données</button>
@@ -801,7 +717,7 @@
                 <button class="ui-button ui-button--secondary" type="button" data-open-view="alertes">Mes alertes</button>
               </div>
             </section>
-            <section class="ui-card management-panel" aria-labelledby="profile-help-title">
+            <section class="panel2" aria-labelledby="profile-help-title">
               <h2 class="management-section-title" id="profile-help-title">Un coup de main</h2>
               <div class="management-actions management-actions--stack">
                 <button class="ui-button ui-button--secondary" type="button" id="reset-onboarding-btn">Revoir la découverte</button>
@@ -812,26 +728,22 @@
         </div>
       </section>
 
-      <section class="view data-view ui-prisme ui-prisme--inline" id="view-vos-donnees" data-view="vos-donnees" aria-labelledby="data-title" hidden>
-        <header class="data-page-header">
-          <div class="view-titles">
-            <h1 id="data-title">Vos données</h1>
-          </div>
-          <div class="data-privacy-note">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-            <span>Vos originaux restent à leur emplacement</span>
-          </div>
-          <button class="ui-button ui-button--primary data-add-button" type="button" data-open-import aria-label="Ajouter des fichiers">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Ajouter des fichiers</span>
-          </button>
+      <section class="view data-view aurore-kit" id="view-vos-donnees" data-view="vos-donnees" aria-labelledby="data-title" hidden>
+        <header>
+          <button class="back" type="button" data-open-view="accueil"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg>Accueil</button>
+          <p class="eyebrow mono">Inventaire local</p>
+          <div class="titlebar"><h1 class="title" id="data-title">Vos données</h1>
+          <button class="addbtn" type="button" data-open-import aria-label="Ajouter des fichiers"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-plus"/></svg></button></div>
         </header>
 
-        <section class="ui-card data-trust" aria-labelledby="data-trust-title">
-          <div class="section-heading"><h2 id="data-trust-title">Ce que vous retrouvez ici</h2><span><strong id="summary-total">0</strong> éléments visibles</span></div>
+        <section class="trust" aria-labelledby="data-trust-title">
+          <h2 id="data-trust-title">Ce que vous retrouvez ici</h2>
+          <p class="own"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Vos originaux restent à leur emplacement</p>
+          <div class="tbody"><div class="dwrap"><div class="donut" id="inventory-donut" aria-hidden="true"></div><div class="num"><b id="summary-total">0</b><small>dans l’inventaire</small></div></div><div class="legend" id="inventory-legend"></div></div>
           <p id="data-trust-status"></p>
           <p id="data-source-warning" role="status" hidden></p>
-          <details class="data-trust-details">
-            <summary>Sources, contrôle et limites</summary>
+          <details class="srcdet">
+            <summary>Sources, contrôle et limites <svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-plus"/></svg></summary>
             <p id="data-last-check"></p>
             <p>Ces nombres décrivent les fichiers enregistrés, pas des comptes connectés. Un parcours peut ne concerner qu'un compte ou une sélection.</p>
             <ul class="data-summary" aria-label="Origine des fichiers">
@@ -845,35 +757,31 @@
           </details>
         </section>
 
-        <aside class="home-demo-invitation" aria-label="Découvrir avec la démo">
-          <p>Besoin d’un premier aperçu ? <span>Suivez une histoire, sans utiliser vos fichiers.</span></p>
-          <button class="ui-button ui-button--text" type="button" data-replay-demo>Revoir la démo <span aria-hidden="true">→</span></button>
-        </aside>
+        <button class="invite" type="button" data-replay-demo><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-play"/></svg><span>Besoin d’un premier aperçu ? Revoir la démo</span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
 
-        <div class="data-filters ui-card">
+        <div>
           <h2 class="data-filters-heading visually-hidden">Affiner l’inventaire</h2>
-          <div class="filter-chips" role="group" aria-label="Filtrer les fichiers">
-            <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-type="document" aria-pressed="false">Tout</button>
-            <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-type="Facture" aria-pressed="false">Facture</button>
-            <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-type="Garantie" aria-pressed="false">Garantie</button>
-            <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-type="Contrat" aria-pressed="false">Contrat</button>
-            <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-type="Notice" aria-pressed="false">Notice</button>
-            <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-category="Documents" aria-pressed="false">Documents</button>
-            <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-category="Images" aria-pressed="false">Images</button>
-            <button class="ui-button ui-button--secondary chip filter-chip" type="button" data-filter-category="Médias" aria-pressed="false">Médias</button>
+          <div class="cats" role="group" aria-label="Filtrer les fichiers">
+            <button class="fchip" type="button" data-filter-type="document" aria-pressed="false">Tout</button>
+            <button class="fchip" type="button" data-filter-type="Facture" aria-pressed="false">Facture</button>
+            <button class="fchip" type="button" data-filter-type="Garantie" aria-pressed="false">Garantie</button>
+            <button class="fchip" type="button" data-filter-type="Contrat" aria-pressed="false">Contrat</button>
+            <button class="fchip" type="button" data-filter-type="Notice" aria-pressed="false">Notice</button>
+            <button class="fchip" type="button" data-filter-category="Documents" aria-pressed="false">Documents</button>
+            <button class="fchip" type="button" data-filter-category="Images" aria-pressed="false">Images</button>
+            <button class="fchip" type="button" data-filter-category="Médias" aria-pressed="false">Médias</button>
           </div>
         </div>
 
         <div class="data-inventory">
-          <section class="ui-card data-files-panel" aria-labelledby="data-inventory-title">
-            <div class="section-heading">
-              <h2 id="data-inventory-title">Inventaire des fichiers</h2>
-              <p id="data-inventory-status" role="status" aria-live="polite" aria-atomic="true"></p>
-            </div>
-            <div class="data-layout-toggle" role="group" aria-label="Affichage des fichiers">
-              <button class="ui-button ui-button--secondary chip" type="button" data-inventory-layout="list" aria-pressed="false">Liste</button>
-              <button class="ui-button ui-button--secondary chip" type="button" data-inventory-layout="gallery" aria-pressed="false">Galerie</button>
-            </div>
+          <section aria-labelledby="data-inventory-title">
+            <div class="section"><h2 id="data-inventory-title">Inventaire</h2>
+            <div class="viewseg" role="group" aria-label="Affichage des fichiers">
+              <span class="thumb" aria-hidden="true"></span>
+              <button type="button" data-inventory-layout="list" aria-pressed="false">Liste</button>
+              <button type="button" data-inventory-layout="gallery" aria-pressed="false">Galerie</button>
+            </div></div>
+            <p id="data-inventory-status" role="status" aria-live="polite" aria-atomic="true"></p>
             <div class="data-list" id="data-inventory-list">
               <!-- Liste des fichiers indexés -->
             </div>
@@ -882,8 +790,9 @@
             </div>
             <p class="data-coverage-note">Cet inventaire ne couvre pas l’ensemble de vos comptes. « Métadonnées seules » signifie que le contenu n’est pas indexé.</p>
           </section>
-          <section class="ui-card data-management" aria-labelledby="data-management-title">
+          <section aria-labelledby="data-management-title">
             <div class="section-heading"><h2 id="data-management-title">Export et suppression</h2></div>
+            <div class="panel2">
             <h3>Emporter mes données</h3>
             <p>Le JSON contient les données applicatives détaillées, dont les photos personnelles de Maison et des équipements si vous en choisissez ; le PDF en donne un bilan chiffré, sans noms de fichiers ni de proches. Ni l'un ni l'autre n'exporte les originaux. Les coordonnées GPS des photos sont exclues par défaut.</p>
             <div class="data-management-actions">
@@ -891,7 +800,7 @@
               <button class="ui-button ui-button--secondary" type="button" id="export-pdf-data">Exporter le rapport (PDF)</button>
             </div>
             <p id="data-export-status" role="status" aria-live="polite"></p>
-            <div class="data-connections">
+            </div><div class="panel2">
             <h3>Mes sessions et autorisations</h3>
             <p id="drive-connection-status" class="purge-status" role="status" aria-live="polite">Google Drive : état de session inconnu.</p>
             <button class="ui-button ui-button--secondary" type="button" id="disconnect-google-drive" hidden>Révoquer l'accès Google Drive</button>
@@ -899,7 +808,7 @@
             <button class="ui-button ui-button--secondary" type="button" id="disconnect-onedrive" hidden>Déconnecter la session OneDrive</button>
             <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener noreferrer">Gérer les autorisations Microsoft</a>
             </div>
-            <div class="data-delete-section">
+            <div class="danger">
               <h3>Effacer sur cet appareil</h3>
               <p>La suppression efface les données enregistrées par Famili-IA sur cet appareil. Les fichiers d’origine locaux, Google Drive, OneDrive et Dropbox ne sont pas supprimés.</p>
               <button class="ui-button ui-button--danger" type="button" id="purge-all-data">Supprimer toutes mes données</button>
@@ -908,50 +817,27 @@
         </div>
       </section>
 
-      <section class="view plus-view ui-prisme ui-prisme--inline" id="view-plus" data-view="plus" aria-labelledby="plus-title" hidden>
-        <header class="household-header">
-          <div class="view-titles">
-            <h1 id="plus-title">Plus</h1>
+      <section class="view aurore-kit" id="view-plus" data-view="plus" aria-labelledby="plus-title" hidden>
+        <header><p class="eyebrow mono">Espace local</p><h1 class="title" id="plus-title">Plus</h1></header>
+        <div class="menu">
+          <button class="me" type="button" data-nav="profil">
+            <span class="av" id="plus-avatar" aria-hidden="true"></span>
+            <span class="menu-label"><b>Profil et famille</b><small id="plus-profile-description">Identité, cercle familial et préférences</small></span>
+            <svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg>
+          </button>
+          <button class="assistant" type="button" data-nav="assistant"><span class="sp"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-spark"/></svg></span><b>Assistant documentaire</b><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
+          <h2 class="section">Mon espace</h2>
+          <button class="row" type="button" data-nav="importer"><span class="ic sky"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-up"/></svg></span><span class="menu-label"><b>Importer</b><small>Appareil ou source disponible</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
+          <button class="row" type="button" data-nav="vos-donnees"><span class="ic mint"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-folder"/></svg></span><span class="menu-label"><b>Vos données</b><small>Inventaire, export et suppression locale</small></span><span class="plus-badge" data-count-el="documents" hidden></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
+          <h2 class="section" id="plus-appearance-title">Apparence</h2>
+          <div class="seg3" role="group" aria-labelledby="plus-appearance-title"><span class="thumb" aria-hidden="true"></span>
+            <button type="button" data-appearance="light" aria-pressed="true"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-sun"/></svg>Clair</button>
+            <button type="button" data-appearance="dark" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-moon"/></svg>Sombre</button>
+            <button type="button" data-appearance="system" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-dots"/></svg>Système</button>
           </div>
-        </header>
-        <div class="plus-groups">
-        <section class="plus-group" aria-labelledby="plus-daily-title">
-          <h2 id="plus-daily-title">Au quotidien</h2>
-          <div class="plus-list">
-          <button class="ui-button ui-button--secondary plus-item" type="button" data-nav="importer">
-            <span class="ui-icon plus-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 14v5h14v-5"/></svg></span>
-            <span class="plus-body"><strong>Importer des fichiers</strong><small>Depuis l’appareil ou une source disponible</small></span>
-            <span class="plus-arrow" aria-hidden="true">›</span>
-          </button>
-          <button class="ui-button ui-button--secondary plus-item" type="button" data-nav="famille">
-            <span class="ui-icon plus-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
-            <span class="plus-body"><strong>Famille</strong><small>Votre cercle et les noms choisis pour vos souvenirs</small></span>
-            <span class="plus-badge plus-badge--green" data-count-el="famille" hidden></span>
-            <span class="plus-arrow" aria-hidden="true">›</span>
-          </button>
-          <button class="ui-button ui-button--secondary plus-item" type="button" data-nav="assistant">
-            <span class="ui-icon plus-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></span>
-            <span class="plus-body"><strong>Assistant</strong><small>Questionnez vos documents en langage naturel</small></span>
-            <span class="plus-arrow" aria-hidden="true">›</span>
-          </button>
-          </div>
-        </section>
-        <section class="plus-group" aria-labelledby="plus-personal-title">
-          <h2 id="plus-personal-title">Votre espace</h2>
-          <div class="plus-list">
-          <button class="ui-button ui-button--secondary plus-item" type="button" data-nav="profil">
-            <span class="ui-icon plus-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-            <span class="plus-body"><strong>Profil</strong><small>Nom, adresse et choix de localisation des photos</small></span>
-            <span class="plus-arrow" aria-hidden="true">›</span>
-          </button>
-          <button class="ui-button ui-button--secondary plus-item" type="button" data-nav="vos-donnees">
-            <span class="ui-icon plus-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span>
-            <span class="plus-body"><strong>Vos données</strong><small>Fichiers enregistrés, export et suppression locale</small></span>
-            <span class="plus-badge plus-badge--cyan" data-count-el="documents" hidden></span>
-            <span class="plus-arrow" aria-hidden="true">›</span>
-          </button>
-          </div>
-        </section>
+          <h2 class="section">Aide</h2>
+          <button class="row" type="button" data-replay-demo><span class="ic lilac"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-play"/></svg></span><span class="menu-label"><b>Revoir la démo</b><small>Une histoire fictive, sans vos fichiers</small></span><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-go"/></svg></button>
+          <p class="note"><svg class="i" aria-hidden="true"><use href="./assets/prisme/aurore-icones.svg#i-shield"/></svg>Votre profil et vos préférences restent sur cet appareil.</p>
         </div>
       </section>
     </main>

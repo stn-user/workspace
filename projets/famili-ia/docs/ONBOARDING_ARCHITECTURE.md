@@ -8,7 +8,13 @@ Cette fonctionnalité est **critique** pour l'expérience utilisateur. Toute ré
 
 ---
 
-## État de la refonte du lot E
+## Premier lancement actuel · Prisme Aurore
+
+Après initialisation du stockage local, `initOnboardingWizard()` relie le dialogue natif à [onboarding.js](../onboarding.js). Au premier passage sur Accueil : bienvenue → prénom facultatif → choix du parcours. Le parcours personnel continue par les intentions de sources et le récapitulatif ; la démo enchaîne question fictive, preuve et simulation de rappel. « Passer » quitte sans valider le brouillon. Seule la confirmation du parcours personnel enregistre le prénom via le mécanisme de profil existant. Les sources ne sont ni connectées ni importées.
+
+« Revoir la démo » ouvre directement les trois étapes fictives ; « Revoir la découverte » rejoue le parcours complet sans modifier le profil. La sortie restaure la vue d’origine. La visite détaillée existante reste accessible à la fin de la démo. L’indicateur de premier lancement existant est conservé.
+
+## Historique · refonte du lot E et architecture antérieure
 
 L'accueil, la personnalisation facultative et le choix du parcours utilisent les styles communs `ui-card`, `ui-icon` et `ui-badge`, ainsi que les variables `--ui-*`. Les boutons et champs partagés ci-dessous sont utilisés dans l'onboarding et les parcours migrés. Les modales d'extrait, de choix des sources, de réglages des alertes, de détail photo, d'associations, de confirmation des suppressions, d'équipement, de membre, de gestion familiale, de saisie manuelle et l'ancien aperçu de scan utilisent le socle commun de dialogue. Les vues Accueil hors onboarding, Recherche, Assistant, Alertes, Vos données, Famille, Maison, détail équipement, Importer, Profil et Plus adoptent les composants partagés. Les confirmations du navigateur restent natives. Les titres de l'onboarding reçoivent le focus lors des transitions ; l'accessibilité complète reste à vérifier.
 

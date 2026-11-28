@@ -1,6 +1,7 @@
 console.log("App script loaded");
 import { buildSearchResponse, rankDocuments } from "./search-utils.js";
 import auroreIcons from "./assets/prisme/aurore-icones.svg?no-inline";
+import { createOnboarding } from "./onboarding.js";
 import { GoogleDriveClient, prepareDriveDocumentForIndex } from "./google-drive.js";
 import { GoogleDriveSource } from "./google-drive-source.js";
 import { countInventorySources, filterInventoryDocuments, filterSearchResultsByChips, getInventoryAccountRef, getInventoryIndexStatus, getInventorySource, getInventoryTypeKey, isInventoryDocumentType, mergeInventoryDocuments } from "./data-inventory.js";
@@ -63,6 +64,8 @@ let suspendPhotoThumbnailRendering = () => {};
 let resumePhotoThumbnailRendering = () => {};
 let renderUnifiedPhotoResults = () => {};
 let replayOnboarding = false;
+let onboarding;
+let extendedDemo = false;
 let demoReturnContext = null;
 
 /**
@@ -85,189 +88,46 @@ function isOnboardingComplete() {
  * Doit être appelé après que l'état de l'utilisateur soit connu.
  * @param {boolean} [show=false] - Forcer l'affichage/masquage (optionnel)
  */
-function manageOnboardingWizardVisibility(show = false) {
-  const wizard = document.querySelector("#onboarding-wizard");
-  if (!wizard) return;
-
-  const onboardingComplete = isOnboardingComplete();
-  // Afficher le wizard UNIQUEMENT si :
-  // 1. C'est la vue accueil ET
-  // 2. L'onboarding n'est pas terminé
-  const shouldShow = show || ((!onboardingComplete || replayOnboarding) && activeView === 'accueil');
-
-  console.log('[DEBUG] manageOnboardingWizardVisibility:', {
-    show,
-    onboardingComplete,
-    activeView,
-    shouldShow,
-    wizardCurrentlyHidden: wizard.hidden
-  });
-
-  wizard.hidden = !shouldShow;
+function manageOnboardingWizardVisibility() {
+  if (!onboarding) return;
+  const dialog = document.querySelector('#onboarding-wizard');
+  const visible = activeView === 'accueil' && !viewTourActive && (replayOnboarding || !isOnboardingComplete());
+  document.querySelector('#extended-demo').hidden = !(visible && extendedDemo);
+  if (visible && !extendedDemo && !dialog.open) {
+    dialog.showModal();
+    onboarding.focus();
+  } else if ((!visible || extendedDemo) && dialog.open) dialog.close();
 }
 
-/**
- * ⚠️ FONCTION CRITIQUE - ONBOARDING
- *
- * Initialise le wizard d'onboarding (Phase 13.1).
- * Configure les écouteurs d'événements et gère l'état initial.
- * Supporte le mode page blanche (.onboarding-page-white) ou incrusté dans l'accueil.
- *
- * ⚠️ DÉPENDANCES CRITIQUES - NE PAS APPELER AVANT :
- * - uploadedDocuments (ligne ~574) : DOIT être déclaré
- * - activeView (ligne ~1348) : DOIT être déclaré
- * - getCurrentUser() (state.js) : DOIT être disponible
- *
- * ⚠️ ORDRE D'APPEL REQUIS :
- * 1. Déclaration de toutes les variables globales
- * 2. await initState() (chargement données depuis IndexedDB)
- * 3. initOnboardingWizard() ← ICI SEULEMENT
- *
- * ⚠️ ERREUR CONNUE À ÉVITER :
- * ReferenceError: Cannot access 'activeView' before initialization
- * → Cause : Appel de cette fonction avant la ligne ~1348
- *
- * Voir documentation : docs/ONBOARDING_ARCHITECTURE.md
- */
+function finishOnboarding() {
+  if (!isOnboardingComplete()) completeOnboarding();
+  const origin = demoReturnContext;
+  demoReturnContext = null;
+  replayOnboarding = false;
+  extendedDemo = false;
+  manageOnboardingWizardVisibility();
+  showView(origin?.view || 'accueil', { addHistory: !origin, params: origin?.params || {} });
+  if (origin?.focus?.isConnected && !origin.focus.closest('[hidden], dialog:not([open])')) origin.focus.focus();
+  else document.querySelector(`[data-view="${activeView}"] h1`)?.focus();
+}
+
 function initOnboardingWizard() {
-  console.log('[DEBUG] initOnboardingWizard - START');
-
-  const wizard = document.querySelector("#onboarding-wizard");
-  const steps = wizard ? wizard.querySelectorAll(".wizard-step") : [];
-  const userNameInput = document.querySelector("#wizard-user-name");
-  const startScanMode = document.querySelector('#start-scan-mode');
-  const startOnboarding = document.querySelector('#start-onboarding');
-
-  console.log('[DEBUG] initOnboardingWizard - wizard found:', !!wizard);
-  console.log('[DEBUG] initOnboardingWizard - isOnboardingComplete:', isOnboardingComplete());
-  console.log('[DEBUG] initOnboardingWizard - activeView:', activeView);
-  console.log('[DEBUG] initOnboardingWizard - window.location.hash:', window.location.hash);
-  console.log('[DEBUG] initOnboardingWizard - isMobile:', /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
-
-  // Détecter si on utilise le mode page blanche
-  const isWhitePageMode = document.querySelector('#onboarding-wizard.onboarding-page-white') !== null;
-
-  // Si l'onboarding est déjà complété, ne rien faire de plus
-  if (isOnboardingComplete()) {
-    console.log('[DEBUG] initOnboardingWizard - onboarding already complete, exiting');
-    if (wizard) wizard.hidden = true;
-  }
-
-  // Fonction pour afficher une étape
-  function showStep(stepIndex) {
-    if (steps.length === 0) return;
-    steps.forEach((step, idx) => {
-      step.hidden = idx !== stepIndex;
-    });
-    const heading = steps[stepIndex]?.querySelector("h2");
-    if (heading) {
-      heading.tabIndex = -1;
-      heading.focus();
-    }
-  }
-
-  // Navigation entre les étapes
-  if (wizard) {
-    wizard.querySelectorAll('[data-wizard-next]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const targetStep = parseInt(btn.dataset.wizardNext);
-
-        // Sauvegarder les informations utilisateur avant de passer à l'étape 2 (choix du parcours)
-        // Étape 1 -> Saisie prénom optionnel
-        if (userNameInput && targetStep === 2) {
-          const name = userNameInput.value.trim();
-          const error = document.querySelector('#wizard-name-error');
-          error.hidden = true;
-          if (name && !replayOnboarding && name !== getCurrentUser().name) {
-            const step = document.querySelector('#step-1');
-            step.inert = true;
-            try {
-              await updateDisplayName(name);
-            } catch (cause) {
-              console.error("Enregistrement du prénom impossible", cause);
-              error.hidden = false;
-              return;
-            } finally {
-              step.inert = false;
-              if (!error.hidden) userNameInput.focus();
-            }
-          }
-
-          // Le prénom est optionnel, pas de validation bloquante
-          const greetingSpan = document.querySelector('#wizard-user-greeting');
-          const greeting = document.querySelector('#wizard-greeting');
-          greetingSpan.textContent = name;
-          greeting.hidden = !name;
-        }
-
-        if (targetStep === 3) {
-          startDemoGuide();
-        }
-
-        showStep(targetStep);
-        manageOnboardingWizardVisibility(); // Mise à jour de la visibilité
-      });
-    });
-
-    wizard.querySelectorAll('[data-wizard-prev]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const targetStep = parseInt(btn.dataset.wizardPrev);
-        showStep(targetStep);
-        manageOnboardingWizardVisibility(); // Mise à jour de la visibilité
-      });
-    });
-  }
-
-  // Bouton "Découvrir Famili-IA" - va de l'écran 1 à l'écran 2
-  if (startOnboarding) {
-    startOnboarding.addEventListener('click', () => {
-      showStep(1);
+  if (onboarding) return;
+  onboarding = createOnboarding(document.querySelector('#onboarding-wizard'), {
+    saveName: async name => {
+      if (name && !replayOnboarding && name !== getCurrentUser().name) await updateDisplayName(name);
+    },
+    finish: finishOnboarding,
+    explore() {
+      extendedDemo = true;
       manageOnboardingWizardVisibility();
-    });
-  }
-
-  // Entrée dans le champ prénom = « Continuer »
-  if (userNameInput) {
-    userNameInput.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' || event.isComposing) return;
-      event.preventDefault();
-      wizard.querySelector('#step-1 [data-wizard-next="2"]').click();
-    });
-  }
-  // Bouton "Passer cette étape" - saute directement à l'étape 2
-  const skipPersonalization = document.querySelector('#skip-personalization');
-  if (skipPersonalization) {
-    skipPersonalization.addEventListener('click', () => {
-      userNameInput.value = "";
-      document.querySelector('#wizard-user-greeting').textContent = "";
-      document.querySelector('#wizard-greeting').hidden = true;
-      showStep(2);
-      manageOnboardingWizardVisibility();
-    });
-  }
-
-  if (startScanMode) {
-    startScanMode.addEventListener('click', async () => {
-      await launchIntelligentScan();
-    });
-  }
-
-  document.querySelector('#finish-onboarding-demo').addEventListener('click', () => {
-    if (!isOnboardingComplete()) completeOnboarding();
-    const returnContext = demoReturnContext;
-    demoReturnContext = null;
-    replayOnboarding = false;
-    manageOnboardingWizardVisibility();
-    showView(returnContext?.view || 'accueil', {
-      addHistory: !returnContext,
-      params: returnContext?.params || {}
-    });
-    if (returnContext?.focus?.isConnected && !returnContext.focus.closest('[hidden], dialog:not([open])')) {
-      returnContext.focus.focus();
-    } else {
-      document.querySelector(`[data-view="${activeView}"] h1`)?.focus();
+      startDemoGuide();
+      document.querySelector('#step-3-title').focus();
     }
   });
+  onboarding.start('first');
+  manageOnboardingWizardVisibility();
+  document.querySelector('#finish-onboarding-demo').addEventListener('click', finishOnboarding);
 
   // Écouteurs pour les questions de démo préremplies (Écran 4)
   const demoQuestions = document.querySelectorAll('.demo-question');
@@ -325,73 +185,6 @@ function initOnboardingWizard() {
     startGuidedDemo();
   });
 
-  /**
-   * Lance le scan intelligent local (Phase 13.3.a)
-   * Utilise le BackgroundSyncWorker pour scanner les dossiersDocuments et Téléchargements
-   */
-  async function launchIntelligentScan() {
-    // Si on est sur le web, demander de choisir un dossier manuellement
-    if (!Capacitor.isNativePlatform() && 'showDirectoryPicker' in window) {
-      try {
-        const dirHandle = await window.showDirectoryPicker();
-
-        replayOnboarding = false;
-        completeOnboarding();
-        manageOnboardingWizardVisibility();
-        showView("accueil");
-
-        // S'assurer que la barre de progression est visible DÈS LE DÉPART
-        // et restera affichée pendant que le scan tourne en tâche de fond
-        const container = document.querySelector("#scan-progress-container");
-        const fill = document.querySelector("#scan-progress-fill");
-        const text = document.querySelector("#scan-progress-text");
-        if (container) {
-          container.hidden = false;
-          container.style.display = "block";
-          container.style.opacity = "1";
-          container.style.zIndex = "3000";
-        }
-        if (fill) fill.style.width = "0%";
-        if (text) text.textContent = "Initialisation du scan...";
-
-        if (!startBackgroundScan([dirHandle])) return;
-        showDemoNotice("Scan intelligent démarré sur le dossier choisi.");
-
-        // S'assurer que la barre reste visible après le changement de vue
-        setTimeout(() => {
-          if (container) {
-            container.hidden = false;
-            container.style.display = "block";
-            container.style.opacity = "1";
-            container.style.zIndex = "3000";
-          }
-        }, 100);
-        return;
-      } catch (err) {
-        if (err?.name !== "AbortError") {
-          console.error("Impossible d'ouvrir le dossier sélectionné :", err);
-          showDemoNotice("Le dossier n'a pas pu être ouvert. Vous pouvez réessayer ou choisir la démo.");
-        }
-        return;
-      }
-    }
-
-    if (!localFilesInput) {
-      showDemoNotice("Le sélecteur de fichiers n'est pas disponible dans cette version.");
-      return;
-    }
-
-    replayOnboarding = false;
-    completeOnboarding();
-    manageOnboardingWizardVisibility();
-    showView("accueil");
-    showDemoNotice("Choisissez les photos ou documents à analyser sur votre appareil.");
-    localFilesInput.click();
-  }
-
-  // Initialiser à l'étape 1
-  showStep(0);
-  manageOnboardingWizardVisibility(); // Rendre le wizard visible
 }
 
 // Écran de garde : visible dès le chargement, retiré quand l'application est prête
@@ -451,7 +244,7 @@ setTimeout(dismissAppSplash, 10000);
     if (activeView === 'famille') initFamilyView();
     if (activeView === 'detail') initEquipmentDetailView(parseHash().params.id);
     if (activeView === 'profil') initProfileView();
-    if (activeView === 'plus') renderPlusBadges();
+    if (activeView === 'plus') renderPlusView();
     if (activeView === 'accueil') renderAccueilDashboard();
     if (activeView === 'assistant') refreshAssistantContext();
 
@@ -633,6 +426,12 @@ const googleAndroidClientId = import.meta.env.VITE_GOOGLE_ANDROID_CLIENT_ID;
 const hasGoogleNativeConfig = isNativePlatform && [googleAndroidClientId, googleDriveConfig.apiKey, googleDriveConfig.appId]
   .every((value) => typeof value === "string" && value.trim());
 const INVENTORY_PAGE_SIZE = 24;
+const inventoryCoverage = {
+  text: { label: 'Texte disponible', color: '#6fd9ae' },
+  photo: { label: 'Photos (métadonnées)', color: '#82b8ff' },
+  metadata: { label: 'Métadonnées seules', color: '#ffcd5e' },
+  demo: { label: 'Exemples fictifs', color: '#b5a5ef' }
+};
 let inventoryLayout = 'auto';
 let inventoryVisibleCount = INVENTORY_PAGE_SIZE;
 let inventoryViewKey = '';
@@ -1611,11 +1410,16 @@ if (clearFiltersBtn) {
   });
 }
 
-function setImportFeedback(message, state, title) {
+function setImportFeedback(message, state, title, step = state === 'success' ? 2 : 0) {
   const feedback = document.querySelector('#import-feedback');
   feedback.hidden = false;
   feedback.dataset.state = state;
-  document.querySelector('#import-feedback-intro').hidden = true;
+  document.querySelectorAll('#import-steps .step').forEach((item, index) => {
+    item.classList.toggle('done', index < step);
+    item.classList.toggle('active', index === step);
+    if (index === step) item.setAttribute('aria-current', 'step');
+    else item.removeAttribute('aria-current');
+  });
   document.querySelector('#import-feedback-title').textContent = title;
   document.querySelector('#import-feedback-status').textContent = message;
   document.querySelector('#import-feedback-warnings').textContent = '';
@@ -1697,7 +1501,8 @@ function updateScanProgressUI(progressInfo) {
       : progressInfo.status === 'stopped' || progressInfo.failed > 0 ||
         progressInfo.metadataWarnings > 0 || progressInfo.thumbnailWarnings > 0 ? 'warning'
         : running ? 'running' : 'success';
-    setImportFeedback(text.textContent, state, running ? 'Votre ajout local est en cours' : 'Le bilan de votre ajout local');
+    const step = running ? 1 : (progressInfo.imported ?? progressInfo.processed - (progressInfo.failed || 0)) > 0 ? 2 : 0;
+    setImportFeedback(text.textContent, state, running ? 'Votre ajout local est en cours' : 'Le bilan de votre ajout local', step);
     const progress = document.querySelector('#import-progress');
     if (progressInfo.status === 'scanning') {
       progress.removeAttribute('value');
@@ -2724,8 +2529,7 @@ function openImportFrom(button) {
   importReturnContext = { ...parseHash(), trigger: button };
   if (importReturnContext.view === "recherche") importReturnContext.params.q = input.value;
   const back = document.querySelector("#return-from-import");
-  back.textContent = `Retour — ${pageTitles[importReturnContext.view]}`;
-  back.hidden = false;
+  back.querySelector('span').textContent = pageTitles[importReturnContext.view];
   showView("importer");
   document.querySelector("#import-title").focus();
 }
@@ -2734,7 +2538,10 @@ document.querySelectorAll("[data-open-import]").forEach(button => {
 });
 document.querySelector("#return-from-import").addEventListener("click", () => {
   const target = importReturnContext;
-  if (!target) return;
+  if (!target) {
+    showView('accueil');
+    return;
+  }
   showView(target.view, { params: target.params });
   target.trigger.focus();
 });
@@ -2892,7 +2699,7 @@ const openSourceDemoButton = document.querySelector("#open-drive-picker");
 if (openSourceDemoButton) {
   openSourceDemoButton.addEventListener("click", () => {
     sourceChoiceDialog.close();
-    startOnboardingReplay(3);
+    startOnboardingReplay('demo');
   });
 }
 
@@ -3050,7 +2857,7 @@ const pageTitles = {
   detail: "Détail équipement",
   assistant: "Assistant IA",
   importer: "Importer",
-  profil: "Profil",
+  profil: "Profil et famille",
   "vos-donnees": "Vos données",
   plus: "Plus"
 };
@@ -3206,7 +3013,7 @@ function initializeViewWithParams(viewName, params) {
       break;
 
     case 'plus':
-      renderPlusBadges();
+      renderPlusView();
       break;
 
     default:
@@ -3218,13 +3025,16 @@ function initializeViewWithParams(viewName, params) {
  * Met à jour les badges de compteur de la vue « Plus » :
  * alertes à traiter/anticiper, membres de la famille, documents indexés.
  */
-function renderPlusBadges() {
+function renderPlusView() {
+  const user = getCurrentUser();
+  document.querySelector('#plus-profile-description').textContent = user.name && user.name !== 'Mon espace'
+    ? `${user.name} · Mon cercle et mes préférences` : 'Identité, cercle familial et préférences';
+  document.querySelector('#plus-avatar').textContent = user.avatar || getNameInitial(user.name || '');
   const counts = {
     alertes: getAlerts()
       .filter(a => !a.status || a.status === "active")
       .map(a => ({ ...a, type: calculateAlertType(a.dueDate, a.type, a.documentType) }))
       .filter(a => a.type === 'red' || a.type === 'amber').length,
-    famille: getFamilyMembers().length,
     documents: getDocuments().length
   };
   document.querySelectorAll('[data-count-el]').forEach(badge => {
@@ -3282,7 +3092,7 @@ function showView(name, { addHistory = true, params = {} } = {}) {
   activeView = name;
   if (name !== "importer") {
     importReturnContext = null;
-    document.querySelector("#return-from-import").hidden = true;
+    document.querySelector("#return-from-import span").textContent = 'Accueil';
   }
   document.body.classList.toggle('ui-theme', ['accueil', 'recherche', 'alertes', 'vos-donnees', 'maison', 'detail', 'famille', 'assistant', 'importer', 'profil', 'plus'].includes(name));
   document.body.classList.toggle('ui-warm', ['accueil', 'recherche', 'maison', 'detail', 'importer', 'alertes', 'famille', 'vos-donnees', 'profil', 'plus', 'assistant'].includes(name));
@@ -3295,6 +3105,7 @@ function showView(name, { addHistory = true, params = {} } = {}) {
     }
   });
   resumePhotoThumbnailRendering();
+  manageOnboardingWizardVisibility();
 
   navigationButtons.forEach((button) => {
     const isActive = button.dataset.nav === name;
@@ -3382,6 +3193,7 @@ function finishViewTour({ restoreView = true, restoreFocus = true } = {}) {
   viewTourReturnFocus = null;
 
   if (restoreView && activeView !== returnView) showView(returnView, { addHistory: false });
+  else if (restoreView) manageOnboardingWizardVisibility();
   if (restoreFocus && returnFocus?.isConnected && !returnFocus.closest("[hidden]")) {
     returnFocus.focus();
   } else if (restoreFocus) {
@@ -3537,6 +3349,7 @@ document.querySelectorAll("[data-nav~='profil']").forEach((button) => {
 function initProfileHandlers() {
   const profileForm = document.querySelector("#profile-form");
   if (!profileForm) return;
+  document.querySelector('#profile-add-member').addEventListener('click', () => openMemberForm());
 
   profileForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3591,6 +3404,36 @@ function initProfileView() {
   document.querySelector('#edit-profile-postal').value = user.postalCode || '';
   document.querySelector('#edit-profile-city').value = user.city || '';
   document.querySelector('#consent-photo-gps').checked = user.privacy?.photoLocationConsent === true;
+  renderProfileCircle();
+}
+
+function renderProfileCircle() {
+  const members = getFamilyMembers();
+  document.querySelector('#profile-circle-count').textContent = `${members.length} fiche${members.length > 1 ? 's' : ''}`;
+  const list = document.querySelector('#profile-circle');
+  list.replaceChildren();
+  for (const member of members) {
+    const item = document.createElement('li');
+    const own = member.id === getCurrentUser().id;
+    const row = document.createElement(own ? 'div' : 'button');
+    row.className = 'row mrow';
+    const avatar = addTextElement(row, 'span', 'avs', '');
+    avatar.setAttribute('aria-hidden', 'true');
+    addTextElement(avatar, 'i', '', member.avatar || getNameInitial(member.name || ''));
+    addTextElement(row, 'b', '', member.name);
+    if (own) {
+      addTextElement(row, 'small', '', 'Vous');
+    } else {
+      row.type = 'button';
+      row.setAttribute('aria-label', `Modifier ${member.name}`);
+      row.setAttribute('aria-haspopup', 'dialog');
+      row.dataset.editProfileMember = member.id;
+      row.append(auroreIcon('go'));
+      row.addEventListener('click', () => openMemberForm(member));
+    }
+    item.append(row);
+    list.append(item);
+  }
 }
 
 document.querySelectorAll("[data-nav~='vos-donnees']").forEach((button) => {
@@ -3738,7 +3581,7 @@ function initCategoryTabs() {
   });
 }
 
-document.querySelector('[data-replay-demo]').addEventListener('click', () => startOnboardingReplay(3));
+document.querySelectorAll('[data-replay-demo]').forEach(button => button.addEventListener('click', () => startOnboardingReplay('demo')));
 
 // The house category filtering is now handled by initCategoryTabs() and renderEquipmentList()
 // This duplicate event listener is removed to avoid conflicts
@@ -4682,6 +4525,7 @@ function initCoverPhotoDialog() {
 
 
 function renderFamilyMembers() {
+  if (activeView === 'profil') renderProfileCircle();
   const memberList = document.querySelector('#member-list');
   if (!memberList) return;
 
@@ -4747,6 +4591,7 @@ function initAddMemberDialog() {
           form.reset();
           renderFamilyMembers();
           attachAddMemberListener();
+          if (activeView === 'profil') document.querySelector('#profile-add-member').focus();
           if (document.querySelector('#manage-members-dialog')?.open) updateManageMembersList(id);
           if (activeView === 'vos-donnees') renderDataInventory(parseHash().params);
         } catch (error) {
@@ -4806,6 +4651,9 @@ function initAddMemberDialog() {
     attachAddMemberListener(); // Re-attach listener
     if (document.querySelector('#manage-members-dialog')?.open) {
       updateManageMembersList(id);
+    } else if (activeView === 'profil') {
+      const edited = id && document.querySelector(`[data-edit-profile-member="${CSS.escape(id)}"]`);
+      (edited || document.querySelector('#profile-add-member')).focus();
     } else {
       document.querySelector('#manage-family-btn').focus();
     }
@@ -5205,6 +5053,35 @@ function createInventoryGalleryTile(doc) {
  * Render data inventory for Vos données view
  * @param {Object} filters - Optional filters: { type, category }
  */
+function inventoryCoverageKey(doc) {
+  if (getInventorySource(doc) === 'demo') return 'demo';
+  return isPhotoDocument(doc) ? 'photo' : getInventoryIndexStatus(doc);
+}
+
+function renderInventoryCoverage(docs) {
+  const counts = { text: 0, photo: 0, metadata: 0, demo: 0 };
+  for (const doc of docs) counts[inventoryCoverageKey(doc)]++;
+  const legend = document.querySelector('#inventory-legend');
+  legend.replaceChildren();
+  const stops = [];
+  let end = 0;
+  for (const [key, { label, color }] of Object.entries(inventoryCoverage)) {
+    if (key === 'demo' && !counts.demo) continue;
+    const row = addTextElement(legend, 'span', '', label);
+    const swatch = document.createElement('i');
+    swatch.style.backgroundColor = color;
+    row.prepend(swatch);
+    addTextElement(row, 'b', '', String(counts[key]));
+    if (counts[key]) {
+      const start = end;
+      end += counts[key] / docs.length * 100;
+      stops.push(`${color} ${start}% ${end}%`);
+    }
+  }
+  document.querySelector('#inventory-donut').style.background = stops.length
+    ? `conic-gradient(${stops.join(',')})` : 'var(--stroke)';
+}
+
 function renderDataInventory(filters = {}) {
   const dataList = document.querySelector('#data-inventory-list');
   if (!dataList) return;
@@ -5212,6 +5089,7 @@ function renderDataInventory(filters = {}) {
   const demoFallback = uploadedDocuments.length === 0 ? documents : [];
   const allDocuments = mergeInventoryDocuments(demoFallback, uploadedDocuments);
   const counts = countInventorySources(allDocuments);
+  renderInventoryCoverage(allDocuments);
   document.querySelector('#summary-total').textContent = String(counts.total);
   document.querySelector('#summary-local').textContent = String(counts.local);
   document.querySelector('#summary-drive').textContent = String(counts.drive);
@@ -5243,7 +5121,6 @@ function renderDataInventory(filters = {}) {
     button.setAttribute('aria-pressed', String(button.dataset.inventoryLayout === (gallery ? 'gallery' : 'list')));
   });
   const moreButton = document.querySelector('#data-inventory-more');
-  document.querySelector('.data-layout-toggle').hidden = !allDocuments.some(isPhotoDocument);
   const hiddenCount = Math.max(0, docs.length - inventoryVisibleCount);
   moreButton.hidden = hiddenCount === 0;
   moreButton.textContent = `Afficher plus (${hiddenCount} restant${hiddenCount > 1 ? 's' : ''})`;
@@ -5311,10 +5188,10 @@ function renderDataInventory(filters = {}) {
     const sourceBadge = document.createElement('span');
     sourceBadge.className = `data-badge data-badge--source data-source-${source}`;
     sourceBadge.textContent = sourceText;
-    const indexStatus = getInventoryIndexStatus(doc);
+    const indexStatus = inventoryCoverageKey(doc);
     const indexBadge = document.createElement('span');
     indexBadge.className = `data-badge data-badge--index data-index-${indexStatus}`;
-    indexBadge.textContent = indexStatus === 'text' ? 'Texte indexé' : 'Métadonnées seules';
+    indexBadge.textContent = inventoryCoverage[indexStatus].label;
     const date = document.createElement('span');
     date.className = 'data-file-date';
     date.textContent = doc.date || 'Date non renseignée';
@@ -6652,19 +6529,14 @@ async function checkAlertsForExpiry() {
 /**
  * Réinitialise l'onboarding avec confirmation
  */
-function startOnboardingReplay(stepIndex = 0) {
+function startOnboardingReplay(mode = 'review') {
+  if (!onboarding) return showDemoNotice("La découverte se prépare. Réessayez dans un instant.");
   demoReturnContext = { view: activeView, params: parseHash().params, focus: document.activeElement };
   replayOnboarding = true;
-  document.querySelector('#wizard-user-name').value = "";
-  document.querySelector('#wizard-greeting').hidden = true;
-  document.querySelector('#wizard-user-greeting').textContent = "";
-  document.querySelectorAll('#onboarding-wizard .wizard-step').forEach((step, index) => {
-    step.hidden = index !== stepIndex;
-  });
-  if (stepIndex === 3) startDemoGuide();
+  extendedDemo = false;
+  onboarding.start(mode);
   showView('accueil', { addHistory: false });
   manageOnboardingWizardVisibility();
-  document.querySelector(`#step-${stepIndex}-title`).focus();
 }
 
 let demoGuideStep = 0;

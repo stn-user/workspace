@@ -1,10 +1,12 @@
 const key = 'famili-ia.appearance';
 const control = document.getElementById('aurore-theme');
+const choices = document.querySelectorAll('#view-plus [data-appearance]');
 const system = window.matchMedia('(prefers-color-scheme: dark)');
 
 function apply() {
   const dark = control.value === 'dark' || (control.value === 'system' && system.matches);
   document.documentElement.dataset.aurore = dark ? 'dark' : 'light';
+  choices.forEach(button => button.setAttribute('aria-pressed', String(control.value === button.dataset.appearance)));
 }
 
 function restore(value) {
@@ -32,6 +34,10 @@ control.addEventListener('change', () => {
     console.warn('Apparence appliquée uniquement pour cette session.', error);
   }
 });
+choices.forEach(button => button.addEventListener('click', () => {
+  control.value = button.dataset.appearance;
+  control.dispatchEvent(new Event('change'));
+}));
 system.addEventListener('change', apply);
 window.addEventListener('storage', event => {
   if (event.key === key || event.key === null) restore(event.newValue);

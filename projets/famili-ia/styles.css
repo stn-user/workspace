@@ -5393,7 +5393,7 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }.breadcrum
 .search-view .eyebrow,
 .house-view .eyebrow,
 .detail-view .eyebrow,
-.import-view .eyebrow { color: var(--ui-accent); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; margin: 0 0 0.65rem; }
+.import-view:not(:where(.aurore-kit)) .eyebrow { color: var(--ui-accent); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; margin: 0 0 0.65rem; }
 .dashboard-view { display: grid; gap: 1.25rem; }
 .dashboard-view[hidden] { display: none; }
 .home-actions-panel .management-actions { gap: 0.65rem; }
